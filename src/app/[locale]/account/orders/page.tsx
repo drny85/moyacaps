@@ -5,7 +5,7 @@ import Image from "next/image";
 import { Link } from "@/i18n/routing";
 import { useTranslations, useLocale } from "next-intl";
 import { useSafeUser, SafeSignInButton } from "@/lib/useSafeUser";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import {
   Package,
@@ -27,8 +27,9 @@ export default function AccountOrdersPage() {
   const locale = useLocale();
   const { user, isLoaded, isSignedIn } = useSafeUser();
 
-  // Convex mutations
+  // Convex mutations & actions
   const updateAddressMutation = useMutation(api.orders.updateShippingAddress);
+  const cancelAndRefund = useAction(api.stripe.cancelAndRefundOrder);
 
   // Orders for authenticated Clerk user
   const userOrders = useQuery(
@@ -109,19 +110,11 @@ export default function AccountOrdersPage() {
 
     try {
       setIsProcessingCancel(true);
-      const res = await fetch("/api/orders/cancel", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          orderId: cancellingOrder._id,
-          reason: cancelReason,
-        }),
+      const data = await cancelAndRefund({
+        orderId: cancellingOrder._id,
+        clerkUserId: user.id,
+        reason: cancelReason,
       });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to cancel order");
-      }
 
       triggerToast(data.message || "Order cancelled and refund initiated.");
       setCancellingOrder(null);

@@ -13,16 +13,6 @@ const isProtectedRoute = createRouteMatcher([
 ]);
 
 export const proxy = (req: any, ev: any) => {
-  const pathname = req.nextUrl?.pathname || "";
-
-  // Bypass internationalization for API routes
-  if (pathname.startsWith("/api") || pathname.startsWith("/trpc")) {
-    if (process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) {
-      return clerkMiddleware()(req, ev);
-    }
-    return;
-  }
-
   // If Clerk publishable key is set, enforce route protection and run intlMiddleware
   if (process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) {
     return clerkMiddleware(async (auth, request) => {
@@ -42,6 +32,5 @@ export const config = {
   matcher: [
     // Match internationalized routes while ignoring static assets
     "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
-    "/(api|trpc)(.*)",
   ],
 };

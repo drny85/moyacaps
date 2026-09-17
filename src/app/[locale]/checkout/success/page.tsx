@@ -6,7 +6,7 @@ import Image from "next/image";
 import { Link } from "@/i18n/routing";
 import { useTranslations, useLocale } from "next-intl";
 import { useStore } from "@/store/useStore";
-import { useQuery } from "convex/react";
+import { useQuery, useAction } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import {
   CheckCircle2,
@@ -28,6 +28,7 @@ export default function CheckoutSuccessPage() {
   const locale = useLocale();
   const searchParams = useSearchParams();
   const { clearCart } = useStore();
+  const syncSession = useAction(api.stripe.syncCheckoutSession);
 
   const sessionId = searchParams.get("session_id") || "";
   const orderNumberParam = searchParams.get("order_number") || "";
@@ -57,6 +58,13 @@ export default function CheckoutSuccessPage() {
 
     return () => clearTimeout(timer);
   }, [clearCart]);
+
+  // Automatically verify and sync paid Stripe session into Convex
+  useEffect(() => {
+    if (sessionId && sessionId.startsWith("cs_")) {
+      syncSession({ sessionId }).catch((e) => console.error("Checkout sync error:", e));
+    }
+  }, [sessionId, syncSession]);
 
   // Query order from Convex
   const lookupKey = sessionId || orderNumberParam;
@@ -189,7 +197,7 @@ export default function CheckoutSuccessPage() {
 
           <div className="space-y-3 divide-y divide-black/[0.06] dark:divide-white/[0.06]">
             {order?.items && order.items.length > 0 ? (
-              order.items.map((item, idx) => (
+              order.items.map((item: any, idx: number) => (
                 <div key={idx} className="pt-3 first:pt-0 flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
                     <div className="relative w-12 h-12 rounded-xl bg-black/5 dark:bg-white/5 p-1 shrink-0">

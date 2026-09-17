@@ -8,12 +8,15 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
 import confetti from "canvas-confetti";
 import { useSafeUser, SafeSignInButton } from "@/lib/useSafeUser";
+import { useAction } from "convex/react";
+import { api } from "../../../convex/_generated/api";
 
 export function CartDrawer() {
   const { cart, isCartOpen, closeCart, updateQuantity, removeFromCart, clearCart, currency } = useStore();
   const t = useTranslations("cart");
   const locale = useLocale();
   const { user, isSignedIn } = useSafeUser();
+  const createCheckoutSession = useAction(api.stripe.createCheckoutSession);
 
   const [checkoutStep, setCheckoutStep] = useState<"idle" | "processing" | "success">("idle");
 
@@ -53,23 +56,19 @@ export function CartDrawer() {
   const handleStripeCheckout = async () => {
     try {
       setCheckoutStep("processing");
-      const res = await fetch("/api/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          items: cart.map((i) => ({ id: i.id, quantity: i.quantity })),
-          currency,
-          locale,
-          clerkUserId: user?.id,
-          customerEmail: user?.primaryEmailAddress?.emailAddress,
-        }),
+      const result = await createCheckoutSession({
+        items: cart.map((i) => ({ variantId: i.id, quantity: i.quantity })),
+        currency,
+        locale,
+        origin: window.location.origin,
+        clerkUserId: user?.id,
+        customerEmail: user?.primaryEmailAddress?.emailAddress,
       });
 
-      const data = await res.json();
-      if (data.url) {
-        window.location.href = data.url;
+      if (result.url) {
+        window.location.href = result.url;
       } else {
-        throw new Error(data.error || "Failed to initialize checkout");
+        throw new Error("Failed to initialize Stripe checkout session");
       }
     } catch (err: any) {
       console.error("Checkout error:", err);
