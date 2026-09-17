@@ -2,14 +2,17 @@
 
 import { useStore } from "@/store/useStore";
 import { useTranslations } from "next-intl";
-import { ShoppingBag, Compass, MessageCircle } from "lucide-react";
+import { Link } from "@/i18n/routing";
+import { ShoppingBag, Compass, MessageCircle, Package } from "lucide-react";
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { useSafeUser } from "@/lib/useSafeUser";
 
 export function MobileActionBar() {
   const { cart, toggleCart, currency } = useStore();
   const t = useTranslations("nav");
+  const { isSignedIn } = useSafeUser();
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
@@ -34,7 +37,7 @@ export function MobileActionBar() {
       <div className="max-w-md mx-auto glass-dark bg-white/90 dark:bg-[#0a0a10]/90 border border-black/[0.08] dark:border-white/[0.08] rounded-2xl p-1.5 sm:p-2 flex items-center justify-between shadow-2xl shadow-black/10 dark:shadow-black/80 pointer-events-auto">
         {/* Catalog shortcut */}
         <a
-          href="#catalog"
+          href="/#catalog"
           className="flex-1 py-1.5 px-2 rounded-xl flex flex-col items-center justify-center text-zinc-600 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors active:scale-95"
         >
           <Compass className="w-5 h-5 text-moya-red" />
@@ -42,6 +45,19 @@ export function MobileActionBar() {
             {t("catalog")}
           </span>
         </a>
+
+        {/* Orders shortcut for signed-in collectors */}
+        {isSignedIn && (
+          <Link
+            href="/account/orders"
+            className="flex-1 py-1.5 px-2 rounded-xl flex flex-col items-center justify-center text-zinc-600 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors active:scale-95"
+          >
+            <Package className="w-5 h-5 text-moya-red" />
+            <span className="text-[9px] font-display font-semibold mt-0.5 tracking-tight text-moya-red">
+              {t("orders")}
+            </span>
+          </Link>
+        )}
 
         {/* WhatsApp */}
         <button

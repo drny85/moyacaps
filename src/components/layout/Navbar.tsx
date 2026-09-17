@@ -3,17 +3,18 @@
 import { useTranslations, useLocale } from "next-intl";
 import { Link, usePathname, useRouter } from "@/i18n/routing";
 import { useStore } from "@/store/useStore";
-import { ShoppingBag, Globe, Menu, X, Sparkles, User } from "lucide-react";
+import { ShoppingBag, Globe, Menu, X, Sparkles, User, Package } from "lucide-react";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
-import { SafeUserButton } from "@/lib/useSafeUser";
+import { SafeUserButton, useSafeUser } from "@/lib/useSafeUser";
 
 export function Navbar() {
   const t = useTranslations("nav");
   const locale = useLocale();
   const router = useRouter();
   const pathname = usePathname();
+  const { isSignedIn } = useSafeUser();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
 
@@ -69,15 +70,28 @@ export function Navbar() {
           {/* ── Desktop Nav ── */}
           <nav className="hidden md:flex items-center gap-8 text-sm font-display font-medium text-zinc-600 dark:text-zinc-400">
             <a
-              href="#catalog"
+              href="/#catalog"
               className="hover:text-zinc-900 dark:hover:text-white transition-colors hover-underline flex items-center gap-1.5"
             >
               <Sparkles className="w-3 h-3 text-moya-green" />
               {t("catalog")}
             </a>
-            <a href="#story" className="hover:text-zinc-900 dark:hover:text-white transition-colors hover-underline">
+            <a href="/#story" className="hover:text-zinc-900 dark:hover:text-white transition-colors hover-underline">
               {t("story")}
             </a>
+            {isSignedIn && (
+              <Link
+                href="/account/orders"
+                className={`transition-colors hover-underline flex items-center gap-1.5 ${
+                  pathname.includes("/account/orders")
+                    ? "text-moya-red dark:text-moya-red font-bold"
+                    : "hover:text-zinc-900 dark:hover:text-white"
+                }`}
+              >
+                <Package className="w-3.5 h-3.5 text-moya-red" />
+                <span>{t("orders")}</span>
+              </Link>
+            )}
           </nav>
 
           {/* ── Controls ── */}
@@ -134,6 +148,22 @@ export function Navbar() {
                 ES
               </button>
             </div>
+
+            {/* Orders Quick Tab for Logged-In Users */}
+            {isSignedIn && (
+              <Link
+                href="/account/orders"
+                className={`hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl glass-dark hover:bg-black/5 dark:hover:bg-white/10 text-xs font-display font-semibold transition-all border ${
+                  pathname.includes("/account/orders")
+                    ? "border-moya-red text-moya-red bg-moya-red/5 font-bold"
+                    : "border-black/[0.06] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white"
+                }`}
+                title="View All Orders"
+              >
+                <Package className="w-3.5 h-3.5 text-moya-red" />
+                <span>{t("orders")}</span>
+              </Link>
+            )}
 
             {/* Account / Vault */}
             <div className="flex items-center">
@@ -203,14 +233,25 @@ export function Navbar() {
               >
                 {t("story")}
               </a>
-              <Link
-                href="/account/orders"
-                onClick={() => setMobileMenuOpen(false)}
-                className="text-zinc-900 dark:text-zinc-200 hover:text-moya-red font-display font-semibold text-base transition-colors flex items-center gap-2"
-              >
-                <User className="w-4 h-4 text-moya-red" />
-                <span>{t("account")}</span>
-              </Link>
+              {isSignedIn ? (
+                <Link
+                  href="/account/orders"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="text-zinc-900 dark:text-zinc-200 hover:text-moya-red font-display font-semibold text-base transition-colors flex items-center gap-2 text-moya-red font-bold"
+                >
+                  <Package className="w-5 h-5 text-moya-red" />
+                  <span>{t("orders")}</span>
+                </Link>
+              ) : (
+                <Link
+                  href="/account/orders"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="text-zinc-900 dark:text-zinc-200 hover:text-moya-red font-display font-semibold text-base transition-colors flex items-center gap-2"
+                >
+                  <User className="w-4 h-4 text-moya-red" />
+                  <span>{t("account")}</span>
+                </Link>
+              )}
 
               {/* Mobile-only controls */}
               <div className="flex items-center justify-between gap-3 pt-4 border-t border-black/[0.06] dark:border-white/[0.06]">

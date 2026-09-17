@@ -46,12 +46,30 @@ export function useSafeUser() {
 export function SafeSignInButton({
   children,
   mode = "modal",
+  forceRedirectUrl,
+  fallbackRedirectUrl,
+  signUpForceRedirectUrl,
+  signUpFallbackRedirectUrl,
 }: {
   children: React.ReactNode;
   mode?: "modal" | "redirect";
+  forceRedirectUrl?: string;
+  fallbackRedirectUrl?: string;
+  signUpForceRedirectUrl?: string;
+  signUpFallbackRedirectUrl?: string;
 }) {
   if (process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) {
-    return <ClerkSignInButton mode={mode}>{children}</ClerkSignInButton>;
+    return (
+      <ClerkSignInButton
+        mode={mode}
+        forceRedirectUrl={forceRedirectUrl}
+        fallbackRedirectUrl={fallbackRedirectUrl}
+        signUpForceRedirectUrl={signUpForceRedirectUrl}
+        signUpFallbackRedirectUrl={signUpFallbackRedirectUrl}
+      >
+        {children}
+      </ClerkSignInButton>
+    );
   }
   return <>{children}</>;
 }

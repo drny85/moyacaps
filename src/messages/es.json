@@ -5,8 +5,28 @@
     "story": "La Historia",
     "cart": "Carrito",
     "account": "Mi Cuenta",
+    "orders": "Mis Pedidos",
     "signIn": "Iniciar Sesión",
     "freeShippingBanner": "⚡ DROP EXCLUSIVO — ENVÍO EXPRESS GRATIS EN LA COMPRA DE 2 O MÁS GORRAS"
+  },
+  "checkout": {
+    "title": "Asegurando tu Pedido",
+    "subtitle": "Conectando a la pasarela segura de Stripe...",
+    "emptyTitle": "Tu Carrito está Vacío",
+    "emptySubtitle": "Selecciona tus gorras de la colección 0880 Good Luck para continuar.",
+    "exploreCta": "Explorar las 16 Gorras",
+    "viewOrders": "Ver Mis Pedidos",
+    "redirecting": "Redirigiendo a Stripe...",
+    "manualRedirect": "Haz clic aquí si no eres redirigido automáticamente",
+    "retry": "Reintentar Conexión",
+    "orderSummary": "Resumen del Pedido",
+    "items": "piezas",
+    "freeShipping": "Envío Express Mundial Gratis",
+    "standardShipping": "Mensajería Express Rastreada",
+    "subtotal": "Subtotal",
+    "shipping": "Envío",
+    "total": "Total",
+    "secureNotice": "Transacción encriptada SSL de 256 bits procesada por Stripe Payments"
   },
   "hero": {
     "badge": "LANZAMIENTO OFICIAL 2026",

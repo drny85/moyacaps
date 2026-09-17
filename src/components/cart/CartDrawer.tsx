@@ -252,7 +252,13 @@ export function CartDrawer() {
                     {/* Authentication Check & Stripe Card Checkout */}
                     {!isSignedIn ? (
                       <div className="space-y-1.5">
-                        <SafeSignInButton mode="modal">
+                        <SafeSignInButton
+                          mode="modal"
+                          forceRedirectUrl={`/${locale}/checkout`}
+                          fallbackRedirectUrl={`/${locale}/checkout`}
+                          signUpForceRedirectUrl={`/${locale}/checkout`}
+                          signUpFallbackRedirectUrl={`/${locale}/checkout`}
+                        >
                           <button
                             className="w-full py-3.5 rounded-2xl bg-zinc-900 hover:bg-zinc-800 dark:bg-white dark:hover:bg-zinc-100 text-white dark:text-zinc-900 font-display font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-xl hover:scale-[1.01] active:scale-[0.99]"
                           >

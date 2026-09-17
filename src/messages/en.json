@@ -5,8 +5,28 @@
     "story": "The Lore",
     "cart": "Cart",
     "account": "Account",
+    "orders": "Orders",
     "signIn": "Sign In",
     "freeShippingBanner": "⚡ LIMITED DROP — FREE WORLDWIDE EXPRESS SHIPPING ON 2+ CAPS"
+  },
+  "checkout": {
+    "title": "Securing Your Order",
+    "subtitle": "Connecting to Stripe secure payments...",
+    "emptyTitle": "Your Bag is Empty",
+    "emptySubtitle": "Select your signature 0880 Good Luck caps to proceed to checkout.",
+    "exploreCta": "Explore 16 Drops",
+    "viewOrders": "View My Orders",
+    "redirecting": "Redirecting to Stripe...",
+    "manualRedirect": "Click here if not redirected automatically",
+    "retry": "Retry Connection",
+    "orderSummary": "Order Summary",
+    "items": "items",
+    "freeShipping": "Free Worldwide Express Delivery",
+    "standardShipping": "Tracked Express Courier",
+    "subtotal": "Subtotal",
+    "shipping": "Shipping",
+    "total": "Total",
+    "secureNotice": "Encrypted 256-bit SSL transaction via Stripe Payments"
   },
   "hero": {
     "badge": "SIGNATURE 2026 DROP",

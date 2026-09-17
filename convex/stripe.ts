@@ -11,7 +11,7 @@ function getStripe(): Stripe {
     throw new Error("STRIPE_SECRET_KEY is not configured in Convex environment variables.");
   }
   return new Stripe(stripeKey, {
-    apiVersion: "2025-02-24.acacia" as any,
+    apiVersion: '2026-08-26.dahlia'
   });
 }
 
@@ -272,13 +272,13 @@ export const syncCheckoutSession = action({
         clerkUserId: metadata.clerkUserId || undefined,
         shippingAddress: address
           ? {
-              line1: address.line1 || "Street address",
-              line2: address.line2 || undefined,
-              city: address.city || "City",
-              state: address.state || "",
-              postalCode: address.postal_code || "",
-              country: address.country || "US",
-            }
+            line1: address.line1 || "Street address",
+            line2: address.line2 || undefined,
+            city: address.city || "City",
+            state: address.state || "",
+            postalCode: address.postal_code || "",
+            country: address.country || "US",
+          }
           : undefined,
         items: parsedItems,
         currency: (session.currency || "usd").toUpperCase(),
@@ -345,13 +345,13 @@ export const fulfillStripeWebhook = action({
         clerkUserId: metadata.clerkUserId || undefined,
         shippingAddress: address
           ? {
-              line1: address.line1 || "Street address",
-              line2: address.line2 || undefined,
-              city: address.city || "City",
-              state: address.state || "",
-              postalCode: address.postal_code || "",
-              country: address.country || "US",
-            }
+            line1: address.line1 || "Street address",
+            line2: address.line2 || undefined,
+            city: address.city || "City",
+            state: address.state || "",
+            postalCode: address.postal_code || "",
+            country: address.country || "US",
+          }
           : undefined,
         items: parsedItems,
         currency: (session.currency || "usd").toUpperCase(),
