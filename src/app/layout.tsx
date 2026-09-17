@@ -27,8 +27,29 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark scroll-smooth">
-      <body className={`${inter.variable} ${spaceGrotesk.variable} font-sans bg-[#06060a] text-zinc-100 antialiased min-h-screen selection:bg-moya-red selection:text-white`}>
+    <html lang="en" className="dark scroll-smooth" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var stored = localStorage.getItem('moyacaps-storage');
+                  if (stored) {
+                    var parsed = JSON.parse(stored);
+                    if (parsed.state && parsed.state.theme === 'light') {
+                      document.documentElement.classList.remove('dark');
+                      document.documentElement.classList.add('light');
+                      document.documentElement.style.colorScheme = 'light';
+                    }
+                  }
+                } catch (e) {}
+              })();
+            `,
+          }}
+        />
+      </head>
+      <body className={`${inter.variable} ${spaceGrotesk.variable} font-sans bg-background text-foreground antialiased min-h-screen selection:bg-moya-red selection:text-white transition-colors duration-300`}>
         {children}
       </body>
     </html>

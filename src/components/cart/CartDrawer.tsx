@@ -84,39 +84,39 @@ export function CartDrawer() {
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "spring", damping: 25, stiffness: 200 }}
-            className="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-[#08080e] border-l border-white/[0.06] flex flex-col shadow-2xl"
+            className="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-white dark:bg-[#08080e] border-l border-black/[0.08] dark:border-white/[0.06] flex flex-col shadow-2xl transition-colors duration-300"
           >
             {/* Drawer Header */}
-            <div className="p-6 border-b border-white/[0.06] flex items-center justify-between">
+            <div className="p-6 border-b border-black/[0.06] dark:border-white/[0.06] flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <ShoppingBag className="w-5 h-5 text-moya-red" />
-                <h2 className="font-display font-bold text-lg text-white">{t("title")}</h2>
-                <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-white/10 text-zinc-300">
+                <h2 className="font-display font-bold text-lg text-zinc-900 dark:text-white">{t("title")}</h2>
+                <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-black/5 dark:bg-white/10 text-zinc-700 dark:text-zinc-300">
                   {totalItems}
                 </span>
               </div>
               <button
                 onClick={closeCart}
-                className="p-2 rounded-full glass-dark text-zinc-500 hover:text-white"
+                className="p-2 rounded-full glass-dark text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {/* Free Shipping Progress Indicator */}
-            <div className="px-6 py-3 bg-moya-red-deep/20 border-b border-moya-red/20 text-xs">
+            <div className="px-6 py-3 bg-moya-red/10 dark:bg-moya-red-deep/20 border-b border-moya-red/20 text-xs">
               {freeShippingUnlocked ? (
-                <p className="text-moya-green-light font-display font-bold text-center">
+                <p className="text-emerald-600 dark:text-moya-green-light font-display font-bold text-center">
                   {t("freeShippingAchieved")}
                 </p>
               ) : (
-                <p className="text-zinc-300 text-center">
+                <p className="text-zinc-700 dark:text-zinc-300 text-center">
                   {t("freeShippingRemaining", {
                     amount: currency === "USD" ? `$${45 - subtotal > 0 ? 45 - subtotal : 45} USD` : "1 más",
                   })}
                 </p>
               )}
-              <div className="w-full bg-black/50 h-1.5 rounded-full mt-2 overflow-hidden">
+              <div className="w-full bg-black/10 dark:bg-black/50 h-1.5 rounded-full mt-2 overflow-hidden">
                 <div
                   className="bg-gradient-to-r from-moya-red to-moya-green h-full rounded-full transition-all duration-500"
                   style={{ width: `${Math.min(100, (totalItems / 2) * 100)}%` }}
@@ -128,13 +128,13 @@ export function CartDrawer() {
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
               {cart.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-center py-16">
-                    <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/[0.06] flex items-center justify-center mb-4 text-zinc-500">
+                  <div className="w-16 h-16 rounded-2xl bg-black/5 dark:bg-white/5 border border-black/[0.06] dark:border-white/[0.06] flex items-center justify-center mb-4 text-zinc-400 dark:text-zinc-500">
                     <ShoppingBag className="w-8 h-8" />
                   </div>
-                  <h3 className="text-lg font-display font-bold text-white mb-1">
+                  <h3 className="text-lg font-display font-bold text-zinc-900 dark:text-white mb-1">
                     {t("emptyTitle")}
                   </h3>
-                  <p className="text-xs text-zinc-400 max-w-xs mb-6">
+                  <p className="text-xs text-zinc-600 dark:text-zinc-400 max-w-xs mb-6">
                     {t("emptyDesc")}
                   </p>
                   <button
@@ -150,9 +150,9 @@ export function CartDrawer() {
                   return (
                     <div
                       key={item.id}
-                      className="glass-card rounded-2xl p-3.5 flex items-center gap-4 border border-white/[0.06]"
+                      className="glass-card rounded-2xl p-3.5 flex items-center gap-4 border border-black/[0.06] dark:border-white/[0.06]"
                     >
-                      <div className="relative w-16 h-16 rounded-xl bg-white/5 shrink-0 overflow-hidden p-1">
+                      <div className="relative w-16 h-16 rounded-xl bg-black/5 dark:bg-white/5 shrink-0 overflow-hidden p-1">
                         <Image
                           src={item.image}
                           alt={item.name}
@@ -162,28 +162,28 @@ export function CartDrawer() {
                       </div>
 
                       <div className="flex-1 min-w-0">
-                        <h4 className="font-display font-bold text-sm text-white truncate">
+                        <h4 className="font-display font-bold text-sm text-zinc-900 dark:text-white truncate">
                           {item.name}
                         </h4>
-                        <div className="text-xs font-mono font-bold text-moya-green-light mt-0.5">
+                        <div className="text-xs font-mono font-bold text-emerald-600 dark:text-moya-green-light mt-0.5">
                           {currency === "USD" ? `$${itemPrice}` : `$${itemPrice} MXN`}
                         </div>
 
                         {/* Quantity adjust */}
                         <div className="flex items-center gap-3 mt-2">
-                          <div className="flex items-center glass-dark rounded-lg border border-white/[0.06]">
+                          <div className="flex items-center glass-dark rounded-lg border border-black/[0.06] dark:border-white/[0.06]">
                             <button
                               onClick={() => updateQuantity(item.id, -1)}
-                              className="px-2 py-1 text-zinc-400 hover:text-white"
+                              className="px-2 py-1 text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors"
                             >
                               <Minus className="w-3 h-3" />
                             </button>
-                            <span className="px-2 text-xs font-mono font-bold text-white">
+                            <span className="px-2 text-xs font-mono font-bold text-zinc-900 dark:text-white">
                               {item.quantity}
                             </span>
                             <button
                               onClick={() => updateQuantity(item.id, 1)}
-                              className="px-2 py-1 text-zinc-400 hover:text-white"
+                              className="px-2 py-1 text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors"
                             >
                               <Plus className="w-3 h-3" />
                             </button>
@@ -191,7 +191,7 @@ export function CartDrawer() {
 
                           <button
                             onClick={() => removeFromCart(item.id)}
-                            className="p-1.5 text-zinc-500 hover:text-moya-red transition-colors"
+                            className="p-1.5 text-zinc-400 hover:text-moya-red transition-colors"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -205,23 +205,23 @@ export function CartDrawer() {
 
             {/* Drawer Footer & Checkout Controls */}
             {cart.length > 0 && (
-              <div className="p-6 border-t border-white/[0.06] bg-[#07070c] space-y-4">
+              <div className="p-6 border-t border-black/[0.06] dark:border-white/[0.06] bg-zinc-50 dark:bg-[#07070c] space-y-4">
                 <div className="space-y-1.5 text-xs">
-                  <div className="flex justify-between text-zinc-400">
+                  <div className="flex justify-between text-zinc-600 dark:text-zinc-400">
                     <span>{t("subtotal")}</span>
-                    <span className="font-mono text-white">
+                    <span className="font-mono text-zinc-900 dark:text-white font-semibold">
                       {currency === "USD" ? `$${subtotal}.00 USD` : `$${subtotal}.00 MXN`}
                     </span>
                   </div>
-                  <div className="flex justify-between text-zinc-400">
+                  <div className="flex justify-between text-zinc-600 dark:text-zinc-400">
                     <span>{t("shipping")}</span>
-                    <span className="font-mono text-moya-green-light font-bold">
+                    <span className="font-mono text-emerald-600 dark:text-moya-green-light font-bold">
                       {shippingFee === 0 ? t("shippingFree") : currency === "USD" ? `$${shippingFee}.00 USD` : `$${shippingFee}.00 MXN`}
                     </span>
                   </div>
-                  <div className="flex justify-between text-sm font-display font-bold pt-2 border-t border-white/[0.06] text-white">
+                  <div className="flex justify-between text-sm font-display font-bold pt-2 border-t border-black/[0.06] dark:border-white/[0.06] text-zinc-900 dark:text-white">
                     <span>{t("total")}</span>
-                    <span className="font-mono text-moya-green-light text-base">
+                    <span className="font-mono text-emerald-600 dark:text-moya-green-light text-base">
                       {currency === "USD" ? `$${total}.00 USD` : `$${total}.00 MXN`}
                     </span>
                   </div>

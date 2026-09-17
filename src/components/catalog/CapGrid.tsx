@@ -59,7 +59,7 @@ export function CapGrid() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5, delay: 0.1 }}
-            className="font-display text-3xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-white"
+            className="font-display text-3xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-zinc-900 dark:text-white"
           >
             {t("title")}
           </motion.h2>
@@ -69,7 +69,7 @@ export function CapGrid() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.4, delay: 0.2 }}
-            className="text-zinc-500 text-sm sm:text-lg mt-2 max-w-xl"
+            className="text-zinc-600 dark:text-zinc-400 text-sm sm:text-lg mt-2 max-w-xl"
           >
             {t("subtitle")}
           </motion.p>
@@ -77,13 +77,13 @@ export function CapGrid() {
 
         {/* Search */}
         <div className="relative w-full md:w-72">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 dark:text-zinc-500" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={t("searchPlaceholder")}
-            className="w-full pl-10 pr-4 py-3 rounded-xl glass-dark text-sm text-white placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-moya-red/50 focus:border-moya-red/50 transition-all font-sans"
+            className="w-full pl-10 pr-4 py-3 rounded-xl glass-dark text-sm text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-600 border border-black/[0.06] dark:border-white/[0.06] focus:outline-none focus:ring-1 focus:ring-moya-red/50 focus:border-moya-red/50 transition-all font-sans"
           />
         </div>
       </div>
@@ -96,8 +96,8 @@ export function CapGrid() {
             onClick={() => setActiveFilter(f.key)}
             className={`px-4 sm:px-5 py-2.5 rounded-xl text-xs sm:text-sm font-display font-semibold transition-all whitespace-nowrap ${
               activeFilter === f.key
-                ? "bg-moya-red text-white shadow-lg shadow-moya-red-deep/50 scale-105"
-                : "glass-dark text-zinc-500 hover:text-white hover:bg-white/10 border border-white/[0.06]"
+                ? "bg-moya-red text-white shadow-lg shadow-moya-red-deep/40 scale-105"
+                : "glass-dark text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 border border-black/[0.06] dark:border-white/[0.06]"
             }`}
           >
             {f.label}
@@ -107,7 +107,7 @@ export function CapGrid() {
 
       {/* ── Grid ── */}
       {filteredCaps.length === 0 ? (
-        <div className="glass-card rounded-2xl p-12 text-center text-zinc-500">
+        <div className="glass-card rounded-2xl p-12 text-center text-zinc-600 dark:text-zinc-400">
           <p className="text-lg font-display">No colorways match &quot;{searchQuery}&quot;</p>
           <button
             onClick={() => {

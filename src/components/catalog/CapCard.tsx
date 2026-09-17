@@ -62,8 +62,8 @@ export function CapCard({ cap, index = 0 }: { cap: CapVariant; index?: number })
         onMouseLeave={handleMouseLeave}
         className={`group relative glass-card rounded-xl sm:rounded-2xl p-2 sm:p-3 flex flex-col border transition-all duration-500 ease-out cursor-pointer shadow-lg hover:shadow-2xl w-full min-w-0 overflow-hidden ${
           isInCart
-            ? "border-emerald-500/40 shadow-emerald-950/20 bg-emerald-950/[0.05] hover:border-emerald-400/60 hover:shadow-emerald-950/40"
-            : "border-white/[0.06] hover:border-moya-red/30 hover:shadow-moya-red-deep/20"
+            ? "border-emerald-500/40 shadow-emerald-950/10 dark:shadow-emerald-950/20 bg-emerald-950/[0.03] dark:bg-emerald-950/[0.05] hover:border-emerald-400/60 hover:shadow-emerald-950/30"
+            : "border-black/[0.06] dark:border-white/[0.06] hover:border-moya-red/30 hover:shadow-moya-red-deep/10 dark:hover:shadow-moya-red-deep/20"
         }`}
         style={{ transformStyle: "preserve-3d", transition: "transform 0.4s cubic-bezier(0.23, 1, 0.32, 1), border-color 0.3s, box-shadow 0.3s" }}
       >
@@ -76,13 +76,13 @@ export function CapCard({ cap, index = 0 }: { cap: CapVariant; index?: number })
                 <span className="truncate max-w-[45px] xs:max-w-[70px] sm:max-w-none">{tag}</span>
               </span>
             ) : (
-              <span className="text-[8px] sm:text-[10px] font-display font-semibold text-zinc-500 uppercase tracking-wider truncate">
+              <span className="text-[8px] sm:text-[10px] font-display font-semibold text-zinc-600 dark:text-zinc-500 uppercase tracking-wider truncate">
                 {cap.silhouette === "trucker" ? "Trucker" : "Snapback"}
               </span>
             )}
 
             {isInCart && (
-              <span className="flex items-center gap-0.5 sm:gap-1 px-1 sm:px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 font-display font-semibold text-[7.5px] sm:text-[9px] shadow-sm shrink-0">
+              <span className="flex items-center gap-0.5 sm:gap-1 px-1 sm:px-2 py-0.5 rounded-full bg-emerald-500/15 dark:bg-emerald-500/20 border border-emerald-500/40 text-emerald-600 dark:text-emerald-400 font-display font-semibold text-[7.5px] sm:text-[9px] shadow-sm shrink-0">
                 <Check className="w-2 sm:w-2.5 h-2 sm:h-2.5 shrink-0" />
                 <span className="truncate max-w-[50px] sm:max-w-none">{inCartQty > 1 ? inCartQty : t("inCartBadge", { count: inCartQty })}</span>
               </span>
@@ -92,12 +92,12 @@ export function CapCard({ cap, index = 0 }: { cap: CapVariant; index?: number })
           {/* Colorway swatches */}
           <div className="flex items-center gap-0.5 sm:gap-1 shrink-0 ml-1">
             <span
-              className="w-2 sm:w-2.5 md:w-3 h-2 sm:h-2.5 md:h-3 rounded-full border border-white/20 shadow-sm"
+              className="w-2 sm:w-2.5 md:w-3 h-2 sm:h-2.5 md:h-3 rounded-full border border-white/40 dark:border-white/20 shadow-sm"
               style={{ backgroundColor: cap.primaryHex }}
               title="Crown"
             />
             <span
-              className="w-2 sm:w-2.5 md:w-3 h-2 sm:h-2.5 md:h-3 rounded-full border border-white/20 shadow-sm"
+              className="w-2 sm:w-2.5 md:w-3 h-2 sm:h-2.5 md:h-3 rounded-full border border-white/40 dark:border-white/20 shadow-sm"
               style={{ backgroundColor: cap.secondaryHex }}
               title="Accent"
             />
@@ -107,7 +107,7 @@ export function CapCard({ cap, index = 0 }: { cap: CapVariant; index?: number })
         {/* ── Cap Image ── */}
         <div
           onClick={() => openQuickView(cap)}
-          className="relative w-full aspect-square rounded-lg sm:rounded-xl bg-gradient-to-b from-white/[0.03] to-transparent flex items-center justify-center p-1.5 sm:p-2 overflow-hidden"
+          className="relative w-full aspect-square rounded-lg sm:rounded-xl bg-gradient-to-b from-black/[0.02] dark:from-white/[0.03] to-transparent flex items-center justify-center p-1.5 sm:p-2 overflow-hidden"
         >
           {/* Skeleton shimmer while loading */}
           {!imageLoaded && <div className="absolute inset-[10%] skeleton rounded-xl" />}
@@ -117,7 +117,7 @@ export function CapCard({ cap, index = 0 }: { cap: CapVariant; index?: number })
               src={cap.image}
               alt={name}
               fill
-              className={`object-contain drop-shadow-[0_8px_16px_rgba(0,0,0,0.6)] transition-opacity duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
+              className={`object-contain drop-shadow-[0_8px_16px_rgba(0,0,0,0.18)] dark:drop-shadow-[0_8px_16px_rgba(0,0,0,0.6)] transition-opacity duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
               sizes="(max-width: 640px) 48vw, (max-width: 1024px) 33vw, 25vw"
               onLoad={() => setImageLoaded(true)}
             />
@@ -130,7 +130,7 @@ export function CapCard({ cap, index = 0 }: { cap: CapVariant; index?: number })
                 e.stopPropagation();
                 openQuickView(cap);
               }}
-              className="w-full py-2 rounded-xl glass-dark text-white text-[11px] font-display font-semibold flex items-center justify-center gap-1.5 hover:bg-white/15 transition-colors"
+              className="w-full py-2 rounded-xl glass-dark text-zinc-900 dark:text-white text-[11px] font-display font-semibold flex items-center justify-center gap-1.5 hover:bg-black/5 dark:hover:bg-white/15 transition-colors shadow-md"
             >
               <Eye className="w-3 h-3" />
               <span>{t("quickView")}</span>
@@ -139,24 +139,24 @@ export function CapCard({ cap, index = 0 }: { cap: CapVariant; index?: number })
         </div>
 
         {/* ── Product Info ── */}
-        <div className="mt-2 sm:mt-3 pt-1.5 sm:pt-2 border-t border-white/[0.05] flex flex-col gap-1 sm:gap-1.5 w-full min-w-0">
+        <div className="mt-2 sm:mt-3 pt-1.5 sm:pt-2 border-t border-black/[0.06] dark:border-white/[0.05] flex flex-col gap-1 sm:gap-1.5 w-full min-w-0">
           <div className="flex items-baseline justify-between gap-1 w-full min-w-0">
             <h3
               onClick={() => openQuickView(cap)}
-              className="font-display font-bold text-[11px] sm:text-sm text-white hover:text-moya-red-light transition-colors cursor-pointer truncate min-w-0 flex-1"
+              className="font-display font-bold text-[11px] sm:text-sm text-zinc-900 dark:text-white hover:text-moya-red transition-colors cursor-pointer truncate min-w-0 flex-1"
               title={name}
             >
               {name}
             </h3>
-            <span className="text-[10px] sm:text-xs font-mono font-bold text-moya-green-light shrink-0 whitespace-nowrap">
+            <span className="text-[10px] sm:text-xs font-mono font-bold text-emerald-600 dark:text-moya-green-light shrink-0 whitespace-nowrap">
               {priceDisplay}
             </span>
           </div>
 
           {/* Stock indicator (desktop) */}
           <div className="hidden sm:flex items-center justify-between text-[10px] text-zinc-500">
-            <span className="flex items-center gap-1 text-moya-green text-[10px] font-medium">
-              <span className="w-1.5 h-1.5 rounded-full bg-moya-green animate-pulse" />
+            <span className="flex items-center gap-1 text-emerald-600 dark:text-moya-green text-[10px] font-medium">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 dark:bg-moya-green animate-pulse" />
               {t("inStock")}
             </span>
             <span className="font-mono uppercase tracking-wider">
@@ -168,9 +168,9 @@ export function CapCard({ cap, index = 0 }: { cap: CapVariant; index?: number })
           {isInCart ? (
             <button
               onClick={() => addToCart(cap)}
-              className="w-full py-1.5 sm:py-2.5 px-1.5 sm:px-2 rounded-lg sm:rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 active:bg-emerald-600/40 text-emerald-300 border border-emerald-500/40 font-display font-bold text-[9px] sm:text-xs uppercase tracking-wider transition-all hover:shadow-lg hover:shadow-emerald-950/40 flex items-center justify-center gap-1 sm:gap-1.5 active:scale-95 mt-0.5 min-w-0"
+              className="w-full py-1.5 sm:py-2.5 px-1.5 sm:px-2 rounded-lg sm:rounded-xl bg-emerald-600/15 dark:bg-emerald-600/20 hover:bg-emerald-600/25 dark:hover:bg-emerald-600/30 active:bg-emerald-600/40 text-emerald-700 dark:text-emerald-300 border border-emerald-500/40 font-display font-bold text-[9px] sm:text-xs uppercase tracking-wider transition-all hover:shadow-lg hover:shadow-emerald-950/10 dark:hover:shadow-emerald-950/40 flex items-center justify-center gap-1 sm:gap-1.5 active:scale-95 mt-0.5 min-w-0"
             >
-              <Check className="w-3 sm:w-3.5 h-3 sm:h-3.5 shrink-0 text-emerald-400" />
+              <Check className="w-3 sm:w-3.5 h-3 sm:h-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
               <span className="truncate">{t("inCartBtn", { count: inCartQty })}</span>
             </button>
           ) : (

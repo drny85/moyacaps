@@ -6,6 +6,7 @@ import { useStore } from "@/store/useStore";
 import { ShoppingBag, Globe, Menu, X, Sparkles } from "lucide-react";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
 export function Navbar() {
   const t = useTranslations("nav");
@@ -40,7 +41,7 @@ export function Navbar() {
         </div>
       </div>
 
-      <header className="sticky top-0 z-40 w-full glass-dark border-b border-white/[0.06] transition-all duration-300">
+      <header className="sticky top-0 z-40 w-full glass-dark border-b border-black/[0.06] dark:border-white/[0.06] transition-all duration-300">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between">
           {/* ── Brand Logo ── */}
           <Link href="/" className="flex items-center gap-2.5 group">
@@ -51,10 +52,10 @@ export function Navbar() {
             </div>
             <div>
               <div className="flex items-center gap-1.5">
-                <span className="font-display font-bold text-lg sm:text-xl tracking-tight text-white group-hover:text-moya-red-light transition-colors">
+                <span className="font-display font-bold text-lg sm:text-xl tracking-tight text-zinc-900 dark:text-white group-hover:text-moya-red transition-colors">
                   MOYA<span className="text-moya-red">CAPS</span>
                 </span>
-                <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded-md bg-moya-red-deep/30 border border-moya-red/30 text-moya-red-light font-bold">
+                <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded-md bg-moya-red-deep/10 dark:bg-moya-red-deep/30 border border-moya-red/30 text-moya-red font-bold">
                   0880
                 </span>
               </div>
@@ -65,29 +66,32 @@ export function Navbar() {
           </Link>
 
           {/* ── Desktop Nav ── */}
-          <nav className="hidden md:flex items-center gap-8 text-sm font-display font-medium text-zinc-400">
+          <nav className="hidden md:flex items-center gap-8 text-sm font-display font-medium text-zinc-600 dark:text-zinc-400">
             <a
               href="#catalog"
-              className="hover:text-white transition-colors hover-underline flex items-center gap-1.5"
+              className="hover:text-zinc-900 dark:hover:text-white transition-colors hover-underline flex items-center gap-1.5"
             >
               <Sparkles className="w-3 h-3 text-moya-green" />
               {t("catalog")}
             </a>
-            <a href="#story" className="hover:text-white transition-colors hover-underline">
+            <a href="#story" className="hover:text-zinc-900 dark:hover:text-white transition-colors hover-underline">
               {t("story")}
             </a>
           </nav>
 
           {/* ── Controls ── */}
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-2 sm:gap-2.5">
+            {/* Theme Toggle */}
+            <ThemeToggle compact={true} />
+
             {/* Currency */}
-            <div className="hidden sm:flex items-center glass-dark rounded-xl p-0.5 border border-white/[0.06] text-xs font-mono">
+            <div className="hidden sm:flex items-center glass-dark rounded-xl p-0.5 border border-black/[0.06] dark:border-white/[0.06] text-xs font-mono">
               <button
                 onClick={() => setCurrency("USD")}
                 className={`px-2.5 py-1.5 rounded-lg transition-all ${
                   currency === "USD"
                     ? "bg-moya-red text-white font-bold shadow-sm"
-                    : "text-zinc-500 hover:text-white"
+                    : "text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
                 }`}
               >
                 USD
@@ -97,7 +101,7 @@ export function Navbar() {
                 className={`px-2.5 py-1.5 rounded-lg transition-all ${
                   currency === "MXN"
                     ? "bg-moya-red text-white font-bold shadow-sm"
-                    : "text-zinc-500 hover:text-white"
+                    : "text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
                 }`}
               >
                 MXN
@@ -105,25 +109,25 @@ export function Navbar() {
             </div>
 
             {/* Language */}
-            <div className="hidden sm:flex items-center gap-1 glass-dark px-2.5 py-1.5 rounded-xl text-xs font-display font-semibold text-zinc-400 border border-white/[0.06]">
+            <div className="hidden sm:flex items-center gap-1 glass-dark px-2.5 py-1.5 rounded-xl text-xs font-display font-semibold text-zinc-600 dark:text-zinc-400 border border-black/[0.06] dark:border-white/[0.06]">
               <Globe className="w-3.5 h-3.5 text-moya-green" />
               <button
                 onClick={() => switchLocale("en")}
                 className={`transition-colors ${
                   locale === "en"
-                    ? "text-white font-bold underline decoration-moya-green decoration-2 underline-offset-4"
-                    : "text-zinc-600 hover:text-zinc-300"
+                    ? "text-zinc-900 dark:text-white font-bold underline decoration-moya-green decoration-2 underline-offset-4"
+                    : "text-zinc-400 dark:text-zinc-600 hover:text-zinc-900 dark:hover:text-zinc-300"
                 }`}
               >
                 EN
               </button>
-              <span className="text-zinc-700">/</span>
+              <span className="text-zinc-400 dark:text-zinc-700">/</span>
               <button
                 onClick={() => switchLocale("es")}
                 className={`transition-colors ${
                   locale === "es"
-                    ? "text-white font-bold underline decoration-moya-green decoration-2 underline-offset-4"
-                    : "text-zinc-600 hover:text-zinc-300"
+                    ? "text-zinc-900 dark:text-white font-bold underline decoration-moya-green decoration-2 underline-offset-4"
+                    : "text-zinc-400 dark:text-zinc-600 hover:text-zinc-900 dark:hover:text-zinc-300"
                 }`}
               >
                 ES
@@ -166,32 +170,32 @@ export function Navbar() {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
-              className="md:hidden border-t border-white/[0.06] bg-[#08080c] px-6 py-5 flex flex-col gap-5"
+              className="md:hidden border-t border-black/[0.06] dark:border-white/[0.06] bg-white/95 dark:bg-[#08080c] px-6 py-5 flex flex-col gap-5 shadow-2xl"
             >
               <a
                 href="#catalog"
                 onClick={() => setMobileMenuOpen(false)}
-                className="text-zinc-200 hover:text-moya-red-light font-display font-semibold text-base"
+                className="text-zinc-900 dark:text-zinc-200 hover:text-moya-red font-display font-semibold text-base transition-colors"
               >
                 {t("catalog")}
               </a>
               <a
                 href="#story"
                 onClick={() => setMobileMenuOpen(false)}
-                className="text-zinc-200 hover:text-moya-red-light font-display font-semibold text-base"
+                className="text-zinc-900 dark:text-zinc-200 hover:text-moya-red font-display font-semibold text-base transition-colors"
               >
                 {t("story")}
               </a>
 
               {/* Mobile-only controls */}
-              <div className="flex items-center gap-3 pt-3 border-t border-white/[0.06]">
-                <div className="flex items-center glass-dark rounded-xl p-0.5 border border-white/[0.06] text-xs font-mono">
+              <div className="flex items-center justify-between gap-3 pt-4 border-t border-black/[0.06] dark:border-white/[0.06]">
+                <div className="flex items-center glass-dark rounded-xl p-0.5 border border-black/[0.06] dark:border-white/[0.06] text-xs font-mono">
                   <button
                     onClick={() => setCurrency("USD")}
                     className={`px-2.5 py-1.5 rounded-lg transition-all ${
                       currency === "USD"
                         ? "bg-moya-red text-white font-bold"
-                        : "text-zinc-500"
+                        : "text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
                     }`}
                   >
                     USD
@@ -201,7 +205,7 @@ export function Navbar() {
                     className={`px-2.5 py-1.5 rounded-lg transition-all ${
                       currency === "MXN"
                         ? "bg-moya-red text-white font-bold"
-                        : "text-zinc-500"
+                        : "text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
                     }`}
                   >
                     MXN
@@ -212,18 +216,20 @@ export function Navbar() {
                   <Globe className="w-3.5 h-3.5 text-moya-green" />
                   <button
                     onClick={() => switchLocale("en")}
-                    className={locale === "en" ? "text-white font-bold" : "text-zinc-600"}
+                    className={locale === "en" ? "text-zinc-900 dark:text-white font-bold" : "text-zinc-400 dark:text-zinc-600"}
                   >
                     EN
                   </button>
-                  <span className="text-zinc-700">/</span>
+                  <span className="text-zinc-400 dark:text-zinc-700">/</span>
                   <button
                     onClick={() => switchLocale("es")}
-                    className={locale === "es" ? "text-white font-bold" : "text-zinc-600"}
+                    className={locale === "es" ? "text-zinc-900 dark:text-white font-bold" : "text-zinc-400 dark:text-zinc-600"}
                   >
                     ES
                   </button>
                 </div>
+
+                <ThemeToggle compact={false} />
               </div>
             </motion.div>
           )}

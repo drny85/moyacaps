@@ -3,15 +3,54 @@
 @tailwind utilities;
 
 @layer base {
-  :root {
+  :root, html.dark {
     --background: #06060a;
     --foreground: #f4f4f5;
+    --moya-dark: #06060a;
+    --moya-card: #10101a;
+    --moya-border: #1e1e2a;
     --moya-red: #e11d48;
     --moya-red-deep: #9f1239;
     --moya-green: #059669;
     --moya-green-deep: #065f46;
     --moya-violet: #a855f7;
     --moya-gold: #eab308;
+    
+    --glass-bg: rgba(12, 12, 16, 0.8);
+    --glass-panel-bg: rgba(18, 18, 24, 0.75);
+    --glass-pill-bg: rgba(255, 255, 255, 0.04);
+    --glass-border: rgba(255, 255, 255, 0.06);
+    --glass-card-bg: linear-gradient(145deg, rgba(22, 22, 30, 0.85) 0%, rgba(10, 10, 14, 0.95) 100%);
+    --card-shadow: 0 8px 32px -8px rgba(0, 0, 0, 0.6);
+    
+    --scrollbar-track: #09090b;
+    --scrollbar-thumb: #27272a;
+    --scrollbar-thumb-hover: #3f3f46;
+  }
+
+  html.light {
+    --background: #fafafc;
+    --foreground: #09090b;
+    --moya-dark: #ffffff;
+    --moya-card: #ffffff;
+    --moya-border: #e4e4e7;
+    --moya-red: #e11d48;
+    --moya-red-deep: #be123c;
+    --moya-green: #059669;
+    --moya-green-deep: #047857;
+    --moya-violet: #9333ea;
+    --moya-gold: #ca8a04;
+
+    --glass-bg: rgba(255, 255, 255, 0.85);
+    --glass-panel-bg: rgba(255, 255, 255, 0.9);
+    --glass-pill-bg: rgba(0, 0, 0, 0.04);
+    --glass-border: rgba(0, 0, 0, 0.08);
+    --glass-card-bg: linear-gradient(145deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 244, 248, 0.95) 100%);
+    --card-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.08), 0 1px 3px 0 rgba(0, 0, 0, 0.04);
+
+    --scrollbar-track: #f4f4f5;
+    --scrollbar-thumb: #d4d4d8;
+    --scrollbar-thumb-hover: #a1a1aa;
   }
 
   html {
@@ -35,46 +74,42 @@
     width: 6px;
   }
   ::-webkit-scrollbar-track {
-    background: #09090b;
+    background: var(--scrollbar-track);
   }
   ::-webkit-scrollbar-thumb {
-    background: #27272a;
+    background: var(--scrollbar-thumb);
     border-radius: 3px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #3f3f46;
+    background: var(--scrollbar-thumb-hover);
   }
 }
 
 /* ── Glass Utilities ── */
 .glass-dark {
-  background: rgba(12, 12, 16, 0.8);
+  background: var(--glass-bg);
   backdrop-filter: blur(20px) saturate(1.2);
   -webkit-backdrop-filter: blur(20px) saturate(1.2);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--glass-border);
 }
 
 .glass-panel {
-  background: rgba(18, 18, 24, 0.75);
+  background: var(--glass-panel-bg);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--glass-border);
 }
 
 .glass-pill {
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--glass-pill-bg);
   backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--glass-border);
 }
 
 .glass-card {
-  background: linear-gradient(
-    145deg,
-    rgba(22, 22, 30, 0.85) 0%,
-    rgba(10, 10, 14, 0.95) 100%
-  );
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  box-shadow: 0 8px 32px -8px rgba(0, 0, 0, 0.6);
+  background: var(--glass-card-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--card-shadow);
 }
 
 /* ── Gradient Text ── */
@@ -293,3 +328,48 @@
   left: 50%;
   animation: bounce-down 2s ease-in-out infinite;
 }
+
+/* ── Light Mode Specific Polish ── */
+html.light .noise-overlay {
+  opacity: 0.02;
+  mix-blend-mode: multiply;
+}
+
+html.light .texture-lines {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    transparent,
+    transparent 8px,
+    rgba(0, 0, 0, 0.02) 8px,
+    rgba(0, 0, 0, 0.02) 9px
+  );
+}
+
+html.light .sticker-badge--red {
+  background: rgba(225, 29, 72, 0.08);
+  border-color: rgba(225, 29, 72, 0.4);
+  color: #be123c;
+}
+
+html.light .sticker-badge--green {
+  background: rgba(5, 150, 105, 0.08);
+  border-color: rgba(5, 150, 105, 0.4);
+  color: #047857;
+}
+
+html.light .sticker-badge--violet {
+  background: rgba(168, 85, 247, 0.08);
+  border-color: rgba(168, 85, 247, 0.4);
+  color: #7e22ce;
+}
+
+html.light .skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0.03) 25%,
+    rgba(0, 0, 0, 0.07) 50%,
+    rgba(0, 0, 0, 0.03) 75%
+  );
+  background-size: 200% 100%;
+}
+

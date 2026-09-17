@@ -28,6 +28,11 @@ interface StoreState {
   currency: "USD" | "MXN";
   setCurrency: (currency: "USD" | "MXN") => void;
 
+  // Theme
+  theme: "dark" | "light";
+  setTheme: (theme: "dark" | "light") => void;
+  toggleTheme: () => void;
+
   // Quick View Modal
   quickViewCap: CapVariant | null;
   openQuickView: (cap: CapVariant) => void;
@@ -98,6 +103,24 @@ export const useStore = create<StoreState>()(
       currency: "USD",
       setCurrency: (currency) => set({ currency }),
 
+      theme: "dark",
+      setTheme: (theme) => {
+        set({ theme });
+        if (typeof document !== "undefined") {
+          if (theme === "dark") {
+            document.documentElement.classList.add("dark");
+            document.documentElement.classList.remove("light");
+          } else {
+            document.documentElement.classList.remove("dark");
+            document.documentElement.classList.add("light");
+          }
+        }
+      },
+      toggleTheme: () => {
+        const nextTheme = get().theme === "dark" ? "light" : "dark";
+        get().setTheme(nextTheme);
+      },
+
       quickViewCap: null,
       openQuickView: (cap) => set({ quickViewCap: cap }),
       closeQuickView: () => set({ quickViewCap: null }),
@@ -107,6 +130,7 @@ export const useStore = create<StoreState>()(
       partialize: (state) => ({
         cart: state.cart,
         currency: state.currency,
+        theme: state.theme,
       }),
     }
   )

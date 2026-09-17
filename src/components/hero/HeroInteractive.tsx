@@ -117,7 +117,7 @@ export function HeroInteractive() {
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.2 }}
-          className="font-display text-5xl sm:text-7xl lg:text-[5.5rem] xl:text-[6.5rem] font-bold tracking-tight leading-[0.95] mb-4 sm:mb-6"
+          className="font-display text-5xl sm:text-7xl lg:text-[5.5rem] xl:text-[6.5rem] font-bold tracking-tight leading-[0.95] mb-4 sm:mb-6 text-zinc-900 dark:text-white"
         >
           {t("titlePrefix")}{" "}
           <span className="text-gradient-moya inline-block">
@@ -130,7 +130,7 @@ export function HeroInteractive() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.4 }}
-          className="text-sm sm:text-lg text-zinc-400 max-w-2xl mx-auto mb-8 sm:mb-10 leading-relaxed"
+          className="text-sm sm:text-lg text-zinc-600 dark:text-zinc-400 max-w-2xl mx-auto mb-8 sm:mb-10 leading-relaxed"
         >
           {t("subtitle")}
         </motion.p>
@@ -155,7 +155,7 @@ export function HeroInteractive() {
             initial={{ opacity: 0, x: -30 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5, delay: 0.8 }}
-            className="absolute top-[15%] -left-2 sm:left-0 lg:-left-8 z-20 glass-dark px-3 py-2 rounded-xl text-[10px] sm:text-xs font-semibold text-zinc-200 flex items-center gap-2 shadow-xl max-w-[140px] sm:max-w-none"
+            className="absolute top-[15%] -left-2 sm:left-0 lg:-left-8 z-20 glass-dark border border-black/[0.08] dark:border-white/[0.08] px-3 py-2 rounded-xl text-[10px] sm:text-xs font-semibold text-zinc-800 dark:text-zinc-200 flex items-center gap-2 shadow-xl max-w-[140px] sm:max-w-none"
           >
             <CheckCircle2 className="w-3.5 h-3.5 text-moya-green shrink-0" />
             <span>{t("specs.embroidery")}</span>
@@ -165,9 +165,9 @@ export function HeroInteractive() {
             initial={{ opacity: 0, x: 30 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5, delay: 1.0 }}
-            className="absolute top-[25%] -right-2 sm:right-0 lg:-right-8 z-20 glass-dark px-3 py-2 rounded-xl text-[10px] sm:text-xs font-semibold text-zinc-200 flex items-center gap-2 shadow-xl max-w-[140px] sm:max-w-none"
+            className="absolute top-[25%] -right-2 sm:right-0 lg:-right-8 z-20 glass-dark border border-black/[0.08] dark:border-white/[0.08] px-3 py-2 rounded-xl text-[10px] sm:text-xs font-semibold text-zinc-800 dark:text-zinc-200 flex items-center gap-2 shadow-xl max-w-[140px] sm:max-w-none"
           >
-            <ShieldCheck className="w-3.5 h-3.5 text-moya-red-light shrink-0" />
+            <ShieldCheck className="w-3.5 h-3.5 text-moya-red shrink-0" />
             <span>{t("specs.edition")}</span>
           </motion.div>
 
@@ -175,7 +175,7 @@ export function HeroInteractive() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 1.2 }}
-            className="absolute bottom-[12%] -left-2 sm:left-4 lg:-left-4 z-20 glass-dark px-3 py-2 rounded-xl text-[10px] sm:text-xs font-semibold text-zinc-200 flex items-center gap-2 shadow-xl max-w-[140px] sm:max-w-none"
+            className="absolute bottom-[12%] -left-2 sm:left-4 lg:-left-4 z-20 glass-dark border border-black/[0.08] dark:border-white/[0.08] px-3 py-2 rounded-xl text-[10px] sm:text-xs font-semibold text-zinc-800 dark:text-zinc-200 flex items-center gap-2 shadow-xl max-w-[140px] sm:max-w-none"
           >
             <CheckCircle2 className="w-3.5 h-3.5 text-moya-violet shrink-0" />
             <span>{t("specs.closure")}</span>
@@ -183,14 +183,14 @@ export function HeroInteractive() {
 
           {/* In Bag Indicator */}
           {isInCart && (
-            <div className="absolute top-3 left-3 z-20 flex items-center gap-1.5 glass-dark border border-emerald-500/40 px-2.5 py-1.5 rounded-full text-[10px] font-display font-semibold text-emerald-400 shadow-lg shadow-emerald-950/40 animate-pulse">
-              <Check className="w-3 h-3 text-emerald-400" />
+            <div className="absolute top-3 left-3 z-20 flex items-center gap-1.5 glass-dark border border-emerald-500/40 px-2.5 py-1.5 rounded-full text-[10px] font-display font-semibold text-emerald-500 dark:text-emerald-400 shadow-lg shadow-emerald-950/20 dark:shadow-emerald-950/40 animate-pulse">
+              <Check className="w-3 h-3 text-emerald-500 dark:text-emerald-400" />
               <span>{t("inCart")} ({inCartQty})</span>
             </div>
           )}
 
           {/* Active angle indicator */}
-          <div className="absolute top-3 right-3 z-20 flex items-center gap-1.5 glass-dark px-2.5 py-1.5 rounded-full text-[10px] font-display font-semibold text-zinc-300">
+          <div className="absolute top-3 right-3 z-20 flex items-center gap-1.5 glass-dark border border-black/[0.08] dark:border-white/[0.08] px-2.5 py-1.5 rounded-full text-[10px] font-display font-semibold text-zinc-700 dark:text-zinc-300">
             <RotateCw className="w-3 h-3 text-moya-red animate-spin-slow" />
             <span className="capitalize">{currentAngle.label}</span>
           </div>
@@ -242,19 +242,19 @@ export function HeroInteractive() {
                 onClick={() => handleColorwaySwap(cap)}
                 className={`group relative w-7 h-7 sm:w-8 sm:h-8 rounded-full transition-all duration-300 ${
                   activeCap.id === cap.id
-                    ? "ring-2 ring-moya-red ring-offset-2 ring-offset-[#06060a] scale-110"
-                    : "hover:scale-110 hover:ring-1 hover:ring-white/30 hover:ring-offset-1 hover:ring-offset-[#06060a]"
+                    ? "ring-2 ring-moya-red ring-offset-2 ring-offset-background scale-110"
+                    : "hover:scale-110 hover:ring-1 hover:ring-zinc-400 dark:hover:ring-white/30 hover:ring-offset-1 hover:ring-offset-background"
                 }`}
                 title={cap.nameEn}
               >
                 <span
-                  className="block w-full h-full rounded-full border-2 border-white/20 shadow-md"
+                  className="block w-full h-full rounded-full border-2 border-white/40 dark:border-white/20 shadow-md"
                   style={{
                     background: `linear-gradient(135deg, ${cap.primaryHex} 50%, ${cap.secondaryHex} 50%)`,
                   }}
                 />
                 {capInCart && (
-                  <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-500 border border-[#06060a] flex items-center justify-center text-[8px] font-bold text-black shadow-sm">
+                  <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-500 border border-background flex items-center justify-center text-[8px] font-bold text-white shadow-sm">
                     ✓
                   </span>
                 )}
@@ -276,8 +276,8 @@ export function HeroInteractive() {
               onClick={() => handleAngleClick(idx)}
               className={`px-3 sm:px-4 py-2 rounded-xl text-[11px] sm:text-xs font-display font-semibold transition-all ${
                 activeAngle === idx
-                  ? "bg-moya-red text-white shadow-lg shadow-moya-red-deep/60 scale-105"
-                  : "glass-pill text-zinc-500 hover:text-white hover:bg-white/10"
+                  ? "bg-moya-red text-white shadow-lg shadow-moya-red-deep/40 scale-105"
+                  : "glass-pill text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10"
               }`}
             >
               {ang.label}
@@ -286,7 +286,7 @@ export function HeroInteractive() {
 
           <button
             onClick={toggleSpin}
-            className="p-2 rounded-xl glass-pill text-zinc-500 hover:text-white hover:bg-white/10 transition-colors ml-1"
+            className="p-2 rounded-xl glass-pill text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 transition-colors ml-1"
             title={isSpinning && !isPaused ? "Pause auto-spin" : "Play auto-spin"}
           >
             {isSpinning && !isPaused ? (
@@ -306,7 +306,7 @@ export function HeroInteractive() {
         >
           <a
             href="#catalog"
-            className="px-8 py-4 rounded-2xl bg-moya-red hover:bg-rose-500 text-white font-display font-bold text-sm sm:text-base shadow-xl shadow-moya-red-deep/50 transition-all hover:scale-[1.03] hover:shadow-2xl active:scale-95 flex items-center justify-center gap-2.5 group"
+            className="px-8 py-4 rounded-2xl bg-moya-red hover:bg-rose-500 text-white font-display font-bold text-sm sm:text-base shadow-xl shadow-moya-red-deep/40 transition-all hover:scale-[1.03] hover:shadow-2xl active:scale-95 flex items-center justify-center gap-2.5 group"
           >
             <span>{t("ctaShop")}</span>
             <ArrowRight className="w-4 h-4 group-hover:translate-x-1.5 transition-transform" />
@@ -315,21 +315,21 @@ export function HeroInteractive() {
           {isInCart ? (
             <button
               onClick={() => addToCart(activeCap)}
-              className="px-6 py-4 rounded-2xl bg-emerald-600/20 hover:bg-emerald-600/30 active:bg-emerald-600/40 text-emerald-300 font-display font-semibold text-sm sm:text-base transition-all hover:scale-[1.03] active:scale-95 flex items-center justify-center gap-2.5 border border-emerald-500/40 shadow-lg shadow-emerald-950/40"
+              className="px-6 py-4 rounded-2xl bg-emerald-600/15 dark:bg-emerald-600/20 hover:bg-emerald-600/25 dark:hover:bg-emerald-600/30 active:bg-emerald-600/40 text-emerald-600 dark:text-emerald-300 font-display font-semibold text-sm sm:text-base transition-all hover:scale-[1.03] active:scale-95 flex items-center justify-center gap-2.5 border border-emerald-500/40 shadow-lg shadow-emerald-950/10 dark:shadow-emerald-950/40"
             >
-              <Check className="w-4 h-4 text-emerald-400" />
+              <Check className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
               <span>{t("inCartCta", { count: inCartQty })}</span>
-              <span className="text-emerald-400 font-mono font-bold">
+              <span className="text-emerald-600 dark:text-emerald-400 font-mono font-bold">
                 {currency === "USD" ? `$${activeCap.priceUsd}` : `$${activeCap.priceMxn} MXN`}
               </span>
             </button>
           ) : (
             <button
               onClick={() => addToCart(activeCap)}
-              className="px-6 py-4 rounded-2xl glass-dark hover:bg-white/10 text-white font-display font-semibold text-sm sm:text-base transition-all hover:scale-[1.03] active:scale-95 flex items-center justify-center gap-2.5 border border-white/10 hover:border-white/20"
+              className="px-6 py-4 rounded-2xl glass-dark hover:bg-black/5 dark:hover:bg-white/10 text-zinc-900 dark:text-white font-display font-semibold text-sm sm:text-base transition-all hover:scale-[1.03] active:scale-95 flex items-center justify-center gap-2.5 border border-black/10 dark:border-white/10 hover:border-black/20 dark:hover:border-white/20"
             >
               <span>{t("ctaClaim")}</span>
-              <span className="text-moya-green-light font-mono font-bold">
+              <span className="text-emerald-600 dark:text-moya-green-light font-mono font-bold">
                 {currency === "USD" ? `$${activeCap.priceUsd}` : `$${activeCap.priceMxn} MXN`}
               </span>
             </button>

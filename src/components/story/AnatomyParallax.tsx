@@ -141,7 +141,7 @@ export function AnatomyParallax() {
       ref={containerRef}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
-      className="relative h-[175vh] bg-[#050508] border-b border-white/[0.06] select-none"
+      className="relative h-[175vh] bg-[#f5f5f8] dark:bg-[#050508] border-b border-black/[0.06] dark:border-white/[0.06] select-none transition-colors duration-300"
     >
       {/* ── Sticky Viewport Window ── */}
       <div className="sticky top-0 h-[100svh] w-full overflow-hidden flex flex-col justify-between py-5 sm:py-8 px-4 sm:px-6 lg:px-8">
@@ -150,7 +150,7 @@ export function AnatomyParallax() {
 
         {/* Ambient Neon Glow Pulsars */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="w-[500px] sm:w-[850px] h-[450px] rounded-full bg-gradient-to-tr from-moya-red/15 via-moya-violet/10 to-moya-green/10 blur-[130px]" />
+          <div className="w-[500px] sm:w-[850px] h-[450px] rounded-full bg-gradient-to-tr from-moya-red/10 via-moya-violet/5 to-moya-green/5 dark:from-moya-red/15 dark:via-moya-violet/10 dark:to-moya-green/10 blur-[130px]" />
         </div>
 
         {/* ── Giant Ghosted Blueprint Watermark ── */}
@@ -165,7 +165,7 @@ export function AnatomyParallax() {
                   }
                 : undefined
             }
-            className="font-display font-black text-[26vw] tracking-tighter text-white leading-none will-change-transform select-none"
+            className="font-display font-black text-[26vw] tracking-tighter text-zinc-900 dark:text-white leading-none will-change-transform select-none"
           >
             0880
           </motion.div>
@@ -183,18 +183,18 @@ export function AnatomyParallax() {
                   }
                 : undefined
             }
-            className="relative w-[320px] sm:w-[500px] md:w-[640px] aspect-square rounded-full border border-dashed border-white/[0.08]"
+            className="relative w-[320px] sm:w-[500px] md:w-[640px] aspect-square rounded-full border border-dashed border-black/[0.08] dark:border-white/[0.08]"
           >
             {/* Concentric inner rings */}
-            <div className="absolute inset-8 rounded-full border border-white/[0.05]" />
+            <div className="absolute inset-8 rounded-full border border-black/[0.05] dark:border-white/[0.05]" />
             <div className="absolute inset-20 rounded-full border border-moya-red/20" />
             <div className="absolute inset-32 rounded-full border border-dashed border-moya-violet/20" />
 
             {/* Degree Markers */}
-            <span className="absolute top-2 left-1/2 -translate-x-1/2 font-mono text-[8px] text-zinc-600">000° // NORTH</span>
-            <span className="absolute bottom-2 left-1/2 -translate-x-1/2 font-mono text-[8px] text-zinc-600">180° // SNAP</span>
-            <span className="absolute left-2 top-1/2 -translate-y-1/2 font-mono text-[8px] text-zinc-600">270° // DEVIL_L</span>
-            <span className="absolute right-2 top-1/2 -translate-y-1/2 font-mono text-[8px] text-zinc-600">090° // DEVIL_R</span>
+            <span className="absolute top-2 left-1/2 -translate-x-1/2 font-mono text-[8px] text-zinc-500 dark:text-zinc-600">000° // NORTH</span>
+            <span className="absolute bottom-2 left-1/2 -translate-x-1/2 font-mono text-[8px] text-zinc-500 dark:text-zinc-600">180° // SNAP</span>
+            <span className="absolute left-2 top-1/2 -translate-y-1/2 font-mono text-[8px] text-zinc-500 dark:text-zinc-600">270° // DEVIL_L</span>
+            <span className="absolute right-2 top-1/2 -translate-y-1/2 font-mono text-[8px] text-zinc-500 dark:text-zinc-600">090° // DEVIL_R</span>
 
             {/* Sweeping Radar Crosshair */}
             <div className="absolute inset-0 flex items-center justify-center">
@@ -205,17 +205,17 @@ export function AnatomyParallax() {
         </div>
 
         {/* ── Streetwear Blueprint HUD (Corner Accents) ── */}
-        <div className="absolute top-3 left-3 sm:top-5 sm:left-6 font-mono text-[9px] sm:text-[10px] text-zinc-500 flex items-center gap-2 z-30">
+        <div className="absolute top-3 left-3 sm:top-5 sm:left-6 font-mono text-[9px] sm:text-[10px] text-zinc-600 dark:text-zinc-500 flex items-center gap-2 z-30">
           <span className="text-moya-red font-bold animate-pulse">┌ [ + ]</span>
           <span className="tracking-widest">DECONSTRUCTED ARCHITECTURE // 0880</span>
         </div>
 
-        <div className="absolute top-3 right-3 sm:top-5 sm:right-6 font-mono text-[9px] sm:text-[10px] text-zinc-500 flex items-center gap-2 z-30">
+        <div className="absolute top-3 right-3 sm:top-5 sm:right-6 font-mono text-[9px] sm:text-[10px] text-zinc-600 dark:text-zinc-500 flex items-center gap-2 z-30">
           <span className="tracking-widest">
             PHASE {currentPhase === 1 ? "01: DORMANT" : currentPhase === 2 ? "02: 3D EXPLOSION" : "03: SPEC SCAN"}
           </span>
           <span className="w-2 h-2 rounded-full bg-moya-green shadow-sm shadow-moya-green animate-ping" />
-          <span className="text-zinc-600 font-bold">┐</span>
+          <span className="text-zinc-400 dark:text-zinc-600 font-bold">┐</span>
         </div>
 
         {/* ── Section Title Header ── */}
@@ -223,17 +223,17 @@ export function AnatomyParallax() {
           style={isMounted ? { y: headerY, opacity: headerOpacity } : undefined}
           className="relative z-30 text-center max-w-3xl mx-auto pt-2 sm:pt-4"
         >
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full glass-dark border border-moya-red/30 text-moya-red-light font-display text-[10px] sm:text-xs font-semibold uppercase tracking-wider mb-2 shadow-lg shadow-moya-red-deep/20">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full glass-dark border border-moya-red/30 text-moya-red dark:text-moya-red-light font-display text-[10px] sm:text-xs font-semibold uppercase tracking-wider mb-2 shadow-lg shadow-moya-red-deep/20">
             <Layers className="w-3.5 h-3.5 text-moya-red" />
             <span>{t("eyebrow")}</span>
           </div>
 
-          <h1 className="font-display text-3xl sm:text-5xl lg:text-6xl font-bold text-white tracking-tight leading-[1.05]">
+          <h1 className="font-display text-3xl sm:text-5xl lg:text-6xl font-bold text-zinc-900 dark:text-white tracking-tight leading-[1.05]">
             {t("title")}{" "}
             <span className="text-gradient-moya inline-block">0880</span>
           </h1>
 
-          <p className="text-xs sm:text-sm text-zinc-400 mt-1 sm:mt-2 max-w-xl mx-auto hidden sm:block leading-relaxed">
+          <p className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-400 mt-1 sm:mt-2 max-w-xl mx-auto hidden sm:block leading-relaxed">
             {t("subtitle")}
           </p>
         </motion.div>
@@ -383,14 +383,14 @@ export function AnatomyParallax() {
                   }
                 : undefined
             }
-            className="absolute -top-3 sm:top-2 left-0 sm:left-2 md:left-4 z-30 max-w-[150px] sm:max-w-[200px] glass-dark bg-[#08080d]/90 p-2.5 sm:p-3.5 rounded-2xl border border-moya-red/40 shadow-2xl shadow-black/80 hover:border-moya-red/70 transition-colors"
+            className="absolute -top-3 sm:top-2 left-0 sm:left-2 md:left-4 z-30 max-w-[150px] sm:max-w-[200px] glass-dark bg-white/90 dark:bg-[#08080d]/90 p-2.5 sm:p-3.5 rounded-2xl border border-moya-red/40 shadow-2xl shadow-black/10 dark:shadow-black/80 hover:border-moya-red/70 transition-colors"
           >
-            <div className="flex items-center gap-1.5 text-moya-red-light text-[9px] sm:text-[10px] font-mono font-bold uppercase tracking-wider mb-1">
+            <div className="flex items-center gap-1.5 text-moya-red dark:text-moya-red-light text-[9px] sm:text-[10px] font-mono font-bold uppercase tracking-wider mb-1">
               <Sparkles className="w-3 h-3 text-moya-red" />
               <span>01 // STITCHING</span>
             </div>
-            <h4 className="font-display font-bold text-xs sm:text-sm text-white">{t("layer1Title")}</h4>
-            <p className="text-[10px] sm:text-xs text-zinc-400 mt-0.5 sm:mt-1 leading-snug line-clamp-2">
+            <h4 className="font-display font-bold text-xs sm:text-sm text-zinc-900 dark:text-white">{t("layer1Title")}</h4>
+            <p className="text-[10px] sm:text-xs text-zinc-600 dark:text-zinc-400 mt-0.5 sm:mt-1 leading-snug line-clamp-2">
               {t("layer1Desc")}
             </p>
           </motion.div>
@@ -406,14 +406,14 @@ export function AnatomyParallax() {
                   }
                 : undefined
             }
-            className="absolute -top-3 sm:top-4 right-0 sm:right-2 md:right-4 z-30 max-w-[150px] sm:max-w-[200px] glass-dark bg-[#08080d]/90 p-2.5 sm:p-3.5 rounded-2xl border border-moya-violet/40 shadow-2xl shadow-black/80 hover:border-moya-violet/70 transition-colors"
+            className="absolute -top-3 sm:top-4 right-0 sm:right-2 md:right-4 z-30 max-w-[150px] sm:max-w-[200px] glass-dark bg-white/90 dark:bg-[#08080d]/90 p-2.5 sm:p-3.5 rounded-2xl border border-moya-violet/40 shadow-2xl shadow-black/10 dark:shadow-black/80 hover:border-moya-violet/70 transition-colors"
           >
             <div className="flex items-center gap-1.5 text-moya-violet text-[9px] sm:text-[10px] font-mono font-bold uppercase tracking-wider mb-1">
               <Flame className="w-3 h-3 text-moya-violet" />
               <span>02 // DEVIL FLANKS</span>
             </div>
-            <h4 className="font-display font-bold text-xs sm:text-sm text-white">{t("layer2Title")}</h4>
-            <p className="text-[10px] sm:text-xs text-zinc-400 mt-0.5 sm:mt-1 leading-snug line-clamp-2">
+            <h4 className="font-display font-bold text-xs sm:text-sm text-zinc-900 dark:text-white">{t("layer2Title")}</h4>
+            <p className="text-[10px] sm:text-xs text-zinc-600 dark:text-zinc-400 mt-0.5 sm:mt-1 leading-snug line-clamp-2">
               {t("layer2Desc")}
             </p>
           </motion.div>
@@ -429,14 +429,14 @@ export function AnatomyParallax() {
                   }
                 : undefined
             }
-            className="absolute bottom-1 sm:bottom-4 left-0 sm:left-2 md:left-6 z-30 max-w-[150px] sm:max-w-[200px] glass-dark bg-[#08080d]/90 p-2.5 sm:p-3.5 rounded-2xl border border-moya-green/40 shadow-2xl shadow-black/80 hover:border-moya-green/70 transition-colors"
+            className="absolute bottom-1 sm:bottom-4 left-0 sm:left-2 md:left-6 z-30 max-w-[150px] sm:max-w-[200px] glass-dark bg-white/90 dark:bg-[#08080d]/90 p-2.5 sm:p-3.5 rounded-2xl border border-moya-green/40 shadow-2xl shadow-black/10 dark:shadow-black/80 hover:border-moya-green/70 transition-colors"
           >
-            <div className="flex items-center gap-1.5 text-moya-green-light text-[9px] sm:text-[10px] font-mono font-bold uppercase tracking-wider mb-1">
+            <div className="flex items-center gap-1.5 text-moya-green dark:text-moya-green-light text-[9px] sm:text-[10px] font-mono font-bold uppercase tracking-wider mb-1">
               <ShieldCheck className="w-3 h-3 text-moya-green" />
               <span>03 // STRUCTURE</span>
             </div>
-            <h4 className="font-display font-bold text-xs sm:text-sm text-white">{t("layer4Title")}</h4>
-            <p className="text-[10px] sm:text-xs text-zinc-400 mt-0.5 sm:mt-1 leading-snug line-clamp-2">
+            <h4 className="font-display font-bold text-xs sm:text-sm text-zinc-900 dark:text-white">{t("layer4Title")}</h4>
+            <p className="text-[10px] sm:text-xs text-zinc-600 dark:text-zinc-400 mt-0.5 sm:mt-1 leading-snug line-clamp-2">
               {t("layer4Desc")}
             </p>
           </motion.div>
@@ -452,37 +452,37 @@ export function AnatomyParallax() {
                   }
                 : undefined
             }
-            className="absolute bottom-1 sm:bottom-4 right-0 sm:right-2 md:right-6 z-30 max-w-[150px] sm:max-w-[200px] glass-dark bg-[#08080d]/90 p-2.5 sm:p-3.5 rounded-2xl border border-white/25 shadow-2xl shadow-black/80 hover:border-white/50 transition-colors"
+            className="absolute bottom-1 sm:bottom-4 right-0 sm:right-2 md:right-6 z-30 max-w-[150px] sm:max-w-[200px] glass-dark bg-white/90 dark:bg-[#08080d]/90 p-2.5 sm:p-3.5 rounded-2xl border border-black/15 dark:border-white/25 shadow-2xl shadow-black/10 dark:shadow-black/80 hover:border-black/30 dark:hover:border-white/50 transition-colors"
           >
-            <div className="flex items-center gap-1.5 text-zinc-300 text-[9px] sm:text-[10px] font-mono font-bold uppercase tracking-wider mb-1">
+            <div className="flex items-center gap-1.5 text-zinc-700 dark:text-zinc-300 text-[9px] sm:text-[10px] font-mono font-bold uppercase tracking-wider mb-1">
               <CheckCircle2 className="w-3 h-3 text-moya-red" />
               <span>04 // 7-HOLE ARCH</span>
             </div>
-            <h4 className="font-display font-bold text-xs sm:text-sm text-white">{t("layer3Title")}</h4>
-            <p className="text-[10px] sm:text-xs text-zinc-400 mt-0.5 sm:mt-1 leading-snug line-clamp-2">
+            <h4 className="font-display font-bold text-xs sm:text-sm text-zinc-900 dark:text-white">{t("layer3Title")}</h4>
+            <p className="text-[10px] sm:text-xs text-zinc-600 dark:text-zinc-400 mt-0.5 sm:mt-1 leading-snug line-clamp-2">
               {t("layer3Desc")}
             </p>
           </motion.div>
         </motion.div>
 
         {/* ── Interactive Scrub HUD Footer ── */}
-        <div className="relative z-30 max-w-5xl mx-auto w-full pt-2.5 border-t border-white/[0.08] flex flex-col sm:flex-row items-center justify-between gap-2.5 text-[10px] sm:text-xs font-mono text-zinc-500">
+        <div className="relative z-30 max-w-5xl mx-auto w-full pt-2.5 border-t border-black/[0.08] dark:border-white/[0.08] flex flex-col sm:flex-row items-center justify-between gap-2.5 text-[10px] sm:text-xs font-mono text-zinc-600 dark:text-zinc-500">
           <div className="flex items-center gap-2">
             <Compass className="w-3.5 h-3.5 text-moya-red animate-spin-slow" />
-            <span className="text-zinc-400">SCROLL NAVIGATION</span>
-            <span className="text-zinc-600">//</span>
+            <span className="text-zinc-700 dark:text-zinc-400 font-semibold">SCROLL NAVIGATION</span>
+            <span className="text-zinc-400 dark:text-zinc-600">//</span>
             <span className="hidden sm:inline text-zinc-500">SCRUB TO DECONSTRUCT 3D SHELL</span>
           </div>
 
           {/* Phase progression capsules */}
           <div className="flex items-center gap-2">
-            <span className="text-[9px] text-zinc-600 font-bold uppercase">STAGES:</span>
+            <span className="text-[9px] text-zinc-500 dark:text-zinc-600 font-bold uppercase">STAGES:</span>
             <div className="flex items-center gap-1.5">
               <span
                 className={`px-2 py-0.5 rounded-md text-[9px] font-bold transition-all duration-300 ${
                   currentPhase === 1
                     ? "bg-moya-red text-white shadow-sm shadow-moya-red/50"
-                    : "bg-white/5 text-zinc-600"
+                    : "bg-black/5 dark:bg-white/5 text-zinc-500 dark:text-zinc-600"
                 }`}
               >
                 01 ORIGIN
@@ -491,7 +491,7 @@ export function AnatomyParallax() {
                 className={`px-2 py-0.5 rounded-md text-[9px] font-bold transition-all duration-300 ${
                   currentPhase === 2
                     ? "bg-moya-violet text-white shadow-sm shadow-moya-violet/50"
-                    : "bg-white/5 text-zinc-600"
+                    : "bg-black/5 dark:bg-white/5 text-zinc-500 dark:text-zinc-600"
                 }`}
               >
                 02 EXPLODE
@@ -500,7 +500,7 @@ export function AnatomyParallax() {
                 className={`px-2 py-0.5 rounded-md text-[9px] font-bold transition-all duration-300 ${
                   currentPhase === 3
                     ? "bg-moya-green text-black shadow-sm shadow-moya-green/50"
-                    : "bg-white/5 text-zinc-600"
+                    : "bg-black/5 dark:bg-white/5 text-zinc-500 dark:text-zinc-600"
                 }`}
               >
                 03 CONVERGE
@@ -511,7 +511,7 @@ export function AnatomyParallax() {
           {/* Scroll Down Prompt */}
           <a
             href="#interactive-studio"
-            className="flex items-center gap-1.5 text-zinc-400 hover:text-white transition-colors group cursor-pointer"
+            className="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors group cursor-pointer"
           >
             <span>{t("nextSection")}</span>
             <ChevronDown className="w-4 h-4 text-moya-red animate-bounce" />

@@ -29,7 +29,7 @@ function AnimatedStat({ value, label, description, delay = 0 }: {
       initial={{ opacity: 0, y: 20 }}
       animate={isInView ? { opacity: 1, y: 0 } : {}}
       transition={{ duration: 0.5, delay }}
-      className="border-b border-white/[0.06] pb-6 last:border-b-0 last:pb-0"
+      className="border-b border-black/[0.06] dark:border-white/[0.06] pb-6 last:border-b-0 last:pb-0"
     >
       <div
         className={`text-4xl sm:text-5xl font-display font-bold text-gradient-moya transition-all duration-500 ${
@@ -38,10 +38,10 @@ function AnimatedStat({ value, label, description, delay = 0 }: {
       >
         {value}
       </div>
-      <div className="text-sm font-display font-semibold text-zinc-200 mt-1.5 uppercase tracking-wider">
+      <div className="text-sm font-display font-semibold text-zinc-800 dark:text-zinc-200 mt-1.5 uppercase tracking-wider">
         {label}
       </div>
-      <p className="text-xs text-zinc-500 mt-1 leading-relaxed">
+      <p className="text-xs text-zinc-600 dark:text-zinc-500 mt-1 leading-relaxed">
         {description}
       </p>
     </motion.div>
@@ -54,7 +54,7 @@ export function BrandStory() {
   return (
     <section
       id="story"
-      className="py-20 sm:py-28 px-4 sm:px-6 lg:px-8 border-t border-white/[0.04] relative overflow-hidden bg-[#050508]"
+      className="py-20 sm:py-28 px-4 sm:px-6 lg:px-8 border-t border-black/[0.06] dark:border-white/[0.04] relative overflow-hidden bg-[#f4f4f8] dark:bg-[#050508] transition-colors duration-300"
     >
       {/* ── Background Treatment ── */}
       <div className="absolute inset-0 texture-lines pointer-events-none" />
@@ -81,7 +81,7 @@ export function BrandStory() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.6, delay: 0.1 }}
-              className="font-display text-3xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-white mb-6 sm:mb-8 leading-[1.05]"
+              className="font-display text-3xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-zinc-900 dark:text-white mb-6 sm:mb-8 leading-[1.05]"
             >
               {t("title")}
             </motion.h2>
@@ -91,7 +91,7 @@ export function BrandStory() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: 0.2 }}
-              className="text-zinc-300 text-base sm:text-lg leading-relaxed mb-5 font-sans"
+              className="text-zinc-700 dark:text-zinc-300 text-base sm:text-lg leading-relaxed mb-5 font-sans"
             >
               {t("part1")}
             </motion.p>
@@ -101,7 +101,7 @@ export function BrandStory() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: 0.3 }}
-              className="text-zinc-500 text-sm sm:text-base leading-relaxed mb-10 font-sans"
+              className="text-zinc-600 dark:text-zinc-500 text-sm sm:text-base leading-relaxed mb-10 font-sans"
             >
               {t("part2")}
             </motion.p>
@@ -113,14 +113,14 @@ export function BrandStory() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.4, delay: 0.3 }}
-                className="glass-dark p-5 rounded-2xl flex items-start gap-3 border border-moya-green/20 hover:border-moya-green/40 transition-colors group"
+                className="glass-dark p-5 rounded-2xl flex items-start gap-3 border border-moya-green/20 hover:border-moya-green/40 transition-colors group shadow-md"
               >
                 <div className="w-9 h-9 rounded-xl bg-moya-green/15 flex items-center justify-center shrink-0 group-hover:bg-moya-green/25 transition-colors">
                   <Clover className="w-4 h-4 text-moya-green-light" />
                 </div>
                 <div>
-                  <h4 className="font-display font-bold text-sm text-white">{t("pillarFortuneTitle")}</h4>
-                  <p className="text-xs text-zinc-500 mt-1 leading-relaxed">
+                  <h4 className="font-display font-bold text-sm text-zinc-900 dark:text-white">{t("pillarFortuneTitle")}</h4>
+                  <p className="text-xs text-zinc-600 dark:text-zinc-500 mt-1 leading-relaxed">
                     {t("pillarFortuneDesc")}
                   </p>
                 </div>
@@ -131,14 +131,14 @@ export function BrandStory() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.4, delay: 0.4 }}
-                className="glass-dark p-5 rounded-2xl flex items-start gap-3 border border-moya-red/20 hover:border-moya-red/40 transition-colors group"
+                className="glass-dark p-5 rounded-2xl flex items-start gap-3 border border-moya-red/20 hover:border-moya-red/40 transition-colors group shadow-md"
               >
                 <div className="w-9 h-9 rounded-xl bg-moya-red/15 flex items-center justify-center shrink-0 group-hover:bg-moya-red/25 transition-colors">
                   <Flame className="w-4 h-4 text-moya-red-light" />
                 </div>
                 <div>
-                  <h4 className="font-display font-bold text-sm text-white">{t("pillarAudacityTitle")}</h4>
-                  <p className="text-xs text-zinc-500 mt-1 leading-relaxed">
+                  <h4 className="font-display font-bold text-sm text-zinc-900 dark:text-white">{t("pillarAudacityTitle")}</h4>
+                  <p className="text-xs text-zinc-600 dark:text-zinc-500 mt-1 leading-relaxed">
                     {t("pillarAudacityDesc")}
                   </p>
                 </div>
@@ -153,7 +153,7 @@ export function BrandStory() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.6, delay: 0.2 }}
-              className="glass-card rounded-3xl p-8 sm:p-10 border border-white/[0.06] relative overflow-hidden shadow-2xl"
+              className="glass-card rounded-3xl p-8 sm:p-10 border border-black/[0.06] dark:border-white/[0.06] relative overflow-hidden shadow-2xl"
             >
               {/* Inner gradient accent */}
               <div className="absolute top-0 right-0 w-40 h-40 bg-moya-red/10 rounded-full blur-[80px] pointer-events-none" />

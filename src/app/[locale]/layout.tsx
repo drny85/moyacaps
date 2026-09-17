@@ -11,6 +11,7 @@ import { ConvexClientProvider } from "@/components/providers/ConvexClientProvide
 import { ClerkClientProvider } from "@/components/providers/ClerkClientProvider";
 
 import { MobileActionBar } from "@/components/layout/MobileActionBar";
+import { ThemeProvider } from "@/components/providers/ThemeProvider";
 
 export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
@@ -33,14 +34,15 @@ export default async function LocaleLayout({
 
   return (
     <NextIntlClientProvider messages={messages}>
-      <ClerkClientProvider>
-        <ConvexClientProvider>
-          <SmoothScrollProvider>
-            <div className="flex min-h-screen flex-col pb-20 md:pb-0">
-              {/* Film grain noise overlay */}
-              <div className="noise-overlay" aria-hidden="true" />
-              <Navbar />
-              <main className="flex-1">{children}</main>
+      <ThemeProvider>
+        <ClerkClientProvider>
+          <ConvexClientProvider>
+            <SmoothScrollProvider>
+              <div className="flex min-h-screen flex-col pb-20 md:pb-0">
+                {/* Film grain noise overlay */}
+                <div className="noise-overlay" aria-hidden="true" />
+                <Navbar />
+                <main className="flex-1">{children}</main>
               <Footer />
               <MobileActionBar />
               <CartDrawer />
@@ -49,6 +51,7 @@ export default async function LocaleLayout({
           </SmoothScrollProvider>
         </ConvexClientProvider>
       </ClerkClientProvider>
-    </NextIntlClientProvider>
+    </ThemeProvider>
+  </NextIntlClientProvider>
   );
 }

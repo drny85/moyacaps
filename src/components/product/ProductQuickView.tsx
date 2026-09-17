@@ -64,36 +64,36 @@ export function ProductQuickView() {
           initial={{ opacity: 0, scale: 0.95, y: 30 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 30 }}
-          className="relative w-full max-w-3xl glass-card rounded-t-3xl sm:rounded-3xl p-5 sm:p-8 border border-white/[0.06] shadow-2xl max-h-[90vh] overflow-y-auto"
+          className="relative w-full max-w-3xl glass-card rounded-t-3xl sm:rounded-3xl p-5 sm:p-8 border border-black/[0.08] dark:border-white/[0.06] shadow-2xl max-h-[90vh] overflow-y-auto"
         >
           {/* Close */}
           <button
             onClick={closeQuickView}
-            className="absolute top-4 right-4 p-2 rounded-full glass-dark text-zinc-500 hover:text-white hover:bg-white/10 transition-colors z-20"
+            className="absolute top-4 right-4 p-2 rounded-full glass-dark text-zinc-500 hover:text-zinc-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 transition-colors z-20"
           >
             <X className="w-5 h-5" />
           </button>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-8 items-center">
             {/* Left: Image */}
-            <div className="relative aspect-[4/3] sm:aspect-square rounded-2xl bg-gradient-to-b from-white/[0.03] to-transparent flex items-center justify-center p-3 sm:p-4 border border-white/[0.06]">
+            <div className="relative aspect-[4/3] sm:aspect-square rounded-2xl bg-gradient-to-b from-black/[0.02] dark:from-white/[0.03] to-transparent flex items-center justify-center p-3 sm:p-4 border border-black/[0.06] dark:border-white/[0.06]">
               <div className="relative w-full h-full">
                 <Image
                   src={quickViewCap.image}
                   alt={name}
                   fill
-                  className="object-contain drop-shadow-[0_20px_35px_rgba(0,0,0,0.8)]"
+                  className="object-contain drop-shadow-[0_20px_35px_rgba(0,0,0,0.25)] dark:drop-shadow-[0_20px_35px_rgba(0,0,0,0.8)]"
                 />
               </div>
 
               {/* Colorway Badge */}
-              <div className="absolute bottom-3 left-3 flex items-center gap-1.5 glass-dark px-2.5 py-1 rounded-full text-xs text-zinc-400">
+              <div className="absolute bottom-3 left-3 flex items-center gap-1.5 glass-dark px-2.5 py-1 rounded-full text-xs text-zinc-700 dark:text-zinc-400 border border-black/[0.06] dark:border-white/[0.06]">
                 <span
-                  className="w-3 h-3 rounded-full border-2 border-white/20"
+                  className="w-3 h-3 rounded-full border border-white/40 dark:border-white/20"
                   style={{ backgroundColor: quickViewCap.primaryHex }}
                 />
                 <span
-                  className="w-3 h-3 rounded-full border-2 border-white/20"
+                  className="w-3 h-3 rounded-full border border-white/40 dark:border-white/20"
                   style={{ backgroundColor: quickViewCap.secondaryHex }}
                 />
                 <span className="font-mono text-[10px]">Dual Tone</span>
@@ -103,16 +103,16 @@ export function ProductQuickView() {
             {/* Right: Details */}
             <div className="flex flex-col gap-4">
               <div>
-                <span className="text-xs font-mono uppercase tracking-widest text-moya-red-light font-bold">
+                <span className="text-xs font-mono uppercase tracking-widest text-moya-red font-bold">
                   {quickViewCap.silhouette === "trucker" ? "Trucker Edition" : "6-Panel Snapback"}
                 </span>
-                <h2 className="text-2xl font-display font-bold text-white mt-1">{name}</h2>
+                <h2 className="text-2xl font-display font-bold text-zinc-900 dark:text-white mt-1">{name}</h2>
                 <div className="flex flex-wrap items-center gap-2 mt-2">
-                  <div className="text-xl font-bold font-mono text-moya-green-light">
+                  <div className="text-xl font-bold font-mono text-emerald-600 dark:text-moya-green-light">
                     {priceDisplay}
                   </div>
                   {isInCart && (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/40 text-emerald-400 text-[11px] font-display font-semibold shadow-sm animate-pulse">
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/40 text-emerald-600 dark:text-emerald-400 text-[11px] font-display font-semibold shadow-sm animate-pulse">
                       <Check className="w-3 h-3" />
                       <span>{t("inCartNotice", { count: inCartQty })}</span>
                     </span>
@@ -120,41 +120,41 @@ export function ProductQuickView() {
                 </div>
               </div>
 
-              <div className="space-y-2.5 text-xs text-zinc-300 border-y border-white/[0.06] py-3">
+              <div className="space-y-2.5 text-xs text-zinc-700 dark:text-zinc-300 border-y border-black/[0.06] dark:border-white/[0.06] py-3">
                 <div className="flex justify-between">
-                  <span className="text-zinc-600">{t("silhouetteLabel")}:</span>
-                  <span className="font-semibold text-white font-display">
+                  <span className="text-zinc-500">{t("silhouetteLabel")}:</span>
+                  <span className="font-semibold text-zinc-900 dark:text-white font-display">
                     {quickViewCap.silhouette === "trucker"
                       ? t("silhouetteTrucker")
                       : t("silhouetteSnapback")}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-zinc-600">{t("sizeLabel")}:</span>
-                  <span className="font-semibold text-white font-display">{t("sizeValue")}</span>
+                  <span className="text-zinc-500">{t("sizeLabel")}:</span>
+                  <span className="font-semibold text-zinc-900 dark:text-white font-display">{t("sizeValue")}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-zinc-600">{t("materialsLabel")}:</span>
-                  <span className="font-semibold text-white font-display">{t("materialsValue")}</span>
+                  <span className="text-zinc-500">{t("materialsLabel")}:</span>
+                  <span className="font-semibold text-zinc-900 dark:text-white font-display">{t("materialsValue")}</span>
                 </div>
               </div>
 
               {/* Quantity */}
               <div className="flex items-center gap-4">
-                <span className="text-xs text-zinc-500 font-display font-semibold">{t("qty")}:</span>
-                <div className="flex items-center glass-dark rounded-xl border border-white/[0.06]">
+                <span className="text-xs text-zinc-600 dark:text-zinc-500 font-display font-semibold">{t("qty")}:</span>
+                <div className="flex items-center glass-dark rounded-xl border border-black/[0.08] dark:border-white/[0.06]">
                   <button
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                    className="px-3 py-1.5 text-sm text-zinc-500 hover:text-white font-bold"
+                    className="px-3 py-1.5 text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-white font-bold transition-colors"
                   >
                     −
                   </button>
-                  <span className="px-3 text-xs font-mono font-bold text-white">
+                  <span className="px-3 text-xs font-mono font-bold text-zinc-900 dark:text-white">
                     {quantity}
                   </span>
                   <button
                     onClick={() => setQuantity(quantity + 1)}
-                    className="px-3 py-1.5 text-sm text-zinc-500 hover:text-white font-bold"
+                    className="px-3 py-1.5 text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-white font-bold transition-colors"
                   >
                     +
                   </button>
