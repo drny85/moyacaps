@@ -27,7 +27,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark scroll-smooth" suppressHydrationWarning>
+    <html lang="en" className="light scroll-smooth" suppressHydrationWarning>
       <head>
         <script
           dangerouslySetInnerHTML={{
@@ -37,12 +37,16 @@ export default function RootLayout({
                   var stored = localStorage.getItem('moyacaps-storage');
                   if (stored) {
                     var parsed = JSON.parse(stored);
-                    if (parsed.state && parsed.state.theme === 'light') {
-                      document.documentElement.classList.remove('dark');
-                      document.documentElement.classList.add('light');
-                      document.documentElement.style.colorScheme = 'light';
+                    if (parsed.state && parsed.state.theme === 'dark') {
+                      document.documentElement.classList.remove('light');
+                      document.documentElement.classList.add('dark');
+                      document.documentElement.style.colorScheme = 'dark';
+                      return;
                     }
                   }
+                  document.documentElement.classList.remove('dark');
+                  document.documentElement.classList.add('light');
+                  document.documentElement.style.colorScheme = 'light';
                 } catch (e) {}
               })();
             `,

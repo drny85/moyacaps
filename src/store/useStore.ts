@@ -103,7 +103,7 @@ export const useStore = create<StoreState>()(
       currency: "USD",
       setCurrency: (currency) => set({ currency }),
 
-      theme: "dark",
+      theme: "light",
       setTheme: (theme) => {
         set({ theme });
         if (typeof document !== "undefined") {
