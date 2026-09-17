@@ -1,0 +1,54 @@
+import { NextIntlClientProvider } from "next-intl";
+import { getMessages } from "next-intl/server";
+import { notFound } from "next/navigation";
+import { routing } from "@/i18n/routing";
+import { Navbar } from "@/components/layout/Navbar";
+import { Footer } from "@/components/layout/Footer";
+import { CartDrawer } from "@/components/cart/CartDrawer";
+import { ProductQuickView } from "@/components/product/ProductQuickView";
+import { SmoothScrollProvider } from "@/components/providers/SmoothScrollProvider";
+import { ConvexClientProvider } from "@/components/providers/ConvexClientProvider";
+import { ClerkClientProvider } from "@/components/providers/ClerkClientProvider";
+
+import { MobileActionBar } from "@/components/layout/MobileActionBar";
+
+export function generateStaticParams() {
+  return routing.locales.map((locale) => ({ locale }));
+}
+
+export default async function LocaleLayout({
+  children,
+  params,
+}: {
+  children: React.ReactNode;
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+
+  if (!routing.locales.includes(locale as "en" | "es")) {
+    notFound();
+  }
+
+  const messages = await getMessages();
+
+  return (
+    <NextIntlClientProvider messages={messages}>
+      <ClerkClientProvider>
+        <ConvexClientProvider>
+          <SmoothScrollProvider>
+            <div className="flex min-h-screen flex-col pb-20 md:pb-0">
+              {/* Film grain noise overlay */}
+              <div className="noise-overlay" aria-hidden="true" />
+              <Navbar />
+              <main className="flex-1">{children}</main>
+              <Footer />
+              <MobileActionBar />
+              <CartDrawer />
+              <ProductQuickView />
+            </div>
+          </SmoothScrollProvider>
+        </ConvexClientProvider>
+      </ClerkClientProvider>
+    </NextIntlClientProvider>
+  );
+}
