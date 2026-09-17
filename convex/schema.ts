@@ -29,6 +29,17 @@ export default defineSchema({
     customerEmail: v.optional(v.string()),
     customerName: v.optional(v.string()),
     customerPhone: v.optional(v.string()),
+    clerkUserId: v.optional(v.string()),
+    shippingAddress: v.optional(
+      v.object({
+        line1: v.string(),
+        line2: v.optional(v.string()),
+        city: v.string(),
+        state: v.string(),
+        postalCode: v.string(),
+        country: v.string(),
+      })
+    ),
     items: v.array(
       v.object({
         variantId: v.string(),
@@ -39,9 +50,16 @@ export default defineSchema({
       })
     ),
     currency: v.string(),
+    subtotal: v.optional(v.number()),
+    shippingFee: v.optional(v.number()),
     total: v.number(),
-    status: v.string(), // "pending" | "paid" | "whatsapp_initiated"
+    status: v.string(), // "pending" | "paid" | "dispatched" | "delivered" | "cancelled" | "whatsapp_initiated"
     paymentMethod: v.string(), // "stripe" | "whatsapp"
+    stripeSessionId: v.optional(v.string()),
+    trackingNumber: v.optional(v.string()),
     createdAt: v.number(),
-  }),
+  })
+    .index("by_orderNumber", ["orderNumber"])
+    .index("by_clerkUserId", ["clerkUserId"])
+    .index("by_stripeSessionId", ["stripeSessionId"]),
 });

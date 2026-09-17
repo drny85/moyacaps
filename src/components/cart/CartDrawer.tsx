@@ -7,11 +7,13 @@ import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
 import confetti from "canvas-confetti";
+import { useSafeUser } from "@/lib/useSafeUser";
 
 export function CartDrawer() {
   const { cart, isCartOpen, closeCart, updateQuantity, removeFromCart, clearCart, currency } = useStore();
   const t = useTranslations("cart");
   const locale = useLocale();
+  const { user } = useSafeUser();
 
   const [checkoutStep, setCheckoutStep] = useState<"idle" | "processing" | "success">("idle");
 
@@ -48,21 +50,32 @@ export function CartDrawer() {
     window.open(`https://wa.me/5215500000000?text=${encoded}`, "_blank");
   };
 
-  const handleStripeCheckout = () => {
-    setCheckoutStep("processing");
-    setTimeout(() => {
-      setCheckoutStep("success");
-      confetti({
-        particleCount: 80,
-        spread: 100,
-        origin: { y: 0.5 },
+  const handleStripeCheckout = async () => {
+    try {
+      setCheckoutStep("processing");
+      const res = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: cart.map((i) => ({ id: i.id, quantity: i.quantity })),
+          currency,
+          locale,
+          clerkUserId: user?.id,
+          customerEmail: user?.primaryEmailAddress?.emailAddress,
+        }),
       });
-      setTimeout(() => {
-        clearCart();
-        setCheckoutStep("idle");
-        closeCart();
-      }, 3500);
-    }, 1200);
+
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error(data.error || "Failed to initialize checkout");
+      }
+    } catch (err: any) {
+      console.error("Checkout error:", err);
+      alert(err.message || "Failed to proceed to checkout");
+      setCheckoutStep("idle");
+    }
   };
 
   return (

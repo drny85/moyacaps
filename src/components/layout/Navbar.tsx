@@ -3,7 +3,7 @@
 import { useTranslations, useLocale } from "next-intl";
 import { Link, usePathname, useRouter } from "@/i18n/routing";
 import { useStore } from "@/store/useStore";
-import { ShoppingBag, Globe, Menu, X, Sparkles } from "lucide-react";
+import { ShoppingBag, Globe, Menu, X, Sparkles, User } from "lucide-react";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
@@ -134,6 +134,16 @@ export function Navbar() {
               </button>
             </div>
 
+            {/* Account / Vault */}
+            <Link
+              href="/account/orders"
+              className="p-2.5 rounded-xl glass-dark hover:bg-black/5 dark:hover:bg-white/10 text-zinc-700 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white transition-all border border-black/[0.06] dark:border-white/[0.06] flex items-center justify-center"
+              title="Collector Account & Orders"
+              aria-label="Account"
+            >
+              <User className="w-5 h-5" />
+            </Link>
+
             {/* Cart */}
             <button
               onClick={toggleCart}
@@ -186,6 +196,14 @@ export function Navbar() {
               >
                 {t("story")}
               </a>
+              <Link
+                href="/account/orders"
+                onClick={() => setMobileMenuOpen(false)}
+                className="text-zinc-900 dark:text-zinc-200 hover:text-moya-red font-display font-semibold text-base transition-colors flex items-center gap-2"
+              >
+                <User className="w-4 h-4 text-moya-red" />
+                <span>{t("account")}</span>
+              </Link>
 
               {/* Mobile-only controls */}
               <div className="flex items-center justify-between gap-3 pt-4 border-t border-black/[0.06] dark:border-white/[0.06]">

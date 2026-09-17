@@ -5,6 +5,16 @@ import { routing } from "./i18n/routing";
 const intlMiddleware = createMiddleware(routing);
 
 export const proxy = (req: any, ev: any) => {
+  const pathname = req.nextUrl?.pathname || "";
+
+  // Bypass internationalization for API routes
+  if (pathname.startsWith("/api") || pathname.startsWith("/trpc")) {
+    if (process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) {
+      return clerkMiddleware()(req, ev);
+    }
+    return;
+  }
+
   // If Clerk publishable key is set, run clerkMiddleware; otherwise fallback to intlMiddleware
   if (process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) {
     return clerkMiddleware(async (auth, request) => {

@@ -152,5 +152,40 @@
     "otherColorwaysTitle": "Explore the 16 Colorways",
     "otherColorwaysSubtitle": "Switch colorways to match your personal rotation.",
     "inspectBlueprint": "Full Blueprint Specs"
+  },
+  "checkoutSuccess": {
+    "badge": "ORDER CONFIRMED",
+    "title": "Your Drop is Secured",
+    "subtitle": "Order {orderNumber} has been verified and queued for express packaging.",
+    "deliveryAddress": "Shipping Destination",
+    "itemsTitle": "Secured Drop Items",
+    "timelinePlaced": "Payment Verified",
+    "timelinePacking": "Custom Packaging",
+    "timelineDispatch": "Express Courier Dispatch",
+    "trackingStub": "Tracking Code",
+    "whatsappUpdates": "Get WhatsApp Tracking Alerts",
+    "viewOrders": "View in Collector Account",
+    "continueShopping": "Back to Collection",
+    "loading": "Securing order verification...",
+    "subtotal": "Subtotal",
+    "shipping": "Shipping",
+    "total": "Total Paid"
+  },
+  "account": {
+    "title": "Collector Vault",
+    "subtitle": "Manage your orders, saved shipping details, and drop history.",
+    "signInPrompt": "Sign in to track your 0880 Good Luck orders and speed through future drops.",
+    "signInBtn": "Sign In to Account",
+    "noOrders": "No secured drops yet.",
+    "exploreCta": "Claim Your First Drop",
+    "orderNo": "Order",
+    "date": "Date",
+    "total": "Total",
+    "status": "Status",
+    "statusPaid": "Paid & In Preparation",
+    "statusDispatched": "Dispatched via Express Courier",
+    "statusDelivered": "Delivered",
+    "items": "Items",
+    "tracking": "Tracking"
   }
 }

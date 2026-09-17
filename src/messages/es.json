@@ -152,5 +152,40 @@
     "otherColorwaysTitle": "Explora los 16 Colores",
     "otherColorwaysSubtitle": "Encuentra el contraste ideal para tu rotación.",
     "inspectBlueprint": "Especificaciones Completas"
+  },
+  "checkoutSuccess": {
+    "badge": "ORDEN CONFIRMADA",
+    "title": "Tu Drop está Asegurado",
+    "subtitle": "La orden {orderNumber} ha sido verificada y está en cola para empaque express.",
+    "deliveryAddress": "Dirección de Envío",
+    "itemsTitle": "Piezas Reservadas",
+    "timelinePlaced": "Pago Verificado",
+    "timelinePacking": "Empaque de Colección",
+    "timelineDispatch": "Despacho Express",
+    "trackingStub": "Código de Rastreo",
+    "whatsappUpdates": "Recibir Alertas por WhatsApp",
+    "viewOrders": "Ver en Mi Cuenta",
+    "continueShopping": "Volver a la Colección",
+    "loading": "Verificando orden...",
+    "subtotal": "Subtotal",
+    "shipping": "Envío",
+    "total": "Total Pagado"
+  },
+  "account": {
+    "title": "Bóveda de Coleccionista",
+    "subtitle": "Administra tus órdenes, direcciones guardadas e historial de drops.",
+    "signInPrompt": "Inicia sesión para rastrear tus compras de la edición 0880 Good Luck.",
+    "signInBtn": "Iniciar Sesión",
+    "noOrders": "Aún no tienes órdenes registradas.",
+    "exploreCta": "Explorar la Colección",
+    "orderNo": "Orden",
+    "date": "Fecha",
+    "total": "Total",
+    "status": "Estado",
+    "statusPaid": "Pagada y en Preparación",
+    "statusDispatched": "Despachada por Paquetería Express",
+    "statusDelivered": "Entregada",
+    "items": "Piezas",
+    "tracking": "Guía de Rastreo"
   }
 }
