@@ -163,18 +163,37 @@ export const getOrdersByClerkId = query({
     clerkUserId: v.string(),
   },
   handler: async (ctx, args) => {
-    return await ctx.db
+    const orders = await ctx.db
       .query("orders")
       .withIndex("by_clerkUserId", (q) => q.eq("clerkUserId", args.clerkUserId))
       .order("desc")
       .collect();
+
+    // Customers only see confirmed purchases (never abandoned checkout drafts)
+    return orders.filter((o) => o.status !== "pending");
   },
 });
 
 export const getOrders = query({
   args: {},
   handler: async (ctx) => {
-    return await ctx.db.query("orders").order("desc").collect();
+    const orders = await ctx.db.query("orders").order("desc").collect();
+    return orders.filter((o) => o.status !== "pending");
+  },
+});
+
+export const cleanupPendingOrders = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const pending = await ctx.db
+      .query("orders")
+      .filter((q) => q.eq(q.field("status"), "pending"))
+      .collect();
+
+    for (const order of pending) {
+      await ctx.db.delete(order._id);
+    }
+    return { deletedCount: pending.length };
   },
 });
 

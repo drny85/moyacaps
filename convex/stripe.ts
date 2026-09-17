@@ -149,21 +149,6 @@ export const createCheckoutSession = action({
       },
     });
 
-    // Record pending order in Convex
-    await ctx.runMutation(api.orders.createOrder, {
-      orderNumber,
-      stripeSessionId: session.id,
-      clerkUserId: resolvedClerkId || undefined,
-      customerEmail: args.customerEmail || undefined,
-      items: validatedItems,
-      currency: args.currency,
-      subtotal,
-      shippingFee,
-      total,
-      status: "pending",
-      paymentMethod: "stripe",
-    });
-
     return {
       url: session.url,
       orderNumber,
