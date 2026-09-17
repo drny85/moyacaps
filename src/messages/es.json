@@ -72,6 +72,8 @@
     "shippingFree": "GRATIS",
     "total": "Total",
     "checkoutStripe": "Pagar con Tarjeta / Apple Pay",
+    "signInToCheckout": "Iniciar Sesión para Pagar",
+    "signInNotice": "Inicia sesión con Clerk para vincular tu pedido a tu Bóveda de Coleccionista.",
     "checkoutWhatsApp": "Pedir por WhatsApp",
     "whatsappGreeting": "¡Hola Moya Caps! Deseo realizar el pedido de las siguientes gorras de la colección Good Luck 0880:",
     "secureCheckout": "Garantía de Autenticidad • Cambios Sin Complicaciones"

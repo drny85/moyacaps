@@ -7,13 +7,13 @@ import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
 import confetti from "canvas-confetti";
-import { useSafeUser } from "@/lib/useSafeUser";
+import { useSafeUser, SafeSignInButton } from "@/lib/useSafeUser";
 
 export function CartDrawer() {
   const { cart, isCartOpen, closeCart, updateQuantity, removeFromCart, clearCart, currency } = useStore();
   const t = useTranslations("cart");
   const locale = useLocale();
-  const { user } = useSafeUser();
+  const { user, isSignedIn } = useSafeUser();
 
   const [checkoutStep, setCheckoutStep] = useState<"idle" | "processing" | "success">("idle");
 
@@ -250,21 +250,37 @@ export function CartDrawer() {
                   </div>
                 ) : (
                   <div className="flex flex-col gap-2.5">
-                    {/* Stripe Card Checkout */}
-                    <button
-                      onClick={handleStripeCheckout}
-                      disabled={checkoutStep === "processing"}
-                      className="w-full py-3.5 rounded-2xl bg-moya-red hover:bg-rose-500 text-white font-display font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-xl shadow-moya-red-deep/50"
-                    >
-                      {checkoutStep === "processing" ? (
-                        <span>Connecting to Gateway...</span>
-                      ) : (
-                        <>
-                          <span>{t("checkoutStripe")}</span>
-                          <ArrowRight className="w-4 h-4" />
-                        </>
-                      )}
-                    </button>
+                    {/* Authentication Check & Stripe Card Checkout */}
+                    {!isSignedIn ? (
+                      <div className="space-y-1.5">
+                        <SafeSignInButton mode="modal">
+                          <button
+                            className="w-full py-3.5 rounded-2xl bg-zinc-900 hover:bg-zinc-800 dark:bg-white dark:hover:bg-zinc-100 text-white dark:text-zinc-900 font-display font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-xl hover:scale-[1.01] active:scale-[0.99]"
+                          >
+                            <span>{t("signInToCheckout")}</span>
+                            <ArrowRight className="w-4 h-4 text-moya-red" />
+                          </button>
+                        </SafeSignInButton>
+                        <p className="text-[10px] text-center text-zinc-500 leading-tight">
+                          {t("signInNotice")}
+                        </p>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={handleStripeCheckout}
+                        disabled={checkoutStep === "processing"}
+                        className="w-full py-3.5 rounded-2xl bg-moya-red hover:bg-rose-500 text-white font-display font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-xl shadow-moya-red-deep/50"
+                      >
+                        {checkoutStep === "processing" ? (
+                          <span>Connecting to Gateway...</span>
+                        ) : (
+                          <>
+                            <span>{t("checkoutStripe")}</span>
+                            <ArrowRight className="w-4 h-4" />
+                          </>
+                        )}
+                      </button>
+                    )}
 
                     {/* WhatsApp Direct Order Button */}
                     <button

@@ -72,6 +72,8 @@
     "shippingFree": "FREE",
     "total": "Total",
     "checkoutStripe": "Checkout with Card / Apple Pay",
+    "signInToCheckout": "Sign In to Checkout",
+    "signInNotice": "Sign in with Clerk to link this order to your Collector Vault.",
     "checkoutWhatsApp": "Order via WhatsApp",
     "whatsappGreeting": "Hi Moya Caps! I would like to order the following caps from the 0880 Good Luck Collection:",
     "secureCheckout": "Guaranteed Authentic • 30-Day Hassle-Free Returns"

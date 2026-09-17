@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import Image from "next/image";
 import { Link } from "@/i18n/routing";
 import { useTranslations, useLocale } from "next-intl";
@@ -9,14 +8,10 @@ import { useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import {
   Package,
-  Clock,
   CheckCircle2,
   Truck,
   ArrowRight,
   Shield,
-  Search,
-  ExternalLink,
-  Lock,
 } from "lucide-react";
 
 export default function AccountOrdersPage() {
@@ -24,29 +19,13 @@ export default function AccountOrdersPage() {
   const locale = useLocale();
   const { user, isLoaded, isSignedIn } = useSafeUser();
 
-  const [lookupNumber, setLookupNumber] = useState("");
-  const [searchedId, setSearchedId] = useState("");
-
   // Orders for authenticated Clerk user
   const userOrders = useQuery(
     api.orders.getOrdersByClerkId,
     user?.id ? { clerkUserId: user.id } : "skip"
   );
 
-  // Guest order lookup
-  const guestOrder = useQuery(
-    api.orders.getOrderBySessionOrNumber,
-    searchedId ? { identifier: searchedId } : "skip"
-  );
-
-  const handleLookup = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (lookupNumber.trim()) {
-      setSearchedId(lookupNumber.trim());
-    }
-  };
-
-  const ordersToDisplay = isSignedIn && userOrders ? userOrders : guestOrder ? [guestOrder] : [];
+  const ordersToDisplay = isSignedIn && userOrders ? userOrders : [];
 
   return (
     <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16">
@@ -103,26 +82,29 @@ export default function AccountOrdersPage() {
         </div>
       </div>
 
-      {/* ── Guest Order Lookup Bar ── */}
-      <div className="my-6 p-4 rounded-2xl glass-card border border-black/[0.06] dark:border-white/[0.06]">
-        <form onSubmit={handleLookup} className="flex flex-col sm:flex-row items-center gap-3">
-          <div className="relative flex-1 w-full">
-            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" />
-            <input
-              type="text"
-              value={lookupNumber}
-              onChange={(e) => setLookupNumber(e.target.value)}
-              placeholder="Search by Order # (e.g. MC-XXXXX) or Stripe Session ID..."
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-black/5 dark:bg-white/5 border border-black/[0.08] dark:border-white/[0.08] text-xs font-mono text-zinc-900 dark:text-white placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-moya-red/40"
-            />
+      {/* ── Collector Vault Summary ── */}
+      <div className="my-6 p-4 rounded-2xl glass-card border border-black/[0.06] dark:border-white/[0.06] flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-moya-red/10 border border-moya-red/20 flex items-center justify-center text-moya-red">
+            <Package className="w-5 h-5" />
           </div>
-          <button
-            type="submit"
-            className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-moya-red hover:bg-rose-500 text-white font-display font-bold text-xs uppercase tracking-wider transition-colors shrink-0"
-          >
-            Find Order
-          </button>
-        </form>
+          <div>
+            <p className="text-xs font-display font-bold text-zinc-900 dark:text-white uppercase tracking-wider">
+              {ordersToDisplay.length} {ordersToDisplay.length === 1 ? "Piece Secured" : "Pieces Secured"}
+            </p>
+            <p className="text-[11px] font-mono text-zinc-500">
+              Verified Moya Caps 0880 Drop Ownership
+            </p>
+          </div>
+        </div>
+
+        <Link
+          href="/"
+          className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl glass-dark hover:bg-black/5 dark:hover:bg-white/10 text-xs font-display font-bold text-zinc-700 dark:text-zinc-300 border border-black/[0.06] dark:border-white/[0.06] transition-colors"
+        >
+          <span>Catalog</span>
+          <ArrowRight className="w-3.5 h-3.5 text-moya-red" />
+        </Link>
       </div>
 
       {/* ── Orders Listing ── */}
