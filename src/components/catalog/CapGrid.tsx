@@ -39,9 +39,9 @@ export function CapGrid() {
   ];
 
   return (
-    <section id="catalog" className="py-20 sm:py-28 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+    <section id="catalog" className="py-16 sm:py-28 px-3 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full overflow-hidden">
       {/* ── Section Header ── */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10 sm:mb-14">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8 sm:mb-14">
         <div>
           <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -89,7 +89,7 @@ export function CapGrid() {
       </div>
 
       {/* ── Filter Tabs (chunky tactile toggles) ── */}
-      <div className="flex items-center gap-2 sm:gap-3 mb-8 sm:mb-10 overflow-x-auto pb-2">
+      <div className="flex items-center gap-2 sm:gap-3 mb-6 sm:mb-10 overflow-x-auto pb-2 scrollbar-none w-full">
         {filters.map((f) => (
           <button
             key={f.key}
@@ -122,7 +122,7 @@ export function CapGrid() {
       ) : (
         <motion.div
           layout
-          className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5"
+          className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-4 md:gap-5 w-full"
         >
           {filteredCaps.map((cap, idx) => (
             <CapCard key={cap.id} cap={cap} index={idx} />
