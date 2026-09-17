@@ -112,7 +112,7 @@ export function CartDrawer() {
               ) : (
                 <p className="text-zinc-700 dark:text-zinc-300 text-center">
                   {t("freeShippingRemaining", {
-                    amount: currency === "USD" ? `$${45 - subtotal > 0 ? 45 - subtotal : 45} USD` : "1 más",
+                    amount: currency === "USD" ? `$${Math.max(0, 240 - subtotal)} USD (1 more cap)` : "1 gorra más",
                   })}
                 </p>
               )}
