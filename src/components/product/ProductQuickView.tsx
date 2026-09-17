@@ -60,12 +60,17 @@ export function ProductQuickView() {
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-md">
+      <div
+        onClick={closeQuickView}
+        className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-3 pt-3 sm:pt-4 pb-24 sm:pb-4 bg-black/80 backdrop-blur-md overflow-y-auto"
+      >
         <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 30 }}
+          initial={{ opacity: 0, scale: 0.96, y: -15 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 30 }}
-          className="relative w-full max-w-3xl glass-card rounded-t-3xl sm:rounded-3xl p-5 sm:p-8 border border-black/[0.08] dark:border-white/[0.06] shadow-2xl max-h-[90vh] overflow-y-auto"
+          exit={{ opacity: 0, scale: 0.96, y: -15 }}
+          transition={{ duration: 0.25, ease: "easeOut" }}
+          onClick={(e) => e.stopPropagation()}
+          className="relative w-full max-w-3xl glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-8 pb-6 sm:pb-8 border border-black/[0.08] dark:border-white/[0.06] shadow-2xl max-h-[86vh] sm:max-h-[90vh] overflow-y-auto"
         >
           {/* Close */}
           <button
