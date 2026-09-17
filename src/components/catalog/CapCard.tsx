@@ -2,6 +2,7 @@
 
 import { useTranslations, useLocale } from "next-intl";
 import Image from "next/image";
+import { Link } from "@/i18n/routing";
 import { useStore } from "@/store/useStore";
 import type { CapVariant } from "@/data/caps";
 import { ShoppingBag, Eye, Sparkles, Check } from "lucide-react";
@@ -141,13 +142,13 @@ export function CapCard({ cap, index = 0 }: { cap: CapVariant; index?: number })
         {/* ── Product Info ── */}
         <div className="mt-2 sm:mt-3 pt-1.5 sm:pt-2 border-t border-black/[0.06] dark:border-white/[0.05] flex flex-col gap-1 sm:gap-1.5 w-full min-w-0">
           <div className="flex items-baseline justify-between gap-1 w-full min-w-0">
-            <h3
-              onClick={() => openQuickView(cap)}
-              className="font-display font-bold text-[11px] sm:text-sm text-zinc-900 dark:text-white hover:text-moya-red transition-colors cursor-pointer truncate min-w-0 flex-1"
+            <Link
+              href={`/caps/${cap.id}`}
+              className="font-display font-bold text-[11px] sm:text-sm text-zinc-900 dark:text-white hover:text-moya-red transition-colors truncate min-w-0 flex-1"
               title={name}
             >
               {name}
-            </h3>
+            </Link>
             <span className="text-[10px] sm:text-xs font-mono font-bold text-emerald-600 dark:text-moya-green-light shrink-0 whitespace-nowrap">
               {priceDisplay}
             </span>

@@ -57,6 +57,7 @@
     "addMoreBtn": "Add More ({count} in bag)",
     "addedSuccess": "Added to Bag!",
     "buyNow": "Instant WhatsApp Checkout",
+    "viewFullSpecs": "View Full Blueprint Page →",
     "shippingNotice": "Dispatched within 24 hours with tracked courier delivery."
   },
   "cart": {
@@ -114,5 +115,42 @@
     "support": "Need assistance? Chat directly with our fulfillment team on WhatsApp.",
     "rights": "All rights reserved. Moya Caps Co.",
     "currencyNote": "Prices shown in {currency}. Dual currency supported."
+  },
+  "pdp": {
+    "breadcrumbHome": "Home",
+    "breadcrumbCollection": "0880 Drop",
+    "backToCatalog": "Back to Full Collection",
+    "angles": {
+      "hero": "Variant",
+      "front": "3D Front",
+      "left": "Left Flank",
+      "right": "Right Flank",
+      "back": "Snapback Arc"
+    },
+    "anglesDesc": {
+      "hero": "Authentic colorway finish",
+      "front": "Tactile horseshoe-clover puff embroidery",
+      "left": "Devil with pitchfork temple embroidery",
+      "right": "Symmetrical devil flank crest",
+      "back": "0880 arch stitch with 7-hole snap closure"
+    },
+    "specsTitle": "Architectural Blueprint",
+    "specCrown": "Crown Height",
+    "specCrownVal": "12 cm (Structured High Profile)",
+    "specVisor": "Visor Length & Arc",
+    "specVisorVal": "7 cm flat bill with shape retention core",
+    "specStitch": "Stitch Density",
+    "specStitchVal": "38,000+ precision threads",
+    "specClosure": "Closure & Fit",
+    "specClosureVal": "7-hole adjustable snap (54–62 cm)",
+    "specFabric": "Fabric & Weight",
+    "specFabricVal": "100% Heavyweight Brushed Cotton Twill",
+    "specCare": "Care Instructions",
+    "specCareVal": "Spot clean only with soft damp cloth. Air dry.",
+    "freeShipping": "Free Worldwide Express on 2+ Caps",
+    "guarantee": "30-Day Hassle-Free Exchange",
+    "otherColorwaysTitle": "Explore the 16 Colorways",
+    "otherColorwaysSubtitle": "Switch colorways to match your personal rotation.",
+    "inspectBlueprint": "Full Blueprint Specs"
   }
 }

@@ -55,9 +55,10 @@
     "addToCart": "Añadir a la Bolsa",
     "inCartNotice": "Actualmente en tu bolsa ({count})",
     "addMoreBtn": "Añadir Más ({count} en bolsa)",
-    "addedSuccess": "¡Añadida a la Bolsa!",
-    "buyNow": "Comprar Directo por WhatsApp",
-    "shippingNotice": "Despacho en 24 horas con número de guía y paquetería express."
+    "addedSuccess": "¡Agregado a la Bolsa!",
+    "buyNow": "Comprar por WhatsApp",
+    "viewFullSpecs": "Ver Ficha Técnica Completa →",
+    "shippingNotice": "Despacho en menos de 24 horas con número de guía rastreable."
   },
   "cart": {
     "title": "Tu Bolsa de Compra",
@@ -114,5 +115,42 @@
     "support": "¿Dudas o pedidos especiales? Escríbenos directo por WhatsApp a nuestro equipo.",
     "rights": "Todos los derechos reservados. Moya Caps Co.",
     "currencyNote": "Precios expresados en {currency}. Conversión disponible."
+  },
+  "pdp": {
+    "breadcrumbHome": "Inicio",
+    "breadcrumbCollection": "Colección 0880",
+    "backToCatalog": "Volver a la Colección",
+    "angles": {
+      "hero": "Variante",
+      "front": "Frontal 3D",
+      "left": "Flanco Izquierdo",
+      "right": "Flanco Derecho",
+      "back": "Arco Trasero"
+    },
+    "anglesDesc": {
+      "hero": "Acabado real de la combinación",
+      "front": "Bordado táctil 3D de herradura y trébol",
+      "left": "Diablo con tridente bordado en sien izquierda",
+      "right": "Cresta simétrica de diablo en sien derecha",
+      "back": "Bordado de arco 0880 con broche de 7 puntos"
+    },
+    "specsTitle": "Ficha Técnica y Arquitectura",
+    "specCrown": "Altura de Corona",
+    "specCrownVal": "12 cm (Perfil Alto Estructurado)",
+    "specVisor": "Largo de Visera",
+    "specVisorVal": "7 cm con alma de memoria y refuerzo",
+    "specStitch": "Densidad de Bordado",
+    "specStitchVal": "Más de 38,000 puntadas de alta precisión",
+    "specClosure": "Broche y Ajuste",
+    "specClosureVal": "Snapback ajustable de 7 puntos (54–62 cm)",
+    "specFabric": "Composición Textil",
+    "specFabricVal": "100% Drill de Algodón Cepillado de Alto Gramaje",
+    "specCare": "Cuidados",
+    "specCareVal": "Limpieza localizada con paño húmedo. Secar a la sombra.",
+    "freeShipping": "Envío Express Gratis en la compra de 2 o más gorras",
+    "guarantee": "30 días para cambios y devoluciones sin costo",
+    "otherColorwaysTitle": "Explora los 16 Colores",
+    "otherColorwaysSubtitle": "Encuentra el contraste ideal para tu rotación.",
+    "inspectBlueprint": "Especificaciones Completas"
   }
 }

@@ -3,7 +3,8 @@
 import { useStore } from "@/store/useStore";
 import { useTranslations, useLocale } from "next-intl";
 import Image from "next/image";
-import { X, ShoppingBag, MessageCircle, ShieldCheck, Check } from "lucide-react";
+import { Link } from "@/i18n/routing";
+import { X, ShoppingBag, MessageCircle, ShieldCheck, Check, ArrowUpRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
 import confetti from "canvas-confetti";
@@ -199,6 +200,15 @@ export function ProductQuickView() {
                   <MessageCircle className="w-4 h-4" />
                   <span>{t("buyNow")}</span>
                 </button>
+
+                <Link
+                  href={`/caps/${quickViewCap.id}`}
+                  onClick={closeQuickView}
+                  className="w-full py-2.5 rounded-xl glass-dark hover:bg-black/5 dark:hover:bg-white/10 text-zinc-700 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white font-display font-semibold text-xs transition-all flex items-center justify-center gap-1.5 border border-black/[0.06] dark:border-white/[0.06] mt-0.5"
+                >
+                  <span>{t("viewFullSpecs")}</span>
+                  <ArrowUpRight className="w-3.5 h-3.5 text-moya-red" />
+                </Link>
               </div>
 
               <div className="flex items-center gap-2 text-[10px] text-zinc-600 mt-1">
