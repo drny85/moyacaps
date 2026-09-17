@@ -1,7 +1,11 @@
 "use client";
 
 import React, { createContext, useContext } from "react";
-import { useUser as useClerkUser, SignInButton as ClerkSignInButton } from "@clerk/nextjs";
+import {
+  useUser as useClerkUser,
+  SignInButton as ClerkSignInButton,
+  UserButton as ClerkUserButton,
+} from "@clerk/nextjs";
 
 interface SafeUserContextType {
   user: any;
@@ -51,4 +55,21 @@ export function SafeSignInButton({
   }
   return <>{children}</>;
 }
+
+export function SafeUserButton({ fallback }: { fallback?: React.ReactNode }) {
+  const { isSignedIn } = useSafeUser();
+  if (process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY && isSignedIn) {
+    return (
+      <ClerkUserButton
+        appearance={{
+          elements: {
+            userButtonAvatarBox: "w-8 h-8 sm:w-9 sm:h-9 rounded-xl",
+          },
+        }}
+      />
+    );
+  }
+  return <>{fallback}</>;
+}
+
 

@@ -7,6 +7,7 @@ import { ShoppingBag, Globe, Menu, X, Sparkles, User } from "lucide-react";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { SafeUserButton } from "@/lib/useSafeUser";
 
 export function Navbar() {
   const t = useTranslations("nav");
@@ -135,14 +136,20 @@ export function Navbar() {
             </div>
 
             {/* Account / Vault */}
-            <Link
-              href="/account/orders"
-              className="p-2.5 rounded-xl glass-dark hover:bg-black/5 dark:hover:bg-white/10 text-zinc-700 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white transition-all border border-black/[0.06] dark:border-white/[0.06] flex items-center justify-center"
-              title="Collector Account & Orders"
-              aria-label="Account"
-            >
-              <User className="w-5 h-5" />
-            </Link>
+            <div className="flex items-center">
+              <SafeUserButton
+                fallback={
+                  <Link
+                    href="/account/orders"
+                    className="p-2.5 rounded-xl glass-dark hover:bg-black/5 dark:hover:bg-white/10 text-zinc-700 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white transition-all border border-black/[0.06] dark:border-white/[0.06] flex items-center justify-center"
+                    title="Collector Account & Orders"
+                    aria-label="Account"
+                  >
+                    <User className="w-5 h-5" />
+                  </Link>
+                }
+              />
+            </div>
 
             {/* Cart */}
             <button
