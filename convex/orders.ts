@@ -177,3 +177,86 @@ export const getOrders = query({
     return await ctx.db.query("orders").order("desc").collect();
   },
 });
+
+export const updateShippingAddress = mutation({
+  args: {
+    orderId: v.id("orders"),
+    clerkUserId: v.string(),
+    shippingAddress: shippingAddressValidator,
+    customerPhone: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const order = await ctx.db.get(args.orderId);
+    if (!order) {
+      throw new Error("Order not found");
+    }
+
+    if (order.clerkUserId && order.clerkUserId !== args.clerkUserId) {
+      throw new Error("Unauthorized to modify this order");
+    }
+
+    if (order.status === "shipped" || order.status === "delivered" || order.status === "cancelled") {
+      throw new Error(`Cannot modify address when order status is ${order.status}`);
+    }
+
+    await ctx.db.patch(args.orderId, {
+      shippingAddress: args.shippingAddress,
+      customerPhone: args.customerPhone ?? order.customerPhone,
+    });
+
+    return { success: true };
+  },
+});
+
+export const cancelOrder = mutation({
+  args: {
+    orderId: v.id("orders"),
+    clerkUserId: v.string(),
+    reason: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const order = await ctx.db.get(args.orderId);
+    if (!order) {
+      throw new Error("Order not found");
+    }
+
+    if (order.clerkUserId && order.clerkUserId !== args.clerkUserId) {
+      throw new Error("Unauthorized to cancel this order");
+    }
+
+    if (order.status === "shipped" || order.status === "delivered") {
+      throw new Error("Cannot cancel an order that has already been dispatched. Please request a return via concierge.");
+    }
+
+    if (order.status === "cancelled") {
+      throw new Error("Order is already cancelled");
+    }
+
+    // Restore stock in variants
+    for (const item of order.items) {
+      const variant = await ctx.db
+        .query("variants")
+        .filter((q) => q.eq(q.field("variantId"), item.variantId))
+        .first();
+
+      if (variant) {
+        await ctx.db.patch(variant._id, {
+          stock: variant.stock + item.quantity,
+        });
+      }
+    }
+
+    await ctx.db.patch(args.orderId, {
+      status: "cancelled",
+    });
+
+    return {
+      success: true,
+      stripeSessionId: order.stripeSessionId,
+      orderNumber: order.orderNumber,
+      total: order.total,
+      currency: order.currency,
+    };
+  },
+});
+

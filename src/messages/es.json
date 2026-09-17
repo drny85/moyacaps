@@ -187,7 +187,23 @@
     "statusPaid": "Pagada y en Preparación",
     "statusDispatched": "Despachada por Paquetería Express",
     "statusDelivered": "Entregada",
+    "statusCancelled": "Cancelada y Reembolsada",
     "items": "Piezas",
-    "tracking": "Guía de Rastreo"
+    "tracking": "Guía de Rastreo",
+    "editAddress": "Modificar Dirección de Envío",
+    "saveAddress": "Guardar Dirección",
+    "saving": "Guardando...",
+    "cancelOrder": "Cancelar Orden",
+    "cancelConfirmTitle": "Cancelar Orden y Reembolsar",
+    "cancelConfirmDesc": "¿Estás seguro de que deseas cancelar esta orden? Se procesará un reembolso total a tu método de pago y la pieza se reincorporará al inventario disponible.",
+    "cancelReasonLabel": "Motivo de la cancelación",
+    "cancelReason1": "Elegí una combinación de color equivocada",
+    "cancelReason2": "Orden duplicada por error",
+    "cancelReason3": "Necesito cambiar los datos de envío",
+    "cancelReason4": "Cambié de opinión",
+    "confirmCancelBtn": "Confirmar Cancelación y Reembolso",
+    "keepOrderBtn": "Mantener mi Orden",
+    "conciergeHelp": "Atención Personalizada y Cambios",
+    "addressUpdated": "¡Dirección de envío actualizada correctamente!"
   }
 }

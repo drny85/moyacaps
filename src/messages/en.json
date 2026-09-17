@@ -187,7 +187,23 @@
     "statusPaid": "Paid & In Preparation",
     "statusDispatched": "Dispatched via Express Courier",
     "statusDelivered": "Delivered",
+    "statusCancelled": "Cancelled & Refunded",
     "items": "Items",
-    "tracking": "Tracking"
+    "tracking": "Tracking",
+    "editAddress": "Edit Shipping Address",
+    "saveAddress": "Save Address",
+    "saving": "Saving...",
+    "cancelOrder": "Cancel Order",
+    "cancelConfirmTitle": "Cancel Order & Issue Full Refund",
+    "cancelConfirmDesc": "Are you sure you want to cancel this order? A full refund will be credited back to your original payment method, and this limited cap will be restored to inventory.",
+    "cancelReasonLabel": "Reason for cancellation",
+    "cancelReason1": "Ordered wrong colorway",
+    "cancelReason2": "Accidental duplicate order",
+    "cancelReason3": "Need to change delivery details",
+    "cancelReason4": "Changed my mind",
+    "confirmCancelBtn": "Confirm Cancellation & Refund",
+    "keepOrderBtn": "Keep My Order",
+    "conciergeHelp": "Concierge Help & Returns",
+    "addressUpdated": "Shipping address updated successfully!"
   }
 }
