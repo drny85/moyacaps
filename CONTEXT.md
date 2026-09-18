@@ -52,4 +52,23 @@ _Avoid_: Guest order checker, order finder, tracking form
 A mandatory interactive dialog requiring explicit user or administrator confirmation before executing irreversible, inventory-altering, or financially impactful operations (e.g. delivery completion, Stripe refund cancellations, stock deductions).
 _Avoid_: Pop-up, alert box, notification
 
+**Available Inventory**:
+The current real-time stock units of a specific Cap Variant ready for sale in Convex, strictly bounding customer cart additions and gateway session generation.
+_Avoid_: Quantity on hand, stock pool, supply
+
+**Checkout In-Flight Lock**:
+A concurrency mutex safeguarding customer checkout buttons and session generation against duplicate submissions, rapid double-clicks, and parallel gateway calls.
+_Avoid_: Debounce guard, double-click blocker
+
+**Order Settlement**:
+The irreversible atomic transaction finalizing a customer purchase, deducting confirmed units from Available Inventory and issuing a persistent order number.
+_Avoid_: Order placement, payment commit, double transaction
+
+**Checkout Session**:
+An ephemeral payment gateway session created with Stripe hosting pre-validated items and prices, bounded by a strict idempotency key.
+_Avoid_: Payment link, cart checkout, gateway intent
+
+**Cap Media Storage**:
+Convex binary storage (`_storage`) managing high-resolution product photography for Cap Variants, referenced by immutable `storageId` and resolved to signed CDN URLs during catalog queries.
+_Avoid_: Asset bucket, static image directory, media folder
 

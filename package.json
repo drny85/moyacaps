@@ -9,7 +9,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "extract-caps": "bun run scripts/extract-caps.ts"
+    "extract-caps": "bun run scripts/extract-caps.ts",
+    "migrate:storage": "bun run scripts/migrate-storage.ts"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.9.4",

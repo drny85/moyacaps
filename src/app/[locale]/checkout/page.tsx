@@ -31,6 +31,7 @@ export default function CheckoutPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [stripeUrl, setStripeUrl] = useState<string | null>(null);
   const hasInitiatedRef = useRef(false);
+  const isSubmittingRef = useRef(false);
 
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
   const subtotal = cart.reduce((sum, item) => {
@@ -41,9 +42,10 @@ export default function CheckoutPage() {
   const total = subtotal + shippingFee;
 
   const handleCheckout = async () => {
-    if (cart.length === 0 || !user?.id) return;
+    if (cart.length === 0 || !user?.id || isSubmittingRef.current) return;
 
     try {
+      isSubmittingRef.current = true;
       setStatus("connecting");
       setErrorMessage(null);
 
@@ -68,8 +70,9 @@ export default function CheckoutPage() {
       }
     } catch (err: any) {
       console.error("Checkout dispatch error:", err);
+      isSubmittingRef.current = false;
       setStatus("error");
-      setErrorMessage(err?.message || "Failed to establish Stripe checkout session.");
+      setErrorMessage(err?.data || err?.message || "Failed to establish Stripe checkout session.");
     }
   };
 
@@ -242,17 +245,28 @@ export default function CheckoutPage() {
               <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-center space-y-3">
                 <div className="flex items-center justify-center gap-2 text-rose-500 text-xs font-display font-bold">
                   <AlertCircle className="w-4 h-4" />
-                  <span>Connection Issue</span>
+                  <span>{t("outOfStockTitle")}</span>
                 </div>
                 <p className="text-xs text-zinc-600 dark:text-zinc-400">
-                  {errorMessage || "Unable to reach Stripe checkout."}
+                  {errorMessage || t("outOfStockDesc")}
                 </p>
-                <button
-                  onClick={handleCheckout}
-                  className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-display font-bold transition-all shadow"
-                >
-                  {t("retry")}
-                </button>
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-2 pt-1">
+                  <button
+                    onClick={() => {
+                      isSubmittingRef.current = false;
+                      handleCheckout();
+                    }}
+                    className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-moya-red hover:bg-rose-500 text-white font-display font-bold text-xs uppercase tracking-wider transition-colors shadow-lg shadow-moya-red-deep/40"
+                  >
+                    {t("retry")}
+                  </button>
+                  <Link
+                    href="/"
+                    className="w-full sm:w-auto px-5 py-2.5 rounded-xl glass-dark hover:bg-black/5 dark:hover:bg-white/10 text-zinc-700 dark:text-zinc-300 font-display font-bold text-xs uppercase tracking-wider transition-colors border border-black/[0.08] dark:border-white/[0.08]"
+                  >
+                    {t("exploreCta")}
+                  </Link>
+                </div>
               </div>
             ) : stripeUrl ? (
               <div className="text-center space-y-2">
@@ -270,7 +284,7 @@ export default function CheckoutPage() {
             ) : (
               <div className="flex items-center justify-center gap-2 text-xs font-mono text-zinc-500">
                 <Loader2 className="w-4 h-4 text-moya-red animate-spin" />
-                <span>Connecting to Stripe checkout session...</span>
+                <span>{t("connectingGateway")}</span>
               </div>
             )}
 

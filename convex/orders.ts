@@ -54,9 +54,9 @@ export const createOrder = mutation({
           .withIndex("by_variantId", (q) => q.eq("variantId", item.variantId))
           .first();
 
-        if (variant && variant.stock >= item.quantity) {
+        if (variant) {
           await ctx.db.patch(variant._id, {
-            stock: variant.stock - item.quantity,
+            stock: Math.max(0, variant.stock - item.quantity),
           });
         }
       }
@@ -128,9 +128,9 @@ export const createOrUpdateStripeOrder = internalMutation({
         .withIndex("by_variantId", (q) => q.eq("variantId", item.variantId))
         .first();
 
-      if (variant && variant.stock >= item.quantity) {
+      if (variant) {
         await ctx.db.patch(variant._id, {
-          stock: variant.stock - item.quantity,
+          stock: Math.max(0, variant.stock - item.quantity),
         });
       }
     }

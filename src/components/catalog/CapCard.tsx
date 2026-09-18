@@ -24,6 +24,9 @@ export function CapCard({ cap, index = 0 }: { cap: CapVariant; index?: number })
   const inCartItem = isMounted ? cart.find((i) => i.id === cap.id) : undefined;
   const inCartQty = inCartItem?.quantity || 0;
   const isInCart = inCartQty > 0;
+  const stock = typeof cap.stock === "number" ? cap.stock : 0;
+  const isOutOfStock = stock <= 0;
+  const isMaxInCart = inCartQty >= stock;
 
   const name = locale === "es" ? cap.nameEs : cap.nameEn;
   const tag = locale === "es" ? cap.tagEs : cap.tagEn;
@@ -155,19 +158,46 @@ export function CapCard({ cap, index = 0 }: { cap: CapVariant; index?: number })
 
           {/* Stock indicator (desktop) */}
           <div className="hidden sm:flex items-center justify-between text-[10px] text-zinc-500">
-            <span className="flex items-center gap-1 text-emerald-600 dark:text-moya-green text-[10px] font-medium">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 dark:bg-moya-green animate-pulse" />
-              {t("inStock")}
-            </span>
+            {isOutOfStock ? (
+              <span className="flex items-center gap-1 text-rose-600 dark:text-rose-400 text-[10px] font-medium">
+                <span className="w-1.5 h-1.5 rounded-full bg-rose-600 dark:bg-rose-400" />
+                {t("soldOut")}
+              </span>
+            ) : stock <= 5 ? (
+              <span className="flex items-center gap-1 text-amber-600 dark:text-amber-400 text-[10px] font-medium">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-600 dark:bg-amber-400 animate-pulse" />
+                {t("limited")} ({stock})
+              </span>
+            ) : (
+              <span className="flex items-center gap-1 text-emerald-600 dark:text-moya-green text-[10px] font-medium">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 dark:bg-moya-green animate-pulse" />
+                {t("inStock")}
+              </span>
+            )}
             <span className="font-mono uppercase tracking-wider">
               0880
             </span>
           </div>
 
           {/* ── Add to Cart ── */}
-          {isInCart ? (
+          {isOutOfStock ? (
             <button
-              onClick={() => addToCart(cap)}
+              disabled
+              className="w-full py-1.5 sm:py-2.5 px-1.5 sm:px-2 rounded-lg sm:rounded-xl bg-zinc-200 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 font-display font-bold text-[9px] sm:text-xs uppercase tracking-wider cursor-not-allowed mt-0.5 min-w-0"
+            >
+              <span>{t("soldOut")}</span>
+            </button>
+          ) : isMaxInCart ? (
+            <button
+              disabled
+              className="w-full py-1.5 sm:py-2.5 px-1.5 sm:px-2 rounded-lg sm:rounded-xl bg-emerald-600/10 dark:bg-emerald-600/15 text-emerald-700 dark:text-emerald-400/80 border border-emerald-500/30 font-display font-bold text-[9px] sm:text-xs uppercase tracking-wider cursor-not-allowed mt-0.5 min-w-0"
+            >
+              <Check className="w-3 sm:w-3.5 h-3 sm:h-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+              <span className="truncate">{t("maxStockReached")} ({inCartQty})</span>
+            </button>
+          ) : isInCart ? (
+            <button
+              onClick={() => addToCart(cap, 1, stock)}
               className="w-full py-1.5 sm:py-2.5 px-1.5 sm:px-2 rounded-lg sm:rounded-xl bg-emerald-600/15 dark:bg-emerald-600/20 hover:bg-emerald-600/25 dark:hover:bg-emerald-600/30 active:bg-emerald-600/40 text-emerald-700 dark:text-emerald-300 border border-emerald-500/40 font-display font-bold text-[9px] sm:text-xs uppercase tracking-wider transition-all hover:shadow-lg hover:shadow-emerald-950/10 dark:hover:shadow-emerald-950/40 flex items-center justify-center gap-1 sm:gap-1.5 active:scale-95 mt-0.5 min-w-0"
             >
               <Check className="w-3 sm:w-3.5 h-3 sm:h-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
@@ -175,7 +205,7 @@ export function CapCard({ cap, index = 0 }: { cap: CapVariant; index?: number })
             </button>
           ) : (
             <button
-              onClick={() => addToCart(cap)}
+              onClick={() => addToCart(cap, 1, stock)}
               className="w-full py-1.5 sm:py-2.5 px-1.5 sm:px-2 rounded-lg sm:rounded-xl bg-moya-red hover:bg-rose-500 active:bg-moya-red-deep text-white font-display font-bold text-[9px] sm:text-xs uppercase tracking-wider transition-all hover:shadow-lg hover:shadow-moya-red-deep/40 flex items-center justify-center gap-1 sm:gap-1.5 active:scale-95 mt-0.5 min-w-0"
             >
               <ShoppingBag className="w-3 sm:w-3.5 h-3 sm:h-3.5 shrink-0" />

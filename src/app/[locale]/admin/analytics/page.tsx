@@ -21,6 +21,7 @@ import {
   Check,
   RotateCw,
 } from "lucide-react";
+import StockConfirmDialog, { StockConfirmTarget } from "@/components/admin/StockConfirmDialog";
 
 export default function AdminAnalyticsPage() {
   const t = useTranslations("admin");
@@ -30,16 +31,36 @@ export default function AdminAnalyticsPage() {
 
   const [restockingId, setRestockingId] = useState<string | null>(null);
   const [restockSuccess, setRestockSuccess] = useState<string | null>(null);
+  const [stockConfirmTarget, setStockConfirmTarget] = useState<StockConfirmTarget | null>(null);
+  const [isProcessingRestock, setIsProcessingRestock] = useState(false);
 
-  const handleQuickRestock = async (variantId: string, amount: number) => {
+  const requestQuickRestock = (variant: any, amount: number) => {
+    setStockConfirmTarget({
+      variantId: variant.variantId,
+      name: locale === "es" ? variant.nameEs : variant.nameEn,
+      image: variant.image,
+      currentStock: variant.stock,
+      newStock: variant.stock + amount,
+      delta: amount,
+    });
+  };
+
+  const handleConfirmRestock = async () => {
+    if (!stockConfirmTarget) return;
     try {
-      setRestockingId(variantId);
-      await adjustStock({ variantId, delta: amount });
-      setRestockSuccess(variantId);
+      setIsProcessingRestock(true);
+      setRestockingId(stockConfirmTarget.variantId);
+      await adjustStock({
+        variantId: stockConfirmTarget.variantId,
+        delta: stockConfirmTarget.delta,
+      });
+      setRestockSuccess(stockConfirmTarget.variantId);
       setTimeout(() => setRestockSuccess(null), 2000);
+      setStockConfirmTarget(null);
     } catch (err) {
       console.error("Failed to adjust stock", err);
     } finally {
+      setIsProcessingRestock(false);
       setRestockingId(null);
     }
   };
@@ -401,7 +422,7 @@ export default function AdminAnalyticsPage() {
                       </span>
 
                       <button
-                        onClick={() => handleQuickRestock(variant.variantId, 10)}
+                        onClick={() => requestQuickRestock(variant, 10)}
                         disabled={isRestocking}
                         className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 hover:opacity-90 transition-all active:scale-95 disabled:opacity-50 flex items-center gap-1"
                         title="Quick Replenish +10 units"
@@ -507,6 +528,15 @@ export default function AdminAnalyticsPage() {
           </div>
         </div>
       </div>
+
+      {/* ── Stock Confirmation Safeguard ── */}
+      <StockConfirmDialog
+        target={stockConfirmTarget}
+        isOpen={Boolean(stockConfirmTarget)}
+        onClose={() => setStockConfirmTarget(null)}
+        onConfirm={handleConfirmRestock}
+        isProcessing={isProcessingRestock}
+      />
     </div>
   );
 }

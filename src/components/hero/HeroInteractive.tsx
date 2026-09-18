@@ -20,9 +20,14 @@ const HERO_COLORWAYS = CAP_VARIANTS.filter((c) => c.isFeatured || c.stock <= 8).
 // Fallback: if not enough, take first 5
 const QUICK_SWAP_CAPS = HERO_COLORWAYS.length >= 3 ? HERO_COLORWAYS : CAP_VARIANTS.slice(0, 5);
 
+import { useQuery } from "convex/react";
+import { api } from "@convex/_generated/api";
+
 export function HeroInteractive() {
   const t = useTranslations("hero");
+  const tCatalog = useTranslations("catalog");
   const { addToCart, currency, cart } = useStore();
+  const convexVariants = useQuery(api.products.getVariants, {});
   const [activeAngle, setActiveAngle] = useState<number>(0);
   const [isSpinning, setIsSpinning] = useState(true);
   const [isPaused, setIsPaused] = useState(false);
@@ -35,9 +40,14 @@ export function HeroInteractive() {
     setIsMounted(true);
   }, []);
 
+  const liveVariant = convexVariants?.find((v) => v.variantId === activeCap.id);
+  const stock = liveVariant ? (typeof liveVariant.stock === "number" ? liveVariant.stock : 0) : (activeCap.stock ?? 0);
+  const isOutOfStock = stock <= 0;
+
   const inCartItem = isMounted ? cart.find((i) => i.id === activeCap.id) : undefined;
   const inCartQty = inCartItem?.quantity || 0;
   const isInCart = inCartQty > 0;
+  const isMaxInCart = inCartQty >= stock;
 
   const currentAngle = ANGLES[activeAngle];
 
@@ -215,6 +225,7 @@ export function HeroInteractive() {
                   src={capImageSrc}
                   alt={`Moya Cap Good Luck 0880 - ${activeCap.nameEn} - ${currentAngle.label}`}
                   fill
+                  sizes="(max-width: 640px) 100vw, 540px"
                   className="object-contain drop-shadow-[0_30px_60px_rgba(0,0,0,0.9)] select-none"
                   priority
                   onLoad={() => setImageLoaded(true)}
@@ -312,9 +323,24 @@ export function HeroInteractive() {
             <ArrowRight className="w-4 h-4 group-hover:translate-x-1.5 transition-transform" />
           </a>
 
-          {isInCart ? (
+          {isOutOfStock ? (
             <button
-              onClick={() => addToCart(activeCap)}
+              disabled
+              className="px-6 py-4 rounded-2xl bg-zinc-200 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 font-display font-semibold text-sm sm:text-base cursor-not-allowed border border-transparent"
+            >
+              <span>{tCatalog("soldOut")}</span>
+            </button>
+          ) : isMaxInCart ? (
+            <button
+              disabled
+              className="px-6 py-4 rounded-2xl bg-emerald-600/10 dark:bg-emerald-600/15 text-emerald-700 dark:text-emerald-400/80 font-display font-semibold text-sm sm:text-base cursor-not-allowed border border-emerald-500/30 flex items-center justify-center gap-2.5"
+            >
+              <Check className="w-4 h-4 text-emerald-500" />
+              <span>{tCatalog("maxStockReached")} ({inCartQty})</span>
+            </button>
+          ) : isInCart ? (
+            <button
+              onClick={() => addToCart(activeCap, 1, stock)}
               className="px-6 py-4 rounded-2xl bg-emerald-600/15 dark:bg-emerald-600/20 hover:bg-emerald-600/25 dark:hover:bg-emerald-600/30 active:bg-emerald-600/40 text-emerald-600 dark:text-emerald-300 font-display font-semibold text-sm sm:text-base transition-all hover:scale-[1.03] active:scale-95 flex items-center justify-center gap-2.5 border border-emerald-500/40 shadow-lg shadow-emerald-950/10 dark:shadow-emerald-950/40"
             >
               <Check className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
@@ -325,7 +351,7 @@ export function HeroInteractive() {
             </button>
           ) : (
             <button
-              onClick={() => addToCart(activeCap)}
+              onClick={() => addToCart(activeCap, 1, stock)}
               className="px-6 py-4 rounded-2xl glass-dark hover:bg-black/5 dark:hover:bg-white/10 text-zinc-900 dark:text-white font-display font-semibold text-sm sm:text-base transition-all hover:scale-[1.03] active:scale-95 flex items-center justify-center gap-2.5 border border-black/10 dark:border-white/10 hover:border-black/20 dark:hover:border-white/20"
             >
               <span>{t("ctaClaim")}</span>

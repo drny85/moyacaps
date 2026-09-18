@@ -8,6 +8,8 @@ import { X, ShoppingBag, MessageCircle, ShieldCheck, Check, ArrowUpRight } from 
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
 import confetti from "canvas-confetti";
+import { useQuery } from "convex/react";
+import { api } from "@convex/_generated/api";
 
 export function ProductQuickView() {
   const { quickViewCap, closeQuickView, addToCart, cart } = useStore();
@@ -17,21 +19,31 @@ export function ProductQuickView() {
   const [addedSuccess, setAddedSuccess] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
 
+  const convexVariants = useQuery(api.products.getVariants, {});
+
   useEffect(() => {
     setIsMounted(true);
-  }, []);
+    setQuantity(1);
+  }, [quickViewCap?.id]);
 
   if (!quickViewCap) return null;
+
+  const liveVariant = convexVariants?.find((v) => v.variantId === quickViewCap.id);
+  const stock = liveVariant ? (typeof liveVariant.stock === "number" ? liveVariant.stock : 0) : (quickViewCap.stock ?? 0);
+  const isOutOfStock = stock <= 0;
 
   const name = locale === "es" ? quickViewCap.nameEs : quickViewCap.nameEn;
   const inCartItem = isMounted ? cart.find((i) => i.id === quickViewCap.id) : undefined;
   const inCartQty = inCartItem?.quantity || 0;
   const isInCart = inCartQty > 0;
+  const maxAvailableToAdd = Math.max(0, stock - inCartQty);
 
-  const priceDisplay = `$${quickViewCap.priceUsd * quantity}.00 USD`;
+  const priceDisplay = `$${quickViewCap.priceUsd * Math.max(1, quantity)}.00 USD`;
 
   const handleAdd = () => {
-    addToCart(quickViewCap, quantity);
+    if (isOutOfStock || maxAvailableToAdd <= 0) return;
+    const addQty = Math.min(maxAvailableToAdd, Math.max(1, quantity));
+    addToCart(quickViewCap, addQty, stock);
     setAddedSuccess(true);
     confetti({
       particleCount: 40,
@@ -46,6 +58,7 @@ export function ProductQuickView() {
   };
 
   const handleWhatsAppBuy = () => {
+    if (isOutOfStock) return;
     const greeting =
       locale === "es"
         ? `¡Hola Moya Caps! Deseo comprar ${quantity} pieza(s) de la gorra: ${name} (Edición Good Luck 0880). Por favor indíquenme los métodos de pago disponibles.`
@@ -143,21 +156,44 @@ export function ProductQuickView() {
               </div>
 
               {/* Quantity */}
-              <div className="flex items-center gap-4">
-                <span className="text-xs text-zinc-600 dark:text-zinc-500 font-display font-semibold">{t("qty")}:</span>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-zinc-600 dark:text-zinc-500 font-display font-semibold">{t("qty")}:</span>
+                  {isOutOfStock ? (
+                    <span className="text-[10px] font-display font-bold px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30">
+                      {t("soldOut")}
+                    </span>
+                  ) : stock <= 5 ? (
+                    <span className="text-[10px] font-mono font-bold text-amber-600 dark:text-amber-400">
+                      {t("stockLeft", { count: stock })}
+                    </span>
+                  ) : null}
+                </div>
+
                 <div className="flex items-center glass-dark rounded-xl border border-black/[0.08] dark:border-white/[0.06]">
                   <button
+                    disabled={isOutOfStock || quantity <= 1}
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                    className="px-3 py-1.5 text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-white font-bold transition-colors"
+                    className={`px-3 py-1.5 text-sm font-bold transition-colors ${
+                      isOutOfStock || quantity <= 1
+                        ? "text-zinc-300 dark:text-zinc-600 cursor-not-allowed opacity-40"
+                        : "text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
+                    }`}
                   >
                     −
                   </button>
                   <span className="px-3 text-xs font-mono font-bold text-zinc-900 dark:text-white">
-                    {quantity}
+                    {isOutOfStock ? 0 : quantity}
                   </span>
                   <button
-                    onClick={() => setQuantity(quantity + 1)}
-                    className="px-3 py-1.5 text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-white font-bold transition-colors"
+                    disabled={isOutOfStock || quantity >= maxAvailableToAdd}
+                    onClick={() => setQuantity(Math.min(maxAvailableToAdd, quantity + 1))}
+                    className={`px-3 py-1.5 text-sm font-bold transition-colors ${
+                      isOutOfStock || quantity >= maxAvailableToAdd
+                        ? "text-zinc-300 dark:text-zinc-600 cursor-not-allowed opacity-40"
+                        : "text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
+                    }`}
+                    title={quantity >= maxAvailableToAdd ? t("maxReached") : undefined}
                   >
                     +
                   </button>
@@ -168,16 +204,22 @@ export function ProductQuickView() {
               <div className="flex flex-col gap-2.5 mt-2">
                 <button
                   onClick={handleAdd}
-                  disabled={addedSuccess}
+                  disabled={addedSuccess || isOutOfStock || maxAvailableToAdd <= 0}
                   className={`w-full py-3.5 rounded-2xl font-display font-bold text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2 active:scale-[0.98] ${
-                    addedSuccess
+                    isOutOfStock || maxAvailableToAdd <= 0
+                      ? "bg-zinc-200 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 cursor-not-allowed"
+                      : addedSuccess
                       ? "bg-emerald-600 text-white shadow-xl shadow-emerald-950/50"
                       : isInCart
                       ? "bg-emerald-600/25 hover:bg-emerald-600/35 active:bg-emerald-600/45 text-emerald-300 border border-emerald-500/40 shadow-xl shadow-emerald-950/40"
                       : "bg-moya-red hover:bg-rose-500 text-white shadow-xl shadow-moya-red-deep/50"
                   }`}
                 >
-                  {addedSuccess ? (
+                  {isOutOfStock ? (
+                    <span>{t("soldOut")}</span>
+                  ) : maxAvailableToAdd <= 0 ? (
+                    <span>{t("maxReached")}</span>
+                  ) : addedSuccess ? (
                     <>
                       <Check className="w-4 h-4 text-white" />
                       <span>{t("addedSuccess")}</span>
@@ -197,10 +239,15 @@ export function ProductQuickView() {
 
                 <button
                   onClick={handleWhatsAppBuy}
-                  className="w-full py-3 rounded-2xl bg-moya-green-deep/80 hover:bg-moya-green text-white font-display font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg shadow-moya-green-deep/40"
+                  disabled={isOutOfStock}
+                  className={`w-full py-3 rounded-2xl font-display font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg ${
+                    isOutOfStock
+                      ? "bg-zinc-200 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 cursor-not-allowed opacity-50"
+                      : "bg-moya-green-deep/80 hover:bg-moya-green text-white shadow-moya-green-deep/40"
+                  }`}
                 >
                   <MessageCircle className="w-4 h-4" />
-                  <span>{t("buyNow")}</span>
+                  <span>{isOutOfStock ? t("soldOut") : t("buyNow")}</span>
                 </button>
 
                 <Link

@@ -28,7 +28,10 @@
     "subtotal": "Subtotal",
     "shipping": "Shipping",
     "total": "Total",
-    "secureNotice": "Encrypted 256-bit SSL transaction via Stripe Payments"
+    "secureNotice": "Encrypted 256-bit SSL transaction via Stripe Payments",
+    "outOfStockTitle": "Stock Unavailable",
+    "outOfStockDesc": "One or more items in your bag have sold out or requested quantity exceeds available inventory. Please adjust your bag before proceeding.",
+    "connectingGateway": "Verifying stock & establishing gateway session..."
   },
   "hero": {
     "badge": "SIGNATURE 2026 DROP",
@@ -61,7 +64,9 @@
     "quickView": "Quick View",
     "inStock": "Ready to Ship",
     "limited": "Only a few left",
-    "viewDetails": "Inspect Details"
+    "viewDetails": "Inspect Details",
+    "soldOut": "Sold Out",
+    "maxStockReached": "Max in Bag"
   },
   "quickView": {
     "title": "Product Inspection",
@@ -80,7 +85,10 @@
     "addedSuccess": "Added to Bag!",
     "buyNow": "Instant WhatsApp Checkout",
     "viewFullSpecs": "View Full Blueprint Page →",
-    "shippingNotice": "Dispatched within 24 hours with US tracked courier delivery."
+    "shippingNotice": "Dispatched within 24 hours with US tracked courier delivery.",
+    "soldOut": "Sold Out",
+    "maxReached": "Max Available Added",
+    "stockLeft": "Only {count} in stock"
   },
   "cart": {
     "title": "Your Loot Bag",
@@ -98,7 +106,10 @@
     "signInNotice": "Sign in with Clerk to link this order to your Collector Vault.",
     "checkoutWhatsApp": "Order via WhatsApp",
     "whatsappGreeting": "Hi Moya Caps! I would like to order the following caps from the 0880 Good Luck Collection:",
-    "secureCheckout": "Guaranteed Authentic • 30-Day Hassle-Free Returns"
+    "secureCheckout": "Guaranteed Authentic • 30-Day Hassle-Free Returns",
+    "stockAdjusted": "Quantity adjusted to match live stock",
+    "onlyXAvailable": "Only {count} available",
+    "soldOutItem": "Sold Out"
   },
   "story": {
     "eyebrow": "THE 0880 MYTHOS",
@@ -175,7 +186,10 @@
     "guarantee": "30-Day Hassle-Free Exchange",
     "otherColorwaysTitle": "Explore the 16 Colorways",
     "otherColorwaysSubtitle": "Switch colorways to match your personal rotation.",
-    "inspectBlueprint": "Full Blueprint Specs"
+    "inspectBlueprint": "Full Blueprint Specs",
+    "soldOut": "Sold Out",
+    "maxReached": "Max Available Selected",
+    "stockLeft": "Only {count} left in stock"
   },
   "checkoutSuccess": {
     "badge": "ORDER CONFIRMED",
@@ -312,7 +326,17 @@
       "deleteConfirm": "Delete this colorway permanently?",
       "quickStock": "Quick Restock",
       "stockUpdated": "Stock successfully updated",
-      "colorwaysCount": "{count} Colorways Active"
+      "colorwaysCount": "{count} Colorways Active",
+      "confirmStockTitle": "Confirm Inventory Change",
+      "confirmStockDesc": "You are modifying real-time Available Inventory for this colorway on the live storefront.",
+      "currentStock": "Current Inventory",
+      "projectedStock": "Projected Inventory",
+      "stockAdjustment": "Adjustment",
+      "stockImpactAdd": "This will replenish Available Inventory by +{delta} units ({current} → {projected}). Customers will immediately be able to purchase additional units.",
+      "stockImpactDeduct": "This will reduce Available Inventory by {delta} unit(s) ({current} → {projected}).",
+      "stockImpactZero": "CRITICAL WARNING: Available Inventory will reach 0 units. This colorway will immediately be marked as 'Sold Out' on the live storefront, blocking new purchases.",
+      "confirmStockBtn": "Confirm & Update Stock",
+      "cancelBtn": "Cancel"
     }
   },
   "track": {

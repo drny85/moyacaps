@@ -75,12 +75,18 @@ export function ProductDetailView({ cap, allCaps }: ProductDetailViewProps) {
   const name = locale === "es" ? cap.nameEs : cap.nameEn;
   const tag = locale === "es" ? cap.tagEs : cap.tagEn;
 
+  const currentLiveCap = displayAllCaps.find((c) => c.id === cap.id) || cap;
+  const currentStock = typeof currentLiveCap.stock === "number" ? currentLiveCap.stock : 0;
+  const isOutOfStock = currentStock <= 0;
+
   const inCartItem = isMounted ? cart.find((i) => i.id === cap.id) : undefined;
   const inCartQty = inCartItem?.quantity || 0;
   const isInCart = inCartQty > 0;
+  const maxAvailableToAdd = Math.max(0, currentStock - inCartQty);
+  const isAtMaxStock = inCartQty >= currentStock || quantity >= maxAvailableToAdd;
 
   const priceSingle = cap.priceUsd;
-  const priceDisplay = `$${priceSingle * quantity}.00 USD`;
+  const priceDisplay = `$${priceSingle * Math.max(1, quantity)}.00 USD`;
 
   const angles: { key: AngleKey; label: string; desc: string; src: string }[] = [
     {
@@ -118,7 +124,9 @@ export function ProductDetailView({ cap, allCaps }: ProductDetailViewProps) {
   const currentMedia = angles.find((a) => a.key === activeAngle) || angles[0];
 
   const handleAdd = () => {
-    addToCart(cap, quantity);
+    if (isOutOfStock || maxAvailableToAdd <= 0) return;
+    const addQty = Math.min(maxAvailableToAdd, Math.max(1, quantity));
+    addToCart(currentLiveCap, addQty, currentStock);
     setAddedSuccess(true);
     confetti({
       particleCount: 50,
@@ -128,10 +136,12 @@ export function ProductDetailView({ cap, allCaps }: ProductDetailViewProps) {
     });
     setTimeout(() => {
       setAddedSuccess(false);
+      setQuantity(1);
     }, 1500);
   };
 
   const handleWhatsAppBuy = () => {
+    if (isOutOfStock) return;
     const greeting =
       locale === "es"
         ? `¡Hola Moya Caps! Deseo ordenar ${quantity} pieza(s) de la gorra ${name} (Edición Good Luck 0880 - $${priceSingle * quantity} ${currency}). ¿Me podrían compartir los datos de pago y envío?`
@@ -315,24 +325,47 @@ export function ProductDetailView({ cap, allCaps }: ProductDetailViewProps) {
             </span>
           </div>
 
-          {/* Quantity Counter */}
+          {/* Quantity Counter & Stock Status */}
           <div className="flex items-center justify-between py-2 border-y border-black/[0.06] dark:border-white/[0.06]">
-            <span className="text-xs text-zinc-600 dark:text-zinc-400 font-display font-semibold">
-              {tQuick("qty")}:
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-zinc-600 dark:text-zinc-400 font-display font-semibold">
+                {tQuick("qty")}:
+              </span>
+              {isOutOfStock ? (
+                <span className="text-[10px] font-display font-bold px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30">
+                  {t("soldOut")}
+                </span>
+              ) : currentStock <= 5 ? (
+                <span className="text-[10px] font-mono font-bold text-amber-600 dark:text-amber-400">
+                  {t("stockLeft", { count: currentStock })}
+                </span>
+              ) : null}
+            </div>
+
             <div className="flex items-center glass-dark rounded-xl border border-black/[0.08] dark:border-white/[0.08]">
               <button
+                disabled={isOutOfStock || quantity <= 1}
                 onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                className="px-3.5 py-1.5 text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-white font-bold transition-colors"
+                className={`px-3.5 py-1.5 text-sm font-bold transition-colors ${
+                  isOutOfStock || quantity <= 1
+                    ? "text-zinc-300 dark:text-zinc-600 cursor-not-allowed opacity-40"
+                    : "text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
+                }`}
               >
                 −
               </button>
               <span className="px-3 text-xs font-mono font-bold text-zinc-900 dark:text-white">
-                {quantity}
+                {isOutOfStock ? 0 : quantity}
               </span>
               <button
-                onClick={() => setQuantity(quantity + 1)}
-                className="px-3.5 py-1.5 text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-white font-bold transition-colors"
+                disabled={isOutOfStock || quantity >= maxAvailableToAdd}
+                onClick={() => setQuantity(Math.min(maxAvailableToAdd, quantity + 1))}
+                className={`px-3.5 py-1.5 text-sm font-bold transition-colors ${
+                  isOutOfStock || quantity >= maxAvailableToAdd
+                    ? "text-zinc-300 dark:text-zinc-600 cursor-not-allowed opacity-40"
+                    : "text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
+                }`}
+                title={quantity >= maxAvailableToAdd ? t("maxReached") : undefined}
               >
                 +
               </button>
@@ -343,16 +376,22 @@ export function ProductDetailView({ cap, allCaps }: ProductDetailViewProps) {
           <div className="flex flex-col gap-3">
             <button
               onClick={handleAdd}
-              disabled={addedSuccess}
+              disabled={addedSuccess || isOutOfStock || maxAvailableToAdd <= 0}
               className={`w-full py-4 rounded-2xl font-display font-bold text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2 active:scale-[0.98] ${
-                addedSuccess
+                isOutOfStock || maxAvailableToAdd <= 0
+                  ? "bg-zinc-200 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 cursor-not-allowed"
+                  : addedSuccess
                   ? "bg-emerald-600 text-white shadow-xl shadow-emerald-950/50"
                   : isInCart
                   ? "bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-700 dark:text-emerald-300 border border-emerald-500/40 shadow-xl"
                   : "bg-moya-red hover:bg-rose-500 text-white shadow-xl shadow-moya-red-deep/40"
               }`}
             >
-              {addedSuccess ? (
+              {isOutOfStock ? (
+                <span>{t("soldOut")}</span>
+              ) : maxAvailableToAdd <= 0 ? (
+                <span>{t("maxReached")}</span>
+              ) : addedSuccess ? (
                 <>
                   <Check className="w-5 h-5 text-white" />
                   <span>{tQuick("addedSuccess")}</span>
@@ -372,10 +411,15 @@ export function ProductDetailView({ cap, allCaps }: ProductDetailViewProps) {
 
             <button
               onClick={handleWhatsAppBuy}
-              className="w-full py-3.5 rounded-2xl bg-moya-green-deep/90 hover:bg-moya-green text-white font-display font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg shadow-moya-green-deep/30 active:scale-[0.98]"
+              disabled={isOutOfStock}
+              className={`w-full py-3.5 rounded-2xl font-display font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg active:scale-[0.98] ${
+                isOutOfStock
+                  ? "bg-zinc-200 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 cursor-not-allowed opacity-50"
+                  : "bg-moya-green-deep/90 hover:bg-moya-green text-white shadow-moya-green-deep/30"
+              }`}
             >
               <MessageCircle className="w-4 h-4" />
-              <span>{tQuick("buyNow")}</span>
+              <span>{isOutOfStock ? t("soldOut") : tQuick("buyNow")}</span>
             </button>
           </div>
 

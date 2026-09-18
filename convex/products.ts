@@ -1,4 +1,4 @@
-import { query, mutation } from "./_generated/server";
+import { query, mutation, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import { requireAdmin } from "./auth";
 
@@ -9,6 +9,45 @@ export const generateUploadUrl = mutation({
     return await ctx.storage.generateUploadUrl();
   },
 });
+
+export const generateUploadUrlInternal = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.storage.generateUploadUrl();
+  },
+});
+
+export const setVariantStorageId = internalMutation({
+  args: {
+    variantId: v.string(),
+    storageId: v.id("_storage"),
+  },
+  handler: async (ctx, args) => {
+    const variant = await ctx.db
+      .query("variants")
+      .withIndex("by_variantId", (q) => q.eq("variantId", args.variantId))
+      .first();
+
+    if (!variant) {
+      throw new Error(`Variant ${args.variantId} not found`);
+    }
+
+    if (variant.storageId && variant.storageId !== args.storageId) {
+      try {
+        await ctx.storage.delete(variant.storageId);
+      } catch (e) {
+        // ignore if already deleted
+      }
+    }
+
+    await ctx.db.patch(variant._id, {
+      storageId: args.storageId,
+    });
+
+    return { success: true, variantId: args.variantId, storageId: args.storageId };
+  },
+});
+
 
 export const getVariants = query({
   args: {
@@ -64,6 +103,13 @@ export const seedAll = mutation({
     }
     const existing = await ctx.db.query("variants").collect();
     for (const item of existing) {
+      if (item.storageId) {
+        try {
+          await ctx.storage.delete(item.storageId);
+        } catch (e) {
+          // ignore if already deleted
+        }
+      }
       await ctx.db.delete(item._id);
     }
 

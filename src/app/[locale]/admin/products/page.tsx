@@ -26,6 +26,7 @@ import {
   Image as ImageIcon,
   Loader2,
 } from "lucide-react";
+import StockConfirmDialog, { StockConfirmTarget } from "@/components/admin/StockConfirmDialog";
 
 export default function AdminProductsPage() {
   const t = useTranslations("admin.products");
@@ -40,6 +41,10 @@ export default function AdminProductsPage() {
   const [isNewVariant, setIsNewVariant] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+
+  // Stock Confirmation Safeguard State
+  const [stockConfirmTarget, setStockConfirmTarget] = useState<StockConfirmTarget | null>(null);
+  const [isAdjustingStock, setIsAdjustingStock] = useState(false);
 
   // Quick action feedback
   const [updatingStockId, setUpdatingStockId] = useState<string | null>(null);
@@ -132,16 +137,45 @@ export default function AdminProductsPage() {
     setEditingVariant(variant);
   };
 
-  const handleQuickAdjust = async (variantId: string, delta: number) => {
-    try {
-      setUpdatingStockId(variantId);
-      await adjustStock({ variantId, delta });
-      setFeedbackStockId(variantId);
-      setTimeout(() => setFeedbackStockId(null), 1500);
-    } catch (err) {
-      console.error("Failed to adjust stock", err);
-    } finally {
-      setUpdatingStockId(null);
+  const requestQuickAdjust = (variant: any, delta: number) => {
+    const newStock = Math.max(0, variant.stock + delta);
+    setStockConfirmTarget({
+      variantId: variant.variantId,
+      name: locale === "es" ? variant.nameEs : variant.nameEn,
+      silhouette: variant.silhouette,
+      image: variant.image,
+      primaryHex: variant.primaryHex,
+      secondaryHex: variant.secondaryHex,
+      currentStock: variant.stock,
+      newStock,
+      delta,
+    });
+  };
+
+  const handleConfirmStockAction = async () => {
+    if (!stockConfirmTarget) return;
+
+    if (editingVariant) {
+      setStockConfirmTarget(null);
+      await executeSaveVariant();
+    } else {
+      try {
+        setIsAdjustingStock(true);
+        setUpdatingStockId(stockConfirmTarget.variantId);
+        await adjustStock({
+          variantId: stockConfirmTarget.variantId,
+          delta: stockConfirmTarget.delta,
+        });
+        setFeedbackStockId(stockConfirmTarget.variantId);
+        setTimeout(() => setFeedbackStockId(null), 1500);
+        setStockConfirmTarget(null);
+      } catch (err: any) {
+        console.error("Failed to adjust stock", err);
+        setFormError(err?.message || "Failed to adjust stock");
+      } finally {
+        setIsAdjustingStock(false);
+        setUpdatingStockId(null);
+      }
     }
   };
 
@@ -153,10 +187,7 @@ export default function AdminProductsPage() {
     }
   };
 
-  const handleSaveVariant = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formVariantId.trim()) return;
-
+  const executeSaveVariant = async () => {
     try {
       setIsSaving(true);
       setFormError(null);
@@ -210,6 +241,30 @@ export default function AdminProductsPage() {
       setIsSaving(false);
       setUploadProgress(null);
     }
+  };
+
+  const handleSaveVariant = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formVariantId.trim()) return;
+
+    // High-Friction Safeguard: If stock is changing in the edit modal, prompt confirmation first
+    if (!isNewVariant && editingVariant && editingVariant.stock !== Number(formStock)) {
+      const delta = Number(formStock) - editingVariant.stock;
+      setStockConfirmTarget({
+        variantId: editingVariant.variantId,
+        name: locale === "es" ? formNameEs : formNameEn,
+        silhouette: formSilhouette,
+        image: previewUrl || formImage || editingVariant.image,
+        primaryHex: formPrimaryHex,
+        secondaryHex: formSecondaryHex,
+        currentStock: editingVariant.stock,
+        newStock: Number(formStock),
+        delta,
+      });
+      return;
+    }
+
+    await executeSaveVariant();
   };
 
   const handleDeleteVariant = async (variantId: string) => {
@@ -388,6 +443,7 @@ export default function AdminProductsPage() {
                             src={variant.image || "/caps/negro-rojo.png"}
                             alt={variant.nameEn}
                             fill
+                            sizes="48px"
                             className="object-contain p-1 group-hover:scale-110 transition-transform"
                           />
                         </div>
@@ -451,33 +507,33 @@ export default function AdminProductsPage() {
 
                           <div className="flex items-center gap-1">
                             <button
-                              onClick={() => handleQuickAdjust(variant.variantId, -1)}
+                              onClick={() => requestQuickAdjust(variant, -1)}
                               disabled={isUpdating || variant.stock <= 0}
-                              className="w-6 h-6 rounded-md bg-zinc-100 dark:bg-white/[0.06] hover:bg-zinc-200 dark:hover:bg-white/10 text-zinc-700 dark:text-zinc-300 font-mono text-xs flex items-center justify-center disabled:opacity-30"
+                              className="w-6 h-6 rounded-md bg-zinc-100 dark:bg-white/[0.06] hover:bg-zinc-200 dark:hover:bg-white/10 text-zinc-700 dark:text-zinc-300 font-mono text-xs flex items-center justify-center disabled:opacity-30 transition-colors"
                               title="Deduct 1"
                             >
                               -1
                             </button>
                             <button
-                              onClick={() => handleQuickAdjust(variant.variantId, 1)}
+                              onClick={() => requestQuickAdjust(variant, 1)}
                               disabled={isUpdating}
-                              className="w-6 h-6 rounded-md bg-zinc-100 dark:bg-white/[0.06] hover:bg-zinc-200 dark:hover:bg-white/10 text-zinc-700 dark:text-zinc-300 font-mono text-xs flex items-center justify-center disabled:opacity-30"
+                              className="w-6 h-6 rounded-md bg-zinc-100 dark:bg-white/[0.06] hover:bg-zinc-200 dark:hover:bg-white/10 text-zinc-700 dark:text-zinc-300 font-mono text-xs flex items-center justify-center disabled:opacity-30 transition-colors"
                               title="Add 1"
                             >
                               +1
                             </button>
                             <button
-                              onClick={() => handleQuickAdjust(variant.variantId, 5)}
+                              onClick={() => requestQuickAdjust(variant, 5)}
                               disabled={isUpdating}
-                              className="px-1.5 h-6 rounded-md bg-zinc-100 dark:bg-white/[0.06] hover:bg-zinc-200 dark:hover:bg-white/10 text-zinc-700 dark:text-zinc-300 font-mono text-xs flex items-center justify-center disabled:opacity-30"
+                              className="px-1.5 h-6 rounded-md bg-zinc-100 dark:bg-white/[0.06] hover:bg-zinc-200 dark:hover:bg-white/10 text-zinc-700 dark:text-zinc-300 font-mono text-xs flex items-center justify-center disabled:opacity-30 transition-colors"
                               title="Add 5"
                             >
                               +5
                             </button>
                             <button
-                              onClick={() => handleQuickAdjust(variant.variantId, 10)}
+                              onClick={() => requestQuickAdjust(variant, 10)}
                               disabled={isUpdating}
-                              className="px-1.5 h-6 rounded-md bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-mono text-xs flex items-center justify-center font-bold"
+                              className="px-1.5 h-6 rounded-md bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-mono text-xs flex items-center justify-center font-bold hover:opacity-90 transition-opacity"
                               title="Replenish +10"
                             >
                               {isSuccess ? <Check className="w-3 h-3 text-emerald-500" /> : "+10"}
@@ -701,6 +757,7 @@ export default function AdminProductsPage() {
                           src={previewUrl}
                           alt="Cap Preview"
                           fill
+                          sizes="64px"
                           className="object-contain p-1"
                         />
                       </div>
@@ -907,6 +964,15 @@ export default function AdminProductsPage() {
           </div>
         </div>
       )}
+
+      {/* ── Modal: Stock & Quick Restock Confirmation Safeguard ── */}
+      <StockConfirmDialog
+        target={stockConfirmTarget}
+        isOpen={Boolean(stockConfirmTarget)}
+        onClose={() => setStockConfirmTarget(null)}
+        onConfirm={handleConfirmStockAction}
+        isProcessing={isAdjustingStock || isSaving}
+      />
 
       {/* ── Modal: Delete Confirmation ── */}
       {deleteConfirmId && (

@@ -28,7 +28,10 @@
     "subtotal": "Subtotal",
     "shipping": "Envío",
     "total": "Total",
-    "secureNotice": "Transacción encriptada SSL de 256 bits procesada por Stripe Payments"
+    "secureNotice": "Transacción encriptada SSL de 256 bits procesada por Stripe Payments",
+    "outOfStockTitle": "Inventario No Disponible",
+    "outOfStockDesc": "Uno o más artículos en tu bolsa se han agotado o superan el inventario disponible. Por favor ajusta tu bolsa antes de continuar.",
+    "connectingGateway": "Verificando inventario y asegurando sesión de pago..."
   },
   "hero": {
     "badge": "LANZAMIENTO OFICIAL 2026",
@@ -61,7 +64,9 @@
     "quickView": "Vista Rápida",
     "inStock": "En Existencia",
     "limited": "Últimas Piezas",
-    "viewDetails": "Ver Detalles"
+    "viewDetails": "Ver Detalles",
+    "soldOut": "Agotado",
+    "maxStockReached": "Límite en Bolsa"
   },
   "quickView": {
     "title": "Inspección de Producto",
@@ -80,7 +85,10 @@
     "addedSuccess": "¡Agregado a la Bolsa!",
     "buyNow": "Comprar por WhatsApp",
     "viewFullSpecs": "Ver Ficha Técnica Completa →",
-    "shippingNotice": "Despacho en menos de 24 horas con número de guía rastreable en EE. UU."
+    "shippingNotice": "Despacho en menos de 24 horas con número de guía rastreable en EE. UU.",
+    "soldOut": "Agotado",
+    "maxReached": "Máximo Disponible Seleccionado",
+    "stockLeft": "Solo {count} en existencia"
   },
   "cart": {
     "title": "Tu Bolsa de Compra",
@@ -98,7 +106,10 @@
     "signInNotice": "Inicia sesión con Clerk para vincular tu pedido a tu Bóveda de Coleccionista.",
     "checkoutWhatsApp": "Pedir por WhatsApp",
     "whatsappGreeting": "¡Hola Moya Caps! Deseo realizar el pedido de las siguientes gorras de la colección Good Luck 0880:",
-    "secureCheckout": "Garantía de Autenticidad • Cambios Sin Complicaciones"
+    "secureCheckout": "Garantía de Autenticidad • Cambios Sin Complicaciones",
+    "stockAdjusted": "Cantidad ajustada al inventario disponible",
+    "onlyXAvailable": "Solo {count} disponibles",
+    "soldOutItem": "Agotado"
   },
   "story": {
     "eyebrow": "EL MITO 0880",
@@ -175,7 +186,10 @@
     "guarantee": "30 días para cambios y devoluciones sin costo",
     "otherColorwaysTitle": "Explora los 16 Colores",
     "otherColorwaysSubtitle": "Encuentra el contraste ideal para tu rotación.",
-    "inspectBlueprint": "Especificaciones Completas"
+    "inspectBlueprint": "Especificaciones Completas",
+    "soldOut": "Agotado",
+    "maxReached": "Máximo Disponible Seleccionado",
+    "stockLeft": "Solo quedan {count} piezas"
   },
   "checkoutSuccess": {
     "badge": "ORDEN CONFIRMADA",
@@ -312,7 +326,17 @@
       "deleteConfirm": "¿Eliminar esta combinación permanentemente?",
       "quickStock": "Ajuste Rápido",
       "stockUpdated": "Inventario actualizado exitosamente",
-      "colorwaysCount": "{count} Combinaciones Activas"
+      "colorwaysCount": "{count} Combinaciones Activas",
+      "confirmStockTitle": "Confirmar Cambio de Inventario",
+      "confirmStockDesc": "Estás a punto de modificar el inventario disponible en tiempo real para esta combinación en la tienda en vivo.",
+      "currentStock": "Inventario Actual",
+      "projectedStock": "Inventario Proyectado",
+      "stockAdjustment": "Ajuste",
+      "stockImpactAdd": "Esto reabastecerá el inventario disponible en +{delta} unidades ({current} → {projected}). Los clientes podrán comprar unidades adicionales de inmediato.",
+      "stockImpactDeduct": "Esto reducirá el inventario disponible en {delta} unidad(es) ({current} → {projected}).",
+      "stockImpactZero": "ADVERTENCIA CRÍTICA: El inventario disponible llegará a 0 unidades. Esta combinación se marcará inmediatamente como 'Agotado' en la tienda en vivo, bloqueando compras.",
+      "confirmStockBtn": "Confirmar y Actualizar",
+      "cancelBtn": "Cancelar"
     }
   },
   "track": {

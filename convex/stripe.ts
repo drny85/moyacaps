@@ -64,10 +64,33 @@ export const createCheckoutSession = action({
     for (const item of args.items) {
       const variant = allVariants.find((v: any) => v.variantId === item.variantId);
       if (!variant) {
-        throw new Error(`Variant not found in catalog: ${item.variantId}`);
+        throw new ConvexError(
+          args.locale === "es"
+            ? `Modelo no encontrado en el catálogo: ${item.variantId}`
+            : `Variant not found in catalog: ${item.variantId}`
+        );
+      }
+
+      const variantName = args.locale === "es" ? variant.nameEs : variant.nameEn;
+      const stock = typeof variant.stock === "number" ? variant.stock : 0;
+
+      if (stock <= 0) {
+        throw new ConvexError(
+          args.locale === "es"
+            ? `La gorra "${variantName}" se encuentra agotada.`
+            : `The cap "${variantName}" is sold out.`
+        );
       }
 
       const qty = Math.max(1, Math.floor(item.quantity || 1));
+      if (qty > stock) {
+        throw new ConvexError(
+          args.locale === "es"
+            ? `Inventario insuficiente para "${variantName}". Solo hay ${stock} pieza(s) disponible(s).`
+            : `Insufficient stock for "${variantName}". Only ${stock} unit(s) available.`
+        );
+      }
+
       const unitPrice: number = typeof variant.priceUsd === "number" ? variant.priceUsd : 120;
 
       totalItems += qty;
@@ -75,7 +98,7 @@ export const createCheckoutSession = action({
 
       validatedItems.push({
         variantId: variant.variantId,
-        name: args.locale === "es" ? variant.nameEs : variant.nameEn,
+        name: variantName,
         quantity: qty,
         price: unitPrice,
         image: variant.image,
@@ -121,31 +144,36 @@ export const createCheckoutSession = action({
       },
     ];
 
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ["card", "link"],
-      line_items: stripeLineItems,
-      mode: "payment",
-      customer_email: args.customerEmail || undefined,
-      billing_address_collection: "required",
-      shipping_address_collection: {
-        allowed_countries: ["US"],
+    const session = await stripe.checkout.sessions.create(
+      {
+        payment_method_types: ["card", "link"],
+        line_items: stripeLineItems,
+        mode: "payment",
+        customer_email: args.customerEmail || undefined,
+        billing_address_collection: "required",
+        shipping_address_collection: {
+          allowed_countries: ["US"],
+        },
+        phone_number_collection: {
+          enabled: true,
+        },
+        shipping_options: shippingOptions,
+        success_url: `${args.origin}/${args.locale}/checkout/success?session_id={CHECKOUT_SESSION_ID}&order_number=${orderNumber}`,
+        cancel_url: `${args.origin}/${args.locale}?canceled=true`,
+        metadata: {
+          orderNumber,
+          clerkUserId: resolvedClerkId || "",
+          currency: args.currency,
+          subtotal: subtotal.toString(),
+          shippingFee: shippingFee.toString(),
+          total: total.toString(),
+          itemsJson: JSON.stringify(validatedItems),
+        },
       },
-      phone_number_collection: {
-        enabled: true,
-      },
-      shipping_options: shippingOptions,
-      success_url: `${args.origin}/${args.locale}/checkout/success?session_id={CHECKOUT_SESSION_ID}&order_number=${orderNumber}`,
-      cancel_url: `${args.origin}/${args.locale}?canceled=true`,
-      metadata: {
-        orderNumber,
-        clerkUserId: resolvedClerkId || "",
-        currency: args.currency,
-        subtotal: subtotal.toString(),
-        shippingFee: shippingFee.toString(),
-        total: total.toString(),
-        itemsJson: JSON.stringify(validatedItems),
-      },
-    });
+      {
+        idempotencyKey: `cs_${resolvedClerkId || args.customerEmail || "guest"}_${orderNumber}`,
+      }
+    );
 
     return {
       url: session.url,

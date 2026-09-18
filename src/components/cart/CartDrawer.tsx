@@ -2,29 +2,51 @@
 
 import { useStore } from "@/store/useStore";
 import { useTranslations, useLocale } from "next-intl";
-import { X, Trash2, Plus, Minus, ShoppingBag, ArrowRight, MessageCircle, ShieldCheck, Check } from "lucide-react";
+import { X, Trash2, Plus, Minus, ShoppingBag, ArrowRight, MessageCircle, ShieldCheck, Check, AlertCircle, Loader2 } from "lucide-react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import confetti from "canvas-confetti";
 import { useSafeUser, SafeSignInButton } from "@/lib/useSafeUser";
-import { useAction } from "convex/react";
+import { useAction, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 
 export function CartDrawer() {
-  const { cart, isCartOpen, closeCart, updateQuantity, removeFromCart, clearCart, currency } = useStore();
+  const { cart, isCartOpen, closeCart, updateQuantity, removeFromCart, clearCart, currency, clampCartToStock } = useStore();
   const t = useTranslations("cart");
   const locale = useLocale();
   const { user, isSignedIn } = useSafeUser();
   const createCheckoutSession = useAction(api.stripe.createCheckoutSession);
+  const convexVariants = useQuery(api.products.getVariants, {});
 
   const [checkoutStep, setCheckoutStep] = useState<"idle" | "processing" | "success">("idle");
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [stockAdjustmentNotice, setStockAdjustmentNotice] = useState<string | null>(null);
+
+  // Synchronize cart with live Convex database stock whenever drawer is opened or variants change
+  useEffect(() => {
+    if (isCartOpen && convexVariants && convexVariants.length > 0) {
+      const result = clampCartToStock(convexVariants);
+      if (result.adjusted) {
+        setStockAdjustmentNotice(
+          `${t("stockAdjusted")}${result.adjustedNames.length > 0 ? ` (${result.adjustedNames.join(", ")})` : ""}`
+        );
+      }
+    }
+  }, [isCartOpen, convexVariants, clampCartToStock, t]);
 
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
 
   const subtotal = cart.reduce((sum, item) => {
     return sum + item.priceUsd * item.quantity;
   }, 0);
+
+  // Check if any cart item exceeds live stock
+  const hasOutOfStockItem = cart.some((item) => {
+    const variant = convexVariants?.find((v) => v.variantId === item.id);
+    if (!variant) return false;
+    return variant.stock <= 0 || item.quantity > variant.stock;
+  });
 
   // Free shipping threshold: 2+ caps
   const freeShippingUnlocked = totalItems >= 2;
@@ -33,6 +55,8 @@ export function CartDrawer() {
 
   // Launch WhatsApp order with itemized list
   const handleWhatsAppOrder = () => {
+    if (hasOutOfStockItem || checkoutStep === "processing") return;
+
     let message = `${t("whatsappGreeting")}\n\n`;
 
     cart.forEach((item, index) => {
@@ -49,8 +73,11 @@ export function CartDrawer() {
   };
 
   const handleStripeCheckout = async () => {
+    if (hasOutOfStockItem || checkoutStep === "processing") return;
+
     try {
       setCheckoutStep("processing");
+      setCheckoutError(null);
       const result = await createCheckoutSession({
         items: cart.map((i) => ({ variantId: i.id, quantity: i.quantity })),
         currency,
@@ -67,7 +94,7 @@ export function CartDrawer() {
       }
     } catch (err: any) {
       console.error("Checkout error:", err);
-      alert(err.message || "Failed to proceed to checkout");
+      setCheckoutError(err.message || "Failed to proceed to checkout");
       setCheckoutStep("idle");
     }
   };
@@ -153,10 +180,19 @@ export function CartDrawer() {
                 </div>
               ) : (
                 cart.map((item) => {
+                  const variant = convexVariants?.find((v) => v.variantId === item.id);
+                  const stock = variant ? (typeof variant.stock === "number" ? variant.stock : 0) : (item.maxStock ?? 99);
+                  const isOutOfStock = stock <= 0;
+                  const isAtMaxStock = item.quantity >= stock;
+
                   return (
                     <div
                       key={item.id}
-                      className="glass-card rounded-2xl p-3.5 flex items-center gap-4 border border-black/[0.06] dark:border-white/[0.06]"
+                      className={`glass-card rounded-2xl p-3.5 flex items-center gap-4 border transition-all ${
+                        isOutOfStock
+                          ? "border-rose-500/40 bg-rose-500/5 opacity-80"
+                          : "border-black/[0.06] dark:border-white/[0.06]"
+                      }`}
                     >
                       <div className="relative w-16 h-16 rounded-xl bg-black/5 dark:bg-white/5 shrink-0 overflow-hidden p-1">
                         <Image
@@ -168,18 +204,32 @@ export function CartDrawer() {
                       </div>
 
                       <div className="flex-1 min-w-0">
-                        <h4 className="font-display font-bold text-sm text-zinc-900 dark:text-white truncate">
-                          {item.name}
-                        </h4>
-                        <div className="text-xs font-mono font-bold text-emerald-600 dark:text-moya-green-light mt-0.5">
-                          ${item.priceUsd}.00 USD
+                        <div className="flex items-center justify-between gap-1">
+                          <h4 className="font-display font-bold text-sm text-zinc-900 dark:text-white truncate">
+                            {item.name}
+                          </h4>
+                          {isOutOfStock && (
+                            <span className="text-[10px] font-display font-bold px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-500 shrink-0">
+                              {t("soldOutItem")}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-xs font-mono font-bold text-emerald-600 dark:text-moya-green-light">
+                            ${item.priceUsd}.00 USD
+                          </span>
+                          {!isOutOfStock && isAtMaxStock && (
+                            <span className="text-[10px] font-mono text-amber-600 dark:text-amber-400 font-medium">
+                              ({t("onlyXAvailable", { count: stock })})
+                            </span>
+                          )}
                         </div>
 
                         {/* Quantity adjust */}
                         <div className="flex items-center gap-3 mt-2">
                           <div className="flex items-center glass-dark rounded-lg border border-black/[0.06] dark:border-white/[0.06]">
                             <button
-                              onClick={() => updateQuantity(item.id, -1)}
+                              onClick={() => updateQuantity(item.id, -1, stock)}
                               className="px-2 py-1 text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors"
                             >
                               <Minus className="w-3 h-3" />
@@ -188,8 +238,14 @@ export function CartDrawer() {
                               {item.quantity}
                             </span>
                             <button
-                              onClick={() => updateQuantity(item.id, 1)}
-                              className="px-2 py-1 text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors"
+                              disabled={isAtMaxStock || isOutOfStock}
+                              onClick={() => updateQuantity(item.id, 1, stock)}
+                              className={`px-2 py-1 transition-colors ${
+                                isAtMaxStock || isOutOfStock
+                                  ? "text-zinc-300 dark:text-zinc-600 cursor-not-allowed opacity-40"
+                                  : "text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
+                              }`}
+                              title={isAtMaxStock ? t("onlyXAvailable", { count: stock }) : undefined}
                             >
                               <Plus className="w-3 h-3" />
                             </button>
@@ -212,6 +268,20 @@ export function CartDrawer() {
             {/* Drawer Footer & Checkout Controls */}
             {cart.length > 0 && (
               <div className="p-6 border-t border-black/[0.06] dark:border-white/[0.06] bg-zinc-50 dark:bg-[#07070c] space-y-4">
+                {stockAdjustmentNotice && (
+                  <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-start gap-2 text-amber-700 dark:text-amber-400 text-xs">
+                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                    <span>{stockAdjustmentNotice}</span>
+                  </div>
+                )}
+
+                {checkoutError && (
+                  <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-start gap-2 text-rose-600 dark:text-rose-400 text-xs">
+                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                    <span>{checkoutError}</span>
+                  </div>
+                )}
+
                 <div className="space-y-1.5 text-xs">
                   <div className="flex justify-between text-zinc-600 dark:text-zinc-400">
                     <span>{t("subtotal")}</span>
@@ -254,7 +324,12 @@ export function CartDrawer() {
                           signUpFallbackRedirectUrl={`/${locale}/checkout`}
                         >
                           <button
-                            className="w-full py-3.5 rounded-2xl bg-zinc-900 hover:bg-zinc-800 dark:bg-white dark:hover:bg-zinc-100 text-white dark:text-zinc-900 font-display font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-xl hover:scale-[1.01] active:scale-[0.99]"
+                            disabled={hasOutOfStockItem}
+                            className={`w-full py-3.5 rounded-2xl font-display font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-xl ${
+                              hasOutOfStockItem
+                                ? "bg-zinc-300 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-600 cursor-not-allowed"
+                                : "bg-zinc-900 hover:bg-zinc-800 dark:bg-white dark:hover:bg-zinc-100 text-white dark:text-zinc-900 hover:scale-[1.01] active:scale-[0.99]"
+                            }`}
                           >
                             <span>{t("signInToCheckout")}</span>
                             <ArrowRight className="w-4 h-4 text-moya-red" />
@@ -267,11 +342,20 @@ export function CartDrawer() {
                     ) : (
                       <button
                         onClick={handleStripeCheckout}
-                        disabled={checkoutStep === "processing"}
-                        className="w-full py-3.5 rounded-2xl bg-moya-red hover:bg-rose-500 text-white font-display font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-xl shadow-moya-red-deep/50"
+                        disabled={checkoutStep === "processing" || hasOutOfStockItem}
+                        className={`w-full py-3.5 rounded-2xl font-display font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-xl ${
+                          hasOutOfStockItem
+                            ? "bg-zinc-300 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-600 cursor-not-allowed"
+                            : "bg-moya-red hover:bg-rose-500 text-white shadow-moya-red-deep/50"
+                        }`}
                       >
                         {checkoutStep === "processing" ? (
-                          <span>Connecting to Gateway...</span>
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin text-white" />
+                            <span>Connecting to Gateway...</span>
+                          </>
+                        ) : hasOutOfStockItem ? (
+                          <span>{t("soldOutItem")}</span>
                         ) : (
                           <>
                             <span>{t("checkoutStripe")}</span>
@@ -284,7 +368,12 @@ export function CartDrawer() {
                     {/* WhatsApp Direct Order Button */}
                     <button
                       onClick={handleWhatsAppOrder}
-                      className="w-full py-3 rounded-2xl bg-moya-green-deep/80 hover:bg-moya-green text-white font-display font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg shadow-moya-green-deep/40"
+                      disabled={checkoutStep === "processing" || hasOutOfStockItem}
+                      className={`w-full py-3 rounded-2xl font-display font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg ${
+                        hasOutOfStockItem
+                          ? "bg-zinc-300 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-600 cursor-not-allowed"
+                          : "bg-moya-green-deep/80 hover:bg-moya-green text-white shadow-moya-green-deep/40"
+                      }`}
                     >
                       <MessageCircle className="w-4 h-4" />
                       <span>{t("checkoutWhatsApp")}</span>

@@ -9,6 +9,7 @@ export interface CartItem {
   image: string;
   silhouette: string;
   quantity: number;
+  maxStock?: number;
 }
 
 interface StoreState {
@@ -18,9 +19,13 @@ interface StoreState {
   openCart: () => void;
   closeCart: () => void;
   toggleCart: () => void;
-  addToCart: (cap: CapVariant, quantity?: number) => void;
+  addToCart: (cap: CapVariant, quantity?: number, maxStock?: number) => void;
   removeFromCart: (id: string) => void;
-  updateQuantity: (id: string, delta: number) => void;
+  updateQuantity: (id: string, delta: number, maxStock?: number) => void;
+  clampCartToStock: (variants: { variantId: string; stock: number; nameEn?: string }[]) => {
+    adjusted: boolean;
+    adjustedNames: string[];
+  };
   clearCart: () => void;
 
   // Currency (USD only)
@@ -47,20 +52,30 @@ export const useStore = create<StoreState>()(
       closeCart: () => set({ isCartOpen: false }),
       toggleCart: () => set((state) => ({ isCartOpen: !state.isCartOpen })),
 
-      addToCart: (cap, quantity = 1) => {
+      addToCart: (cap, quantity = 1, maxStock?: number) => {
         const { cart } = get();
         const existing = cart.find((item) => item.id === cap.id);
+        const limit = maxStock !== undefined ? maxStock : (cap.stock ?? 99);
+
+        if (limit <= 0) {
+          // Out of stock; cannot add
+          return;
+        }
 
         if (existing) {
+          const targetQty = existing.quantity + quantity;
+          const newQty = Math.min(limit, targetQty);
+
           set({
             cart: cart.map((item) =>
               item.id === cap.id
-                ? { ...item, quantity: item.quantity + quantity }
+                ? { ...item, quantity: newQty, maxStock: limit }
                 : item
             ),
             isCartOpen: true,
           });
         } else {
+          const initialQty = Math.min(limit, Math.max(1, quantity));
           set({
             cart: [
               ...cart,
@@ -70,7 +85,8 @@ export const useStore = create<StoreState>()(
                 priceUsd: cap.priceUsd,
                 image: cap.image,
                 silhouette: cap.silhouette,
-                quantity,
+                quantity: initialQty,
+                maxStock: limit,
               },
             ],
             isCartOpen: true,
@@ -83,18 +99,58 @@ export const useStore = create<StoreState>()(
           cart: state.cart.filter((item) => item.id !== id),
         })),
 
-      updateQuantity: (id, delta) =>
+      updateQuantity: (id, delta, maxStock?: number) =>
         set((state) => ({
           cart: state.cart
             .map((item) => {
               if (item.id === id) {
-                const newQty = item.quantity + delta;
-                return newQty > 0 ? { ...item, quantity: newQty } : null;
+                const limit = maxStock !== undefined ? maxStock : (item.maxStock ?? 99);
+                const targetQty = item.quantity + delta;
+                const newQty = Math.min(limit, targetQty);
+                return newQty > 0 ? { ...item, quantity: newQty, maxStock: limit } : null;
               }
               return item;
             })
             .filter(Boolean) as CartItem[],
         })),
+
+      clampCartToStock: (variants) => {
+        const { cart } = get();
+        if (!variants || variants.length === 0 || cart.length === 0) {
+          return { adjusted: false, adjustedNames: [] };
+        }
+
+        let adjusted = false;
+        const adjustedNames: string[] = [];
+
+        const updatedCart = cart
+          .map((item) => {
+            const variant = variants.find((v) => v.variantId === item.id);
+            if (!variant) return item;
+
+            const stock = typeof variant.stock === "number" ? variant.stock : 0;
+            if (stock <= 0) {
+              adjusted = true;
+              adjustedNames.push(item.name);
+              return null; // Remove depleted items
+            }
+
+            if (item.quantity > stock) {
+              adjusted = true;
+              adjustedNames.push(item.name);
+              return { ...item, quantity: stock, maxStock: stock };
+            }
+
+            return { ...item, maxStock: stock };
+          })
+          .filter(Boolean) as CartItem[];
+
+        if (adjusted) {
+          set({ cart: updatedCart });
+        }
+
+        return { adjusted, adjustedNames };
+      },
 
       clearCart: () => set({ cart: [] }),
 
