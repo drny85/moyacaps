@@ -475,11 +475,10 @@ export default function AdminOrdersPage() {
               <button
                 key={pill.id}
                 onClick={() => setStatusFilter(pill.id)}
-                className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all ${
-                  isSelected
-                    ? "bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-semibold shadow-xs"
-                    : "bg-zinc-100 dark:bg-white/[0.04] text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
-                }`}
+                className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all ${isSelected
+                  ? "bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-semibold shadow-xs"
+                  : "bg-zinc-100 dark:bg-white/[0.04] text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
+                  }`}
               >
                 {pill.label}
               </button>
