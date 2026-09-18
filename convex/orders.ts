@@ -1,5 +1,5 @@
-import { mutation, query } from "./_generated/server";
-import { v } from "convex/values";
+import { mutation, query, internalMutation } from "./_generated/server";
+import { v, ConvexError } from "convex/values";
 import { requireAdmin } from "./auth";
 
 const shippingAddressValidator = v.object({
@@ -38,6 +38,9 @@ export const createOrder = mutation({
     trackingNumber: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    // Only administrators or verified system processes can create orders directly
+    await requireAdmin(ctx);
+
     const orderId = await ctx.db.insert("orders", {
       ...args,
       createdAt: Date.now(),
@@ -48,7 +51,7 @@ export const createOrder = mutation({
       for (const item of args.items) {
         const variant = await ctx.db
           .query("variants")
-          .filter((q) => q.eq(q.field("variantId"), item.variantId))
+          .withIndex("by_variantId", (q) => q.eq("variantId", item.variantId))
           .first();
 
         if (variant && variant.stock >= item.quantity) {
@@ -63,7 +66,7 @@ export const createOrder = mutation({
   },
 });
 
-export const createOrUpdateStripeOrder = mutation({
+export const createOrUpdateStripeOrder = internalMutation({
   args: {
     stripeSessionId: v.string(),
     orderNumber: v.string(),
@@ -122,7 +125,7 @@ export const createOrUpdateStripeOrder = mutation({
     for (const item of args.items) {
       const variant = await ctx.db
         .query("variants")
-        .filter((q) => q.eq(q.field("variantId"), item.variantId))
+        .withIndex("by_variantId", (q) => q.eq("variantId", item.variantId))
         .first();
 
       if (variant && variant.stock >= item.quantity) {
@@ -147,7 +150,13 @@ export const getOrderBySessionOrNumber = query({
       .withIndex("by_orderNumber", (q) => q.eq("orderNumber", args.identifier))
       .first();
 
-    if (byNumber) return byNumber;
+    const sanitizeOrder = (order: any) => {
+      if (!order) return null;
+      const { adminNotes, ...publicFields } = order;
+      return publicFields;
+    };
+
+    if (byNumber) return sanitizeOrder(byNumber);
 
     // Try by stripeSessionId
     const bySession = await ctx.db
@@ -155,7 +164,7 @@ export const getOrderBySessionOrNumber = query({
       .withIndex("by_stripeSessionId", (q) => q.eq("stripeSessionId", args.identifier))
       .first();
 
-    return bySession;
+    return sanitizeOrder(bySession);
   },
 });
 
@@ -164,6 +173,16 @@ export const getOrdersByClerkId = query({
     clerkUserId: v.string(),
   },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return [];
+    }
+
+    const isSelf = identity.subject === args.clerkUserId;
+    if (!isSelf) {
+      await requireAdmin(ctx);
+    }
+
     const orders = await ctx.db
       .query("orders")
       .withIndex("by_clerkUserId", (q) => q.eq("clerkUserId", args.clerkUserId))
@@ -178,6 +197,7 @@ export const getOrdersByClerkId = query({
 export const getOrders = query({
   args: {},
   handler: async (ctx) => {
+    await requireAdmin(ctx);
     const orders = await ctx.db.query("orders").order("desc").collect();
     return orders.filter((o) => o.status !== "pending");
   },
@@ -186,9 +206,10 @@ export const getOrders = query({
 export const cleanupPendingOrders = mutation({
   args: {},
   handler: async (ctx) => {
+    await requireAdmin(ctx);
     const pending = await ctx.db
       .query("orders")
-      .filter((q) => q.eq(q.field("status"), "pending"))
+      .withIndex("by_status", (q) => q.eq("status", "pending"))
       .collect();
 
     for (const order of pending) {
@@ -206,17 +227,23 @@ export const updateShippingAddress = mutation({
     customerPhone: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const order = await ctx.db.get(args.orderId);
-    if (!order) {
-      throw new Error("Order not found");
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new ConvexError("Unauthorized: Authentication required.");
     }
 
-    if (order.clerkUserId && order.clerkUserId !== args.clerkUserId) {
-      throw new Error("Unauthorized to modify this order");
+    const order = await ctx.db.get(args.orderId);
+    if (!order) {
+      throw new ConvexError("Order not found");
+    }
+
+    const isOwner = identity.subject === args.clerkUserId && order.clerkUserId === identity.subject;
+    if (!isOwner) {
+      await requireAdmin(ctx);
     }
 
     if (order.status === "dispatched" || order.status === "delivered" || order.status === "cancelled") {
-      throw new Error(`Cannot modify address when order status is ${order.status}`);
+      throw new ConvexError(`Cannot modify address when order status is ${order.status}`);
     }
 
     await ctx.db.patch(args.orderId, {
@@ -265,28 +292,34 @@ export const cancelOrder = mutation({
     reason: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const order = await ctx.db.get(args.orderId);
-    if (!order) {
-      throw new Error("Order not found");
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new ConvexError("Unauthorized: Authentication required.");
     }
 
-    if (order.clerkUserId && order.clerkUserId !== args.clerkUserId) {
-      throw new Error("Unauthorized to cancel this order");
+    const order = await ctx.db.get(args.orderId);
+    if (!order) {
+      throw new ConvexError("Order not found");
+    }
+
+    const isOwner = identity.subject === args.clerkUserId && order.clerkUserId === identity.subject;
+    if (!isOwner) {
+      await requireAdmin(ctx);
     }
 
     if (order.status === "dispatched" || order.status === "delivered") {
-      throw new Error("Cannot cancel an order that has already been dispatched. Please request a return via concierge.");
+      throw new ConvexError("Cannot cancel an order that has already been dispatched. Please request a return via concierge.");
     }
 
     if (order.status === "cancelled") {
-      throw new Error("Order is already cancelled");
+      throw new ConvexError("Order is already cancelled");
     }
 
     // Restore stock in variants
     for (const item of order.items) {
       const variant = await ctx.db
         .query("variants")
-        .filter((q) => q.eq(q.field("variantId"), item.variantId))
+        .withIndex("by_variantId", (q) => q.eq("variantId", item.variantId))
         .first();
 
       if (variant) {
@@ -375,25 +408,25 @@ export const getOrderByOrderNumberAndEmail = query({
     email: v.string(),
   },
   handler: async (ctx, args) => {
-    const cleanNumber = args.orderNumber.trim().toUpperCase();
+    const cleanNumber = args.orderNumber.trim().toUpperCase().replace(/^#/, "");
     const cleanEmail = args.email.trim().toLowerCase();
 
     if (!cleanNumber || !cleanEmail) {
       return null;
     }
 
-    // Try direct uppercase match or by prefix
+    // Try direct uppercase match
     let order = await ctx.db
       .query("orders")
       .withIndex("by_orderNumber", (q) => q.eq("orderNumber", cleanNumber))
       .first();
 
-    if (!order) {
-      // Fallback search in case user entered lowercase or partial
-      const allOrders = await ctx.db.query("orders").order("desc").take(500);
-      order = allOrders.find(
-        (o) => o.orderNumber.trim().toUpperCase() === cleanNumber
-      ) || null;
+    // If not found and input lacked "MC-" prefix, try with prefix
+    if (!order && !cleanNumber.startsWith("MC-")) {
+      order = await ctx.db
+        .query("orders")
+        .withIndex("by_orderNumber", (q) => q.eq("orderNumber", `MC-${cleanNumber}`))
+        .first();
     }
 
     if (!order) {
@@ -579,7 +612,7 @@ export const getAnalyticsAdmin = query({
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
-    const orders = await ctx.db.query("orders").collect();
+    const orders = await ctx.db.query("orders").order("desc").take(2000);
     const variants = await ctx.db.query("variants").collect();
 
     let totalRevenue = 0;

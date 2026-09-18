@@ -1,8 +1,8 @@
 "use node";
 
 import { action } from "./_generated/server";
-import { v } from "convex/values";
-import { api } from "./_generated/api";
+import { v, ConvexError } from "convex/values";
+import { api, internal } from "./_generated/api";
 import Stripe from "stripe";
 
 function getStripe(): Stripe {
@@ -170,6 +170,20 @@ export const cancelAndRefundOrder = action({
     orderNumber: string;
     message: string;
   }> => {
+    // Authenticate caller
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new ConvexError("Unauthorized: Authentication required to cancel order.");
+    }
+    if (identity.subject !== args.clerkUserId) {
+      const user = await ctx.runQuery(api.users.getUserByClerkId, {
+        clerkId: identity.subject,
+      });
+      if (user?.role !== "admin") {
+        throw new ConvexError("Forbidden: Cannot cancel another customer's order.");
+      }
+    }
+
     // 1. Cancel order in Convex and restore inventory
     const result: {
       success: boolean;
@@ -234,17 +248,17 @@ export const cancelAndRefundOrderAdmin = action({
     orderNumber: string;
     message: string;
   }> => {
-    // 1. Verify caller has admin identity
+    // 1. Strictly verify caller has authenticated admin identity
     const identity = await ctx.auth.getUserIdentity();
-    if (process.env.NODE_ENV !== "development" || identity?.subject) {
-      if (identity?.subject) {
-        const adminUser = await ctx.runQuery(api.users.getUserByClerkId, {
-          clerkId: identity.subject,
-        });
-        if (adminUser?.role !== "admin") {
-          throw new Error("Unauthorized: Administrative privileges required to cancel orders.");
-        }
-      }
+    if (!identity) {
+      throw new ConvexError("Unauthorized: Staff authentication required to cancel orders.");
+    }
+
+    const adminUser = await ctx.runQuery(api.users.getUserByClerkId, {
+      clerkId: identity.subject,
+    });
+    if (adminUser?.role !== "admin") {
+      throw new ConvexError("Unauthorized: Administrative privileges required to cancel orders.");
     }
 
     // 2. Cancel order in Convex and restore inventory
@@ -329,7 +343,7 @@ export const syncCheckoutSession = action({
         console.error("Failed to parse itemsJson in syncCheckoutSession:", e);
       }
 
-      const orderId: any = await ctx.runMutation(api.orders.createOrUpdateStripeOrder, {
+      const orderId: any = await ctx.runMutation(internal.orders.createOrUpdateStripeOrder, {
         stripeSessionId: session.id,
         orderNumber: metadata.orderNumber || `MC-${session.id.slice(-8).toUpperCase()}`,
         customerEmail: session.customer_details?.email || undefined,
@@ -383,6 +397,9 @@ export const fulfillStripeWebhook = action({
         throw new Error(`Webhook Error: ${err.message}`);
       }
     } else {
+      if (process.env.NODE_ENV === "production") {
+        throw new Error("STRIPE_WEBHOOK_SECRET is not configured in production environment.");
+      }
       // In dev or sandbox when secret is not configured, parse payload directly
       event = JSON.parse(args.payload) as Stripe.Event;
     }
@@ -402,7 +419,7 @@ export const fulfillStripeWebhook = action({
         console.error("Failed to parse itemsJson in webhook:", e);
       }
 
-      await ctx.runMutation(api.orders.createOrUpdateStripeOrder, {
+      await ctx.runMutation(internal.orders.createOrUpdateStripeOrder, {
         stripeSessionId: session.id,
         orderNumber: metadata.orderNumber || `MC-${session.id.slice(-8).toUpperCase()}`,
         customerEmail: session.customer_details?.email || undefined,

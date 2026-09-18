@@ -1,6 +1,6 @@
 import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
-import { api } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import { Webhook } from "svix";
 import { PRIMARY_ADMIN_EMAIL, PRIMARY_ADMIN_CLERK_ID } from "./auth";
 
@@ -60,6 +60,9 @@ http.route({
         return new Response("Invalid webhook signature", { status: 400 });
       }
     } else {
+      if (process.env.NODE_ENV === "production") {
+        return new Response("Webhook secret unconfigured in production", { status: 500 });
+      }
       try {
         event = JSON.parse(payload);
       } catch {
@@ -89,7 +92,7 @@ http.route({
 
         const role = isAdmin ? "admin" : "customer";
 
-        await ctx.runMutation(api.users.upsertUser, {
+        await ctx.runMutation(internal.users.upsertUser, {
           clerkId,
           email,
           name,
@@ -100,7 +103,7 @@ http.route({
       } else if (eventType === "user.deleted") {
         const clerkId = data.id;
         if (clerkId) {
-          await ctx.runMutation(api.users.softDeleteUser, { clerkId });
+          await ctx.runMutation(internal.users.softDeleteUser, { clerkId });
         }
       }
 

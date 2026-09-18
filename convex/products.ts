@@ -22,7 +22,7 @@ export const getVariantById = query({
   handler: async (ctx, args) => {
     const variant = await ctx.db
       .query("variants")
-      .filter((q) => q.eq(q.field("variantId"), args.variantId))
+      .withIndex("by_variantId", (q) => q.eq("variantId", args.variantId))
       .first();
     return variant;
   },
@@ -31,6 +31,7 @@ export const getVariantById = query({
 export const seedAll = mutation({
   args: {},
   handler: async (ctx) => {
+    await requireAdmin(ctx);
     // Clear existing
     const existingProducts = await ctx.db.query("products").collect();
     for (const p of existingProducts) {

@@ -38,8 +38,11 @@ export function checkIsAdmin(user: any): boolean {
     .map((e) => e.trim().toLowerCase())
     .filter(Boolean);
 
-  const isWhitelisted = adminEmails.length > 0 && emails.some((e) => adminEmails.includes(e));
+  if (adminEmails.length > 0) {
+    const isWhitelisted = emails.some((e) => adminEmails.includes(e));
+    return hasAdminRole || isWhitelisted;
+  }
 
-  return hasAdminRole && isWhitelisted;
+  return hasAdminRole;
 }
 

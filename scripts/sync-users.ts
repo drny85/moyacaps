@@ -1,6 +1,6 @@
 import { createClerkClient } from "@clerk/backend";
 import { ConvexHttpClient } from "convex/browser";
-import { api } from "../convex/_generated/api";
+import { internal } from "../convex/_generated/api";
 
 const secretKey = process.env.CLERK_SECRET_KEY;
 if (!secretKey) {
@@ -47,7 +47,7 @@ async function main() {
 
     const role = isAdmin ? "admin" : "customer";
 
-    const result = await convex.mutation(api.users.upsertUser, {
+    const result: any = await (convex.mutation as any)(internal.users.upsertUser, {
       clerkId: user.id,
       email,
       name,

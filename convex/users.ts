@@ -66,7 +66,7 @@ export const syncCurrentUser = mutation({
 /**
  * Upsert user called by webhook handler or administrative backfill scripts.
  */
-export const upsertUser = mutation({
+export const upsertUser = internalMutation({
   args: {
     clerkId: v.string(),
     email: v.string(),
@@ -114,7 +114,7 @@ export const upsertUser = mutation({
 /**
  * Soft delete user called by webhook handler when user is deleted in Clerk.
  */
-export const softDeleteUser = mutation({
+export const softDeleteUser = internalMutation({
   args: {
     clerkId: v.string(),
   },
@@ -137,13 +137,23 @@ export const softDeleteUser = mutation({
 });
 
 /**
- * Query user document by Clerk ID.
+ * Query user document by Clerk ID (caller must own the ID or be admin).
  */
 export const getUserByClerkId = query({
   args: {
     clerkId: v.string(),
   },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return null;
+    }
+
+    const isSelf = identity.subject === args.clerkId;
+    if (!isSelf) {
+      await requireAdmin(ctx);
+    }
+
     const user = await ctx.db
       .query("users")
       .withIndex("by_clerkId", (q) => q.eq("clerkId", args.clerkId))
@@ -167,3 +177,4 @@ export const getAllUsersAdmin = query({
     return await ctx.db.query("users").order("desc").collect();
   },
 });
+
