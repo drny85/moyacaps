@@ -52,7 +52,7 @@
     "filterSnapback": "Snapback Clásica ({count})",
     "filterTrucker": "Estilo Trucker / Malla ({count})",
     "searchPlaceholder": "Filtrar por color (ej. Rojo, Camuflaje, Rosa)...",
-    "priceTag": "$120.00 USD / $2,400 MXN",
+    "priceTag": "$120.00 USD",
     "addToCart": "Añadir a la Bolsa",
     "inCartBadge": "En Carrito ({count})",
     "inCartBtn": "En Carrito ({count}) • +1",

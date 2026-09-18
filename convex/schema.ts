@@ -8,7 +8,6 @@ export default defineSchema({
     slug: v.string(),
     collection: v.string(),
     basePriceUsd: v.number(),
-    basePriceMxn: v.number(),
     featured: v.boolean(),
   }),
   variants: defineTable({
@@ -21,7 +20,6 @@ export default defineSchema({
     image: v.string(),
     stock: v.number(),
     priceUsd: v.number(),
-    priceMxn: v.number(),
     isFeatured: v.boolean(),
   }),
   orders: defineTable({

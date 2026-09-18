@@ -10,7 +10,7 @@ import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { useSafeUser } from "@/lib/useSafeUser";
 
 export function MobileActionBar() {
-  const { cart, toggleCart, currency } = useStore();
+  const { cart, toggleCart } = useStore();
   const t = useTranslations("nav");
   const { isSignedIn } = useSafeUser();
   const [isMounted, setIsMounted] = useState(false);
@@ -22,8 +22,7 @@ export function MobileActionBar() {
   const totalItems = isMounted ? cart.reduce((sum, item) => sum + item.quantity, 0) : 0;
   const subtotal = isMounted
     ? cart.reduce((sum, item) => {
-        const price = currency === "USD" ? item.priceUsd : item.priceMxn;
-        return sum + price * item.quantity;
+        return sum + item.priceUsd * item.quantity;
       }, 0)
     : 0;
 
@@ -95,11 +94,7 @@ export function MobileActionBar() {
             )}
           </div>
           <span className="font-mono text-[10px]">
-            {totalItems > 0
-              ? currency === "USD"
-                ? `$${subtotal}`
-                : `$${subtotal}`
-              : t("cart")}
+            {totalItems > 0 ? `$${subtotal}` : t("cart")}
           </span>
         </button>
       </div>

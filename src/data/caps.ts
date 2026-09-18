@@ -8,7 +8,6 @@ export interface CapVariant {
   image: string;
   stock: number;
   priceUsd: number;
-  priceMxn: number;
   isFeatured?: boolean;
   tagEn?: string;
   tagEs?: string;
@@ -25,7 +24,6 @@ export const CAP_VARIANTS: CapVariant[] = [
     image: "/caps/negro-rojo.png",
     stock: 12,
     priceUsd: 120,
-    priceMxn: 2400,
     isFeatured: true,
     tagEn: "Flagship Edition",
     tagEs: "Edición Insignia",
@@ -40,7 +38,6 @@ export const CAP_VARIANTS: CapVariant[] = [
     image: "/caps/blanco-rojo.png",
     stock: 8,
     priceUsd: 120,
-    priceMxn: 2400,
     tagEn: "High Demand",
     tagEs: "Alta Demanda",
   },
@@ -54,7 +51,6 @@ export const CAP_VARIANTS: CapVariant[] = [
     image: "/caps/azul-marino-rojo.png",
     stock: 15,
     priceUsd: 120,
-    priceMxn: 2400,
   },
   {
     id: "rojo-negro",
@@ -66,7 +62,6 @@ export const CAP_VARIANTS: CapVariant[] = [
     image: "/caps/rojo-negro.png",
     stock: 6,
     priceUsd: 120,
-    priceMxn: 2400,
     tagEn: "Low Stock",
     tagEs: "Pocas Piezas",
   },
@@ -80,7 +75,6 @@ export const CAP_VARIANTS: CapVariant[] = [
     image: "/caps/verde-rojo.png",
     stock: 14,
     priceUsd: 120,
-    priceMxn: 2400,
     tagEn: "Lucky Green",
     tagEs: "Trébol Verde",
   },
@@ -94,7 +88,6 @@ export const CAP_VARIANTS: CapVariant[] = [
     image: "/caps/gris-rojo.png",
     stock: 10,
     priceUsd: 120,
-    priceMxn: 2400,
   },
   {
     id: "beige-rojo",
@@ -106,7 +99,6 @@ export const CAP_VARIANTS: CapVariant[] = [
     image: "/caps/beige-rojo.png",
     stock: 9,
     priceUsd: 120,
-    priceMxn: 2400,
   },
   {
     id: "marron-rojo",
@@ -118,7 +110,6 @@ export const CAP_VARIANTS: CapVariant[] = [
     image: "/caps/marron-rojo.png",
     stock: 7,
     priceUsd: 120,
-    priceMxn: 2400,
   },
   {
     id: "azul-rey-blanco",
@@ -130,7 +121,6 @@ export const CAP_VARIANTS: CapVariant[] = [
     image: "/caps/azul-rey-blanco.png",
     stock: 11,
     priceUsd: 120,
-    priceMxn: 2400,
   },
   {
     id: "rosa-blanco",
@@ -142,7 +132,6 @@ export const CAP_VARIANTS: CapVariant[] = [
     image: "/caps/rosa-blanco.png",
     stock: 8,
     priceUsd: 120,
-    priceMxn: 2400,
   },
   {
     id: "morado-blanco",
@@ -154,7 +143,6 @@ export const CAP_VARIANTS: CapVariant[] = [
     image: "/caps/morado-blanco.png",
     stock: 5,
     priceUsd: 120,
-    priceMxn: 2400,
     tagEn: "Rare Color",
     tagEs: "Color Exclusivo",
   },
@@ -168,7 +156,6 @@ export const CAP_VARIANTS: CapVariant[] = [
     image: "/caps/turquesa-blanco.png",
     stock: 12,
     priceUsd: 120,
-    priceMxn: 2400,
   },
   {
     id: "camuflaje-negro",
@@ -180,7 +167,6 @@ export const CAP_VARIANTS: CapVariant[] = [
     image: "/caps/camuflaje-negro.png",
     stock: 18,
     priceUsd: 125,
-    priceMxn: 2500,
     tagEn: "Tactical Series",
     tagEs: "Serie Táctica",
   },
@@ -194,7 +180,6 @@ export const CAP_VARIANTS: CapVariant[] = [
     image: "/caps/gris-negro-trucker.png",
     stock: 14,
     priceUsd: 120,
-    priceMxn: 2400,
     tagEn: "Trucker Mesh",
     tagEs: "Malla Trucker",
   },
@@ -208,7 +193,6 @@ export const CAP_VARIANTS: CapVariant[] = [
     image: "/caps/blanco-negro-trucker.png",
     stock: 13,
     priceUsd: 120,
-    priceMxn: 2400,
     tagEn: "Trucker Mesh",
     tagEs: "Malla Trucker",
   },
@@ -222,7 +206,6 @@ export const CAP_VARIANTS: CapVariant[] = [
     image: "/caps/camuflaje-gris-negro.png",
     stock: 9,
     priceUsd: 125,
-    priceMxn: 2500,
     tagEn: "Tactical Series",
     tagEs: "Serie Táctica",
   },

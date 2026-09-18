@@ -68,7 +68,7 @@ export const createCheckoutSession = action({
       }
 
       const qty = Math.max(1, Math.floor(item.quantity || 1));
-      const unitPrice = args.currency === "USD" ? variant.priceUsd : variant.priceMxn;
+      const unitPrice = variant.priceUsd;
 
       totalItems += qty;
       subtotal += unitPrice * qty;
@@ -83,7 +83,7 @@ export const createCheckoutSession = action({
     }
 
     const freeShipping = totalItems >= 2;
-    const shippingFee = freeShipping ? 0 : args.currency === "USD" ? 8 : 150;
+    const shippingFee = freeShipping ? 0 : 8;
     const total = subtotal + shippingFee;
 
     const orderNumber = `MC-${Date.now().toString(36).toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`;
@@ -91,7 +91,7 @@ export const createCheckoutSession = action({
 
     const stripeLineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = validatedItems.map((item) => ({
       price_data: {
-        currency: args.currency.toLowerCase(),
+        currency: "usd",
         product_data: {
           name: `Moya Caps 0880 — ${item.name}`,
           images: [item.image.startsWith("http") ? item.image : `${args.origin}${item.image}`],
@@ -110,7 +110,7 @@ export const createCheckoutSession = action({
           type: "fixed_amount",
           fixed_amount: {
             amount: Math.round(shippingFee * 100),
-            currency: args.currency.toLowerCase(),
+            currency: "usd",
           },
           display_name: freeShipping ? "Free Worldwide Express Delivery" : "Express Tracked Courier",
           delivery_estimate: {

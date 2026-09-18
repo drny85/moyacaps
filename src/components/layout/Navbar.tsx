@@ -22,7 +22,7 @@ export function Navbar() {
     setIsMounted(true);
   }, []);
 
-  const { cart, toggleCart, currency, setCurrency } = useStore();
+  const { cart, toggleCart } = useStore();
   const totalItems = isMounted ? cart.reduce((sum, item) => sum + item.quantity, 0) : 0;
 
   const switchLocale = (newLocale: "en" | "es") => {
@@ -98,30 +98,6 @@ export function Navbar() {
           <div className="flex items-center gap-2 sm:gap-2.5">
             {/* Theme Toggle */}
             <ThemeToggle compact={true} />
-
-            {/* Currency */}
-            <div className="hidden sm:flex items-center glass-dark rounded-xl p-0.5 border border-black/[0.06] dark:border-white/[0.06] text-xs font-mono">
-              <button
-                onClick={() => setCurrency("USD")}
-                className={`px-2.5 py-1.5 rounded-lg transition-all ${
-                  currency === "USD"
-                    ? "bg-moya-red text-white font-bold shadow-sm"
-                    : "text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
-                }`}
-              >
-                USD
-              </button>
-              <button
-                onClick={() => setCurrency("MXN")}
-                className={`px-2.5 py-1.5 rounded-lg transition-all ${
-                  currency === "MXN"
-                    ? "bg-moya-red text-white font-bold shadow-sm"
-                    : "text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
-                }`}
-              >
-                MXN
-              </button>
-            </div>
 
             {/* Language */}
             <div className="hidden sm:flex items-center gap-1 glass-dark px-2.5 py-1.5 rounded-xl text-xs font-display font-semibold text-zinc-600 dark:text-zinc-400 border border-black/[0.06] dark:border-white/[0.06]">
@@ -255,29 +231,6 @@ export function Navbar() {
 
               {/* Mobile-only controls */}
               <div className="flex items-center justify-between gap-3 pt-4 border-t border-black/[0.06] dark:border-white/[0.06]">
-                <div className="flex items-center glass-dark rounded-xl p-0.5 border border-black/[0.06] dark:border-white/[0.06] text-xs font-mono">
-                  <button
-                    onClick={() => setCurrency("USD")}
-                    className={`px-2.5 py-1.5 rounded-lg transition-all ${
-                      currency === "USD"
-                        ? "bg-moya-red text-white font-bold"
-                        : "text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
-                    }`}
-                  >
-                    USD
-                  </button>
-                  <button
-                    onClick={() => setCurrency("MXN")}
-                    className={`px-2.5 py-1.5 rounded-lg transition-all ${
-                      currency === "MXN"
-                        ? "bg-moya-red text-white font-bold"
-                        : "text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
-                    }`}
-                  >
-                    MXN
-                  </button>
-                </div>
-
                 <div className="flex items-center gap-1.5 text-xs font-display font-semibold">
                   <Globe className="w-3.5 h-3.5 text-moya-green" />
                   <button

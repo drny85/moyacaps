@@ -10,7 +10,7 @@ import { useState, useEffect } from "react";
 import confetti from "canvas-confetti";
 
 export function ProductQuickView() {
-  const { quickViewCap, closeQuickView, addToCart, currency, cart } = useStore();
+  const { quickViewCap, closeQuickView, addToCart, cart } = useStore();
   const t = useTranslations("quickView");
   const locale = useLocale();
   const [quantity, setQuantity] = useState(1);
@@ -23,15 +23,12 @@ export function ProductQuickView() {
 
   if (!quickViewCap) return null;
 
+  const name = locale === "es" ? quickViewCap.nameEs : quickViewCap.nameEn;
   const inCartItem = isMounted ? cart.find((i) => i.id === quickViewCap.id) : undefined;
   const inCartQty = inCartItem?.quantity || 0;
   const isInCart = inCartQty > 0;
 
-  const name = locale === "es" ? quickViewCap.nameEs : quickViewCap.nameEn;
-  const priceDisplay =
-    currency === "USD"
-      ? `$${quickViewCap.priceUsd * quantity}.00 USD`
-      : `$${quickViewCap.priceMxn * quantity}.00 MXN`;
+  const priceDisplay = `$${quickViewCap.priceUsd * quantity}.00 USD`;
 
   const handleAdd = () => {
     addToCart(quickViewCap, quantity);

@@ -23,13 +23,12 @@ export function CartDrawer() {
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
 
   const subtotal = cart.reduce((sum, item) => {
-    const price = currency === "USD" ? item.priceUsd : item.priceMxn;
-    return sum + price * item.quantity;
+    return sum + item.priceUsd * item.quantity;
   }, 0);
 
   // Free shipping threshold: 2+ caps
   const freeShippingUnlocked = totalItems >= 2;
-  const shippingFee = freeShippingUnlocked ? 0 : currency === "USD" ? 8 : 150;
+  const shippingFee = freeShippingUnlocked ? 0 : 8;
   const total = subtotal + shippingFee;
 
   // Launch WhatsApp order with itemized list
@@ -37,16 +36,12 @@ export function CartDrawer() {
     let message = `${t("whatsappGreeting")}\n\n`;
 
     cart.forEach((item, index) => {
-      const price = currency === "USD" ? `$${item.priceUsd}` : `$${item.priceMxn} MXN`;
-      message += `${index + 1}. ${item.name} (${item.quantity}x) - ${price} c/u\n`;
+      message += `${index + 1}. ${item.name} (${item.quantity}x) - $${item.priceUsd} USD c/u\n`;
     });
 
-    const formattedSubtotal = currency === "USD" ? `$${subtotal} USD` : `$${subtotal} MXN`;
-    const formattedTotal = currency === "USD" ? `$${total} USD` : `$${total} MXN`;
-
-    message += `\nSubtotal: ${formattedSubtotal}\n`;
-    message += `Envío/Shipping: ${freeShippingUnlocked ? "GRATIS / FREE" : (currency === "USD" ? "$8 USD" : "$150 MXN")}\n`;
-    message += `Total a pagar: ${formattedTotal}\n\n`;
+    message += `\nSubtotal: $${subtotal}.00 USD\n`;
+    message += `Envío/Shipping: ${freeShippingUnlocked ? "GRATIS / FREE" : "$8.00 USD"}\n`;
+    message += `Total a pagar: $${total}.00 USD\n\n`;
     message += `Por favor confirmen disponibilidad para coordinar envío y pago. ¡Gracias!`;
 
     const encoded = encodeURIComponent(message);
@@ -158,7 +153,6 @@ export function CartDrawer() {
                 </div>
               ) : (
                 cart.map((item) => {
-                  const itemPrice = currency === "USD" ? item.priceUsd : item.priceMxn;
                   return (
                     <div
                       key={item.id}
@@ -178,7 +172,7 @@ export function CartDrawer() {
                           {item.name}
                         </h4>
                         <div className="text-xs font-mono font-bold text-emerald-600 dark:text-moya-green-light mt-0.5">
-                          {currency === "USD" ? `$${itemPrice}` : `$${itemPrice} MXN`}
+                          ${item.priceUsd}.00 USD
                         </div>
 
                         {/* Quantity adjust */}
@@ -222,19 +216,19 @@ export function CartDrawer() {
                   <div className="flex justify-between text-zinc-600 dark:text-zinc-400">
                     <span>{t("subtotal")}</span>
                     <span className="font-mono text-zinc-900 dark:text-white font-semibold">
-                      {currency === "USD" ? `$${subtotal}.00 USD` : `$${subtotal}.00 MXN`}
+                      ${subtotal}.00 USD
                     </span>
                   </div>
                   <div className="flex justify-between text-zinc-600 dark:text-zinc-400">
                     <span>{t("shipping")}</span>
                     <span className="font-mono text-emerald-600 dark:text-moya-green-light font-bold">
-                      {shippingFee === 0 ? t("shippingFree") : currency === "USD" ? `$${shippingFee}.00 USD` : `$${shippingFee}.00 MXN`}
+                      {shippingFee === 0 ? t("shippingFree") : `$${shippingFee}.00 USD`}
                     </span>
                   </div>
                   <div className="flex justify-between text-sm font-display font-bold pt-2 border-t border-black/[0.06] dark:border-white/[0.06] text-zinc-900 dark:text-white">
                     <span>{t("total")}</span>
                     <span className="font-mono text-emerald-600 dark:text-moya-green-light text-base">
-                      {currency === "USD" ? `$${total}.00 USD` : `$${total}.00 MXN`}
+                      ${total}.00 USD
                     </span>
                   </div>
                 </div>

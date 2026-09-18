@@ -320,7 +320,7 @@ export function HeroInteractive() {
               <Check className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
               <span>{t("inCartCta", { count: inCartQty })}</span>
               <span className="text-emerald-600 dark:text-emerald-400 font-mono font-bold">
-                {currency === "USD" ? `$${activeCap.priceUsd}` : `$${activeCap.priceMxn} MXN`}
+                ${activeCap.priceUsd} USD
               </span>
             </button>
           ) : (
@@ -330,7 +330,7 @@ export function HeroInteractive() {
             >
               <span>{t("ctaClaim")}</span>
               <span className="text-emerald-600 dark:text-moya-green-light font-mono font-bold">
-                {currency === "USD" ? `$${activeCap.priceUsd}` : `$${activeCap.priceMxn} MXN`}
+                ${activeCap.priceUsd} USD
               </span>
             </button>
           )}

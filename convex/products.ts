@@ -47,7 +47,6 @@ export const seedAll = mutation({
       slug: "0880-good-luck",
       collection: "0880 Mythos",
       basePriceUsd: 120,
-      basePriceMxn: 2400,
       featured: true,
     });
 
@@ -63,7 +62,6 @@ export const seedAll = mutation({
         image: "/caps/negro-rojo.png",
         stock: 12,
         priceUsd: 120,
-        priceMxn: 2400,
         isFeatured: true,
       },
       {
@@ -76,7 +74,6 @@ export const seedAll = mutation({
         image: "/caps/blanco-rojo.png",
         stock: 8,
         priceUsd: 120,
-        priceMxn: 2400,
         isFeatured: false,
       },
       {
@@ -89,7 +86,6 @@ export const seedAll = mutation({
         image: "/caps/azul-marino-rojo.png",
         stock: 15,
         priceUsd: 120,
-        priceMxn: 2400,
         isFeatured: false,
       },
       {
@@ -102,7 +98,6 @@ export const seedAll = mutation({
         image: "/caps/rojo-negro.png",
         stock: 6,
         priceUsd: 120,
-        priceMxn: 2400,
         isFeatured: false,
       },
       {
@@ -115,7 +110,6 @@ export const seedAll = mutation({
         image: "/caps/verde-rojo.png",
         stock: 14,
         priceUsd: 120,
-        priceMxn: 2400,
         isFeatured: false,
       },
       {
@@ -128,7 +122,6 @@ export const seedAll = mutation({
         image: "/caps/gris-rojo.png",
         stock: 10,
         priceUsd: 120,
-        priceMxn: 2400,
         isFeatured: false,
       },
       {
@@ -141,7 +134,6 @@ export const seedAll = mutation({
         image: "/caps/beige-rojo.png",
         stock: 9,
         priceUsd: 120,
-        priceMxn: 2400,
         isFeatured: false,
       },
       {
@@ -154,7 +146,6 @@ export const seedAll = mutation({
         image: "/caps/marron-rojo.png",
         stock: 7,
         priceUsd: 120,
-        priceMxn: 2400,
         isFeatured: false,
       },
       {
@@ -167,7 +158,6 @@ export const seedAll = mutation({
         image: "/caps/azul-rey-blanco.png",
         stock: 11,
         priceUsd: 120,
-        priceMxn: 2400,
         isFeatured: false,
       },
       {
@@ -180,7 +170,6 @@ export const seedAll = mutation({
         image: "/caps/rosa-blanco.png",
         stock: 8,
         priceUsd: 120,
-        priceMxn: 2400,
         isFeatured: false,
       },
       {
@@ -193,7 +182,6 @@ export const seedAll = mutation({
         image: "/caps/morado-blanco.png",
         stock: 5,
         priceUsd: 120,
-        priceMxn: 2400,
         isFeatured: false,
       },
       {
@@ -206,7 +194,6 @@ export const seedAll = mutation({
         image: "/caps/turquesa-blanco.png",
         stock: 12,
         priceUsd: 120,
-        priceMxn: 2400,
         isFeatured: false,
       },
       {
@@ -219,7 +206,6 @@ export const seedAll = mutation({
         image: "/caps/camuflaje-negro.png",
         stock: 18,
         priceUsd: 125,
-        priceMxn: 2500,
         isFeatured: false,
       },
       {
@@ -232,7 +218,6 @@ export const seedAll = mutation({
         image: "/caps/gris-negro-trucker.png",
         stock: 14,
         priceUsd: 120,
-        priceMxn: 2400,
         isFeatured: false,
       },
       {
@@ -245,7 +230,6 @@ export const seedAll = mutation({
         image: "/caps/blanco-negro-trucker.png",
         stock: 13,
         priceUsd: 120,
-        priceMxn: 2400,
         isFeatured: false,
       },
       {
@@ -258,7 +242,6 @@ export const seedAll = mutation({
         image: "/caps/camuflaje-gris-negro.png",
         stock: 9,
         priceUsd: 125,
-        priceMxn: 2500,
         isFeatured: false,
       },
     ];

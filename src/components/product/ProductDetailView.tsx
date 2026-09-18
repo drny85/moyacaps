@@ -56,11 +56,8 @@ export function ProductDetailView({ cap, allCaps }: ProductDetailViewProps) {
   const inCartQty = inCartItem?.quantity || 0;
   const isInCart = inCartQty > 0;
 
-  const priceSingle = currency === "USD" ? cap.priceUsd : cap.priceMxn;
-  const priceDisplay =
-    currency === "USD"
-      ? `$${priceSingle * quantity}.00 USD`
-      : `$${priceSingle * quantity}.00 MXN`;
+  const priceSingle = cap.priceUsd;
+  const priceDisplay = `$${priceSingle * quantity}.00 USD`;
 
   const angles: { key: AngleKey; label: string; desc: string; src: string }[] = [
     {

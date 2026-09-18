@@ -27,8 +27,7 @@ export function CapCard({ cap, index = 0 }: { cap: CapVariant; index?: number })
 
   const name = locale === "es" ? cap.nameEs : cap.nameEn;
   const tag = locale === "es" ? cap.tagEs : cap.tagEn;
-  const priceDisplay =
-    currency === "USD" ? `$${cap.priceUsd}` : `$${cap.priceMxn} MXN`;
+  const priceDisplay = `$${cap.priceUsd} USD`;
 
   // 3D tilt effect on mouse move (desktop hover only)
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {

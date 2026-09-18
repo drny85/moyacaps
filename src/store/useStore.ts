@@ -6,7 +6,6 @@ export interface CartItem {
   id: string;
   name: string;
   priceUsd: number;
-  priceMxn: number;
   image: string;
   silhouette: string;
   quantity: number;
@@ -24,9 +23,9 @@ interface StoreState {
   updateQuantity: (id: string, delta: number) => void;
   clearCart: () => void;
 
-  // Currency
-  currency: "USD" | "MXN";
-  setCurrency: (currency: "USD" | "MXN") => void;
+  // Currency (USD only)
+  currency: "USD";
+  setCurrency: (currency: "USD") => void;
 
   // Theme
   theme: "dark" | "light";
@@ -69,7 +68,6 @@ export const useStore = create<StoreState>()(
                 id: cap.id,
                 name: cap.nameEn,
                 priceUsd: cap.priceUsd,
-                priceMxn: cap.priceMxn,
                 image: cap.image,
                 silhouette: cap.silhouette,
                 quantity,

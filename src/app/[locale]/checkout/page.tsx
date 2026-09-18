@@ -34,11 +34,10 @@ export default function CheckoutPage() {
 
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
   const subtotal = cart.reduce((sum, item) => {
-    const price = currency === "USD" ? item.priceUsd : item.priceMxn;
-    return sum + price * item.quantity;
+    return sum + item.priceUsd * item.quantity;
   }, 0);
   const freeShipping = totalItems >= 2;
-  const shippingFee = freeShipping ? 0 : currency === "USD" ? 8 : 150;
+  const shippingFee = freeShipping ? 0 : 8;
   const total = subtotal + shippingFee;
 
   const handleCheckout = async () => {
@@ -209,7 +208,7 @@ export default function CheckoutPage() {
                       </span>
                     </div>
                     <span className="font-mono text-zinc-500 shrink-0">
-                      {item.quantity}x • ${currency === "USD" ? item.priceUsd : item.priceMxn}
+                      {item.quantity}x • ${item.priceUsd}.00 USD
                     </span>
                   </div>
                 ))}
