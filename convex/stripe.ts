@@ -68,7 +68,7 @@ export const createCheckoutSession = action({
       }
 
       const qty = Math.max(1, Math.floor(item.quantity || 1));
-      const unitPrice = variant.priceUsd;
+      const unitPrice: number = typeof variant.priceUsd === "number" ? variant.priceUsd : 120;
 
       totalItems += qty;
       subtotal += unitPrice * qty;
