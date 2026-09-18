@@ -1,26 +1,13 @@
-import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { clerkMiddleware } from "@clerk/nextjs/server";
 import createMiddleware from "next-intl/middleware";
 import { routing } from "./i18n/routing";
 
 const intlMiddleware = createMiddleware(routing);
 
-// Routes requiring Clerk authentication
-const isProtectedRoute = createRouteMatcher([
-  "/account(.*)",
-  "/:locale/account(.*)",
-  "/checkout",
-  "/:locale/checkout",
-  "/admin(.*)",
-  "/:locale/admin(.*)",
-]);
-
 export const proxy = (req: any, ev: any) => {
-  // If Clerk publishable key is set, enforce route protection and run intlMiddleware
+  // If Clerk publishable key is set, initialize Clerk auth session and run intlMiddleware
   if (process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) {
-    return clerkMiddleware(async (auth, request) => {
-      if (isProtectedRoute(request)) {
-        await auth.protect();
-      }
+    return clerkMiddleware((_auth, request) => {
       return intlMiddleware(request);
     })(req, ev);
   }
