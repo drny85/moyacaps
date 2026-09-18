@@ -37,12 +37,15 @@ import {
   ArrowRight,
   ShieldCheck,
   XCircle,
+  Lock,
 } from "lucide-react";
+import { useSafeUser, SafeSignInButton } from "@/lib/useSafeUser";
 
 export default function TrackOrderPage() {
   const t = useTranslations("track");
   const locale = useLocale();
   const searchParams = useSearchParams();
+  const { isSignedIn } = useSafeUser();
 
   const initialOrder = searchParams.get("order") || "";
   const initialEmail = searchParams.get("email") || "";
@@ -371,6 +374,7 @@ export default function TrackOrderPage() {
                                 src={item.image}
                                 alt={item.name}
                                 fill
+                                sizes="48px"
                                 className="object-contain p-1"
                               />
                             </div>
@@ -379,14 +383,17 @@ export default function TrackOrderPage() {
                                 {item.name}
                               </span>
                               <span className="text-[11px] font-mono text-zinc-500">
-                                {t("quantity")}: {item.quantity} • ${item.price}.00 {orderResult.currency}
+                                {t("quantity")}: {item.quantity}
+                                {isSignedIn && item.price > 0 && ` • $${item.price}.00 ${orderResult.currency}`}
                               </span>
                             </div>
                           </div>
 
-                          <span className="font-mono font-bold text-xs text-zinc-900 dark:text-white">
-                            ${item.price * item.quantity}.00
-                          </span>
+                          {isSignedIn && item.price > 0 && (
+                            <span className="font-mono font-bold text-xs text-zinc-900 dark:text-white">
+                              ${item.price * item.quantity}.00
+                            </span>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -395,55 +402,107 @@ export default function TrackOrderPage() {
                   {/* Destination & Summary Footer */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-black/[0.06] dark:border-white/[0.06] text-xs">
                     {orderResult.shippingAddress && (
-                      <div className="space-y-1 text-zinc-600 dark:text-zinc-400">
+                      <div className="space-y-1.5 text-zinc-600 dark:text-zinc-400">
                         <span className="text-[10px] font-mono uppercase tracking-wider font-semibold text-zinc-500 block">
-                          {t("destinationTitle")}
+                          {isSignedIn ? t("destinationTitle") : t("destinationCityOnly")}
                         </span>
-                        <p className="font-bold text-zinc-900 dark:text-white">
-                          {orderResult.customerName}
-                        </p>
-                        <p>{orderResult.shippingAddress.line1}</p>
-                        {orderResult.shippingAddress.line2 && <p>{orderResult.shippingAddress.line2}</p>}
-                        <p>
-                          {orderResult.shippingAddress.city}, {orderResult.shippingAddress.state} {orderResult.shippingAddress.postalCode}
-                        </p>
-                        <p className="uppercase font-mono text-[10px]">{orderResult.shippingAddress.country}</p>
+                        {isSignedIn ? (
+                          <>
+                            {orderResult.customerName && (
+                              <p className="font-bold text-zinc-900 dark:text-white">
+                                {orderResult.customerName}
+                              </p>
+                            )}
+                            {orderResult.shippingAddress.line1 && orderResult.shippingAddress.line1 !== "***" && (
+                              <p>{orderResult.shippingAddress.line1}</p>
+                            )}
+                            {orderResult.shippingAddress.line2 && <p>{orderResult.shippingAddress.line2}</p>}
+                            <p>
+                              {orderResult.shippingAddress.city}, {orderResult.shippingAddress.state}{" "}
+                              {orderResult.shippingAddress.postalCode && orderResult.shippingAddress.postalCode !== "***"
+                                ? orderResult.shippingAddress.postalCode
+                                : ""}
+                            </p>
+                            <p className="uppercase font-mono text-[10px]">{orderResult.shippingAddress.country}</p>
+                          </>
+                        ) : (
+                          <div className="flex items-center gap-2 pt-0.5">
+                            <MapPin className="w-4 h-4 text-moya-red shrink-0" />
+                            <p className="font-semibold text-zinc-900 dark:text-white">
+                              {[
+                                orderResult.shippingAddress.city,
+                                orderResult.shippingAddress.state,
+                                orderResult.shippingAddress.country,
+                              ]
+                                .filter(Boolean)
+                                .join(", ")}
+                            </p>
+                          </div>
+                        )}
                       </div>
                     )}
 
-                    <div className="space-y-1.5 sm:text-right">
-                      <span className="text-[10px] font-mono uppercase tracking-wider font-semibold text-zinc-500 block">
-                        {t("orderSummaryTitle")}
-                      </span>
-                      <p className="text-zinc-500">
-                        {t("subtotal")}: <span className="font-mono">${orderResult.subtotal || orderResult.total}.00</span>
-                      </p>
-                      <p className="text-zinc-500">
-                        {t("shipping")}: <span className="font-mono text-emerald-600 dark:text-emerald-400 font-semibold">{orderResult.shippingFee ? `$${orderResult.shippingFee}.00` : t("freeShipping")}</span>
-                      </p>
-                      <p className="text-base font-mono font-bold text-zinc-900 dark:text-white pt-1 border-t border-black/[0.04] dark:border-white/[0.06]">
-                        {t("total")}: ${orderResult.total}.00 {orderResult.currency}
-                      </p>
-                    </div>
+                    {isSignedIn ? (
+                      <div className="space-y-1.5 sm:text-right">
+                        <span className="text-[10px] font-mono uppercase tracking-wider font-semibold text-zinc-500 block">
+                          {t("orderSummaryTitle")}
+                        </span>
+                        {orderResult.subtotal !== undefined && (
+                          <p className="text-zinc-500">
+                            {t("subtotal")}: <span className="font-mono">${orderResult.subtotal}.00</span>
+                          </p>
+                        )}
+                        <p className="text-zinc-500">
+                          {t("shipping")}:{" "}
+                          <span className="font-mono text-emerald-600 dark:text-emerald-400 font-semibold">
+                            {orderResult.shippingFee ? `$${orderResult.shippingFee}.00` : t("freeShipping")}
+                          </span>
+                        </p>
+                        {orderResult.total !== undefined && (
+                          <p className="text-base font-mono font-bold text-zinc-900 dark:text-white pt-1 border-t border-black/[0.04] dark:border-white/[0.06]">
+                            {t("total")}: ${orderResult.total}.00 {orderResult.currency}
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="p-3.5 rounded-2xl bg-zinc-50 dark:bg-white/[0.02] border border-zinc-200/60 dark:border-white/[0.06] flex flex-col justify-between gap-2.5">
+                        <div className="flex items-center gap-2 text-zinc-500 dark:text-zinc-400">
+                          <Lock className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                          <span className="text-[11px] leading-tight">
+                            {t("privacyNotice")}
+                          </span>
+                        </div>
+                        <SafeSignInButton mode="modal">
+                          <button
+                            type="button"
+                            className="inline-flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-[11px] font-semibold hover:opacity-90 transition-opacity self-start sm:self-auto cursor-pointer"
+                          >
+                            <span>{t("signInToView")}</span>
+                          </button>
+                        </SafeSignInButton>
+                      </div>
+                    )}
                   </div>
                 </div>
 
-                {/* WhatsApp Concierge Banner */}
-                <div className="p-4 rounded-2xl bg-emerald-500/[0.08] border border-emerald-500/20 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
-                  <div className="flex items-center gap-3 text-emerald-700 dark:text-emerald-300">
-                    <div className="w-8 h-8 rounded-xl bg-emerald-500/20 flex items-center justify-center shrink-0">
-                      <MessageCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                {/* WhatsApp Concierge Banner: only visible to authenticated logged-in users */}
+                {isSignedIn && (
+                  <div className="p-4 rounded-2xl bg-emerald-500/[0.08] border border-emerald-500/20 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+                    <div className="flex items-center gap-3 text-emerald-700 dark:text-emerald-300">
+                      <div className="w-8 h-8 rounded-xl bg-emerald-500/20 flex items-center justify-center shrink-0">
+                        <MessageCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                      </div>
+                      <span>{t("conciergeBanner")}</span>
                     </div>
-                    <span>{t("conciergeBanner")}</span>
-                  </div>
 
-                  <button
-                    onClick={() => handleOpenWhatsAppConcierge(orderResult.orderNumber)}
-                    className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold transition-colors shrink-0 shadow-md shadow-emerald-600/20"
-                  >
-                    {t("chatWhatsApp")}
-                  </button>
-                </div>
+                    <button
+                      onClick={() => handleOpenWhatsAppConcierge(orderResult.orderNumber)}
+                      className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold transition-colors shrink-0 shadow-md shadow-emerald-600/20 cursor-pointer"
+                    >
+                      {t("chatWhatsApp")}
+                    </button>
+                  </div>
+                )}
               </div>
             ) : (
               /* Order Not Found */
@@ -457,13 +516,15 @@ export default function TrackOrderPage() {
                 <p className="text-xs text-zinc-500 max-w-md mx-auto leading-relaxed">
                   {t("notFoundDesc")}
                 </p>
-                <button
-                  onClick={() => handleOpenWhatsAppConcierge(form.getValues("orderNumber") || t("supportFallback"))}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-display font-bold text-xs uppercase tracking-wider transition-colors shadow-lg shadow-emerald-600/20"
-                >
-                  <MessageCircle className="w-4 h-4" />
-                  <span>{t("chatWhatsApp")}</span>
-                </button>
+                {isSignedIn && (
+                  <button
+                    onClick={() => handleOpenWhatsAppConcierge(form.getValues("orderNumber") || t("supportFallback"))}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-display font-bold text-xs uppercase tracking-wider transition-colors shadow-lg shadow-emerald-600/20 cursor-pointer"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    <span>{t("chatWhatsApp")}</span>
+                  </button>
+                )}
               </div>
             )}
           </div>

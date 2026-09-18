@@ -439,7 +439,66 @@ export const getOrderByOrderNumberAndEmail = query({
       return null;
     }
 
-    // Return sanitized order data (do not leak internal adminNotes to guest customer)
+    // Verify authentication to gate sensitive PII (street address, phone, financial details)
+    const identity = await ctx.auth.getUserIdentity();
+    let isOwnerOrAdmin = false;
+
+    if (identity) {
+      if (order.clerkUserId && identity.subject === order.clerkUserId) {
+        isOwnerOrAdmin = true;
+      } else if (identity.email && identity.email.toLowerCase() === orderEmail) {
+        isOwnerOrAdmin = true;
+      } else {
+        const user = await ctx.db
+          .query("users")
+          .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+          .first();
+        if (user && user.role === "admin") {
+          isOwnerOrAdmin = true;
+        }
+      }
+    }
+
+    // Return sanitized data: if unauthenticated, redact sensitive PII and pricing
+    if (!isOwnerOrAdmin) {
+      return {
+        _id: order._id,
+        orderNumber: order.orderNumber,
+        status: order.status,
+        carrier: order.carrier,
+        trackingNumber: order.trackingNumber,
+        createdAt: order.createdAt,
+        updatedAt: order.updatedAt,
+        currency: order.currency,
+        items: order.items.map((item) => ({
+          variantId: item.variantId,
+          name: item.name,
+          quantity: item.quantity,
+          price: 0,
+          image: item.image,
+        })),
+        shippingAddress: order.shippingAddress
+          ? {
+              line1: "",
+              line2: undefined as string | undefined,
+              city: order.shippingAddress.city,
+              state: order.shippingAddress.state,
+              postalCode: "",
+              country: order.shippingAddress.country,
+            }
+          : undefined,
+        customerName: undefined,
+        customerEmail: undefined,
+        customerPhone: undefined,
+        subtotal: undefined,
+        shippingFee: undefined,
+        total: undefined,
+        paymentMethod: undefined,
+        isGuestView: true,
+      };
+    }
+
+    // Return sanitized order data for authenticated owner or admin
     return {
       _id: order._id,
       orderNumber: order.orderNumber,
@@ -458,6 +517,7 @@ export const getOrderByOrderNumberAndEmail = query({
       trackingNumber: order.trackingNumber,
       createdAt: order.createdAt,
       updatedAt: order.updatedAt,
+      isGuestView: false,
     };
   },
 });
