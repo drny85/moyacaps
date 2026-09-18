@@ -253,3 +253,177 @@ export const seedAll = mutation({
     return { success: true, count: variants.length };
   },
 });
+
+export const getAllProductsAdmin = query({
+  args: {},
+  handler: async (ctx) => {
+    const products = await ctx.db.query("products").collect();
+    const variants = await ctx.db.query("variants").collect();
+    return {
+      products,
+      variants,
+    };
+  },
+});
+
+export const updateVariantStock = mutation({
+  args: {
+    variantId: v.string(),
+    stock: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const variant = await ctx.db
+      .query("variants")
+      .withIndex("by_variantId", (q) => q.eq("variantId", args.variantId))
+      .first();
+
+    if (!variant) {
+      throw new Error(`Variant ${args.variantId} not found`);
+    }
+
+    await ctx.db.patch(variant._id, {
+      stock: Math.max(0, args.stock),
+    });
+
+    return { success: true, variantId: args.variantId, stock: Math.max(0, args.stock) };
+  },
+});
+
+export const adjustVariantStock = mutation({
+  args: {
+    variantId: v.string(),
+    delta: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const variant = await ctx.db
+      .query("variants")
+      .withIndex("by_variantId", (q) => q.eq("variantId", args.variantId))
+      .first();
+
+    if (!variant) {
+      throw new Error(`Variant ${args.variantId} not found`);
+    }
+
+    const newStock = Math.max(0, variant.stock + args.delta);
+    await ctx.db.patch(variant._id, {
+      stock: newStock,
+    });
+
+    return { success: true, variantId: args.variantId, stock: newStock };
+  },
+});
+
+export const updateVariantPrice = mutation({
+  args: {
+    variantId: v.string(),
+    priceUsd: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const variant = await ctx.db
+      .query("variants")
+      .withIndex("by_variantId", (q) => q.eq("variantId", args.variantId))
+      .first();
+
+    if (!variant) {
+      throw new Error(`Variant ${args.variantId} not found`);
+    }
+
+    await ctx.db.patch(variant._id, {
+      priceUsd: Math.max(0, args.priceUsd),
+    });
+
+    return { success: true, variantId: args.variantId, priceUsd: args.priceUsd };
+  },
+});
+
+export const toggleVariantFeatured = mutation({
+  args: {
+    variantId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const variant = await ctx.db
+      .query("variants")
+      .withIndex("by_variantId", (q) => q.eq("variantId", args.variantId))
+      .first();
+
+    if (!variant) {
+      throw new Error(`Variant ${args.variantId} not found`);
+    }
+
+    await ctx.db.patch(variant._id, {
+      isFeatured: !variant.isFeatured,
+    });
+
+    return { success: true, isFeatured: !variant.isFeatured };
+  },
+});
+
+export const saveVariant = mutation({
+  args: {
+    variantId: v.string(),
+    nameEn: v.string(),
+    nameEs: v.string(),
+    silhouette: v.string(),
+    primaryHex: v.string(),
+    secondaryHex: v.string(),
+    image: v.string(),
+    stock: v.number(),
+    priceUsd: v.number(),
+    isFeatured: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("variants")
+      .withIndex("by_variantId", (q) => q.eq("variantId", args.variantId))
+      .first();
+
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        nameEn: args.nameEn,
+        nameEs: args.nameEs,
+        silhouette: args.silhouette,
+        primaryHex: args.primaryHex,
+        secondaryHex: args.secondaryHex,
+        image: args.image,
+        stock: args.stock,
+        priceUsd: args.priceUsd,
+        isFeatured: args.isFeatured,
+      });
+      return { success: true, action: "updated", id: existing._id };
+    }
+
+    const id = await ctx.db.insert("variants", {
+      variantId: args.variantId,
+      nameEn: args.nameEn,
+      nameEs: args.nameEs,
+      silhouette: args.silhouette,
+      primaryHex: args.primaryHex,
+      secondaryHex: args.secondaryHex,
+      image: args.image,
+      stock: args.stock,
+      priceUsd: args.priceUsd,
+      isFeatured: args.isFeatured,
+    });
+
+    return { success: true, action: "created", id };
+  },
+});
+
+export const deleteVariant = mutation({
+  args: {
+    variantId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const variant = await ctx.db
+      .query("variants")
+      .withIndex("by_variantId", (q) => q.eq("variantId", args.variantId))
+      .first();
+
+    if (!variant) {
+      throw new Error(`Variant ${args.variantId} not found`);
+    }
+
+    await ctx.db.delete(variant._id);
+    return { success: true };
+  },
+});

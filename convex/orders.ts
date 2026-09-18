@@ -279,3 +279,266 @@ export const cancelOrder = mutation({
   },
 });
 
+export const getAllOrdersAdmin = query({
+  args: {
+    status: v.optional(v.string()),
+    paymentMethod: v.optional(v.string()),
+    search: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    let orders = await ctx.db.query("orders").order("desc").collect();
+
+    if (args.status && args.status !== "all") {
+      orders = orders.filter((o) => o.status === args.status);
+    }
+
+    if (args.paymentMethod && args.paymentMethod !== "all") {
+      orders = orders.filter((o) => o.paymentMethod === args.paymentMethod);
+    }
+
+    if (args.search && args.search.trim() !== "") {
+      const q = args.search.trim().toLowerCase();
+      orders = orders.filter((o) => {
+        return (
+          o.orderNumber.toLowerCase().includes(q) ||
+          (o.customerEmail && o.customerEmail.toLowerCase().includes(q)) ||
+          (o.customerName && o.customerName.toLowerCase().includes(q)) ||
+          (o.customerPhone && o.customerPhone.toLowerCase().includes(q)) ||
+          (o.trackingNumber && o.trackingNumber.toLowerCase().includes(q)) ||
+          o.items.some((item) => item.name.toLowerCase().includes(q) || item.variantId.toLowerCase().includes(q))
+        );
+      });
+    }
+
+    return orders;
+  },
+});
+
+export const updateOrderStatusAdmin = mutation({
+  args: {
+    orderId: v.id("orders"),
+    newStatus: v.string(), // "pending" | "paid" | "dispatched" | "delivered" | "cancelled" | "whatsapp_initiated"
+    carrier: v.optional(v.string()),
+    trackingNumber: v.optional(v.string()),
+    adminNotes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const order = await ctx.db.get(args.orderId);
+    if (!order) {
+      throw new Error("Order not found");
+    }
+
+    const previousStatus = order.status;
+    const isNowPaidLike = ["paid", "dispatched", "delivered"].includes(args.newStatus);
+    const wasPaidLike = ["paid", "dispatched", "delivered"].includes(previousStatus);
+
+    // 1. If transitioning to paid from an unpaid state (like whatsapp_initiated or pending), decrement stock
+    if (!wasPaidLike && isNowPaidLike) {
+      for (const item of order.items) {
+        const variant = await ctx.db
+          .query("variants")
+          .withIndex("by_variantId", (q) => q.eq("variantId", item.variantId))
+          .first();
+
+        if (variant) {
+          await ctx.db.patch(variant._id, {
+            stock: Math.max(0, variant.stock - item.quantity),
+          });
+        }
+      }
+    }
+
+    // 2. If cancelling an order that was previously paid-like, restore stock
+    if (wasPaidLike && args.newStatus === "cancelled") {
+      for (const item of order.items) {
+        const variant = await ctx.db
+          .query("variants")
+          .withIndex("by_variantId", (q) => q.eq("variantId", item.variantId))
+          .first();
+
+        if (variant) {
+          await ctx.db.patch(variant._id, {
+            stock: variant.stock + item.quantity,
+          });
+        }
+      }
+    }
+
+    // 3. Update the order document
+    const updatePayload: Record<string, any> = {
+      status: args.newStatus,
+      updatedAt: Date.now(),
+    };
+
+    if (args.carrier !== undefined) updatePayload.carrier = args.carrier;
+    if (args.trackingNumber !== undefined) updatePayload.trackingNumber = args.trackingNumber;
+    if (args.adminNotes !== undefined) updatePayload.adminNotes = args.adminNotes;
+
+    // Auto-generate tracking number if transitioning to dispatched without one
+    if (args.newStatus === "dispatched" && !order.trackingNumber && !args.trackingNumber) {
+      updatePayload.trackingNumber = `MC-TRK-${Math.floor(100000 + Math.random() * 900000)}`;
+    }
+
+    await ctx.db.patch(args.orderId, updatePayload);
+
+    return { success: true, orderId: args.orderId, status: args.newStatus };
+  },
+});
+
+export const updateOrderFulfillmentAdmin = mutation({
+  args: {
+    orderId: v.id("orders"),
+    carrier: v.optional(v.string()),
+    trackingNumber: v.optional(v.string()),
+    adminNotes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const order = await ctx.db.get(args.orderId);
+    if (!order) {
+      throw new Error("Order not found");
+    }
+
+    await ctx.db.patch(args.orderId, {
+      ...(args.carrier !== undefined && { carrier: args.carrier }),
+      ...(args.trackingNumber !== undefined && { trackingNumber: args.trackingNumber }),
+      ...(args.adminNotes !== undefined && { adminNotes: args.adminNotes }),
+      updatedAt: Date.now(),
+    });
+
+    return { success: true };
+  },
+});
+
+export const getAnalyticsAdmin = query({
+  args: {},
+  handler: async (ctx) => {
+    const orders = await ctx.db.query("orders").collect();
+    const variants = await ctx.db.query("variants").collect();
+
+    let totalRevenue = 0;
+    let completedOrdersCount = 0;
+    let stripeRevenue = 0;
+    let stripeOrdersCount = 0;
+    let whatsappRevenue = 0;
+    let whatsappPaidCount = 0;
+    let whatsappPipelineValue = 0;
+    let whatsappPipelineCount = 0;
+
+    const statusCounts: Record<string, number> = {
+      pending: 0,
+      paid: 0,
+      dispatched: 0,
+      delivered: 0,
+      cancelled: 0,
+      whatsapp_initiated: 0,
+    };
+
+    const variantSalesMap: Record<string, { name: string; units: number; revenue: number; image: string }> = {};
+
+    // Grouping by last 7 days
+    const now = Date.now();
+    const oneDayMs = 24 * 60 * 60 * 1000;
+    const dailyMap: Record<string, { date: string; revenue: number; orders: number }> = {};
+
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now - i * oneDayMs);
+      const key = d.toISOString().split("T")[0];
+      dailyMap[key] = { date: key, revenue: 0, orders: 0 };
+    }
+
+    for (const o of orders) {
+      statusCounts[o.status] = (statusCounts[o.status] || 0) + 1;
+
+      const isCompleted = ["paid", "dispatched", "delivered"].includes(o.status);
+
+      if (isCompleted) {
+        totalRevenue += o.total;
+        completedOrdersCount += 1;
+
+        if (o.paymentMethod === "stripe") {
+          stripeRevenue += o.total;
+          stripeOrdersCount += 1;
+        } else if (o.paymentMethod === "whatsapp") {
+          whatsappRevenue += o.total;
+          whatsappPaidCount += 1;
+        }
+
+        // Tally variant sales
+        for (const item of o.items) {
+          if (!variantSalesMap[item.variantId]) {
+            variantSalesMap[item.variantId] = {
+              name: item.name,
+              units: 0,
+              revenue: 0,
+              image: item.image,
+            };
+          }
+          variantSalesMap[item.variantId].units += item.quantity;
+          variantSalesMap[item.variantId].revenue += item.price * item.quantity;
+        }
+
+        // Daily chart tally
+        const orderDate = new Date(o.createdAt).toISOString().split("T")[0];
+        if (dailyMap[orderDate]) {
+          dailyMap[orderDate].revenue += o.total;
+          dailyMap[orderDate].orders += 1;
+        }
+      } else if (o.status === "whatsapp_initiated") {
+        whatsappPipelineValue += o.total;
+        whatsappPipelineCount += 1;
+      }
+    }
+
+    const aov = completedOrdersCount > 0 ? Math.round(totalRevenue / completedOrdersCount) : 0;
+
+    // Sort top selling variants
+    const topVariants = Object.entries(variantSalesMap)
+      .map(([variantId, stats]) => ({ variantId, ...stats }))
+      .sort((a, b) => b.units - a.units)
+      .slice(0, 5);
+
+    // Identify low stock and out of stock variants
+    const lowStockVariants = variants
+      .filter((v) => v.stock <= 5)
+      .map((v) => ({
+        _id: v._id,
+        variantId: v.variantId,
+        nameEn: v.nameEn,
+        nameEs: v.nameEs,
+        stock: v.stock,
+        silhouette: v.silhouette,
+        priceUsd: v.priceUsd,
+        image: v.image,
+        primaryHex: v.primaryHex,
+      }))
+      .sort((a, b) => a.stock - b.stock);
+
+    const totalVariantsCount = variants.length;
+    const totalInventoryUnits = variants.reduce((sum, v) => sum + v.stock, 0);
+
+    return {
+      totalRevenue,
+      completedOrdersCount,
+      totalOrdersCount: orders.length,
+      aov,
+      whatsappPipeline: {
+        value: whatsappPipelineValue,
+        count: whatsappPipelineCount,
+      },
+      paymentBreakdown: {
+        stripe: { revenue: stripeRevenue, orders: stripeOrdersCount },
+        whatsapp: { revenue: whatsappRevenue, orders: whatsappPaidCount },
+      },
+      statusCounts,
+      topVariants,
+      lowStockVariants,
+      inventorySummary: {
+        totalVariantsCount,
+        totalInventoryUnits,
+        outOfStockCount: variants.filter((v) => v.stock === 0).length,
+      },
+      dailySales: Object.values(dailyMap),
+    };
+  },
+});
+

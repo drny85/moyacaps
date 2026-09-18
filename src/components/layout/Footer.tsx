@@ -3,10 +3,16 @@
 import { useTranslations } from "next-intl";
 import { MessageCircle, ShieldCheck, RotateCcw, Truck } from "lucide-react";
 import { useStore } from "@/store/useStore";
+import { usePathname } from "@/i18n/routing";
 
 export function Footer() {
   const t = useTranslations("footer");
   const { currency } = useStore();
+  const pathname = usePathname();
+
+  if (pathname.startsWith("/admin")) {
+    return null;
+  }
 
   const handleSupportChat = () => {
     const text = encodeURIComponent("Hi Moya Caps, I need help with an order or have a question about the Good Luck collection.");

@@ -21,7 +21,7 @@ export default defineSchema({
     stock: v.number(),
     priceUsd: v.number(),
     isFeatured: v.boolean(),
-  }),
+  }).index("by_variantId", ["variantId"]),
   orders: defineTable({
     orderNumber: v.string(),
     customerEmail: v.optional(v.string()),
@@ -55,9 +55,14 @@ export default defineSchema({
     paymentMethod: v.string(), // "stripe" | "whatsapp"
     stripeSessionId: v.optional(v.string()),
     trackingNumber: v.optional(v.string()),
+    carrier: v.optional(v.string()),
+    adminNotes: v.optional(v.string()),
+    updatedAt: v.optional(v.number()),
     createdAt: v.number(),
   })
     .index("by_orderNumber", ["orderNumber"])
     .index("by_clerkUserId", ["clerkUserId"])
-    .index("by_stripeSessionId", ["stripeSessionId"]),
+    .index("by_stripeSessionId", ["stripeSessionId"])
+    .index("by_status", ["status"])
+    .index("by_createdAt", ["createdAt"]),
 });

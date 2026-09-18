@@ -10,6 +10,8 @@ const isProtectedRoute = createRouteMatcher([
   "/:locale/account(.*)",
   "/checkout",
   "/:locale/checkout",
+  "/admin(.*)",
+  "/:locale/admin(.*)",
 ]);
 
 export const proxy = (req: any, ev: any) => {

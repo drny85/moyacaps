@@ -23,3 +23,15 @@ _Avoid_: Shape, cut, form factor
 **Customer**:
 A visitor browsing the catalog, adding items to their cart, or placing an order.
 _Avoid_: User, client, buyer
+
+**Administrator**:
+An authenticated staff member with elevated permissions to govern catalog items, execute order fulfillments, and review store operational metrics.
+_Avoid_: Superuser, mod, backend user, manager
+
+**Fulfillment**:
+The operational lifecycle of packing, carrier assigning, dispatching, and recording delivery status for customer orders.
+_Avoid_: Shipping process, handling
+
+**WhatsApp Concierge Order**:
+An order initiated directly via WhatsApp chat for customers using manual payment or bank transfer, requiring manual administrator verification before fulfillment.
+_Avoid_: Manual order, cash order, off-platform order

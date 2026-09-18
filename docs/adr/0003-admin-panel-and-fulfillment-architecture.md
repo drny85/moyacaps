@@ -1,0 +1,3 @@
+# Isolated Localized Admin Operations Suite and Hybrid Fulfillment Architecture
+
+For MoyaCaps' administration, we established a localized operations suite under `/:locale/admin` with dedicated administrative shell layouts that suppress customer storefront chrome while preserving English and Spanish operational management. Administrative access is enforced via Clerk role-based access control (`publicMetadata.role === "admin"`) paired with environment-level fallback for local development. Order fulfillment features atomic inventory synchronization in Convex: transitioning off-platform WhatsApp Concierge orders to paid decrements stock, dispatch records shipping carrier and tracking codes, and order cancellation automatically replenishes Colorway quantities.

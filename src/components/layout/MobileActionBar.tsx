@@ -2,7 +2,7 @@
 
 import { useStore } from "@/store/useStore";
 import { useTranslations } from "next-intl";
-import { Link } from "@/i18n/routing";
+import { Link, usePathname } from "@/i18n/routing";
 import { ShoppingBag, Compass, MessageCircle, Package } from "lucide-react";
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
@@ -13,11 +13,16 @@ export function MobileActionBar() {
   const { cart, toggleCart } = useStore();
   const t = useTranslations("nav");
   const { isSignedIn } = useSafeUser();
+  const pathname = usePathname();
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  if (pathname.startsWith("/admin")) {
+    return null;
+  }
 
   const totalItems = isMounted ? cart.reduce((sum, item) => sum + item.quantity, 0) : 0;
   const subtotal = isMounted

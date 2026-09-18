@@ -3,18 +3,20 @@
 import { useTranslations, useLocale } from "next-intl";
 import { Link, usePathname, useRouter } from "@/i18n/routing";
 import { useStore } from "@/store/useStore";
-import { ShoppingBag, Globe, Menu, X, Sparkles, User, Package } from "lucide-react";
+import { ShoppingBag, Globe, Menu, X, Sparkles, User, Package, Shield } from "lucide-react";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { SafeUserButton, useSafeUser } from "@/lib/useSafeUser";
+import { checkIsAdmin } from "@/lib/adminAuth";
 
 export function Navbar() {
   const t = useTranslations("nav");
   const locale = useLocale();
   const router = useRouter();
   const pathname = usePathname();
-  const { isSignedIn } = useSafeUser();
+  const { user, isSignedIn } = useSafeUser();
+  const isAdmin = checkIsAdmin(user);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
 
@@ -28,6 +30,10 @@ export function Navbar() {
   const switchLocale = (newLocale: "en" | "es") => {
     router.replace(pathname, { locale: newLocale });
   };
+
+  if (pathname.startsWith("/admin")) {
+    return null;
+  }
 
   return (
     <>
@@ -141,6 +147,18 @@ export function Navbar() {
               </Link>
             )}
 
+            {/* Admin HQ shortcut for staff */}
+            {isAdmin && (
+              <Link
+                href="/admin/analytics"
+                className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-moya-red/10 border border-moya-red/30 text-moya-red hover:bg-moya-red hover:text-white text-xs font-mono font-bold transition-all shadow-xs"
+                title="MoyaCaps Operations HQ"
+              >
+                <Shield className="w-3.5 h-3.5" />
+                <span>HQ</span>
+              </Link>
+            )}
+
             {/* Account / Vault */}
             <div className="flex items-center">
               <SafeUserButton
@@ -226,6 +244,17 @@ export function Navbar() {
                 >
                   <User className="w-4 h-4 text-moya-red" />
                   <span>{t("account")}</span>
+                </Link>
+              )}
+
+              {isAdmin && (
+                <Link
+                  href="/admin/analytics"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-moya-red/10 border border-moya-red/30 text-moya-red font-mono font-bold text-xs"
+                >
+                  <Shield className="w-4 h-4" />
+                  <span>MoyaCaps Operations HQ</span>
                 </Link>
               )}
 
