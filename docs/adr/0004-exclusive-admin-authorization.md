@@ -1,0 +1,3 @@
+# Exclusive Administrator Privileges and Dual-Layer Enforcement
+
+To ensure strict operational security for live catalog drops, fulfillment dispatches, and store financials, we designated `drny85@gmail.com` (`user_3JSsegPcMNMPs5hqmqnpuy8ri6o`) as the exclusive Administrator stamped with `role: "admin"` in Clerk cloud metadata. Authorization is enforced across two independent defense boundaries: client-side route guards prevent unauthorized navigation in Next.js, while server-side `requireAdmin` checks inspect `ctx.auth.getUserIdentity()` on every Convex query and mutation, rejecting unauthenticated callers and non-admin tokens at the database transaction layer.

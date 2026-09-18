@@ -25,7 +25,7 @@ import {
 export default function AdminAnalyticsPage() {
   const t = useTranslations("admin");
   const locale = useLocale();
-  const analytics = useQuery(api.orders.getAnalyticsAdmin);
+  const analytics = useQuery(api.orders.getAnalyticsAdmin, {});
   const adjustStock = useMutation(api.products.adjustVariantStock);
 
   const [restockingId, setRestockingId] = useState<string | null>(null);

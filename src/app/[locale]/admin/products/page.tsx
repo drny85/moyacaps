@@ -61,6 +61,7 @@ export default function AdminProductsPage() {
   const [formStock, setFormStock] = useState(12);
   const [formPriceUsd, setFormPriceUsd] = useState(120);
   const [formIsFeatured, setFormIsFeatured] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   const openCreateModal = () => {
     setIsNewVariant(true);
@@ -74,6 +75,7 @@ export default function AdminProductsPage() {
     setFormStock(10);
     setFormPriceUsd(120);
     setFormIsFeatured(false);
+    setFormError(null);
     setEditingVariant(true);
   };
 
@@ -89,6 +91,7 @@ export default function AdminProductsPage() {
     setFormStock(variant.stock);
     setFormPriceUsd(variant.priceUsd);
     setFormIsFeatured(Boolean(variant.isFeatured));
+    setFormError(null);
     setEditingVariant(variant);
   };
 
@@ -119,6 +122,7 @@ export default function AdminProductsPage() {
 
     try {
       setIsSaving(true);
+      setFormError(null);
       await saveVariant({
         variantId: formVariantId.trim().toLowerCase().replace(/\s+/g, "-"),
         nameEn: formNameEn,
@@ -132,8 +136,9 @@ export default function AdminProductsPage() {
         isFeatured: formIsFeatured,
       });
       setEditingVariant(null);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to save variant", err);
+      setFormError(err?.message || "Failed to save variant. Please check inputs.");
     } finally {
       setIsSaving(false);
     }
@@ -488,6 +493,19 @@ export default function AdminProductsPage() {
             </div>
 
             <form onSubmit={handleSaveVariant} className="space-y-4 text-xs">
+              {formError && (
+                <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-600 dark:text-red-400 flex items-center justify-between text-xs">
+                  <span>{formError}</span>
+                  <button
+                    type="button"
+                    onClick={() => setFormError(null)}
+                    className="p-1 rounded hover:bg-red-500/20 text-red-500"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+
               {/* Variant ID / Slug */}
               <div>
                 <label className="font-medium text-zinc-700 dark:text-zinc-300 block mb-1">

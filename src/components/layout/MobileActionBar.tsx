@@ -3,16 +3,18 @@
 import { useStore } from "@/store/useStore";
 import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/routing";
-import { ShoppingBag, Compass, MessageCircle, Package } from "lucide-react";
+import { ShoppingBag, Compass, MessageCircle, Package, Shield } from "lucide-react";
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { useSafeUser } from "@/lib/useSafeUser";
+import { checkIsAdmin } from "@/lib/adminAuth";
 
 export function MobileActionBar() {
   const { cart, toggleCart } = useStore();
   const t = useTranslations("nav");
-  const { isSignedIn } = useSafeUser();
+  const { user, isSignedIn } = useSafeUser();
+  const isAdmin = checkIsAdmin(user);
   const pathname = usePathname();
   const [isMounted, setIsMounted] = useState(false);
 
@@ -59,6 +61,20 @@ export function MobileActionBar() {
             <Package className="w-5 h-5 text-moya-red" />
             <span className="text-[9px] font-display font-semibold mt-0.5 tracking-tight text-moya-red">
               {t("orders")}
+            </span>
+          </Link>
+        )}
+
+        {/* Admin HQ shortcut on mobile for staff */}
+        {isAdmin && (
+          <Link
+            href="/admin/analytics"
+            className="flex-1 py-1.5 px-2 rounded-xl flex flex-col items-center justify-center text-moya-red hover:text-rose-400 transition-colors active:scale-95 bg-moya-red/10 border border-moya-red/25"
+            title="MoyaCaps Operations HQ"
+          >
+            <Shield className="w-5 h-5 text-moya-red" />
+            <span className="text-[9px] font-display font-bold mt-0.5 tracking-tight text-moya-red">
+              Admin
             </span>
           </Link>
         )}

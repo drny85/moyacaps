@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { requireAdmin } from "./auth";
 
 const shippingAddressValidator = v.object({
   line1: v.string(),
@@ -284,12 +285,24 @@ export const getAllOrdersAdmin = query({
     status: v.optional(v.string()),
     paymentMethod: v.optional(v.string()),
     search: v.optional(v.string()),
+    limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    let orders = await ctx.db.query("orders").order("desc").collect();
+    await requireAdmin(ctx);
+    const maxItems = Math.min(args.limit ?? 250, 500);
 
+    let orders;
     if (args.status && args.status !== "all") {
-      orders = orders.filter((o) => o.status === args.status);
+      orders = await ctx.db
+        .query("orders")
+        .withIndex("by_status", (q) => q.eq("status", args.status!))
+        .order("desc")
+        .take(maxItems);
+    } else {
+      orders = await ctx.db
+        .query("orders")
+        .order("desc")
+        .take(maxItems);
     }
 
     if (args.paymentMethod && args.paymentMethod !== "all") {
@@ -323,6 +336,7 @@ export const updateOrderStatusAdmin = mutation({
     adminNotes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    await requireAdmin(ctx);
     const order = await ctx.db.get(args.orderId);
     if (!order) {
       throw new Error("Order not found");
@@ -393,6 +407,7 @@ export const updateOrderFulfillmentAdmin = mutation({
     adminNotes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    await requireAdmin(ctx);
     const order = await ctx.db.get(args.orderId);
     if (!order) {
       throw new Error("Order not found");
@@ -410,8 +425,11 @@ export const updateOrderFulfillmentAdmin = mutation({
 });
 
 export const getAnalyticsAdmin = query({
-  args: {},
-  handler: async (ctx) => {
+  args: {
+    clientTime: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
     const orders = await ctx.db.query("orders").collect();
     const variants = await ctx.db.query("variants").collect();
 
@@ -435,8 +453,8 @@ export const getAnalyticsAdmin = query({
 
     const variantSalesMap: Record<string, { name: string; units: number; revenue: number; image: string }> = {};
 
-    // Grouping by last 7 days
-    const now = Date.now();
+    // Grouping by last 7 days using deterministic or passed client time
+    const now = args.clientTime ?? Date.now();
     const oneDayMs = 24 * 60 * 60 * 1000;
     const dailyMap: Record<string, { date: string; revenue: number; orders: number }> = {};
 

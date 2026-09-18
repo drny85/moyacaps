@@ -35,3 +35,8 @@ _Avoid_: Shipping process, handling
 **WhatsApp Concierge Order**:
 An order initiated directly via WhatsApp chat for customers using manual payment or bank transfer, requiring manual administrator verification before fulfillment.
 _Avoid_: Manual order, cash order, off-platform order
+
+**User Account**:
+A synchronized customer or administrator identity record mirrored into Convex from Clerk with role-based access control, profile metadata, and soft-delete retention for order audit history.
+_Avoid_: Auth row, login entity
+

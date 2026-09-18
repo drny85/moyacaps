@@ -8,6 +8,7 @@ export default defineSchema({
     slug: v.string(),
     collection: v.string(),
     basePriceUsd: v.number(),
+    basePriceMxn: v.optional(v.number()),
     featured: v.boolean(),
   }),
   variants: defineTable({
@@ -20,6 +21,7 @@ export default defineSchema({
     image: v.string(),
     stock: v.number(),
     priceUsd: v.number(),
+    priceMxn: v.optional(v.number()),
     isFeatured: v.boolean(),
   }).index("by_variantId", ["variantId"]),
   orders: defineTable({
@@ -65,4 +67,18 @@ export default defineSchema({
     .index("by_stripeSessionId", ["stripeSessionId"])
     .index("by_status", ["status"])
     .index("by_createdAt", ["createdAt"]),
+  users: defineTable({
+    clerkId: v.string(),
+    email: v.string(),
+    name: v.optional(v.string()),
+    role: v.string(), // "admin" | "customer"
+    imageUrl: v.optional(v.string()),
+    phone: v.optional(v.string()),
+    deletedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.optional(v.number()),
+  })
+    .index("by_clerkId", ["clerkId"])
+    .index("by_email", ["email"])
+    .index("by_role", ["role"]),
 });

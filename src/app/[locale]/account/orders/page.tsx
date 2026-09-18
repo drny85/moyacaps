@@ -5,6 +5,7 @@ import Image from "next/image";
 import { Link } from "@/i18n/routing";
 import { useTranslations, useLocale } from "next-intl";
 import { useSafeUser, SafeSignInButton } from "@/lib/useSafeUser";
+import { checkIsAdmin } from "@/lib/adminAuth";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import {
@@ -141,6 +142,37 @@ export default function AccountOrdersPage() {
         <div className="fixed bottom-6 right-6 z-50 p-4 rounded-2xl bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 shadow-2xl flex items-center gap-2.5 border border-white/10 dark:border-black/10 font-display text-xs font-bold animate-in fade-in slide-in-from-bottom-3">
           <Check className="w-4 h-4 text-emerald-500" />
           <span>{feedbackToast}</span>
+        </div>
+      )}
+
+      {/* ── Administrator Banner ── */}
+      {isSignedIn && checkIsAdmin(user) && (
+        <div className="mb-6 p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-red-950/40 via-red-900/20 to-zinc-900/40 border border-moya-red/40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xl">
+          <div className="flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-moya-red text-white flex items-center justify-center shadow-lg shadow-moya-red/30 shrink-0">
+              <Shield className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-mono font-bold uppercase tracking-widest text-moya-red">
+                  Administrator Session Active
+                </span>
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                  Staff Access
+                </span>
+              </div>
+              <p className="text-sm font-display font-semibold text-zinc-900 dark:text-white mt-0.5">
+                You have elevated privileges to fulfill orders, edit catalog stock, and review financial metrics.
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/admin/analytics"
+            className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-moya-red hover:bg-rose-600 text-white font-display font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-moya-red/30 transition-all hover:scale-105 active:scale-95 shrink-0"
+          >
+            <span>Open Admin Dashboard</span>
+            <ArrowRight className="w-4 h-4" />
+          </Link>
         </div>
       )}
 

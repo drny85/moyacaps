@@ -54,6 +54,7 @@ export default function AdminOrdersPage() {
 
   const [copiedTracking, setCopiedTracking] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   // Convex queries & mutations
   const orders = useQuery(api.orders.getAllOrdersAdmin, {
@@ -84,8 +85,9 @@ export default function AdminOrdersPage() {
       if (selectedOrder?._id === confirmWhatsAppOrder._id) {
         setSelectedOrder({ ...selectedOrder, status: "paid" });
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to confirm WhatsApp payment", err);
+      setActionError(err?.message || "Failed to confirm WhatsApp payment. Please retry.");
     } finally {
       setIsProcessing(false);
     }
@@ -95,6 +97,7 @@ export default function AdminOrdersPage() {
     if (!dispatchModalOrder) return;
     try {
       setIsProcessing(true);
+      setActionError(null);
       await updateOrderStatus({
         orderId: dispatchModalOrder._id,
         newStatus: "dispatched",
@@ -112,8 +115,9 @@ export default function AdminOrdersPage() {
           adminNotes: adminNotesInput,
         });
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to dispatch order", err);
+      setActionError(err?.message || "Failed to dispatch order. Please check inputs and retry.");
     } finally {
       setIsProcessing(false);
     }
@@ -122,6 +126,7 @@ export default function AdminOrdersPage() {
   const handleMarkDelivered = async (order: any) => {
     try {
       setIsProcessing(true);
+      setActionError(null);
       await updateOrderStatus({
         orderId: order._id,
         newStatus: "delivered",
@@ -129,8 +134,9 @@ export default function AdminOrdersPage() {
       if (selectedOrder?._id === order._id) {
         setSelectedOrder({ ...selectedOrder, status: "delivered" });
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to mark delivered", err);
+      setActionError(err?.message || "Failed to update delivery status.");
     } finally {
       setIsProcessing(false);
     }
@@ -140,6 +146,7 @@ export default function AdminOrdersPage() {
     if (!cancelModalOrder) return;
     try {
       setIsProcessing(true);
+      setActionError(null);
       await updateOrderStatus({
         orderId: cancelModalOrder._id,
         newStatus: "cancelled",
@@ -148,8 +155,9 @@ export default function AdminOrdersPage() {
       if (selectedOrder?._id === cancelModalOrder._id) {
         setSelectedOrder({ ...selectedOrder, status: "cancelled" });
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to cancel order", err);
+      setActionError(err?.message || "Failed to cancel order.");
     } finally {
       setIsProcessing(false);
     }
@@ -236,6 +244,22 @@ export default function AdminOrdersPage() {
           </span>
         </div>
       </div>
+
+      {/* Action Error Alert */}
+      {actionError && (
+        <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/30 flex items-center justify-between gap-3 text-xs text-red-600 dark:text-red-400 animate-in fade-in">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 shrink-0 text-red-500" />
+            <span>{actionError}</span>
+          </div>
+          <button
+            onClick={() => setActionError(null)}
+            className="p-1 rounded hover:bg-red-500/20 text-red-500"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {/* ── Filters Bar ── */}
       <div className="bg-white dark:bg-[#0c0c14] border border-zinc-200 dark:border-white/[0.06] rounded-2xl p-4 shadow-xs space-y-4">

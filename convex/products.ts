@@ -1,5 +1,6 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
+import { requireAdmin } from "./auth";
 
 export const getVariants = query({
   args: {
@@ -257,6 +258,7 @@ export const seedAll = mutation({
 export const getAllProductsAdmin = query({
   args: {},
   handler: async (ctx) => {
+    await requireAdmin(ctx);
     const products = await ctx.db.query("products").collect();
     const variants = await ctx.db.query("variants").collect();
     return {
@@ -272,6 +274,7 @@ export const updateVariantStock = mutation({
     stock: v.number(),
   },
   handler: async (ctx, args) => {
+    await requireAdmin(ctx);
     const variant = await ctx.db
       .query("variants")
       .withIndex("by_variantId", (q) => q.eq("variantId", args.variantId))
@@ -295,6 +298,7 @@ export const adjustVariantStock = mutation({
     delta: v.number(),
   },
   handler: async (ctx, args) => {
+    await requireAdmin(ctx);
     const variant = await ctx.db
       .query("variants")
       .withIndex("by_variantId", (q) => q.eq("variantId", args.variantId))
@@ -319,6 +323,7 @@ export const updateVariantPrice = mutation({
     priceUsd: v.number(),
   },
   handler: async (ctx, args) => {
+    await requireAdmin(ctx);
     const variant = await ctx.db
       .query("variants")
       .withIndex("by_variantId", (q) => q.eq("variantId", args.variantId))
@@ -341,6 +346,7 @@ export const toggleVariantFeatured = mutation({
     variantId: v.string(),
   },
   handler: async (ctx, args) => {
+    await requireAdmin(ctx);
     const variant = await ctx.db
       .query("variants")
       .withIndex("by_variantId", (q) => q.eq("variantId", args.variantId))
@@ -372,6 +378,7 @@ export const saveVariant = mutation({
     isFeatured: v.boolean(),
   },
   handler: async (ctx, args) => {
+    await requireAdmin(ctx);
     const existing = await ctx.db
       .query("variants")
       .withIndex("by_variantId", (q) => q.eq("variantId", args.variantId))
@@ -414,6 +421,7 @@ export const deleteVariant = mutation({
     variantId: v.string(),
   },
   handler: async (ctx, args) => {
+    await requireAdmin(ctx);
     const variant = await ctx.db
       .query("variants")
       .withIndex("by_variantId", (q) => q.eq("variantId", args.variantId))

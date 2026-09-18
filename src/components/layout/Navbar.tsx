@@ -88,11 +88,10 @@ export function Navbar() {
             {isSignedIn && (
               <Link
                 href="/account/orders"
-                className={`transition-colors hover-underline flex items-center gap-1.5 ${
-                  pathname.includes("/account/orders")
+                className={`transition-colors hover-underline flex items-center gap-1.5 ${pathname.includes("/account/orders")
                     ? "text-moya-red dark:text-moya-red font-bold"
                     : "hover:text-zinc-900 dark:hover:text-white"
-                }`}
+                  }`}
               >
                 <Package className="w-3.5 h-3.5 text-moya-red" />
                 <span>{t("orders")}</span>
@@ -110,22 +109,20 @@ export function Navbar() {
               <Globe className="w-3.5 h-3.5 text-moya-green" />
               <button
                 onClick={() => switchLocale("en")}
-                className={`transition-colors ${
-                  locale === "en"
+                className={`transition-colors ${locale === "en"
                     ? "text-zinc-900 dark:text-white font-bold underline decoration-moya-green decoration-2 underline-offset-4"
                     : "text-zinc-400 dark:text-zinc-600 hover:text-zinc-900 dark:hover:text-zinc-300"
-                }`}
+                  }`}
               >
                 EN
               </button>
               <span className="text-zinc-400 dark:text-zinc-700">/</span>
               <button
                 onClick={() => switchLocale("es")}
-                className={`transition-colors ${
-                  locale === "es"
+                className={`transition-colors ${locale === "es"
                     ? "text-zinc-900 dark:text-white font-bold underline decoration-moya-green decoration-2 underline-offset-4"
                     : "text-zinc-400 dark:text-zinc-600 hover:text-zinc-900 dark:hover:text-zinc-300"
-                }`}
+                  }`}
               >
                 ES
               </button>
@@ -135,11 +132,10 @@ export function Navbar() {
             {isSignedIn && (
               <Link
                 href="/account/orders"
-                className={`hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl glass-dark hover:bg-black/5 dark:hover:bg-white/10 text-xs font-display font-semibold transition-all border ${
-                  pathname.includes("/account/orders")
+                className={`hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl glass-dark hover:bg-black/5 dark:hover:bg-white/10 text-xs font-display font-semibold transition-all border ${pathname.includes("/account/orders")
                     ? "border-moya-red text-moya-red bg-moya-red/5 font-bold"
                     : "border-black/[0.06] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white"
-                }`}
+                  }`}
                 title="View All Orders"
               >
                 <Package className="w-3.5 h-3.5 text-moya-red" />
@@ -147,15 +143,20 @@ export function Navbar() {
               </Link>
             )}
 
-            {/* Admin HQ shortcut for staff */}
+            {/* Admin Dashboard shortcut for authorized staff */}
             {isAdmin && (
               <Link
                 href="/admin/analytics"
-                className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-moya-red/10 border border-moya-red/30 text-moya-red hover:bg-moya-red hover:text-white text-xs font-mono font-bold transition-all shadow-xs"
-                title="MoyaCaps Operations HQ"
+                className="inline-flex items-center gap-2 px-3 py-1.5 sm:py-2 rounded-xl bg-gradient-to-r from-red-600/90 to-rose-700 hover:from-red-600 hover:to-rose-600 text-white text-xs font-display font-bold shadow-lg shadow-red-500/20 hover:shadow-red-500/35 border border-red-400/30 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                title="MoyaCaps Operations HQ (Admin Dashboard)"
               >
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                </span>
                 <Shield className="w-3.5 h-3.5" />
-                <span>HQ</span>
+                <span className="hidden sm:inline">Admin Dashboard</span>
+                <span className="sm:hidden">Admin</span>
               </Link>
             )}
 
@@ -231,7 +232,7 @@ export function Navbar() {
                 <Link
                   href="/account/orders"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="text-zinc-900 dark:text-zinc-200 hover:text-moya-red font-display font-semibold text-base transition-colors flex items-center gap-2 text-moya-red font-bold"
+                  className="text-zinc-900 dark:text-zinc-200 hover:text-moya-red font-display text-base transition-colors flex items-center gap-2 text-moya-red font-bold"
                 >
                   <Package className="w-5 h-5 text-moya-red" />
                   <span>{t("orders")}</span>
@@ -251,10 +252,25 @@ export function Navbar() {
                 <Link
                   href="/admin/analytics"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-moya-red/10 border border-moya-red/30 text-moya-red font-mono font-bold text-xs"
+                  className="flex items-center justify-between p-3.5 rounded-2xl bg-gradient-to-r from-moya-red/15 via-moya-red/10 to-transparent border border-moya-red/30 text-moya-red transition-all"
                 >
-                  <Shield className="w-4 h-4" />
-                  <span>MoyaCaps Operations HQ</span>
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-moya-red text-white flex items-center justify-center shadow-md">
+                      <Shield className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <p className="font-display font-bold text-sm text-zinc-900 dark:text-white">
+                          Admin Operations HQ
+                        </p>
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                      </div>
+                      <p className="text-[10px] text-zinc-500 font-mono">
+                        Manage Orders, Inventory & Analytics
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-xs font-bold text-moya-red font-mono">Open →</span>
                 </Link>
               )}
 

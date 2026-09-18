@@ -9,9 +9,11 @@ import { ProductQuickView } from "@/components/product/ProductQuickView";
 import { SmoothScrollProvider } from "@/components/providers/SmoothScrollProvider";
 import { ConvexClientProvider } from "@/components/providers/ConvexClientProvider";
 import { ClerkClientProvider } from "@/components/providers/ClerkClientProvider";
+import { UserSyncProvider } from "@/components/providers/UserSyncProvider";
 
 import { MobileActionBar } from "@/components/layout/MobileActionBar";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
+import { AdminQuickBar } from "@/components/admin/AdminQuickBar";
 
 export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
@@ -37,20 +39,23 @@ export default async function LocaleLayout({
       <ThemeProvider>
         <ClerkClientProvider>
           <ConvexClientProvider>
-            <SmoothScrollProvider>
-              <div className="flex min-h-screen flex-col pb-20 md:pb-0">
-                {/* Film grain noise overlay */}
-                <div className="noise-overlay" aria-hidden="true" />
-                <Navbar />
-                <main className="flex-1">{children}</main>
-              <Footer />
-              <MobileActionBar />
-              <CartDrawer />
-              <ProductQuickView />
-            </div>
-          </SmoothScrollProvider>
-        </ConvexClientProvider>
-      </ClerkClientProvider>
+            <UserSyncProvider>
+              <SmoothScrollProvider>
+                <div className="flex min-h-screen flex-col pb-20 md:pb-0">
+                  {/* Film grain noise overlay */}
+                  <div className="noise-overlay" aria-hidden="true" />
+                  <Navbar />
+                  <main className="flex-1">{children}</main>
+                  <Footer />
+                  <MobileActionBar />
+                  <CartDrawer />
+                  <ProductQuickView />
+                  <AdminQuickBar />
+                </div>
+              </SmoothScrollProvider>
+            </UserSyncProvider>
+          </ConvexClientProvider>
+        </ClerkClientProvider>
     </ThemeProvider>
   </NextIntlClientProvider>
   );
