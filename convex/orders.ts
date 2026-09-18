@@ -453,8 +453,12 @@ export const getOrderByOrderNumberAndEmail = query({
           .query("users")
           .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
           .first();
-        if (user && user.role === "admin") {
-          isOwnerOrAdmin = true;
+        if (user) {
+          if (user.role === "admin") {
+            isOwnerOrAdmin = true;
+          } else if (user.email && user.email.toLowerCase() === orderEmail) {
+            isOwnerOrAdmin = true;
+          }
         }
       }
     }

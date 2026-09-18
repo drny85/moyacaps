@@ -88,6 +88,7 @@ export default function TrackOrderPage() {
   );
 
   const isLoading = activeQuery !== null && orderResult === undefined;
+  const isOwnerOrAdmin = Boolean(isSignedIn && orderResult && !orderResult.isGuestView);
 
   const handleSearchSubmit = (data: TrackingLookupValues) => {
     const cleanNum = data.orderNumber.trim().toUpperCase().replace(/^#/, "");
@@ -384,12 +385,12 @@ export default function TrackOrderPage() {
                               </span>
                               <span className="text-[11px] font-mono text-zinc-500">
                                 {t("quantity")}: {item.quantity}
-                                {isSignedIn && item.price > 0 && ` • $${item.price}.00 ${orderResult.currency}`}
+                                {isOwnerOrAdmin && item.price > 0 && ` • $${item.price}.00 ${orderResult.currency}`}
                               </span>
                             </div>
                           </div>
 
-                          {isSignedIn && item.price > 0 && (
+                          {isOwnerOrAdmin && item.price > 0 && (
                             <span className="font-mono font-bold text-xs text-zinc-900 dark:text-white">
                               ${item.price * item.quantity}.00
                             </span>
@@ -404,9 +405,9 @@ export default function TrackOrderPage() {
                     {orderResult.shippingAddress && (
                       <div className="space-y-1.5 text-zinc-600 dark:text-zinc-400">
                         <span className="text-[10px] font-mono uppercase tracking-wider font-semibold text-zinc-500 block">
-                          {isSignedIn ? t("destinationTitle") : t("destinationCityOnly")}
+                          {isOwnerOrAdmin ? t("destinationTitle") : t("destinationCityOnly")}
                         </span>
-                        {isSignedIn ? (
+                        {isOwnerOrAdmin ? (
                           <>
                             {orderResult.customerName && (
                               <p className="font-bold text-zinc-900 dark:text-white">
@@ -442,7 +443,7 @@ export default function TrackOrderPage() {
                       </div>
                     )}
 
-                    {isSignedIn ? (
+                    {isOwnerOrAdmin ? (
                       <div className="space-y-1.5 sm:text-right">
                         <span className="text-[10px] font-mono uppercase tracking-wider font-semibold text-zinc-500 block">
                           {t("orderSummaryTitle")}
@@ -472,21 +473,23 @@ export default function TrackOrderPage() {
                             {t("privacyNotice")}
                           </span>
                         </div>
-                        <SafeSignInButton mode="modal">
-                          <button
-                            type="button"
-                            className="inline-flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-[11px] font-semibold hover:opacity-90 transition-opacity self-start sm:self-auto cursor-pointer"
-                          >
-                            <span>{t("signInToView")}</span>
-                          </button>
-                        </SafeSignInButton>
+                        {!isSignedIn && (
+                          <SafeSignInButton mode="modal">
+                            <button
+                              type="button"
+                              className="inline-flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-[11px] font-semibold hover:opacity-90 transition-opacity self-start sm:self-auto cursor-pointer"
+                            >
+                              <span>{t("signInToView")}</span>
+                            </button>
+                          </SafeSignInButton>
+                        )}
                       </div>
                     )}
                   </div>
                 </div>
 
-                {/* WhatsApp Concierge Banner: only visible to authenticated logged-in users */}
-                {isSignedIn && (
+                {/* WhatsApp Concierge Banner: only visible to verified owner or admin */}
+                {isOwnerOrAdmin && (
                   <div className="p-4 rounded-2xl bg-emerald-500/[0.08] border border-emerald-500/20 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
                     <div className="flex items-center gap-3 text-emerald-700 dark:text-emerald-300">
                       <div className="w-8 h-8 rounded-xl bg-emerald-500/20 flex items-center justify-center shrink-0">
@@ -516,7 +519,7 @@ export default function TrackOrderPage() {
                 <p className="text-xs text-zinc-500 max-w-md mx-auto leading-relaxed">
                   {t("notFoundDesc")}
                 </p>
-                {isSignedIn && (
+                {isOwnerOrAdmin && (
                   <button
                     onClick={() => handleOpenWhatsAppConcierge(form.getValues("orderNumber") || t("supportFallback"))}
                     className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-display font-bold text-xs uppercase tracking-wider transition-colors shadow-lg shadow-emerald-600/20 cursor-pointer"
