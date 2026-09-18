@@ -215,13 +215,43 @@ export const updateShippingAddress = mutation({
       throw new Error("Unauthorized to modify this order");
     }
 
-    if (order.status === "shipped" || order.status === "delivered" || order.status === "cancelled") {
+    if (order.status === "dispatched" || order.status === "delivered" || order.status === "cancelled") {
       throw new Error(`Cannot modify address when order status is ${order.status}`);
     }
 
     await ctx.db.patch(args.orderId, {
       shippingAddress: args.shippingAddress,
       customerPhone: args.customerPhone ?? order.customerPhone,
+      updatedAt: Date.now(),
+    });
+
+    return { success: true };
+  },
+});
+
+export const updateShippingAddressAdmin = mutation({
+  args: {
+    orderId: v.id("orders"),
+    shippingAddress: shippingAddressValidator,
+    customerPhone: v.optional(v.string()),
+    customerName: v.optional(v.string()),
+    customerEmail: v.optional(v.string()),
+    adminNotes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    const order = await ctx.db.get(args.orderId);
+    if (!order) {
+      throw new Error("Order not found");
+    }
+
+    await ctx.db.patch(args.orderId, {
+      shippingAddress: args.shippingAddress,
+      ...(args.customerPhone !== undefined && { customerPhone: args.customerPhone }),
+      ...(args.customerName !== undefined && { customerName: args.customerName }),
+      ...(args.customerEmail !== undefined && { customerEmail: args.customerEmail }),
+      ...(args.adminNotes !== undefined && { adminNotes: args.adminNotes }),
+      updatedAt: Date.now(),
     });
 
     return { success: true };
@@ -244,7 +274,7 @@ export const cancelOrder = mutation({
       throw new Error("Unauthorized to cancel this order");
     }
 
-    if (order.status === "shipped" || order.status === "delivered") {
+    if (order.status === "dispatched" || order.status === "delivered") {
       throw new Error("Cannot cancel an order that has already been dispatched. Please request a return via concierge.");
     }
 
@@ -268,6 +298,7 @@ export const cancelOrder = mutation({
 
     await ctx.db.patch(args.orderId, {
       status: "cancelled",
+      updatedAt: Date.now(),
     });
 
     return {
@@ -276,6 +307,124 @@ export const cancelOrder = mutation({
       orderNumber: order.orderNumber,
       total: order.total,
       currency: order.currency,
+    };
+  },
+});
+
+export const cancelOrderAdmin = mutation({
+  args: {
+    orderId: v.id("orders"),
+    reason: v.optional(v.string()),
+    adminNotes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    const order = await ctx.db.get(args.orderId);
+    if (!order) {
+      throw new Error("Order not found");
+    }
+
+    if (order.status === "cancelled") {
+      throw new Error("Order is already cancelled");
+    }
+
+    const wasPaidLike = ["paid", "dispatched", "delivered"].includes(order.status);
+
+    // Restore stock if it was previously deducted
+    if (wasPaidLike) {
+      for (const item of order.items) {
+        const variant = await ctx.db
+          .query("variants")
+          .withIndex("by_variantId", (q) => q.eq("variantId", item.variantId))
+          .first();
+
+        if (variant) {
+          await ctx.db.patch(variant._id, {
+            stock: variant.stock + item.quantity,
+          });
+        }
+      }
+    }
+
+    const updatedNotes = args.adminNotes
+      ? order.adminNotes
+        ? `${order.adminNotes} | ${args.adminNotes}`
+        : args.adminNotes
+      : order.adminNotes;
+
+    await ctx.db.patch(args.orderId, {
+      status: "cancelled",
+      ...(updatedNotes && { adminNotes: updatedNotes }),
+      updatedAt: Date.now(),
+    });
+
+    return {
+      success: true,
+      stripeSessionId: order.stripeSessionId,
+      orderNumber: order.orderNumber,
+      total: order.total,
+      currency: order.currency,
+      paymentMethod: order.paymentMethod,
+    };
+  },
+});
+
+export const getOrderByOrderNumberAndEmail = query({
+  args: {
+    orderNumber: v.string(),
+    email: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const cleanNumber = args.orderNumber.trim().toUpperCase();
+    const cleanEmail = args.email.trim().toLowerCase();
+
+    if (!cleanNumber || !cleanEmail) {
+      return null;
+    }
+
+    // Try direct uppercase match or by prefix
+    let order = await ctx.db
+      .query("orders")
+      .withIndex("by_orderNumber", (q) => q.eq("orderNumber", cleanNumber))
+      .first();
+
+    if (!order) {
+      // Fallback search in case user entered lowercase or partial
+      const allOrders = await ctx.db.query("orders").order("desc").take(500);
+      order = allOrders.find(
+        (o) => o.orderNumber.trim().toUpperCase() === cleanNumber
+      ) || null;
+    }
+
+    if (!order) {
+      return null;
+    }
+
+    // Verify email case-insensitively
+    const orderEmail = (order.customerEmail || "").trim().toLowerCase();
+    if (orderEmail !== cleanEmail) {
+      return null;
+    }
+
+    // Return sanitized order data (do not leak internal adminNotes to guest customer)
+    return {
+      _id: order._id,
+      orderNumber: order.orderNumber,
+      customerName: order.customerName,
+      customerEmail: order.customerEmail,
+      customerPhone: order.customerPhone,
+      shippingAddress: order.shippingAddress,
+      items: order.items,
+      currency: order.currency,
+      subtotal: order.subtotal,
+      shippingFee: order.shippingFee,
+      total: order.total,
+      status: order.status,
+      paymentMethod: order.paymentMethod,
+      carrier: order.carrier,
+      trackingNumber: order.trackingNumber,
+      createdAt: order.createdAt,
+      updatedAt: order.updatedAt,
     };
   },
 });

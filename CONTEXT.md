@@ -40,3 +40,16 @@ _Avoid_: Manual order, cash order, off-platform order
 A synchronized customer or administrator identity record mirrored into Convex from Clerk with role-based access control, profile metadata, and soft-delete retention for order audit history.
 _Avoid_: Auth row, login entity
 
+**Carrier Dispatch Deep Link**:
+A direct external tracking URI generated for supported logistics couriers (DHL Express, FedEx, Estafeta, Correos de México, UPS) providing real-time package transit milestones for customers and staff.
+_Avoid_: Tracking URL, tracking web link
+
+**Public Tracking Portal**:
+A secure, unauthenticated guest-accessible lookup interface requiring both Order Number and Checkout Email to inspect live fulfillment progress without account registration.
+_Avoid_: Guest order checker, order finder, tracking form
+
+**High-Friction Confirmation Safeguard**:
+A mandatory interactive dialog requiring explicit user or administrator confirmation before executing irreversible, inventory-altering, or financially impactful operations (e.g. delivery completion, Stripe refund cancellations, stock deductions).
+_Avoid_: Pop-up, alert box, notification
+
+

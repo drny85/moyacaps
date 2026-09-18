@@ -8,6 +8,7 @@ import { useSafeUser, SafeSignInButton } from "@/lib/useSafeUser";
 import { checkIsAdmin } from "@/lib/adminAuth";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
+import { getCarrierTrackingUrl } from "@/lib/tracking";
 import {
   Package,
   CheckCircle2,
@@ -21,7 +22,23 @@ import {
   X,
   AlertTriangle,
   Loader2,
+  ExternalLink,
 } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  shippingAddressSchema,
+  type ShippingAddressValues,
+} from "@/lib/validations/address";
+import {
+  Form,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormControl,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
 
 export default function AccountOrdersPage() {
   const t = useTranslations("account");
@@ -42,15 +59,21 @@ export default function AccountOrdersPage() {
 
   // ── Address Editing State ──
   const [editingOrder, setEditingOrder] = useState<any | null>(null);
-  const [addressForm, setAddressForm] = useState({
-    line1: "",
-    line2: "",
-    city: "",
-    state: "",
-    postalCode: "",
-    customerPhone: "",
-  });
   const [isSavingAddress, setIsSavingAddress] = useState(false);
+
+  const addressForm = useForm<ShippingAddressValues>({
+    resolver: zodResolver(shippingAddressSchema),
+    defaultValues: {
+      line1: "",
+      line2: "",
+      city: "",
+      state: "",
+      postalCode: "",
+      customerPhone: "",
+      country: "US",
+    },
+    mode: "onSubmit",
+  });
 
   // ── Cancellation State ──
   const [cancellingOrder, setCancellingOrder] = useState<any | null>(null);
@@ -67,18 +90,18 @@ export default function AccountOrdersPage() {
 
   const handleOpenEditAddress = (ord: any) => {
     setEditingOrder(ord);
-    setAddressForm({
+    addressForm.reset({
       line1: ord.shippingAddress?.line1 || "",
       line2: ord.shippingAddress?.line2 || "",
       city: ord.shippingAddress?.city || "",
       state: ord.shippingAddress?.state || "",
       postalCode: ord.shippingAddress?.postalCode || "",
       customerPhone: ord.customerPhone || "",
+      country: ord.shippingAddress?.country || "US",
     });
   };
 
-  const handleSaveAddress = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSaveAddress = async (data: ShippingAddressValues) => {
     if (!editingOrder || !user?.id) return;
 
     try {
@@ -87,14 +110,14 @@ export default function AccountOrdersPage() {
         orderId: editingOrder._id,
         clerkUserId: user.id,
         shippingAddress: {
-          line1: addressForm.line1,
-          line2: addressForm.line2 || undefined,
-          city: addressForm.city,
-          state: addressForm.state,
-          postalCode: addressForm.postalCode,
-          country: editingOrder.shippingAddress?.country || "US",
+          line1: data.line1,
+          line2: data.line2 || undefined,
+          city: data.city,
+          state: data.state,
+          postalCode: data.postalCode,
+          country: editingOrder.shippingAddress?.country || data.country || "US",
         },
-        customerPhone: addressForm.customerPhone || undefined,
+        customerPhone: data.customerPhone || undefined,
       });
 
       triggerToast(t("addressUpdated"));
@@ -281,9 +304,17 @@ export default function AccountOrdersPage() {
                       })}
                     </span>
                     {ord.trackingNumber && (
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 font-bold">
-                        {ord.trackingNumber}
-                      </span>
+                      <a
+                        href={getCarrierTrackingUrl(ord.carrier, ord.trackingNumber) || "#"}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded-md bg-blue-500/10 border border-blue-500/30 text-blue-600 dark:text-blue-400 font-bold hover:underline"
+                        title="Track shipment on courier portal"
+                      >
+                        <Truck className="w-2.5 h-2.5" />
+                        <span>{ord.carrier ? ord.carrier.split(" ")[0] : "Track"}: {ord.trackingNumber}</span>
+                        <ExternalLink className="w-2.5 h-2.5" />
+                      </a>
                     )}
                   </div>
 
@@ -293,6 +324,11 @@ export default function AccountOrdersPage() {
                       <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-display font-semibold bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30">
                         <XCircle className="w-3.5 h-3.5" />
                         <span>{t("statusCancelled")}</span>
+                      </span>
+                    ) : ord.status === "delivered" ? (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-display font-semibold bg-purple-500/15 text-purple-600 dark:text-purple-400 border border-purple-500/30">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>Delivered</span>
                       </span>
                     ) : isShipped ? (
                       <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-display font-semibold bg-sky-500/15 text-sky-600 dark:text-sky-400 border border-sky-500/30">
@@ -438,94 +474,137 @@ export default function AccountOrdersPage() {
               Updating delivery address for Order #{editingOrder.orderNumber}
             </p>
 
-            <form onSubmit={handleSaveAddress} className="space-y-3">
-              <div>
-                <label className="block text-[11px] font-mono text-zinc-500 mb-1">Street Address</label>
-                <input
-                  type="text"
-                  required
-                  value={addressForm.line1}
-                  onChange={(e) => setAddressForm({ ...addressForm, line1: e.target.value })}
-                  placeholder="Street & house number"
-                  className="w-full px-3.5 py-2 rounded-xl bg-black/5 dark:bg-white/5 border border-black/[0.08] dark:border-white/[0.08] text-xs font-mono text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-moya-red"
+            <Form {...addressForm}>
+              <form onSubmit={addressForm.handleSubmit(handleSaveAddress)} className="space-y-3">
+                <FormField
+                  control={addressForm.control}
+                  name="line1"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-[11px] font-mono text-zinc-500">Street Address</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Street & house number"
+                          className="px-3.5 py-2"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
 
-              <div>
-                <label className="block text-[11px] font-mono text-zinc-500 mb-1">Apartment, Suite, Unit (Optional)</label>
-                <input
-                  type="text"
-                  value={addressForm.line2}
-                  onChange={(e) => setAddressForm({ ...addressForm, line2: e.target.value })}
-                  placeholder="Apt 4B"
-                  className="w-full px-3.5 py-2 rounded-xl bg-black/5 dark:bg-white/5 border border-black/[0.08] dark:border-white/[0.08] text-xs font-mono text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-moya-red"
+                <FormField
+                  control={addressForm.control}
+                  name="line2"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-[11px] font-mono text-zinc-500">Apartment, Suite, Unit (Optional)</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Apt 4B"
+                          className="px-3.5 py-2"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
 
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-[11px] font-mono text-zinc-500 mb-1">City</label>
-                  <input
-                    type="text"
-                    required
-                    value={addressForm.city}
-                    onChange={(e) => setAddressForm({ ...addressForm, city: e.target.value })}
-                    className="w-full px-3.5 py-2 rounded-xl bg-black/5 dark:bg-white/5 border border-black/[0.08] dark:border-white/[0.08] text-xs font-mono text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-moya-red"
+                <div className="grid grid-cols-2 gap-2">
+                  <FormField
+                    control={addressForm.control}
+                    name="city"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-[11px] font-mono text-zinc-500">City</FormLabel>
+                        <FormControl>
+                          <Input
+                            className="px-3.5 py-2"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-mono text-zinc-500 mb-1">State / Province</label>
-                  <input
-                    type="text"
-                    required
-                    value={addressForm.state}
-                    onChange={(e) => setAddressForm({ ...addressForm, state: e.target.value })}
-                    className="w-full px-3.5 py-2 rounded-xl bg-black/5 dark:bg-white/5 border border-black/[0.08] dark:border-white/[0.08] text-xs font-mono text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-moya-red"
-                  />
-                </div>
-              </div>
 
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-[11px] font-mono text-zinc-500 mb-1">Postal / ZIP Code</label>
-                  <input
-                    type="text"
-                    required
-                    value={addressForm.postalCode}
-                    onChange={(e) => setAddressForm({ ...addressForm, postalCode: e.target.value })}
-                    className="w-full px-3.5 py-2 rounded-xl bg-black/5 dark:bg-white/5 border border-black/[0.08] dark:border-white/[0.08] text-xs font-mono text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-moya-red"
+                  <FormField
+                    control={addressForm.control}
+                    name="state"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-[11px] font-mono text-zinc-500">State / Province</FormLabel>
+                        <FormControl>
+                          <Input
+                            className="px-3.5 py-2"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
                 </div>
-                <div>
-                  <label className="block text-[11px] font-mono text-zinc-500 mb-1">Phone (for Courier)</label>
-                  <input
-                    type="tel"
-                    value={addressForm.customerPhone}
-                    onChange={(e) => setAddressForm({ ...addressForm, customerPhone: e.target.value })}
-                    placeholder="+1 (555) 000-0000"
-                    className="w-full px-3.5 py-2 rounded-xl bg-black/5 dark:bg-white/5 border border-black/[0.08] dark:border-white/[0.08] text-xs font-mono text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-moya-red"
-                  />
-                </div>
-              </div>
 
-              <div className="pt-4 flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setEditingOrder(null)}
-                  className="px-4 py-2 rounded-xl glass-dark hover:bg-black/5 dark:hover:bg-white/10 text-xs font-display font-bold text-zinc-600 dark:text-zinc-400"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSavingAddress}
-                  className="px-5 py-2 rounded-xl bg-moya-red hover:bg-rose-500 text-white text-xs font-display font-bold flex items-center gap-1.5 shadow-lg shadow-moya-red/30 disabled:opacity-50"
-                >
-                  {isSavingAddress ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-                  <span>{isSavingAddress ? t("saving") : t("saveAddress")}</span>
-                </button>
-              </div>
-            </form>
+                <div className="grid grid-cols-2 gap-2">
+                  <FormField
+                    control={addressForm.control}
+                    name="postalCode"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-[11px] font-mono text-zinc-500">Postal / ZIP Code</FormLabel>
+                        <FormControl>
+                          <Input
+                            className="px-3.5 py-2"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={addressForm.control}
+                    name="customerPhone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-[11px] font-mono text-zinc-500">Phone (for Courier)</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="tel"
+                            placeholder="+1 (555) 000-0000"
+                            className="px-3.5 py-2"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="pt-4 flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditingOrder(null)}
+                    className="px-4 py-2 rounded-xl glass-dark hover:bg-black/5 dark:hover:bg-white/10 text-xs font-display font-bold text-zinc-600 dark:text-zinc-400"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSavingAddress}
+                    className="px-5 py-2 rounded-xl bg-moya-red hover:bg-rose-500 text-white text-xs font-display font-bold flex items-center gap-1.5 shadow-lg shadow-moya-red/30 disabled:opacity-50"
+                  >
+                    {isSavingAddress ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                    <span>{isSavingAddress ? t("saving") : t("saveAddress")}</span>
+                  </button>
+                </div>
+              </form>
+            </Form>
           </div>
         </div>
       )}

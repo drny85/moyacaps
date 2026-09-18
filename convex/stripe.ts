@@ -112,7 +112,7 @@ export const createCheckoutSession = action({
             amount: Math.round(shippingFee * 100),
             currency: "usd",
           },
-          display_name: freeShipping ? "Free Worldwide Express Delivery" : "Express Tracked Courier",
+          display_name: freeShipping ? "Free US Express Delivery" : "US Tracked Express Courier",
           delivery_estimate: {
             minimum: { unit: "business_day", value: 2 },
             maximum: { unit: "business_day", value: 4 },
@@ -128,9 +128,7 @@ export const createCheckoutSession = action({
       customer_email: args.customerEmail || undefined,
       billing_address_collection: "required",
       shipping_address_collection: {
-        allowed_countries: [
-          "US", "MX", "CA", "GB", "ES", "FR", "DE", "IT", "NL", "AU", "NZ", "JP", "BR", "CO", "CL", "AR",
-        ],
+        allowed_countries: ["US"],
       },
       phone_number_collection: {
         enabled: true,
@@ -215,6 +213,89 @@ export const cancelAndRefundOrder = action({
       message: refundIssued
         ? "Order cancelled and full refund sent to original payment method."
         : "Order cancelled and stock restored.",
+    };
+  },
+});
+
+export const cancelAndRefundOrderAdmin = action({
+  args: {
+    orderId: v.id("orders"),
+    refundStripe: v.boolean(),
+    reason: v.optional(v.string()),
+    adminNotes: v.optional(v.string()),
+  },
+  handler: async (
+    ctx,
+    args
+  ): Promise<{
+    success: boolean;
+    refundIssued: boolean;
+    refundError?: string;
+    orderNumber: string;
+    message: string;
+  }> => {
+    // 1. Verify caller has admin identity
+    const identity = await ctx.auth.getUserIdentity();
+    if (process.env.NODE_ENV !== "development" || identity?.subject) {
+      if (identity?.subject) {
+        const adminUser = await ctx.runQuery(api.users.getUserByClerkId, {
+          clerkId: identity.subject,
+        });
+        if (adminUser?.role !== "admin") {
+          throw new Error("Unauthorized: Administrative privileges required to cancel orders.");
+        }
+      }
+    }
+
+    // 2. Cancel order in Convex and restore inventory
+    const result: {
+      success: boolean;
+      stripeSessionId?: string;
+      orderNumber: string;
+      total: number;
+      currency: string;
+      paymentMethod: string;
+    } = await ctx.runMutation(api.orders.cancelOrderAdmin, {
+      orderId: args.orderId,
+      reason: args.reason || "Administrative cancellation",
+      adminNotes: args.adminNotes,
+    });
+
+    // 3. Issue Stripe refund if requested and session exists
+    let refundIssued = false;
+    let refundError: string | undefined;
+    if (args.refundStripe && result.stripeSessionId) {
+      try {
+        const stripe = getStripe();
+        const session = await stripe.checkout.sessions.retrieve(result.stripeSessionId);
+
+        if (session.payment_intent) {
+          await stripe.refunds.create({
+            payment_intent: session.payment_intent as string,
+            reason: "requested_by_customer",
+            metadata: {
+              orderNumber: result.orderNumber,
+              cancelledByAdmin: identity?.subject || "admin",
+            },
+          });
+          refundIssued = true;
+        }
+      } catch (err: any) {
+        console.error("Stripe refund error in cancelAndRefundOrderAdmin:", err);
+        refundError = err?.message || "Failed to process refund on Stripe.";
+      }
+    }
+
+    return {
+      success: true,
+      refundIssued,
+      refundError,
+      orderNumber: result.orderNumber,
+      message: refundIssued
+        ? "Order cancelled, inventory restocked, and full Stripe refund processed."
+        : refundError
+        ? `Order cancelled and restocked, but Stripe refund failed: ${refundError}`
+        : "Order cancelled and inventory restocked without automated Stripe refund.",
     };
   },
 });

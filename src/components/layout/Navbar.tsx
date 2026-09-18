@@ -3,7 +3,7 @@
 import { useTranslations, useLocale } from "next-intl";
 import { Link, usePathname, useRouter } from "@/i18n/routing";
 import { useStore } from "@/store/useStore";
-import { ShoppingBag, Globe, Menu, X, Sparkles, User, Package, Shield } from "lucide-react";
+import { ShoppingBag, Globe, Menu, X, Sparkles, User, Package, Shield, Truck } from "lucide-react";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
@@ -85,12 +85,22 @@ export function Navbar() {
             <a href="/#story" className="hover:text-zinc-900 dark:hover:text-white transition-colors hover-underline">
               {t("story")}
             </a>
+            <Link
+              href="/track"
+              className={`transition-colors hover-underline flex items-center gap-1.5 ${pathname.includes("/track")
+                ? "text-moya-red dark:text-moya-red font-bold"
+                : "hover:text-zinc-900 dark:hover:text-white"
+                }`}
+            >
+              <Truck className="w-3.5 h-3.5 text-moya-red" />
+              <span>{t("track")}</span>
+            </Link>
             {isSignedIn && (
               <Link
                 href="/account/orders"
                 className={`transition-colors hover-underline flex items-center gap-1.5 ${pathname.includes("/account/orders")
-                    ? "text-moya-red dark:text-moya-red font-bold"
-                    : "hover:text-zinc-900 dark:hover:text-white"
+                  ? "text-moya-red dark:text-moya-red font-bold"
+                  : "hover:text-zinc-900 dark:hover:text-white"
                   }`}
               >
                 <Package className="w-3.5 h-3.5 text-moya-red" />
@@ -110,8 +120,8 @@ export function Navbar() {
               <button
                 onClick={() => switchLocale("en")}
                 className={`transition-colors ${locale === "en"
-                    ? "text-zinc-900 dark:text-white font-bold underline decoration-moya-green decoration-2 underline-offset-4"
-                    : "text-zinc-400 dark:text-zinc-600 hover:text-zinc-900 dark:hover:text-zinc-300"
+                  ? "text-zinc-900 dark:text-white font-bold underline decoration-moya-green decoration-2 underline-offset-4"
+                  : "text-zinc-400 dark:text-zinc-600 hover:text-zinc-900 dark:hover:text-zinc-300"
                   }`}
               >
                 EN
@@ -120,8 +130,8 @@ export function Navbar() {
               <button
                 onClick={() => switchLocale("es")}
                 className={`transition-colors ${locale === "es"
-                    ? "text-zinc-900 dark:text-white font-bold underline decoration-moya-green decoration-2 underline-offset-4"
-                    : "text-zinc-400 dark:text-zinc-600 hover:text-zinc-900 dark:hover:text-zinc-300"
+                  ? "text-zinc-900 dark:text-white font-bold underline decoration-moya-green decoration-2 underline-offset-4"
+                  : "text-zinc-400 dark:text-zinc-600 hover:text-zinc-900 dark:hover:text-zinc-300"
                   }`}
               >
                 ES
@@ -133,8 +143,8 @@ export function Navbar() {
               <Link
                 href="/account/orders"
                 className={`hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl glass-dark hover:bg-black/5 dark:hover:bg-white/10 text-xs font-display font-semibold transition-all border ${pathname.includes("/account/orders")
-                    ? "border-moya-red text-moya-red bg-moya-red/5 font-bold"
-                    : "border-black/[0.06] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white"
+                  ? "border-moya-red text-moya-red bg-moya-red/5 font-bold"
+                  : "border-black/[0.06] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white"
                   }`}
                 title="View All Orders"
               >
@@ -228,11 +238,19 @@ export function Navbar() {
               >
                 {t("story")}
               </a>
+              <Link
+                href="/track"
+                onClick={() => setMobileMenuOpen(false)}
+                className="text-zinc-900 dark:text-zinc-200 hover:text-moya-red font-display font-semibold text-base transition-colors flex items-center gap-2"
+              >
+                <Truck className="w-5 h-5 text-moya-red" />
+                <span>{t("trackShipment")}</span>
+              </Link>
               {isSignedIn ? (
                 <Link
                   href="/account/orders"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="text-zinc-900 dark:text-zinc-200 hover:text-moya-red font-display text-base transition-colors flex items-center gap-2 text-moya-red font-bold"
+                  className="text-zinc-900 dark:text-zinc-200 hover:text-moya-red font-display text-base transition-colors flex items-center gap-2 font-bold"
                 >
                   <Package className="w-5 h-5 text-moya-red" />
                   <span>{t("orders")}</span>

@@ -3,9 +3,10 @@
 import React, { useState, useMemo } from "react";
 import Image from "next/image";
 import { useTranslations, useLocale } from "next-intl";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
+import { getCarrierTrackingUrl } from "@/lib/tracking";
 import {
   Search,
   Filter,
@@ -28,6 +29,9 @@ import {
   User,
   X,
   Send,
+  Edit3,
+  Undo2,
+  AlertCircle,
 } from "lucide-react";
 
 export default function AdminOrdersPage() {
@@ -45,18 +49,42 @@ export default function AdminOrdersPage() {
 
   // Modals state
   const [dispatchModalOrder, setDispatchModalOrder] = useState<any | null>(null);
-  const [carrierInput, setCarrierInput] = useState("DHL Express");
+  const [carrierInput, setCarrierInput] = useState("USPS");
   const [trackingInput, setTrackingInput] = useState("");
   const [adminNotesInput, setAdminNotesInput] = useState("");
 
   const [confirmWhatsAppOrder, setConfirmWhatsAppOrder] = useState<any | null>(null);
   const [cancelModalOrder, setCancelModalOrder] = useState<any | null>(null);
+  const [refundStripeToggle, setRefundStripeToggle] = useState(true);
+  const [cancelReasonInput, setCancelReasonInput] = useState("");
+
+  const [deliverModalOrder, setDeliverModalOrder] = useState<any | null>(null);
+  const [revertModalOrder, setRevertModalOrder] = useState<any | null>(null);
+
+  const [editAddressOrder, setEditAddressOrder] = useState<any | null>(null);
+  const [addressForm, setAddressForm] = useState({
+    customerName: "",
+    customerEmail: "",
+    customerPhone: "",
+    line1: "",
+    line2: "",
+    city: "",
+    state: "",
+    postalCode: "",
+    country: "US",
+  });
 
   const [copiedTracking, setCopiedTracking] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [feedbackSuccess, setFeedbackSuccess] = useState<string | null>(null);
 
-  // Convex queries & mutations
+  const triggerSuccess = (msg: string) => {
+    setFeedbackSuccess(msg);
+    setTimeout(() => setFeedbackSuccess(null), 4000);
+  };
+
+  // Convex queries, mutations & actions
   const orders = useQuery(api.orders.getAllOrdersAdmin, {
     status: statusFilter,
     paymentMethod: paymentFilter,
@@ -65,6 +93,8 @@ export default function AdminOrdersPage() {
 
   const updateOrderStatus = useMutation(api.orders.updateOrderStatusAdmin);
   const updateOrderFulfillment = useMutation(api.orders.updateOrderFulfillmentAdmin);
+  const updateShippingAddressAdmin = useMutation(api.orders.updateShippingAddressAdmin);
+  const cancelAndRefundAdmin = useAction(api.stripe.cancelAndRefundOrderAdmin);
 
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -85,6 +115,7 @@ export default function AdminOrdersPage() {
       if (selectedOrder?._id === confirmWhatsAppOrder._id) {
         setSelectedOrder({ ...selectedOrder, status: "paid" });
       }
+      triggerSuccess("WhatsApp offline payment confirmed and stock deducted.");
     } catch (err: any) {
       console.error("Failed to confirm WhatsApp payment", err);
       setActionError(err?.message || "Failed to confirm WhatsApp payment. Please retry.");
@@ -93,28 +124,42 @@ export default function AdminOrdersPage() {
     }
   };
 
-  const handleDispatchOrder = async () => {
+  const handleDispatchOrder = async (notifyWhatsApp = false) => {
     if (!dispatchModalOrder) return;
     try {
       setIsProcessing(true);
       setActionError(null);
+      const carrier = carrierInput.trim() || "USPS";
+      const tracking = trackingInput.trim() || undefined;
+
       await updateOrderStatus({
         orderId: dispatchModalOrder._id,
         newStatus: "dispatched",
-        carrier: carrierInput,
-        trackingNumber: trackingInput.trim() || undefined,
+        carrier,
+        trackingNumber: tracking,
         adminNotes: adminNotesInput.trim() || undefined,
       });
-      setDispatchModalOrder(null);
+
       if (selectedOrder?._id === dispatchModalOrder._id) {
         setSelectedOrder({
           ...selectedOrder,
           status: "dispatched",
-          carrier: carrierInput,
-          trackingNumber: trackingInput,
+          carrier,
+          trackingNumber: tracking,
           adminNotes: adminNotesInput,
         });
       }
+
+      if (notifyWhatsApp && dispatchModalOrder.customerPhone) {
+        openWhatsAppCustomer({
+          ...dispatchModalOrder,
+          carrier,
+          trackingNumber: tracking,
+        });
+      }
+
+      setDispatchModalOrder(null);
+      triggerSuccess("Order successfully marked as dispatched!");
     } catch (err: any) {
       console.error("Failed to dispatch order", err);
       setActionError(err?.message || "Failed to dispatch order. Please check inputs and retry.");
@@ -123,17 +168,20 @@ export default function AdminOrdersPage() {
     }
   };
 
-  const handleMarkDelivered = async (order: any) => {
+  const handleConfirmDelivered = async () => {
+    if (!deliverModalOrder) return;
     try {
       setIsProcessing(true);
       setActionError(null);
       await updateOrderStatus({
-        orderId: order._id,
+        orderId: deliverModalOrder._id,
         newStatus: "delivered",
       });
-      if (selectedOrder?._id === order._id) {
+      if (selectedOrder?._id === deliverModalOrder._id) {
         setSelectedOrder({ ...selectedOrder, status: "delivered" });
       }
+      setDeliverModalOrder(null);
+      triggerSuccess("Shipment delivery successfully confirmed.");
     } catch (err: any) {
       console.error("Failed to mark delivered", err);
       setActionError(err?.message || "Failed to update delivery status.");
@@ -142,22 +190,119 @@ export default function AdminOrdersPage() {
     }
   };
 
+  const handleConfirmRevert = async () => {
+    if (!revertModalOrder) return;
+    try {
+      setIsProcessing(true);
+      setActionError(null);
+      await updateOrderStatus({
+        orderId: revertModalOrder._id,
+        newStatus: "dispatched",
+      });
+      if (selectedOrder?._id === revertModalOrder._id) {
+        setSelectedOrder({ ...selectedOrder, status: "dispatched" });
+      }
+      setRevertModalOrder(null);
+      triggerSuccess("Order status reverted back to Dispatched.");
+    } catch (err: any) {
+      console.error("Failed to revert order", err);
+      setActionError(err?.message || "Failed to revert order status.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleOpenCancelModal = (order: any) => {
+    setCancelModalOrder(order);
+    setRefundStripeToggle(order.paymentMethod === "stripe" && !!order.stripeSessionId);
+    setCancelReasonInput("");
+  };
+
   const handleCancelAndRestock = async () => {
     if (!cancelModalOrder) return;
     try {
       setIsProcessing(true);
       setActionError(null);
-      await updateOrderStatus({
+      const res = await cancelAndRefundAdmin({
         orderId: cancelModalOrder._id,
-        newStatus: "cancelled",
+        refundStripe: refundStripeToggle,
+        reason: cancelReasonInput.trim() || undefined,
+        adminNotes: cancelReasonInput.trim() ? `Cancelled by admin: ${cancelReasonInput.trim()}` : undefined,
       });
+
       setCancelModalOrder(null);
       if (selectedOrder?._id === cancelModalOrder._id) {
         setSelectedOrder({ ...selectedOrder, status: "cancelled" });
       }
+      triggerSuccess(res.message);
     } catch (err: any) {
       console.error("Failed to cancel order", err);
       setActionError(err?.message || "Failed to cancel order.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleOpenEditAddress = (order: any) => {
+    setEditAddressOrder(order);
+    setAddressForm({
+      customerName: order.customerName || "",
+      customerEmail: order.customerEmail || "",
+      customerPhone: order.customerPhone || "",
+      line1: order.shippingAddress?.line1 || "",
+      line2: order.shippingAddress?.line2 || "",
+      city: order.shippingAddress?.city || "",
+      state: order.shippingAddress?.state || "",
+      postalCode: order.shippingAddress?.postalCode || "",
+      country: order.shippingAddress?.country || "US",
+    });
+  };
+
+  const handleSaveAddressAdmin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editAddressOrder) return;
+    try {
+      setIsProcessing(true);
+      setActionError(null);
+      await updateShippingAddressAdmin({
+        orderId: editAddressOrder._id,
+        customerName: addressForm.customerName.trim() || undefined,
+        customerEmail: addressForm.customerEmail.trim() || undefined,
+        customerPhone: addressForm.customerPhone.trim() || undefined,
+        shippingAddress: {
+          line1: addressForm.line1.trim(),
+          line2: addressForm.line2.trim() || undefined,
+          city: addressForm.city.trim(),
+          state: addressForm.state.trim(),
+          postalCode: addressForm.postalCode.trim(),
+          country: addressForm.country.trim() || "US",
+        },
+      });
+
+      const updatedShipping = {
+        line1: addressForm.line1.trim(),
+        line2: addressForm.line2.trim() || undefined,
+        city: addressForm.city.trim(),
+        state: addressForm.state.trim(),
+        postalCode: addressForm.postalCode.trim(),
+        country: addressForm.country.trim() || "US",
+      };
+
+      if (selectedOrder?._id === editAddressOrder._id) {
+        setSelectedOrder({
+          ...selectedOrder,
+          customerName: addressForm.customerName.trim() || selectedOrder.customerName,
+          customerEmail: addressForm.customerEmail.trim() || selectedOrder.customerEmail,
+          customerPhone: addressForm.customerPhone.trim() || selectedOrder.customerPhone,
+          shippingAddress: updatedShipping,
+        });
+      }
+
+      setEditAddressOrder(null);
+      triggerSuccess("Recipient and shipping address successfully updated.");
+    } catch (err: any) {
+      console.error("Failed to update shipping address", err);
+      setActionError(err?.message || "Failed to update address.");
     } finally {
       setIsProcessing(false);
     }
@@ -255,6 +400,22 @@ export default function AdminOrdersPage() {
           <button
             onClick={() => setActionError(null)}
             className="p-1 rounded hover:bg-red-500/20 text-red-500"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {/* Action Success Alert */}
+      {feedbackSuccess && (
+        <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between gap-3 text-xs text-emerald-600 dark:text-emerald-400 animate-in fade-in">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-500" />
+            <span>{feedbackSuccess}</span>
+          </div>
+          <button
+            onClick={() => setFeedbackSuccess(null)}
+            className="p-1 rounded hover:bg-emerald-500/20 text-emerald-500"
           >
             <X className="w-4 h-4" />
           </button>
@@ -380,6 +541,20 @@ export default function AdminOrdersPage() {
                         <span className="text-[10px] text-zinc-600 dark:text-zinc-400 font-mono block">
                           {dateStr}
                         </span>
+                        {order.trackingNumber && (
+                          <a
+                            href={getCarrierTrackingUrl(order.carrier, order.trackingNumber) || "#"}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-flex items-center gap-1 mt-1 text-[10px] font-mono text-blue-600 dark:text-blue-400 hover:underline"
+                            title="Open live carrier tracking"
+                          >
+                            <Truck className="w-2.5 h-2.5" />
+                            <span>{order.carrier ? order.carrier.split(" ")[0] : "Track"}: {order.trackingNumber}</span>
+                            <ExternalLink className="w-2.5 h-2.5" />
+                          </a>
+                        )}
                       </td>
 
                       {/* Customer Info */}
@@ -461,7 +636,7 @@ export default function AdminOrdersPage() {
                             <button
                               onClick={() => {
                                 setDispatchModalOrder(order);
-                                setCarrierInput(order.carrier || "DHL Express");
+                                setCarrierInput(order.carrier || "USPS");
                                 setTrackingInput(order.trackingNumber || "");
                                 setAdminNotesInput(order.adminNotes || "");
                               }}
@@ -471,10 +646,10 @@ export default function AdminOrdersPage() {
                             </button>
                           )}
 
-                          {/* 3. Mark Delivered */}
+                          {/* 3. Mark Delivered with Confirmation Dialog */}
                           {order.status === "dispatched" && (
                             <button
-                              onClick={() => handleMarkDelivered(order)}
+                              onClick={() => setDeliverModalOrder(order)}
                               disabled={isProcessing}
                               className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-purple-600 hover:bg-purple-500 text-white shadow-xs transition-colors"
                             >
@@ -572,16 +747,31 @@ export default function AdminOrdersPage() {
                   )}
 
                   {selectedOrder.shippingAddress && (
-                    <div className="pt-2 border-t border-zinc-200/60 dark:border-white/[0.04] flex items-start gap-2 text-zinc-700 dark:text-zinc-300">
-                      <MapPin className="w-4 h-4 text-moya-red shrink-0 mt-0.5" />
-                      <div>
-                        <div>{selectedOrder.shippingAddress.line1}</div>
-                        {selectedOrder.shippingAddress.line2 && <div>{selectedOrder.shippingAddress.line2}</div>}
+                    <div className="pt-2 border-t border-zinc-200/60 dark:border-white/[0.04] space-y-1.5">
+                      <div className="flex items-center justify-between text-zinc-500">
+                        <span className="text-[10px] font-mono uppercase tracking-wider font-semibold">
+                          {t("shippingTo")}
+                        </span>
+                        {selectedOrder.status !== "dispatched" && selectedOrder.status !== "delivered" && selectedOrder.status !== "cancelled" && (
+                          <button
+                            onClick={() => handleOpenEditAddress(selectedOrder)}
+                            className="text-[11px] font-semibold text-moya-red hover:underline flex items-center gap-1"
+                          >
+                            <Edit3 className="w-3 h-3" /> {t("editShippingBtn")}
+                          </button>
+                        )}
+                      </div>
+                      <div className="flex items-start gap-2 text-zinc-700 dark:text-zinc-300 text-xs">
+                        <MapPin className="w-4 h-4 text-moya-red shrink-0 mt-0.5" />
                         <div>
-                          {selectedOrder.shippingAddress.city}, {selectedOrder.shippingAddress.state} {selectedOrder.shippingAddress.postalCode}
-                        </div>
-                        <div className="font-semibold text-zinc-900 dark:text-white uppercase text-[10px]">
-                          {selectedOrder.shippingAddress.country}
+                          <div>{selectedOrder.shippingAddress.line1}</div>
+                          {selectedOrder.shippingAddress.line2 && <div>{selectedOrder.shippingAddress.line2}</div>}
+                          <div>
+                            {selectedOrder.shippingAddress.city}, {selectedOrder.shippingAddress.state} {selectedOrder.shippingAddress.postalCode}
+                          </div>
+                          <div className="font-semibold text-zinc-900 dark:text-white uppercase text-[10px] mt-0.5">
+                            {selectedOrder.shippingAddress.country}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -639,7 +829,7 @@ export default function AdminOrdersPage() {
                     <div className="flex items-center justify-between text-xs">
                       <span className="text-zinc-600 dark:text-zinc-400">Courier:</span>
                       <span className="font-semibold text-zinc-900 dark:text-white">
-                        {selectedOrder.carrier || "DHL Express"}
+                        {selectedOrder.carrier || "USPS"}
                       </span>
                     </div>
 
@@ -656,6 +846,16 @@ export default function AdminOrdersPage() {
                         </button>
                       </div>
                     </div>
+
+                    <a
+                      href={getCarrierTrackingUrl(selectedOrder.carrier, selectedOrder.trackingNumber) || "#"}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-center gap-1.5 w-full py-2 px-3 rounded-xl text-xs font-semibold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 hover:bg-blue-500/15 transition-colors mt-2"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      <span>{t("trackCarrierBtn")} ({selectedOrder.carrier ? selectedOrder.carrier.split(" ")[0] : "Courier"})</span>
+                    </a>
                   </div>
                 ) : (
                   <div className="text-xs text-zinc-600 dark:text-zinc-400">
@@ -668,7 +868,7 @@ export default function AdminOrdersPage() {
                   <button
                     onClick={() => {
                       setDispatchModalOrder(selectedOrder);
-                      setCarrierInput(selectedOrder.carrier || "DHL Express");
+                      setCarrierInput(selectedOrder.carrier || "USPS");
                       setTrackingInput(selectedOrder.trackingNumber || "");
                       setAdminNotesInput(selectedOrder.adminNotes || "");
                     }}
@@ -702,7 +902,7 @@ export default function AdminOrdersPage() {
             <div className="p-4 border-t border-zinc-200 dark:border-white/[0.06] bg-zinc-50/50 dark:bg-white/[0.01] flex items-center justify-between gap-3">
               {selectedOrder.status !== "cancelled" ? (
                 <button
-                  onClick={() => setCancelModalOrder(selectedOrder)}
+                  onClick={() => handleOpenCancelModal(selectedOrder)}
                   className="py-2 px-3 rounded-xl border border-red-500/30 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 text-xs font-semibold transition-colors"
                 >
                   {t("cancelOrder")}
@@ -713,14 +913,49 @@ export default function AdminOrdersPage() {
                 </span>
               )}
 
-              {selectedOrder.status === "whatsapp_initiated" && (
-                <button
-                  onClick={() => setConfirmWhatsAppOrder(selectedOrder)}
-                  className="py-2 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition-colors"
-                >
-                  {t("confirmWhatsAppBtn")}
-                </button>
-              )}
+              <div className="flex items-center gap-2">
+                {selectedOrder.status === "whatsapp_initiated" && (
+                  <button
+                    onClick={() => setConfirmWhatsAppOrder(selectedOrder)}
+                    className="py-2 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition-colors"
+                  >
+                    {t("confirmWhatsAppBtn")}
+                  </button>
+                )}
+
+                {selectedOrder.status === "paid" && (
+                  <button
+                    onClick={() => {
+                      setDispatchModalOrder(selectedOrder);
+                      setCarrierInput(selectedOrder.carrier || "USPS");
+                      setTrackingInput(selectedOrder.trackingNumber || "");
+                      setAdminNotesInput(selectedOrder.adminNotes || "");
+                    }}
+                    className="py-2 px-4 rounded-xl bg-moya-red hover:bg-moya-red-light text-white text-xs font-semibold transition-colors flex items-center gap-1.5 shadow-md shadow-moya-red/20"
+                  >
+                    <Truck className="w-3.5 h-3.5" /> {t("dispatchBtn")}
+                  </button>
+                )}
+
+                {selectedOrder.status === "dispatched" && (
+                  <button
+                    onClick={() => setDeliverModalOrder(selectedOrder)}
+                    className="py-2 px-4 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold transition-colors flex items-center gap-1.5 shadow-md shadow-purple-600/20"
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5" /> {t("markDelivered")}
+                  </button>
+                )}
+
+                {selectedOrder.status === "delivered" && (
+                  <button
+                    onClick={() => setRevertModalOrder(selectedOrder)}
+                    className="py-2 px-3 rounded-xl border border-zinc-300 dark:border-white/10 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/5 text-xs font-semibold transition-colors flex items-center gap-1"
+                    title={t("revertBtn")}
+                  >
+                    <Undo2 className="w-3.5 h-3.5" /> {t("revertBtn")}
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -793,11 +1028,10 @@ export default function AdminOrdersPage() {
                   onChange={(e) => setCarrierInput(e.target.value)}
                   className="w-full py-2 px-3 rounded-xl bg-zinc-50 dark:bg-white/[0.03] border border-zinc-200 dark:border-white/10 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-moya-red font-medium"
                 >
-                  <option value="DHL Express">DHL Express Worldwide</option>
-                  <option value="FedEx International">FedEx International Priority</option>
-                  <option value="Correos de México">Correos de México Express</option>
-                  <option value="Estafeta">Estafeta Express</option>
-                  <option value="UPS Worldwide">UPS Worldwide Saver</option>
+                  <option value="USPS">USPS Priority Mail</option>
+                  <option value="UPS">UPS Ground</option>
+                  <option value="FedEx">FedEx Express</option>
+                  <option value="DHL Express">DHL Express</option>
                 </select>
               </div>
 
@@ -828,29 +1062,43 @@ export default function AdminOrdersPage() {
               </div>
             </div>
 
-            <div className="flex items-center gap-3 pt-2">
+            <div className="flex flex-col sm:flex-row items-center gap-2 pt-2">
               <button
+                type="button"
                 onClick={() => setDispatchModalOrder(null)}
                 disabled={isProcessing}
-                className="flex-1 py-2.5 px-3 rounded-xl border border-zinc-200 dark:border-white/10 text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-white/5 transition-colors"
+                className="w-full sm:flex-1 py-2.5 px-3 rounded-xl border border-zinc-200 dark:border-white/10 text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-white/5 transition-colors"
               >
                 Cancel
               </button>
               <button
-                onClick={handleDispatchOrder}
+                type="button"
+                onClick={() => handleDispatchOrder(false)}
                 disabled={isProcessing}
-                className="flex-1 py-2.5 px-3 rounded-xl bg-moya-red hover:bg-moya-red-light text-white text-xs font-semibold transition-colors shadow-md shadow-moya-red/20"
+                className="w-full sm:flex-1 py-2.5 px-3 rounded-xl bg-moya-red hover:bg-moya-red-light text-white text-xs font-semibold transition-colors shadow-md shadow-moya-red/20"
               >
                 {isProcessing ? "Updating Dispatch..." : t("dispatchBtn")}
               </button>
+              {dispatchModalOrder.customerPhone && (
+                <button
+                  type="button"
+                  onClick={() => handleDispatchOrder(true)}
+                  disabled={isProcessing}
+                  className="w-full sm:flex-1 py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 shadow-md shadow-emerald-600/20"
+                  title={t("dispatchAndNotify")}
+                >
+                  <MessageCircle className="w-3.5 h-3.5" />
+                  <span className="truncate">{t("dispatchAndNotify")}</span>
+                </button>
+              )}
             </div>
           </div>
         </div>
       )}
 
-      {/* ── Modal 3: Cancel & Restock ── */}
+      {/* ── Modal 3: Cancel & Restock (With Stripe Refund Option) ── */}
       {cancelModalOrder && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
           <div className="max-w-md w-full bg-white dark:bg-[#0c0c14] border border-red-500/20 dark:border-red-500/30 rounded-2xl p-6 shadow-2xl space-y-4">
             <div className="w-12 h-12 rounded-2xl bg-red-500/10 text-red-600 dark:text-red-400 flex items-center justify-center mx-auto">
               <AlertTriangle className="w-6 h-6" />
@@ -863,14 +1111,49 @@ export default function AdminOrdersPage() {
               <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-2 leading-relaxed">
                 {t("cancelConfirmDesc")}
               </p>
-              <div className="mt-3 p-3 rounded-xl bg-zinc-50 dark:bg-white/[0.02] border border-zinc-200 dark:border-white/10 font-mono text-xs text-left">
+              <div className="mt-3 p-3 rounded-xl bg-zinc-50 dark:bg-white/[0.02] border border-zinc-200 dark:border-white/10 font-mono text-xs text-left space-y-1">
                 <div>Order: <span className="font-bold">{cancelModalOrder.orderNumber}</span></div>
+                <div>Customer: <span className="font-semibold">{cancelModalOrder.customerName || "Customer"}</span></div>
+                <div>Payment: <span className="font-semibold uppercase">{cancelModalOrder.paymentMethod}</span></div>
                 <div>Items to restore: <span className="font-bold text-emerald-600">{cancelModalOrder.items.reduce((s: number, i: any) => s + i.quantity, 0)} units</span></div>
               </div>
             </div>
 
+            {/* Stripe Refund Toggle */}
+            {cancelModalOrder.paymentMethod === "stripe" && cancelModalOrder.stripeSessionId && (
+              <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-xs text-left space-y-1.5">
+                <label className="flex items-center gap-2 cursor-pointer font-semibold text-zinc-900 dark:text-white">
+                  <input
+                    type="checkbox"
+                    checked={refundStripeToggle}
+                    onChange={(e) => setRefundStripeToggle(e.target.checked)}
+                    className="w-4 h-4 rounded text-moya-red accent-moya-red"
+                  />
+                  <span>{t("stripeRefundLabel")} (${cancelModalOrder.total} USD)</span>
+                </label>
+                <p className="text-[11px] text-zinc-500 pl-6 leading-relaxed">
+                  {t("stripeRefundDesc")}
+                </p>
+              </div>
+            )}
+
+            {/* Reason / Admin note input */}
+            <div className="text-left">
+              <label className="text-[11px] font-medium text-zinc-600 dark:text-zinc-400 block mb-1">
+                {t("cancelReasonLabel")}
+              </label>
+              <input
+                type="text"
+                value={cancelReasonInput}
+                onChange={(e) => setCancelReasonInput(e.target.value)}
+                placeholder="e.g. Customer request or shipping address unreachable"
+                className="w-full py-2 px-3 rounded-xl bg-zinc-50 dark:bg-white/[0.03] border border-zinc-200 dark:border-white/10 text-xs text-zinc-900 dark:text-white placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-moya-red"
+              />
+            </div>
+
             <div className="flex items-center gap-3 pt-2">
               <button
+                type="button"
                 onClick={() => setCancelModalOrder(null)}
                 disabled={isProcessing}
                 className="flex-1 py-2.5 px-3 rounded-xl border border-zinc-200 dark:border-white/10 text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-white/5 transition-colors"
@@ -878,13 +1161,246 @@ export default function AdminOrdersPage() {
                 Keep Order
               </button>
               <button
+                type="button"
                 onClick={handleCancelAndRestock}
                 disabled={isProcessing}
                 className="flex-1 py-2.5 px-3 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-semibold transition-colors shadow-md shadow-red-600/20"
               >
-                {isProcessing ? "Restocking..." : "Confirm Cancel & Restock"}
+                {isProcessing ? "Processing..." : "Confirm Cancel & Restock"}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal 4: Confirm Delivery Completed ── */}
+      {deliverModalOrder && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+          <div className="max-w-md w-full bg-white dark:bg-[#0c0c14] border border-purple-500/20 dark:border-purple-500/30 rounded-2xl p-6 shadow-2xl space-y-4">
+            <div className="w-12 h-12 rounded-2xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center mx-auto">
+              <ShieldCheck className="w-6 h-6" />
+            </div>
+
+            <div className="text-center">
+              <h3 className="font-display font-bold text-lg text-zinc-900 dark:text-white">
+                {t("deliverTitle")}
+              </h3>
+              <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-2 leading-relaxed">
+                {t("deliverDesc")}
+              </p>
+              <div className="mt-3 p-3 rounded-xl bg-zinc-50 dark:bg-white/[0.02] border border-zinc-200 dark:border-white/10 font-mono text-xs text-left space-y-1">
+                <div>Order: <span className="font-bold">{deliverModalOrder.orderNumber}</span></div>
+                <div>Recipient: <span className="font-semibold">{deliverModalOrder.customerName || "Customer"}</span></div>
+                <div>Courier: <span className="font-semibold">{deliverModalOrder.carrier || "Express"}</span></div>
+                {deliverModalOrder.trackingNumber && (
+                  <div>Tracking: <span className="font-bold text-blue-600 dark:text-blue-400">{deliverModalOrder.trackingNumber}</span></div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setDeliverModalOrder(null)}
+                disabled={isProcessing}
+                className="flex-1 py-2.5 px-3 rounded-xl border border-zinc-200 dark:border-white/10 text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-white/5 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelivered}
+                disabled={isProcessing}
+                className="flex-1 py-2.5 px-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold transition-colors shadow-md shadow-purple-600/20"
+              >
+                {isProcessing ? "Confirming..." : t("confirmDeliverBtn")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal 5: Revert to Dispatched ── */}
+      {revertModalOrder && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+          <div className="max-w-md w-full bg-white dark:bg-[#0c0c14] border border-zinc-200 dark:border-white/10 rounded-2xl p-6 shadow-2xl space-y-4">
+            <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto">
+              <Undo2 className="w-6 h-6" />
+            </div>
+
+            <div className="text-center">
+              <h3 className="font-display font-bold text-lg text-zinc-900 dark:text-white">
+                {t("revertTitle")}
+              </h3>
+              <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-2 leading-relaxed">
+                {t("revertDesc")}
+              </p>
+              <div className="mt-3 p-3 rounded-xl bg-zinc-50 dark:bg-white/[0.02] border border-zinc-200 dark:border-white/10 font-mono text-xs text-left space-y-1">
+                <div>Order: <span className="font-bold">{revertModalOrder.orderNumber}</span></div>
+                <div>Current: <span className="font-semibold text-purple-600">Delivered</span></div>
+                <div>Target: <span className="font-semibold text-blue-600">Dispatched</span></div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setRevertModalOrder(null)}
+                disabled={isProcessing}
+                className="flex-1 py-2.5 px-3 rounded-xl border border-zinc-200 dark:border-white/10 text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-white/5 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmRevert}
+                disabled={isProcessing}
+                className="flex-1 py-2.5 px-3 rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-black text-xs font-semibold transition-colors"
+              >
+                {isProcessing ? "Reverting..." : t("revertBtn")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal 6: Edit Shipping Address & Recipient Details ── */}
+      {editAddressOrder && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+          <div className="max-w-lg w-full bg-white dark:bg-[#0c0c14] border border-zinc-200 dark:border-white/10 rounded-2xl p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-zinc-200 dark:border-white/[0.06]">
+              <div>
+                <h3 className="font-display font-bold text-base text-zinc-900 dark:text-white">
+                  {t("editAddressTitle")}
+                </h3>
+                <p className="text-xs text-zinc-500 mt-0.5">
+                  Order #{editAddressOrder.orderNumber}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditAddressOrder(null)}
+                className="p-1 rounded-lg text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveAddressAdmin} className="space-y-3 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-medium text-zinc-700 dark:text-zinc-300 block mb-1">Customer Name</label>
+                  <input
+                    type="text"
+                    value={addressForm.customerName}
+                    onChange={(e) => setAddressForm({ ...addressForm, customerName: e.target.value })}
+                    className="w-full py-2 px-3 rounded-xl bg-zinc-50 dark:bg-white/[0.03] border border-zinc-200 dark:border-white/10 text-zinc-900 dark:text-white focus:ring-1 focus:ring-moya-red"
+                  />
+                </div>
+                <div>
+                  <label className="font-medium text-zinc-700 dark:text-zinc-300 block mb-1">Courier Phone</label>
+                  <input
+                    type="tel"
+                    value={addressForm.customerPhone}
+                    onChange={(e) => setAddressForm({ ...addressForm, customerPhone: e.target.value })}
+                    className="w-full py-2 px-3 rounded-xl bg-zinc-50 dark:bg-white/[0.03] border border-zinc-200 dark:border-white/10 text-zinc-900 dark:text-white focus:ring-1 focus:ring-moya-red"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="font-medium text-zinc-700 dark:text-zinc-300 block mb-1">Customer Email</label>
+                <input
+                  type="email"
+                  value={addressForm.customerEmail}
+                  onChange={(e) => setAddressForm({ ...addressForm, customerEmail: e.target.value })}
+                  className="w-full py-2 px-3 rounded-xl bg-zinc-50 dark:bg-white/[0.03] border border-zinc-200 dark:border-white/10 text-zinc-900 dark:text-white focus:ring-1 focus:ring-moya-red"
+                />
+              </div>
+
+              <div>
+                <label className="font-medium text-zinc-700 dark:text-zinc-300 block mb-1">Street Address (Line 1)</label>
+                <input
+                  type="text"
+                  required
+                  value={addressForm.line1}
+                  onChange={(e) => setAddressForm({ ...addressForm, line1: e.target.value })}
+                  className="w-full py-2 px-3 rounded-xl bg-zinc-50 dark:bg-white/[0.03] border border-zinc-200 dark:border-white/10 text-zinc-900 dark:text-white focus:ring-1 focus:ring-moya-red"
+                />
+              </div>
+
+              <div>
+                <label className="font-medium text-zinc-700 dark:text-zinc-300 block mb-1">Apt, Suite, Unit (Line 2)</label>
+                <input
+                  type="text"
+                  value={addressForm.line2}
+                  onChange={(e) => setAddressForm({ ...addressForm, line2: e.target.value })}
+                  className="w-full py-2 px-3 rounded-xl bg-zinc-50 dark:bg-white/[0.03] border border-zinc-200 dark:border-white/10 text-zinc-900 dark:text-white focus:ring-1 focus:ring-moya-red"
+                />
+              </div>
+
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <label className="font-medium text-zinc-700 dark:text-zinc-300 block mb-1">City</label>
+                  <input
+                    type="text"
+                    required
+                    value={addressForm.city}
+                    onChange={(e) => setAddressForm({ ...addressForm, city: e.target.value })}
+                    className="w-full py-2 px-3 rounded-xl bg-zinc-50 dark:bg-white/[0.03] border border-zinc-200 dark:border-white/10 text-zinc-900 dark:text-white focus:ring-1 focus:ring-moya-red"
+                  />
+                </div>
+                <div>
+                  <label className="font-medium text-zinc-700 dark:text-zinc-300 block mb-1">State / Prov</label>
+                  <input
+                    type="text"
+                    required
+                    value={addressForm.state}
+                    onChange={(e) => setAddressForm({ ...addressForm, state: e.target.value })}
+                    className="w-full py-2 px-3 rounded-xl bg-zinc-50 dark:bg-white/[0.03] border border-zinc-200 dark:border-white/10 text-zinc-900 dark:text-white focus:ring-1 focus:ring-moya-red"
+                  />
+                </div>
+                <div>
+                  <label className="font-medium text-zinc-700 dark:text-zinc-300 block mb-1">Postal Code</label>
+                  <input
+                    type="text"
+                    required
+                    value={addressForm.postalCode}
+                    onChange={(e) => setAddressForm({ ...addressForm, postalCode: e.target.value })}
+                    className="w-full py-2 px-3 rounded-xl bg-zinc-50 dark:bg-white/[0.03] border border-zinc-200 dark:border-white/10 text-zinc-900 dark:text-white focus:ring-1 focus:ring-moya-red font-mono"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="font-medium text-zinc-700 dark:text-zinc-300 block mb-1">Country</label>
+                <input
+                  type="text"
+                  required
+                  value={addressForm.country}
+                  onChange={(e) => setAddressForm({ ...addressForm, country: e.target.value })}
+                  className="w-full py-2 px-3 rounded-xl bg-zinc-50 dark:bg-white/[0.03] border border-zinc-200 dark:border-white/10 text-zinc-900 dark:text-white focus:ring-1 focus:ring-moya-red uppercase"
+                />
+              </div>
+
+              <div className="flex items-center gap-3 pt-3 border-t border-zinc-200 dark:border-white/[0.06]">
+                <button
+                  type="button"
+                  onClick={() => setEditAddressOrder(null)}
+                  disabled={isProcessing}
+                  className="flex-1 py-2.5 px-3 rounded-xl border border-zinc-200 dark:border-white/10 text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-white/5 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isProcessing}
+                  className="flex-1 py-2.5 px-3 rounded-xl bg-moya-red hover:bg-moya-red-light text-white text-xs font-semibold transition-colors shadow-md shadow-moya-red/20"
+                >
+                  {isProcessing ? "Saving..." : t("saveAddressBtn")}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
