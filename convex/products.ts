@@ -2,6 +2,14 @@ import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { requireAdmin } from "./auth";
 
+export const generateUploadUrl = mutation({
+  args: {},
+  handler: async (ctx) => {
+    await requireAdmin(ctx);
+    return await ctx.storage.generateUploadUrl();
+  },
+});
+
 export const getVariants = query({
   args: {
     silhouette: v.optional(v.string()),
@@ -11,7 +19,17 @@ export const getVariants = query({
     if (args.silhouette && args.silhouette !== "all") {
       variants = variants.filter((v) => v.silhouette === args.silhouette);
     }
-    return variants;
+    return await Promise.all(
+      variants.map(async (v) => {
+        if (v.storageId) {
+          const url = await ctx.storage.getUrl(v.storageId);
+          if (url) {
+            return { ...v, image: url };
+          }
+        }
+        return v;
+      })
+    );
   },
 });
 
@@ -24,6 +42,13 @@ export const getVariantById = query({
       .query("variants")
       .withIndex("by_variantId", (q) => q.eq("variantId", args.variantId))
       .first();
+    if (!variant) return null;
+    if (variant.storageId) {
+      const url = await ctx.storage.getUrl(variant.storageId);
+      if (url) {
+        return { ...variant, image: url };
+      }
+    }
     return variant;
   },
 });
@@ -261,7 +286,18 @@ export const getAllProductsAdmin = query({
   handler: async (ctx) => {
     await requireAdmin(ctx);
     const products = await ctx.db.query("products").collect();
-    const variants = await ctx.db.query("variants").collect();
+    const rawVariants = await ctx.db.query("variants").collect();
+    const variants = await Promise.all(
+      rawVariants.map(async (v) => {
+        if (v.storageId) {
+          const url = await ctx.storage.getUrl(v.storageId);
+          if (url) {
+            return { ...v, image: url };
+          }
+        }
+        return v;
+      })
+    );
     return {
       products,
       variants,
@@ -374,25 +410,45 @@ export const saveVariant = mutation({
     primaryHex: v.string(),
     secondaryHex: v.string(),
     image: v.string(),
+    storageId: v.optional(v.id("_storage")),
+    images: v.optional(v.array(v.string())),
     stock: v.number(),
     priceUsd: v.number(),
     isFeatured: v.boolean(),
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
+    let resolvedImage = args.image;
+    if (args.storageId && (!resolvedImage || resolvedImage.trim() === "")) {
+      const url = await ctx.storage.getUrl(args.storageId);
+      if (url) {
+        resolvedImage = url;
+      }
+    }
+
     const existing = await ctx.db
       .query("variants")
       .withIndex("by_variantId", (q) => q.eq("variantId", args.variantId))
       .first();
 
     if (existing) {
+      if (existing.storageId && args.storageId && existing.storageId !== args.storageId) {
+        try {
+          await ctx.storage.delete(existing.storageId);
+        } catch (e) {
+          // ignore error if file was already removed
+        }
+      }
+
       await ctx.db.patch(existing._id, {
         nameEn: args.nameEn,
         nameEs: args.nameEs,
         silhouette: args.silhouette,
         primaryHex: args.primaryHex,
         secondaryHex: args.secondaryHex,
-        image: args.image,
+        image: resolvedImage,
+        storageId: args.storageId !== undefined ? args.storageId : existing.storageId,
+        images: args.images !== undefined ? args.images : existing.images,
         stock: args.stock,
         priceUsd: args.priceUsd,
         isFeatured: args.isFeatured,
@@ -407,7 +463,9 @@ export const saveVariant = mutation({
       silhouette: args.silhouette,
       primaryHex: args.primaryHex,
       secondaryHex: args.secondaryHex,
-      image: args.image,
+      image: resolvedImage,
+      storageId: args.storageId,
+      images: args.images,
       stock: args.stock,
       priceUsd: args.priceUsd,
       isFeatured: args.isFeatured,
@@ -430,6 +488,14 @@ export const deleteVariant = mutation({
 
     if (!variant) {
       throw new Error(`Variant ${args.variantId} not found`);
+    }
+
+    if (variant.storageId) {
+      try {
+        await ctx.storage.delete(variant.storageId);
+      } catch (e) {
+        // ignore if already deleted
+      }
     }
 
     await ctx.db.delete(variant._id);

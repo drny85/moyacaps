@@ -1,8 +1,40 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { routing } from "@/i18n/routing";
-import { CAP_VARIANTS } from "@/data/caps";
+import { CAP_VARIANTS, type CapVariant } from "@/data/caps";
 import { ProductDetailView } from "@/components/product/ProductDetailView";
+import { fetchQuery } from "convex/nextjs";
+import { api } from "@convex/_generated/api";
+
+export const dynamicParams = true;
+
+async function getCapById(id: string): Promise<CapVariant | null> {
+  const staticCap = CAP_VARIANTS.find((c) => c.id === id);
+  if (staticCap) return staticCap;
+
+  try {
+    const convexVariant = await fetchQuery(api.products.getVariantById, { variantId: id });
+    if (convexVariant) {
+      return {
+        id: convexVariant.variantId,
+        nameEn: convexVariant.nameEn,
+        nameEs: convexVariant.nameEs,
+        silhouette: (convexVariant.silhouette as "snapback" | "trucker") || "snapback",
+        primaryHex: convexVariant.primaryHex,
+        secondaryHex: convexVariant.secondaryHex,
+        image: convexVariant.image,
+        stock: convexVariant.stock,
+        priceUsd: convexVariant.priceUsd,
+        isFeatured: convexVariant.isFeatured,
+        tagEn: convexVariant.isFeatured ? "Signature Edition" : undefined,
+        tagEs: convexVariant.isFeatured ? "Edición Insignia" : undefined,
+      };
+    }
+  } catch (err) {
+    console.error(`Failed to fetch variant ${id} from Convex`, err);
+  }
+  return null;
+}
 
 export function generateStaticParams() {
   const params: { locale: string; id: string }[] = [];
@@ -20,7 +52,7 @@ export async function generateMetadata({
   params: Promise<{ locale: string; id: string }>;
 }): Promise<Metadata> {
   const { locale, id } = await params;
-  const cap = CAP_VARIANTS.find((c) => c.id === id);
+  const cap = await getCapById(id);
 
   if (!cap) {
     return {
@@ -58,7 +90,7 @@ export default async function CapDetailPage({
   params: Promise<{ locale: string; id: string }>;
 }) {
   const { id } = await params;
-  const cap = CAP_VARIANTS.find((c) => c.id === id);
+  const cap = await getCapById(id);
 
   if (!cap) {
     notFound();

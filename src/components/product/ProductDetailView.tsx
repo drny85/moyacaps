@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
 import { Link } from "@/i18n/routing";
 import { useTranslations, useLocale } from "next-intl";
 import { useStore } from "@/store/useStore";
+import { useQuery } from "convex/react";
+import { api } from "@convex/_generated/api";
 import type { CapVariant } from "@/data/caps";
 import {
   ShoppingBag,
@@ -41,6 +43,27 @@ export function ProductDetailView({ cap, allCaps }: ProductDetailViewProps) {
   const [addedSuccess, setAddedSuccess] = useState(false);
   const [isZoomed, setIsZoomed] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+
+  const convexVariants = useQuery(api.products.getVariants, {});
+  const displayAllCaps = useMemo(() => {
+    if (convexVariants && convexVariants.length > 0) {
+      return convexVariants.map((v) => ({
+        id: v.variantId,
+        nameEn: v.nameEn,
+        nameEs: v.nameEs,
+        silhouette: (v.silhouette as "snapback" | "trucker") || "snapback",
+        primaryHex: v.primaryHex,
+        secondaryHex: v.secondaryHex,
+        image: v.image,
+        stock: v.stock,
+        priceUsd: v.priceUsd,
+        isFeatured: v.isFeatured,
+        tagEn: v.isFeatured ? "Signature Edition" : undefined,
+        tagEs: v.isFeatured ? "Edición Insignia" : undefined,
+      }));
+    }
+    return allCaps;
+  }, [convexVariants, allCaps]);
 
   useEffect(() => {
     setIsMounted(true);
@@ -460,7 +483,7 @@ export function ProductDetailView({ cap, allCaps }: ProductDetailViewProps) {
         </div>
 
         <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2.5 sm:gap-3">
-          {allCaps.map((otherCap) => {
+          {displayAllCaps.map((otherCap) => {
             const isCurrent = otherCap.id === cap.id;
             const otherName = locale === "es" ? otherCap.nameEs : otherCap.nameEn;
             return (

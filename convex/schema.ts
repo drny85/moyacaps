@@ -19,6 +19,8 @@ export default defineSchema({
     primaryHex: v.string(),
     secondaryHex: v.string(),
     image: v.string(),
+    storageId: v.optional(v.id("_storage")),
+    images: v.optional(v.array(v.string())),
     stock: v.number(),
     priceUsd: v.number(),
     priceMxn: v.optional(v.number()),

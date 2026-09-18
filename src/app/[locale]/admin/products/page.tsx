@@ -22,6 +22,9 @@ import {
   X,
   Eye,
   Sliders,
+  Upload,
+  Image as ImageIcon,
+  Loader2,
 } from "lucide-react";
 
 export default function AdminProductsPage() {
@@ -49,6 +52,7 @@ export default function AdminProductsPage() {
   const toggleFeatured = useMutation(api.products.toggleVariantFeatured);
   const saveVariant = useMutation(api.products.saveVariant);
   const deleteVariant = useMutation(api.products.deleteVariant);
+  const generateUploadUrl = useMutation(api.products.generateUploadUrl);
 
   // Form state for Modal
   const [formVariantId, setFormVariantId] = useState("");
@@ -63,6 +67,29 @@ export default function AdminProductsPage() {
   const [formIsFeatured, setFormIsFeatured] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
+  // Image Upload State
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [storageId, setStorageId] = useState<string | null>(null);
+  const [imageMode, setImageMode] = useState<"upload" | "url">("upload");
+  const [isDragging, setIsDragging] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<string | null>(null);
+
+  const handleFileSelect = (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      setFormError("Please upload a valid image file (PNG, WebP, JPG, or SVG).");
+      return;
+    }
+    if (file.size > 12 * 1024 * 1024) {
+      setFormError("Image file size exceeds 12MB limit.");
+      return;
+    }
+    setFormError(null);
+    setSelectedFile(file);
+    const objectUrl = URL.createObjectURL(file);
+    setPreviewUrl(objectUrl);
+  };
+
   const openCreateModal = () => {
     setIsNewVariant(true);
     setFormVariantId("");
@@ -71,7 +98,12 @@ export default function AdminProductsPage() {
     setFormSilhouette("snapback");
     setFormPrimaryHex("#111111");
     setFormSecondaryHex("#ef4444");
-    setFormImage("/caps/negro-rojo.png");
+    setFormImage("");
+    setSelectedFile(null);
+    setPreviewUrl(null);
+    setStorageId(null);
+    setImageMode("upload");
+    setUploadProgress(null);
     setFormStock(10);
     setFormPriceUsd(120);
     setFormIsFeatured(false);
@@ -87,7 +119,12 @@ export default function AdminProductsPage() {
     setFormSilhouette(variant.silhouette);
     setFormPrimaryHex(variant.primaryHex);
     setFormSecondaryHex(variant.secondaryHex);
-    setFormImage(variant.image);
+    setFormImage(variant.image || "");
+    setSelectedFile(null);
+    setPreviewUrl(variant.image || null);
+    setStorageId(variant.storageId || null);
+    setImageMode(variant.storageId ? "upload" : "url");
+    setUploadProgress(null);
     setFormStock(variant.stock);
     setFormPriceUsd(variant.priceUsd);
     setFormIsFeatured(Boolean(variant.isFeatured));
@@ -123,6 +160,34 @@ export default function AdminProductsPage() {
     try {
       setIsSaving(true);
       setFormError(null);
+
+      let finalStorageId = storageId;
+      let finalImageUrl = formImage.trim();
+
+      // If a new local file was selected, upload it directly to Convex Storage
+      if (selectedFile) {
+        setUploadProgress("Uploading cap image to Convex storage...");
+        const uploadUrl = await generateUploadUrl();
+        const uploadRes = await fetch(uploadUrl, {
+          method: "POST",
+          headers: { "Content-Type": selectedFile.type },
+          body: selectedFile,
+        });
+
+        if (!uploadRes.ok) {
+          throw new Error("Failed to upload image file to Convex storage.");
+        }
+
+        const uploadData = await uploadRes.json();
+        finalStorageId = uploadData.storageId;
+      }
+
+      // If in URL mode and no new file was uploaded, clear storageId so the custom URL is prioritized
+      if (imageMode === "url" && !selectedFile) {
+        finalStorageId = null;
+      }
+
+      setUploadProgress("Saving product details...");
       await saveVariant({
         variantId: formVariantId.trim().toLowerCase().replace(/\s+/g, "-"),
         nameEn: formNameEn,
@@ -130,17 +195,20 @@ export default function AdminProductsPage() {
         silhouette: formSilhouette,
         primaryHex: formPrimaryHex,
         secondaryHex: formSecondaryHex,
-        image: formImage,
+        image: finalImageUrl,
+        storageId: finalStorageId ? (finalStorageId as any) : undefined,
         stock: Number(formStock),
         priceUsd: Number(formPriceUsd),
         isFeatured: formIsFeatured,
       });
+
       setEditingVariant(null);
     } catch (err: any) {
       console.error("Failed to save variant", err);
       setFormError(err?.message || "Failed to save variant. Please check inputs.");
     } finally {
       setIsSaving(false);
+      setUploadProgress(null);
     }
   };
 
@@ -317,7 +385,7 @@ export default function AdminProductsPage() {
                       <td className="py-3 px-4">
                         <div className="w-12 h-12 rounded-xl bg-zinc-100 dark:bg-zinc-800/80 border border-zinc-200 dark:border-white/10 relative overflow-hidden shrink-0 group">
                           <Image
-                            src={variant.image}
+                            src={variant.image || "/caps/negro-rojo.png"}
                             alt={variant.nameEn}
                             fill
                             className="object-contain p-1 group-hover:scale-110 transition-transform"
@@ -552,7 +620,7 @@ export default function AdminProductsPage() {
                 </div>
               </div>
 
-              {/* Silhouette & Image */}
+              {/* Silhouette & Image Mode Switcher */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="font-medium text-zinc-700 dark:text-zinc-300 block mb-1">
@@ -567,20 +635,161 @@ export default function AdminProductsPage() {
                     <option value="trucker">{t("trucker")}</option>
                   </select>
                 </div>
+
                 <div>
-                  <label className="font-medium text-zinc-700 dark:text-zinc-300 block mb-1">
-                    {t("imageUrl")}
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formImage}
-                    onChange={(e) => setFormImage(e.target.value)}
-                    placeholder="/caps/negro-rojo.png"
-                    className="w-full py-2 px-3 rounded-xl bg-zinc-50 dark:bg-white/[0.03] border border-zinc-200 dark:border-white/10 text-zinc-900 dark:text-white font-mono placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-moya-red"
-                  />
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="font-medium text-zinc-700 dark:text-zinc-300">
+                      Cap Image Source
+                    </label>
+                    <div className="flex items-center rounded-lg bg-zinc-100 dark:bg-white/[0.05] p-0.5 text-[10px] font-medium">
+                      <button
+                        type="button"
+                        onClick={() => setImageMode("upload")}
+                        className={`px-2 py-0.5 rounded-md transition-colors ${
+                          imageMode === "upload"
+                            ? "bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-xs font-semibold"
+                            : "text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
+                        }`}
+                      >
+                        Upload File
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setImageMode("url")}
+                        className={`px-2 py-0.5 rounded-md transition-colors ${
+                          imageMode === "url"
+                            ? "bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-xs font-semibold"
+                            : "text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
+                        }`}
+                      >
+                        Path / URL
+                      </button>
+                    </div>
+                  </div>
+
+                  {imageMode === "url" ? (
+                    <input
+                      type="text"
+                      required={imageMode === "url"}
+                      value={formImage}
+                      onChange={(e) => {
+                        setFormImage(e.target.value);
+                        setPreviewUrl(e.target.value);
+                      }}
+                      placeholder="/caps/negro-rojo.png or https://..."
+                      className="w-full py-2 px-3 rounded-xl bg-zinc-50 dark:bg-white/[0.03] border border-zinc-200 dark:border-white/10 text-zinc-900 dark:text-white font-mono placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-moya-red"
+                    />
+                  ) : (
+                    <div className="text-[11px] text-zinc-500 py-2">
+                      Upload directly to Convex Storage below.
+                    </div>
+                  )}
                 </div>
               </div>
+
+              {/* Upload Dropzone & Preview (when in Upload mode) */}
+              {imageMode === "upload" && (
+                <div className="space-y-2">
+                  <label className="font-medium text-zinc-700 dark:text-zinc-300 block">
+                    Product Showcase Image
+                  </label>
+
+                  {previewUrl ? (
+                    <div className="flex items-center gap-4 p-3 rounded-xl bg-zinc-50 dark:bg-white/[0.02] border border-zinc-200 dark:border-white/10">
+                      <div className="w-16 h-16 rounded-lg bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-white/10 relative overflow-hidden shrink-0">
+                        <Image
+                          src={previewUrl}
+                          alt="Cap Preview"
+                          fill
+                          className="object-contain p-1"
+                        />
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-zinc-900 dark:text-white truncate block">
+                            {selectedFile ? selectedFile.name : (storageId ? "Stored in Convex Storage" : formImage || "Cap Image")}
+                          </span>
+                          {storageId && (
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-mono bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                              Convex Storage
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-[11px] text-zinc-500 block mt-0.5">
+                          {selectedFile
+                            ? `${(selectedFile.size / 1024).toFixed(1)} KB`
+                            : "Ready for live store display"}
+                        </span>
+                      </div>
+
+                      <label className="cursor-pointer px-3 py-1.5 rounded-lg bg-zinc-100 dark:bg-white/[0.06] hover:bg-zinc-200 dark:hover:bg-white/10 text-zinc-800 dark:text-zinc-200 text-xs font-semibold transition-colors shrink-0">
+                        <span>Change</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            if (e.target.files?.[0]) handleFileSelect(e.target.files[0]);
+                          }}
+                        />
+                      </label>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedFile(null);
+                          setPreviewUrl(null);
+                          setStorageId(null);
+                          setFormImage("");
+                        }}
+                        className="p-1.5 rounded-lg text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
+                        title="Remove image"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <label
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        setIsDragging(true);
+                      }}
+                      onDragLeave={() => setIsDragging(false)}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        setIsDragging(false);
+                        if (e.dataTransfer.files?.[0]) {
+                          handleFileSelect(e.dataTransfer.files[0]);
+                        }
+                      }}
+                      className={`cursor-pointer flex flex-col items-center justify-center p-6 rounded-xl border-2 border-dashed transition-all ${
+                        isDragging
+                          ? "border-moya-red bg-moya-red/5"
+                          : "border-zinc-200 dark:border-white/10 hover:border-zinc-400 dark:hover:border-white/20 bg-zinc-50/50 dark:bg-white/[0.01]"
+                      }`}
+                    >
+                      <div className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-white/[0.05] flex items-center justify-center text-zinc-600 dark:text-zinc-400 mb-2">
+                        <Upload className="w-5 h-5" />
+                      </div>
+                      <span className="text-xs font-medium text-zinc-900 dark:text-white text-center">
+                        Click to browse or drag & drop cap image
+                      </span>
+                      <span className="text-[10px] text-zinc-500 mt-1 text-center">
+                        PNG, WebP, JPG up to 12MB (Transparent background recommended)
+                      </span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          if (e.target.files?.[0]) handleFileSelect(e.target.files[0]);
+                        }}
+                      />
+                    </label>
+                  )}
+                </div>
+              )}
 
               {/* Hex Color Pickers */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 rounded-xl bg-zinc-50 dark:bg-white/[0.02] border border-zinc-200 dark:border-white/10">
@@ -670,6 +879,13 @@ export default function AdminProductsPage() {
                 </label>
               </div>
 
+              {uploadProgress && (
+                <div className="p-2.5 rounded-xl bg-moya-red/10 border border-moya-red/20 text-moya-red flex items-center gap-2 text-xs font-mono">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+                  <span>{uploadProgress}</span>
+                </div>
+              )}
+
               <div className="flex items-center gap-3 pt-3 border-t border-zinc-100 dark:border-white/[0.06]">
                 <button
                   type="button"
@@ -681,9 +897,10 @@ export default function AdminProductsPage() {
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="flex-1 py-2.5 px-3 rounded-xl bg-moya-red hover:bg-moya-red-light text-white text-xs font-semibold transition-colors shadow-md shadow-moya-red/20 disabled:opacity-50"
+                  className="flex-1 py-2.5 px-3 rounded-xl bg-moya-red hover:bg-moya-red-light text-white text-xs font-semibold transition-colors shadow-md shadow-moya-red/20 disabled:opacity-50 flex items-center justify-center gap-1.5"
                 >
-                  {isSaving ? t("saving") : t("saveVariant")}
+                  {isSaving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  <span>{isSaving ? (uploadProgress ? "Uploading & Saving..." : t("saving")) : t("saveVariant")}</span>
                 </button>
               </div>
             </form>

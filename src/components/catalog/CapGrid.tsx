@@ -2,7 +2,9 @@
 
 import { useTranslations, useLocale } from "next-intl";
 import { useState, useMemo } from "react";
-import { CAP_VARIANTS } from "@/data/caps";
+import { useQuery } from "convex/react";
+import { api } from "@convex/_generated/api";
+import { CAP_VARIANTS, type CapVariant } from "@/data/caps";
 import { CapCard } from "./CapCard";
 import { Sparkles, Search } from "lucide-react";
 import { motion } from "framer-motion";
@@ -14,11 +16,33 @@ export function CapGrid() {
   const [activeFilter, setActiveFilter] = useState<"all" | "snapback" | "trucker">("all");
   const [searchQuery, setSearchQuery] = useState("");
 
-  const snapbackCount = CAP_VARIANTS.filter((c) => c.silhouette === "snapback").length;
-  const truckerCount = CAP_VARIANTS.filter((c) => c.silhouette === "trucker").length;
+  const convexVariants = useQuery(api.products.getVariants, {});
+
+  const caps: CapVariant[] = useMemo(() => {
+    if (convexVariants && convexVariants.length > 0) {
+      return convexVariants.map((v) => ({
+        id: v.variantId,
+        nameEn: v.nameEn,
+        nameEs: v.nameEs,
+        silhouette: (v.silhouette as "snapback" | "trucker") || "snapback",
+        primaryHex: v.primaryHex,
+        secondaryHex: v.secondaryHex,
+        image: v.image,
+        stock: v.stock,
+        priceUsd: v.priceUsd,
+        isFeatured: v.isFeatured,
+        tagEn: v.isFeatured ? "Signature Edition" : undefined,
+        tagEs: v.isFeatured ? "Edición Insignia" : undefined,
+      }));
+    }
+    return CAP_VARIANTS;
+  }, [convexVariants]);
+
+  const snapbackCount = caps.filter((c) => c.silhouette === "snapback").length;
+  const truckerCount = caps.filter((c) => c.silhouette === "trucker").length;
 
   const filteredCaps = useMemo(() => {
-    return CAP_VARIANTS.filter((cap) => {
+    return caps.filter((cap) => {
       if (activeFilter !== "all" && cap.silhouette !== activeFilter) {
         return false;
       }
@@ -30,10 +54,10 @@ export function CapGrid() {
       }
       return true;
     });
-  }, [activeFilter, searchQuery, locale]);
+  }, [caps, activeFilter, searchQuery, locale]);
 
   const filters: { key: "all" | "snapback" | "trucker"; label: string }[] = [
-    { key: "all", label: t("filterAll", { count: CAP_VARIANTS.length }) },
+    { key: "all", label: t("filterAll", { count: caps.length }) },
     { key: "snapback", label: t("filterSnapback", { count: snapbackCount }) },
     { key: "trucker", label: t("filterTrucker", { count: truckerCount }) },
   ];
