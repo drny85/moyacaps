@@ -1,25 +1,27 @@
 "use client";
 
-import { ReactNode } from "react";
+import { ReactNode, useMemo } from "react";
 import { ConvexProvider, ConvexReactClient } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { useAuth } from "@clerk/nextjs";
 
-const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
-const convex = convexUrl ? new ConvexReactClient(convexUrl) : null;
+const rawConvexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
+const fallbackUrl = "https://placeholder-moyacaps.convex.cloud";
 
 export function ConvexClientProvider({ children }: { children: ReactNode }) {
-  if (!convex) {
-    return <>{children}</>;
-  }
+  const client = useMemo(() => {
+    return new ConvexReactClient(rawConvexUrl || fallbackUrl);
+  }, []);
 
-  if (process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) {
+  const hasClerkKey = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
+
+  if (hasClerkKey) {
     return (
-      <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
+      <ConvexProviderWithClerk client={client} useAuth={useAuth}>
         {children}
       </ConvexProviderWithClerk>
     );
   }
 
-  return <ConvexProvider client={convex}>{children}</ConvexProvider>;
+  return <ConvexProvider client={client}>{children}</ConvexProvider>;
 }
