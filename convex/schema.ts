@@ -25,6 +25,7 @@ export default defineSchema({
     priceUsd: v.number(),
     priceMxn: v.optional(v.number()),
     isFeatured: v.boolean(),
+    isAvailable: v.optional(v.boolean()),
   }).index("by_variantId", ["variantId"]),
   orders: defineTable({
     orderNumber: v.string(),

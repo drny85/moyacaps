@@ -66,8 +66,8 @@ export const createCheckoutSession = action({
       if (!variant) {
         throw new ConvexError(
           args.locale === "es"
-            ? `Modelo no encontrado en el catálogo: ${item.variantId}`
-            : `Variant not found in catalog: ${item.variantId}`
+            ? `Este modelo ya no está disponible para compra: ${item.variantId}`
+            : `This product variant is no longer available for purchase: ${item.variantId}`
         );
       }
 

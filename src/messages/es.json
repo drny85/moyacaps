@@ -336,7 +336,21 @@
       "stockImpactDeduct": "Esto reducirá el inventario disponible en {delta} unidad(es) ({current} → {projected}).",
       "stockImpactZero": "ADVERTENCIA CRÍTICA: El inventario disponible llegará a 0 unidades. Esta combinación se marcará inmediatamente como 'Agotado' en la tienda en vivo, bloqueando compras.",
       "confirmStockBtn": "Confirmar y Actualizar",
-      "cancelBtn": "Cancelar"
+      "cancelBtn": "Cancelar",
+      "availability": "Disponibilidad",
+      "available": "Disponible",
+      "notAvailable": "No Disponible",
+      "filterAllStatus": "Toda Disponibilidad",
+      "filterAvailableOnly": "Solo Disponibles",
+      "filterUnavailableOnly": "Solo No Disponibles",
+      "availableSwitch": "Visibilidad en Tienda",
+      "availableSwitchDesc": "Mostrar y permitir que los clientes compren este modelo en la tienda",
+      "confirmHideTitle": "¿Marcar Modelo como No Disponible?",
+      "confirmHideDesc": "¿Estás seguro de marcar {name} como No Disponible? Se ocultará inmediatamente del catálogo, buscador y vitrina principal. Los enlaces directos darán error 404.",
+      "confirmShowTitle": "¿Habilitar Disponibilidad en Tienda?",
+      "confirmShowDesc": "¿Estás seguro de habilitar {name}? Volverá a aparecer inmediatamente en el catálogo de la tienda y estará disponible para compra.",
+      "confirmHideBtn": "Confirmar y Ocultar",
+      "confirmShowBtn": "Confirmar y Publicar"
     }
   },
   "track": {

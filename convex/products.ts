@@ -52,9 +52,13 @@ export const setVariantStorageId = internalMutation({
 export const getVariants = query({
   args: {
     silhouette: v.optional(v.string()),
+    includeUnavailable: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     let variants = await ctx.db.query("variants").collect();
+    if (!args.includeUnavailable) {
+      variants = variants.filter((v) => v.isAvailable !== false);
+    }
     if (args.silhouette && args.silhouette !== "all") {
       variants = variants.filter((v) => v.silhouette === args.silhouette);
     }
@@ -75,6 +79,7 @@ export const getVariants = query({
 export const getVariantById = query({
   args: {
     variantId: v.string(),
+    allowUnavailable: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const variant = await ctx.db
@@ -82,6 +87,9 @@ export const getVariantById = query({
       .withIndex("by_variantId", (q) => q.eq("variantId", args.variantId))
       .first();
     if (!variant) return null;
+    if (!args.allowUnavailable && variant.isAvailable === false) {
+      return null;
+    }
     if (variant.storageId) {
       const url = await ctx.storage.getUrl(variant.storageId);
       if (url) {
@@ -335,13 +343,18 @@ export const getAllProductsAdmin = query({
     const rawVariants = await ctx.db.query("variants").collect();
     const variants = await Promise.all(
       rawVariants.map(async (v) => {
+        let image = v.image;
         if (v.storageId) {
           const url = await ctx.storage.getUrl(v.storageId);
           if (url) {
-            return { ...v, image: url };
+            image = url;
           }
         }
-        return v;
+        return {
+          ...v,
+          image,
+          isAvailable: v.isAvailable !== false,
+        };
       })
     );
     return {
@@ -447,6 +460,35 @@ export const toggleVariantFeatured = mutation({
   },
 });
 
+export const toggleVariantAvailable = mutation({
+  args: {
+    variantId: v.string(),
+    isAvailable: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    const variant = await ctx.db
+      .query("variants")
+      .withIndex("by_variantId", (q) => q.eq("variantId", args.variantId))
+      .first();
+
+    if (!variant) {
+      throw new Error(`Variant ${args.variantId} not found`);
+    }
+
+    const nextAvailable =
+      args.isAvailable !== undefined
+        ? args.isAvailable
+        : !(variant.isAvailable !== false);
+
+    await ctx.db.patch(variant._id, {
+      isAvailable: nextAvailable,
+    });
+
+    return { success: true, variantId: args.variantId, isAvailable: nextAvailable };
+  },
+});
+
 export const saveVariant = mutation({
   args: {
     variantId: v.string(),
@@ -461,6 +503,7 @@ export const saveVariant = mutation({
     stock: v.number(),
     priceUsd: v.number(),
     isFeatured: v.boolean(),
+    isAvailable: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
@@ -498,6 +541,7 @@ export const saveVariant = mutation({
         stock: args.stock,
         priceUsd: args.priceUsd,
         isFeatured: args.isFeatured,
+        isAvailable: args.isAvailable !== undefined ? args.isAvailable : existing.isAvailable !== false,
       });
       return { success: true, action: "updated", id: existing._id };
     }
@@ -515,6 +559,7 @@ export const saveVariant = mutation({
       stock: args.stock,
       priceUsd: args.priceUsd,
       isFeatured: args.isFeatured,
+      isAvailable: args.isAvailable !== undefined ? args.isAvailable : true,
     });
 
     return { success: true, action: "created", id };

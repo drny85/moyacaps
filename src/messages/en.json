@@ -336,7 +336,21 @@
       "stockImpactDeduct": "This will reduce Available Inventory by {delta} unit(s) ({current} → {projected}).",
       "stockImpactZero": "CRITICAL WARNING: Available Inventory will reach 0 units. This colorway will immediately be marked as 'Sold Out' on the live storefront, blocking new purchases.",
       "confirmStockBtn": "Confirm & Update Stock",
-      "cancelBtn": "Cancel"
+      "cancelBtn": "Cancel",
+      "availability": "Availability",
+      "available": "Available",
+      "notAvailable": "Not Available",
+      "filterAllStatus": "All Availability",
+      "filterAvailableOnly": "Available Only",
+      "filterUnavailableOnly": "Not Available Only",
+      "availableSwitch": "Storefront Visibility",
+      "availableSwitchDesc": "Show and allow customers to purchase this colorway on the storefront",
+      "confirmHideTitle": "Mark Colorway as Not Available?",
+      "confirmHideDesc": "Are you sure you want to mark {name} as Not Available? It will immediately be hidden from the storefront catalog, search, and hero showcase. Direct product links will return 404.",
+      "confirmShowTitle": "Restore Colorway Availability?",
+      "confirmShowDesc": "Are you sure you want to make {name} Available? It will immediately reappear on the live storefront catalog and become purchasable by customers.",
+      "confirmHideBtn": "Confirm & Hide",
+      "confirmShowBtn": "Confirm & Publish"
     }
   },
   "track": {

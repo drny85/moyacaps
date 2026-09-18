@@ -25,8 +25,10 @@ import {
   Upload,
   Image as ImageIcon,
   Loader2,
+  EyeOff,
 } from "lucide-react";
 import StockConfirmDialog, { StockConfirmTarget } from "@/components/admin/StockConfirmDialog";
+import AvailabilityConfirmDialog, { AvailabilityConfirmTarget } from "@/components/admin/AvailabilityConfirmDialog";
 
 export default function AdminProductsPage() {
   const t = useTranslations("admin.products");
@@ -35,6 +37,7 @@ export default function AdminProductsPage() {
   // Filter state
   const [searchQuery, setSearchQuery] = useState("");
   const [silhouetteFilter, setSilhouetteFilter] = useState("all");
+  const [availabilityFilter, setAvailabilityFilter] = useState<"all" | "available" | "unavailable">("all");
 
   // Modal state
   const [editingVariant, setEditingVariant] = useState<any | null>(null);
@@ -46,6 +49,10 @@ export default function AdminProductsPage() {
   const [stockConfirmTarget, setStockConfirmTarget] = useState<StockConfirmTarget | null>(null);
   const [isAdjustingStock, setIsAdjustingStock] = useState(false);
 
+  // Availability Confirmation Safeguard State
+  const [availabilityConfirmTarget, setAvailabilityConfirmTarget] = useState<AvailabilityConfirmTarget | null>(null);
+  const [isTogglingAvailability, setIsTogglingAvailability] = useState(false);
+
   // Quick action feedback
   const [updatingStockId, setUpdatingStockId] = useState<string | null>(null);
   const [feedbackStockId, setFeedbackStockId] = useState<string | null>(null);
@@ -55,6 +62,7 @@ export default function AdminProductsPage() {
   const adjustStock = useMutation(api.products.adjustVariantStock);
   const updatePrice = useMutation(api.products.updateVariantPrice);
   const toggleFeatured = useMutation(api.products.toggleVariantFeatured);
+  const toggleAvailable = useMutation(api.products.toggleVariantAvailable);
   const saveVariant = useMutation(api.products.saveVariant);
   const deleteVariant = useMutation(api.products.deleteVariant);
   const generateUploadUrl = useMutation(api.products.generateUploadUrl);
@@ -70,6 +78,7 @@ export default function AdminProductsPage() {
   const [formStock, setFormStock] = useState(12);
   const [formPriceUsd, setFormPriceUsd] = useState(120);
   const [formIsFeatured, setFormIsFeatured] = useState(false);
+  const [formIsAvailable, setFormIsAvailable] = useState(true);
   const [formError, setFormError] = useState<string | null>(null);
 
   // Image Upload State
@@ -112,6 +121,7 @@ export default function AdminProductsPage() {
     setFormStock(10);
     setFormPriceUsd(120);
     setFormIsFeatured(false);
+    setFormIsAvailable(true);
     setFormError(null);
     setEditingVariant(true);
   };
@@ -126,13 +136,14 @@ export default function AdminProductsPage() {
     setFormSecondaryHex(variant.secondaryHex);
     setFormImage(variant.image || "");
     setSelectedFile(null);
-    setPreviewUrl(variant.image || null);
+    setPreviewUrl(null);
     setStorageId(variant.storageId || null);
-    setImageMode(variant.storageId ? "upload" : "url");
+    setImageMode("upload");
     setUploadProgress(null);
     setFormStock(variant.stock);
     setFormPriceUsd(variant.priceUsd);
     setFormIsFeatured(Boolean(variant.isFeatured));
+    setFormIsAvailable(variant.isAvailable !== false);
     setFormError(null);
     setEditingVariant(variant);
   };
@@ -187,6 +198,34 @@ export default function AdminProductsPage() {
     }
   };
 
+  const requestToggleAvailability = (variant: any) => {
+    const currentAvailable = variant.isAvailable !== false;
+    setAvailabilityConfirmTarget({
+      variantId: variant.variantId,
+      name: locale === "es" ? variant.nameEs : variant.nameEn,
+      silhouette: variant.silhouette,
+      image: variant.image,
+      currentAvailable,
+      newAvailable: !currentAvailable,
+    });
+  };
+
+  const handleConfirmAvailability = async () => {
+    if (!availabilityConfirmTarget) return;
+    setIsTogglingAvailability(true);
+    try {
+      await toggleAvailable({
+        variantId: availabilityConfirmTarget.variantId,
+        isAvailable: availabilityConfirmTarget.newAvailable,
+      });
+      setAvailabilityConfirmTarget(null);
+    } catch (err) {
+      console.error("Failed to toggle variant availability", err);
+    } finally {
+      setIsTogglingAvailability(false);
+    }
+  };
+
   const executeSaveVariant = async () => {
     try {
       setIsSaving(true);
@@ -231,6 +270,7 @@ export default function AdminProductsPage() {
         stock: Number(formStock),
         priceUsd: Number(formPriceUsd),
         isFeatured: formIsFeatured,
+        isAvailable: formIsAvailable,
       });
 
       setEditingVariant(null);
@@ -283,7 +323,12 @@ export default function AdminProductsPage() {
       v.nameEs.toLowerCase().includes(searchQuery.toLowerCase()) ||
       v.variantId.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesSilhouette = silhouetteFilter === "all" || v.silhouette === silhouetteFilter;
-    return matchesSearch && matchesSilhouette;
+    const isAvailable = v.isAvailable !== false;
+    const matchesAvailability =
+      availabilityFilter === "all" ||
+      (availabilityFilter === "available" && isAvailable) ||
+      (availabilityFilter === "unavailable" && !isAvailable);
+    return matchesSearch && matchesSilhouette && matchesAvailability;
   });
 
   const totalStock = variants.reduce((sum, v) => sum + v.stock, 0);
@@ -367,37 +412,76 @@ export default function AdminProductsPage() {
           />
         </div>
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setSilhouetteFilter("all")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-              silhouetteFilter === "all"
-                ? "bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-semibold"
-                : "bg-zinc-100 dark:bg-white/[0.04] text-zinc-600 dark:text-zinc-400"
-            }`}
-          >
-            All Silhouettes
-          </button>
-          <button
-            onClick={() => setSilhouetteFilter("snapback")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-              silhouetteFilter === "snapback"
-                ? "bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-semibold"
-                : "bg-zinc-100 dark:bg-white/[0.04] text-zinc-600 dark:text-zinc-400"
-            }`}
-          >
-            Snapback
-          </button>
-          <button
-            onClick={() => setSilhouetteFilter("trucker")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-              silhouetteFilter === "trucker"
-                ? "bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-semibold"
-                : "bg-zinc-100 dark:bg-white/[0.04] text-zinc-600 dark:text-zinc-400"
-            }`}
-          >
-            Trucker
-          </button>
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Silhouette Filter Buttons */}
+          <div className="flex items-center gap-1.5 p-1 rounded-xl bg-zinc-100/80 dark:bg-white/[0.04]">
+            <button
+              onClick={() => setSilhouetteFilter("all")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                silhouetteFilter === "all"
+                  ? "bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-semibold shadow-xs"
+                  : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
+              }`}
+            >
+              All Silhouettes
+            </button>
+            <button
+              onClick={() => setSilhouetteFilter("snapback")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                silhouetteFilter === "snapback"
+                  ? "bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-semibold shadow-xs"
+                  : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
+              }`}
+            >
+              Snapback
+            </button>
+            <button
+              onClick={() => setSilhouetteFilter("trucker")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                silhouetteFilter === "trucker"
+                  ? "bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-semibold shadow-xs"
+                  : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
+              }`}
+            >
+              Trucker
+            </button>
+          </div>
+
+          {/* Availability Filter Buttons */}
+          <div className="flex items-center gap-1.5 p-1 rounded-xl bg-zinc-100/80 dark:bg-white/[0.04]">
+            <button
+              onClick={() => setAvailabilityFilter("all")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                availabilityFilter === "all"
+                  ? "bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-semibold shadow-xs"
+                  : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
+              }`}
+            >
+              {t("filterAllStatus")}
+            </button>
+            <button
+              onClick={() => setAvailabilityFilter("available")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1 ${
+                availabilityFilter === "available"
+                  ? "bg-emerald-600 text-white font-semibold shadow-xs"
+                  : "text-zinc-600 dark:text-zinc-400 hover:text-emerald-600 dark:hover:text-emerald-400"
+              }`}
+            >
+              <Eye className="w-3 h-3" />
+              <span>{t("filterAvailableOnly")}</span>
+            </button>
+            <button
+              onClick={() => setAvailabilityFilter("unavailable")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1 ${
+                availabilityFilter === "unavailable"
+                  ? "bg-amber-600 text-white font-semibold shadow-xs"
+                  : "text-zinc-600 dark:text-zinc-400 hover:text-amber-600 dark:hover:text-amber-400"
+              }`}
+            >
+              <EyeOff className="w-3 h-3" />
+              <span>{t("filterUnavailableOnly")}</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -422,6 +506,7 @@ export default function AdminProductsPage() {
                   <th className="py-3 px-4">Silhouette</th>
                   <th className="py-3 px-4">Price</th>
                   <th className="py-3 px-4">Stock & Quick Restock</th>
+                  <th className="py-3 px-4 text-center">{t("availability")}</th>
                   <th className="py-3 px-4 text-center">Featured</th>
                   <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
@@ -434,7 +519,9 @@ export default function AdminProductsPage() {
                   return (
                     <tr
                       key={variant.variantId}
-                      className="hover:bg-zinc-50/80 dark:hover:bg-white/[0.02] transition-colors"
+                      className={`hover:bg-zinc-50/80 dark:hover:bg-white/[0.02] transition-colors ${
+                        variant.isAvailable === false ? "bg-zinc-50/40 dark:bg-white/[0.01] opacity-75" : ""
+                      }`}
                     >
                       {/* Cap Thumbnail */}
                       <td className="py-3 px-4">
@@ -444,8 +531,15 @@ export default function AdminProductsPage() {
                             alt={variant.nameEn}
                             fill
                             sizes="48px"
-                            className="object-contain p-1 group-hover:scale-110 transition-transform"
+                            className={`object-contain p-1 group-hover:scale-110 transition-transform ${
+                              variant.isAvailable === false ? "grayscale opacity-50" : ""
+                            }`}
                           />
+                          {variant.isAvailable === false && (
+                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center pointer-events-none" title={t("notAvailable")}>
+                              <EyeOff className="w-4 h-4 text-amber-400" />
+                            </div>
+                          )}
                         </div>
                       </td>
 
@@ -540,6 +634,32 @@ export default function AdminProductsPage() {
                             </button>
                           </div>
                         </div>
+                      </td>
+
+                      {/* Availability Toggle */}
+                      <td className="py-3 px-4 text-center">
+                        <button
+                          type="button"
+                          onClick={() => requestToggleAvailability(variant)}
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
+                            variant.isAvailable !== false
+                              ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20"
+                              : "bg-zinc-500/10 text-zinc-500 dark:text-zinc-400 border-zinc-500/20 hover:bg-zinc-500/20"
+                          }`}
+                          title={variant.isAvailable !== false ? "Click to mark as Not Available" : "Click to mark as Available"}
+                        >
+                          {variant.isAvailable !== false ? (
+                            <>
+                              <Eye className="w-3.5 h-3.5" />
+                              <span>{t("available")}</span>
+                            </>
+                          ) : (
+                            <>
+                              <EyeOff className="w-3.5 h-3.5" />
+                              <span>{t("notAvailable")}</span>
+                            </>
+                          )}
+                        </button>
                       </td>
 
                       {/* Featured Toggle */}
@@ -922,18 +1042,47 @@ export default function AdminProductsPage() {
                 </div>
               </div>
 
-              {/* Featured checkbox */}
-              <div className="flex items-center gap-2 pt-1">
-                <input
-                  type="checkbox"
-                  id="featuredCheck"
-                  checked={formIsFeatured}
-                  onChange={(e) => setFormIsFeatured(e.target.checked)}
-                  className="w-4 h-4 rounded text-moya-red focus:ring-moya-red"
-                />
-                <label htmlFor="featuredCheck" className="font-medium text-zinc-700 dark:text-zinc-300 cursor-pointer">
-                  {t("featured")}
-                </label>
+              {/* Availability & Featured toggles */}
+              <div className="space-y-2 pt-1">
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-zinc-50 dark:bg-white/[0.02] border border-zinc-200 dark:border-white/10">
+                  <input
+                    type="checkbox"
+                    id="availableCheck"
+                    checked={formIsAvailable}
+                    onChange={(e) => setFormIsAvailable(e.target.checked)}
+                    className="w-4 h-4 rounded text-moya-red focus:ring-moya-red cursor-pointer"
+                  />
+                  <label htmlFor="availableCheck" className="flex-1 cursor-pointer">
+                    <span className="font-semibold text-zinc-900 dark:text-white block text-xs">
+                      {t("availableSwitch")}
+                    </span>
+                    <span className="text-[11px] text-zinc-500 block">
+                      {t("availableSwitchDesc")}
+                    </span>
+                  </label>
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-semibold font-mono ${
+                      formIsAvailable
+                        ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                        : "bg-zinc-500/10 text-zinc-500 dark:text-zinc-400"
+                    }`}
+                  >
+                    {formIsAvailable ? t("available") : t("notAvailable")}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2 px-1">
+                  <input
+                    type="checkbox"
+                    id="featuredCheck"
+                    checked={formIsFeatured}
+                    onChange={(e) => setFormIsFeatured(e.target.checked)}
+                    className="w-4 h-4 rounded text-moya-red focus:ring-moya-red cursor-pointer"
+                  />
+                  <label htmlFor="featuredCheck" className="font-medium text-zinc-700 dark:text-zinc-300 cursor-pointer text-xs">
+                    {t("featured")}
+                  </label>
+                </div>
               </div>
 
               {uploadProgress && (
@@ -972,6 +1121,15 @@ export default function AdminProductsPage() {
         onClose={() => setStockConfirmTarget(null)}
         onConfirm={handleConfirmStockAction}
         isProcessing={isAdjustingStock || isSaving}
+      />
+
+      {/* ── Modal: Availability Confirmation Safeguard ── */}
+      <AvailabilityConfirmDialog
+        target={availabilityConfirmTarget}
+        isOpen={Boolean(availabilityConfirmTarget)}
+        onClose={() => setAvailabilityConfirmTarget(null)}
+        onConfirm={handleConfirmAvailability}
+        isProcessing={isTogglingAvailability}
       />
 
       {/* ── Modal: Delete Confirmation ── */}

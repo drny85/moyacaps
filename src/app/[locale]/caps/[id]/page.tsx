@@ -9,12 +9,15 @@ import { api } from "@convex/_generated/api";
 export const dynamicParams = true;
 
 async function getCapById(id: string): Promise<CapVariant | null> {
-  const staticCap = CAP_VARIANTS.find((c) => c.id === id);
-  if (staticCap) return staticCap;
-
   try {
-    const convexVariant = await fetchQuery(api.products.getVariantById, { variantId: id });
+    const convexVariant = await fetchQuery(api.products.getVariantById, {
+      variantId: id,
+      allowUnavailable: true,
+    });
     if (convexVariant) {
+      if (convexVariant.isAvailable === false) {
+        return null;
+      }
       return {
         id: convexVariant.variantId,
         nameEn: convexVariant.nameEn,
@@ -30,9 +33,16 @@ async function getCapById(id: string): Promise<CapVariant | null> {
         tagEs: convexVariant.isFeatured ? "Edición Insignia" : undefined,
       };
     }
-  } catch (err) {
+  } catch (err: any) {
+    if (err?.digest === "DYNAMIC_SERVER_USAGE" || err?.message?.includes("Dynamic server usage")) {
+      throw err;
+    }
     console.error(`Failed to fetch variant ${id} from Convex`, err);
   }
+
+  const staticCap = CAP_VARIANTS.find((c) => c.id === id);
+  if (staticCap) return staticCap;
+
   return null;
 }
 

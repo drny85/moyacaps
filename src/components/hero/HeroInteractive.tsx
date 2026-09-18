@@ -4,9 +4,9 @@ import { useTranslations } from "next-intl";
 import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
 import { Sparkles, ArrowRight, ShieldCheck, CheckCircle2, RotateCw, Pause, Play, ChevronDown, Check } from "lucide-react";
 import Image from "next/image";
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useStore } from "@/store/useStore";
-import { CAP_VARIANTS } from "@/data/caps";
+import { CAP_VARIANTS, type CapVariant } from "@/data/caps";
 
 const ANGLES = [
   { key: "front", label: "Front" },
@@ -32,6 +32,36 @@ export function HeroInteractive() {
   const [isSpinning, setIsSpinning] = useState(true);
   const [isPaused, setIsPaused] = useState(false);
   const [activeCap, setActiveCap] = useState(CAP_VARIANTS[0]);
+
+  const quickSwapCaps: CapVariant[] = useMemo(() => {
+    if (convexVariants && convexVariants.length > 0) {
+      const mapped = convexVariants.map((v) => ({
+        id: v.variantId,
+        nameEn: v.nameEn,
+        nameEs: v.nameEs,
+        silhouette: (v.silhouette as "snapback" | "trucker") || "snapback",
+        primaryHex: v.primaryHex,
+        secondaryHex: v.secondaryHex,
+        image: v.image,
+        stock: v.stock,
+        priceUsd: v.priceUsd,
+        isFeatured: v.isFeatured,
+      }));
+      const featured = mapped.filter((c) => c.isFeatured || c.stock <= 8).slice(0, 5);
+      return featured.length >= 3 ? featured : mapped.slice(0, 5);
+    }
+    return QUICK_SWAP_CAPS;
+  }, [convexVariants]);
+
+  // If activeCap is no longer in live available variants, swap to first available
+  useEffect(() => {
+    if (convexVariants && convexVariants.length > 0) {
+      const isAvailable = convexVariants.some((v) => v.variantId === activeCap.id);
+      if (!isAvailable && quickSwapCaps.length > 0) {
+        setActiveCap(quickSwapCaps[0]);
+      }
+    }
+  }, [convexVariants, activeCap.id, quickSwapCaps]);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const sectionRef = useRef<HTMLElement>(null);
@@ -245,7 +275,7 @@ export function HeroInteractive() {
           <span className="text-[10px] font-display font-semibold text-zinc-600 uppercase tracking-wider mr-1">
             {t("colorway")}
           </span>
-          {QUICK_SWAP_CAPS.map((cap) => {
+          {quickSwapCaps.map((cap) => {
             const capInCart = isMounted && cart.some((i) => i.id === cap.id);
             return (
               <button
