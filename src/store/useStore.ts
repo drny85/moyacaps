@@ -22,7 +22,7 @@ interface StoreState {
   addToCart: (cap: CapVariant, quantity?: number, maxStock?: number) => void;
   removeFromCart: (id: string) => void;
   updateQuantity: (id: string, delta: number, maxStock?: number) => void;
-  clampCartToStock: (variants: { variantId: string; stock: number; nameEn?: string }[]) => {
+  clampCartToStock: (variants: { variantId: string; stock: number; nameEn?: string; isAvailable?: boolean }[]) => {
     adjusted: boolean;
     adjustedNames: string[];
   };
@@ -128,11 +128,12 @@ export const useStore = create<StoreState>()(
             const variant = variants.find((v) => v.variantId === item.id);
             if (!variant) return item;
 
+            const isAvailable = variant.isAvailable !== false;
             const stock = typeof variant.stock === "number" ? variant.stock : 0;
-            if (stock <= 0) {
+            if (!isAvailable || stock <= 0) {
               adjusted = true;
               adjustedNames.push(item.name);
-              return null; // Remove depleted items
+              return null; // Remove depleted or unavailable items
             }
 
             if (item.quantity > stock) {

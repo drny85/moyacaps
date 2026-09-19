@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React from "react";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { AlertTriangle, ArrowRight, Loader2, PackageMinus, PackagePlus } from "lucide-react";
+import { AdminModal } from "./AdminModal";
 
 export interface StockConfirmTarget {
   variantId: string;
@@ -34,32 +35,20 @@ export default function StockConfirmDialog({
 }: StockConfirmDialogProps) {
   const t = useTranslations("admin.products");
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && isOpen && !isProcessing) {
-        onClose();
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, isProcessing, onClose]);
-
   if (!isOpen || !target) return null;
 
   const isAdding = target.delta > 0;
   const isZero = target.newStock === 0;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="stock-confirm-title"
-        className="max-w-lg w-full bg-white dark:bg-[#0c0c14] border border-zinc-200 dark:border-white/10 rounded-2xl p-6 shadow-2xl space-y-5 text-left"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header Icon + Title */}
-        <div className="flex items-start gap-3.5">
+    <AdminModal
+      isOpen={isOpen}
+      onClose={onClose}
+      isProcessing={isProcessing}
+      labelledBy="stock-confirm-title"
+    >
+      {/* Header Icon + Title */}
+      <div className="flex items-start gap-3.5">
           <div
             className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${
               isZero
@@ -244,7 +233,6 @@ export default function StockConfirmDialog({
             )}
           </button>
         </div>
-      </div>
-    </div>
+    </AdminModal>
   );
 }

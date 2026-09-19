@@ -519,15 +519,13 @@ export default function TrackOrderPage() {
                 <p className="text-xs text-zinc-500 max-w-md mx-auto leading-relaxed">
                   {t("notFoundDesc")}
                 </p>
-                {isOwnerOrAdmin && (
-                  <button
-                    onClick={() => handleOpenWhatsAppConcierge(form.getValues("orderNumber") || t("supportFallback"))}
-                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-display font-bold text-xs uppercase tracking-wider transition-colors shadow-lg shadow-emerald-600/20 cursor-pointer"
-                  >
-                    <MessageCircle className="w-4 h-4" />
-                    <span>{t("chatWhatsApp")}</span>
-                  </button>
-                )}
+                <button
+                  onClick={() => handleOpenWhatsAppConcierge(form.getValues("orderNumber") || t("supportFallback"))}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-display font-bold text-xs uppercase tracking-wider transition-colors shadow-lg shadow-emerald-600/20 cursor-pointer"
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  <span>{t("chatWhatsApp")}</span>
+                </button>
               </div>
             )}
           </div>

@@ -1,0 +1,49 @@
+"use client";
+
+import React, { useEffect } from "react";
+
+interface AdminModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  isProcessing?: boolean;
+  labelledBy: string;
+  maxWidthClass?: string;
+  children: React.ReactNode;
+}
+
+export function AdminModal({
+  isOpen,
+  onClose,
+  isProcessing = false,
+  labelledBy,
+  maxWidthClass = "max-w-lg",
+  children,
+}: AdminModalProps) {
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isOpen && !isProcessing) {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, isProcessing, onClose]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={labelledBy}
+        className={`${maxWidthClass} w-full bg-white dark:bg-[#0c0c14] border border-zinc-200 dark:border-white/10 rounded-2xl p-6 shadow-2xl space-y-5 text-left`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
+export default AdminModal;

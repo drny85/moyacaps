@@ -49,6 +49,24 @@ export const setVariantStorageId = internalMutation({
 });
 
 
+async function resolveVariantWithStorageUrl<T extends { storageId?: any; image: string; isAvailable?: boolean }>(
+  ctx: { storage: { getUrl: (storageId: any) => Promise<string | null> } },
+  variant: T
+): Promise<T & { isAvailable: boolean }> {
+  let image = variant.image;
+  if (variant.storageId) {
+    const url = await ctx.storage.getUrl(variant.storageId);
+    if (url) {
+      image = url;
+    }
+  }
+  return {
+    ...variant,
+    image,
+    isAvailable: variant.isAvailable !== false,
+  };
+}
+
 export const getVariants = query({
   args: {
     silhouette: v.optional(v.string()),
@@ -63,15 +81,7 @@ export const getVariants = query({
       variants = variants.filter((v) => v.silhouette === args.silhouette);
     }
     return await Promise.all(
-      variants.map(async (v) => {
-        if (v.storageId) {
-          const url = await ctx.storage.getUrl(v.storageId);
-          if (url) {
-            return { ...v, image: url };
-          }
-        }
-        return v;
-      })
+      variants.map((v) => resolveVariantWithStorageUrl(ctx, v))
     );
   },
 });
@@ -90,13 +100,7 @@ export const getVariantById = query({
     if (!args.allowUnavailable && variant.isAvailable === false) {
       return null;
     }
-    if (variant.storageId) {
-      const url = await ctx.storage.getUrl(variant.storageId);
-      if (url) {
-        return { ...variant, image: url };
-      }
-    }
-    return variant;
+    return await resolveVariantWithStorageUrl(ctx, variant);
   },
 });
 
@@ -342,20 +346,7 @@ export const getAllProductsAdmin = query({
     const products = await ctx.db.query("products").collect();
     const rawVariants = await ctx.db.query("variants").collect();
     const variants = await Promise.all(
-      rawVariants.map(async (v) => {
-        let image = v.image;
-        if (v.storageId) {
-          const url = await ctx.storage.getUrl(v.storageId);
-          if (url) {
-            image = url;
-          }
-        }
-        return {
-          ...v,
-          image,
-          isAvailable: v.isAvailable !== false,
-        };
-      })
+      rawVariants.map((v) => resolveVariantWithStorageUrl(ctx, v))
     );
     return {
       products,

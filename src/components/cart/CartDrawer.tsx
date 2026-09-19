@@ -17,7 +17,9 @@ export function CartDrawer() {
   const locale = useLocale();
   const { user, isSignedIn } = useSafeUser();
   const createCheckoutSession = useAction(api.stripe.createCheckoutSession);
-  const convexVariants = useQuery(api.products.getVariants, {});
+  const convexVariants = useQuery(api.products.getVariants, {
+    includeUnavailable: true,
+  });
 
   const [checkoutStep, setCheckoutStep] = useState<"idle" | "processing" | "success">("idle");
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
@@ -41,11 +43,11 @@ export function CartDrawer() {
     return sum + item.priceUsd * item.quantity;
   }, 0);
 
-  // Check if any cart item exceeds live stock
+  // Check if any cart item exceeds live stock or is unavailable
   const hasOutOfStockItem = cart.some((item) => {
     const variant = convexVariants?.find((v) => v.variantId === item.id);
     if (!variant) return false;
-    return variant.stock <= 0 || item.quantity > variant.stock;
+    return variant.isAvailable === false || variant.stock <= 0 || item.quantity > variant.stock;
   });
 
   // Free shipping threshold: 2+ caps
