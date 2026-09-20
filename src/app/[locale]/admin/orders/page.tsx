@@ -890,9 +890,21 @@ export default function AdminOrdersPage() {
                     {selectedOrder.shippingFee ? `$${selectedOrder.shippingFee}` : "FREE (Global Express)"}
                   </span>
                 </div>
+                {typeof selectedOrder.tax === "number" && selectedOrder.tax > 0 && (
+                  <div className="flex justify-between text-zinc-600 dark:text-zinc-400">
+                    <span>
+                      Sales Tax
+                      {selectedOrder.taxDetails?.jurisdiction ? ` (${selectedOrder.taxDetails.jurisdiction})` : ""}
+                      {selectedOrder.taxDetails?.rate ? ` @ ${(selectedOrder.taxDetails.rate * 100).toFixed(2)}%` : ""}
+                    </span>
+                    <span className="font-mono text-zinc-950 dark:text-white font-medium">
+                      ${selectedOrder.tax.toFixed(2)}
+                    </span>
+                  </div>
+                )}
                 <div className="flex justify-between text-sm font-bold text-zinc-950 dark:text-white pt-2 border-t border-zinc-200 dark:border-white/[0.06]">
                   <span>Total Paid</span>
-                  <span className="font-mono">${selectedOrder.total} USD</span>
+                  <span className="font-mono">${Number(selectedOrder.total).toFixed(2)} USD</span>
                 </div>
               </div>
             </div>

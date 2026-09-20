@@ -27,6 +27,8 @@
     "standardShipping": "US Tracked Express Courier",
     "subtotal": "Subtotal",
     "shipping": "Shipping",
+    "taxesNotice": "Taxes calculated at checkout",
+    "tax": "Estimated Sales Tax",
     "total": "Total",
     "secureNotice": "Encrypted 256-bit SSL transaction via Stripe Payments",
     "outOfStockTitle": "Stock Unavailable",
@@ -104,6 +106,8 @@
     "subtotal": "Subtotal",
     "shipping": "Shipping",
     "shippingFree": "FREE",
+    "taxesNotice": "Taxes calculated at checkout",
+    "tax": "Sales Tax",
     "total": "Total",
     "checkoutStripe": "Checkout with Card / Apple Pay",
     "signInToCheckout": "Sign In to Checkout",
@@ -211,6 +215,7 @@
     "loading": "Securing order verification...",
     "subtotal": "Subtotal",
     "shipping": "Shipping",
+    "tax": "Sales Tax",
     "total": "Total Paid"
   },
   "account": {
@@ -443,6 +448,7 @@
     "subtotal": "Subtotal",
     "shipping": "Shipping",
     "freeShipping": "FREE Express",
+    "tax": "Sales Tax",
     "total": "Total",
     "conciergeBanner": "Have questions about your delivery? Chat with our 24/7 WhatsApp Concierge.",
     "chatWhatsApp": "WhatsApp Concierge",

@@ -132,6 +132,7 @@ export const createCheckoutSession = action({
         product_data: {
           name: `Moya Caps 0880 — ${item.name}`,
           images: [item.image.startsWith("http") ? item.image : `${args.origin}${item.image}`],
+          tax_code: "txcd_40030000", // Clothing Accessories: Hats & Headwear
           metadata: {
             variantId: item.variantId,
           },
@@ -150,6 +151,8 @@ export const createCheckoutSession = action({
             currency: "usd",
           },
           display_name: freeShipping ? "Free US Express Delivery" : "US Tracked Express Courier",
+          tax_code: "txcd_92010001", // Shipping / delivery fee
+          tax_behavior: "exclusive",
           delivery_estimate: {
             minimum: { unit: "business_day", value: 2 },
             maximum: { unit: "business_day", value: 4 },
@@ -169,6 +172,9 @@ export const createCheckoutSession = action({
           allowed_countries: ["US"],
         },
         phone_number_collection: {
+          enabled: true,
+        },
+        automatic_tax: {
           enabled: true,
         },
         shipping_options: shippingOptions,
@@ -369,7 +375,9 @@ export const syncCheckoutSession = action({
     status: string;
   }> => {
     const stripe = getStripe();
-    const session = await stripe.checkout.sessions.retrieve(args.sessionId);
+    const session = await stripe.checkout.sessions.retrieve(args.sessionId, {
+      expand: ["total_details.breakdown"],
+    });
 
     if (session.payment_status === "paid") {
       const metadata = session.metadata || {};
@@ -383,6 +391,19 @@ export const syncCheckoutSession = action({
         }
       } catch (e) {
         console.error("Failed to parse itemsJson in syncCheckoutSession:", e);
+      }
+
+      const taxAmountCents = session.total_details?.amount_tax ?? 0;
+      const taxAmount = taxAmountCents > 0 ? Number((taxAmountCents / 100).toFixed(2)) : undefined;
+
+      let taxDetails: { amount: number; rate?: number; jurisdiction?: string } | undefined = undefined;
+      if (taxAmount && taxAmount > 0) {
+        const breakdownTax = session.total_details?.breakdown?.taxes?.[0];
+        taxDetails = {
+          amount: taxAmount,
+          rate: breakdownTax?.rate?.percentage ? Number(breakdownTax.rate.percentage) : undefined,
+          jurisdiction: breakdownTax?.rate?.jurisdiction || address?.state || undefined,
+        };
       }
 
       const orderId: any = await ctx.runMutation(internal.orders.createOrUpdateStripeOrder, {
@@ -406,6 +427,8 @@ export const syncCheckoutSession = action({
         currency: (session.currency || "usd").toUpperCase(),
         subtotal: metadata.subtotal ? Number(metadata.subtotal) : undefined,
         shippingFee: metadata.shippingFee ? Number(metadata.shippingFee) : undefined,
+        tax: taxAmount,
+        taxDetails: taxDetails,
         total: (session.amount_total || 0) / 100,
       });
 
@@ -461,6 +484,19 @@ export const fulfillStripeWebhook = action({
         console.error("Failed to parse itemsJson in webhook:", e);
       }
 
+      const taxAmountCents = session.total_details?.amount_tax ?? 0;
+      const taxAmount = taxAmountCents > 0 ? Number((taxAmountCents / 100).toFixed(2)) : undefined;
+
+      let taxDetails: { amount: number; rate?: number; jurisdiction?: string } | undefined = undefined;
+      if (taxAmount && taxAmount > 0) {
+        const breakdownTax = session.total_details?.breakdown?.taxes?.[0];
+        taxDetails = {
+          amount: taxAmount,
+          rate: breakdownTax?.rate?.percentage ? Number(breakdownTax.rate.percentage) : undefined,
+          jurisdiction: breakdownTax?.rate?.jurisdiction || address?.state || undefined,
+        };
+      }
+
       await ctx.runMutation(internal.orders.createOrUpdateStripeOrder, {
         stripeSessionId: session.id,
         orderNumber: metadata.orderNumber || `MC-${session.id.slice(-8).toUpperCase()}`,
@@ -482,6 +518,8 @@ export const fulfillStripeWebhook = action({
         currency: (session.currency || "usd").toUpperCase(),
         subtotal: metadata.subtotal ? Number(metadata.subtotal) : undefined,
         shippingFee: metadata.shippingFee ? Number(metadata.shippingFee) : undefined,
+        tax: taxAmount,
+        taxDetails: taxDetails,
         total: (session.amount_total || 0) / 100,
       });
     }

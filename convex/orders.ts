@@ -79,6 +79,14 @@ export const createOrUpdateStripeOrder = internalMutation({
     currency: v.string(),
     subtotal: v.optional(v.number()),
     shippingFee: v.optional(v.number()),
+    tax: v.optional(v.number()),
+    taxDetails: v.optional(
+      v.object({
+        amount: v.number(),
+        rate: v.optional(v.number()),
+        jurisdiction: v.optional(v.string()),
+      })
+    ),
     total: v.number(),
   },
   handler: async (ctx, args) => {
@@ -95,6 +103,9 @@ export const createOrUpdateStripeOrder = internalMutation({
         customerName: args.customerName ?? existing.customerName,
         customerPhone: args.customerPhone ?? existing.customerPhone,
         shippingAddress: args.shippingAddress ?? existing.shippingAddress,
+        tax: args.tax ?? existing.tax,
+        taxDetails: args.taxDetails ?? existing.taxDetails,
+        total: args.total ?? existing.total,
         status: "paid",
         trackingNumber: existing.trackingNumber ?? `MC-TRK-${Math.floor(100000 + Math.random() * 900000)}`,
       });
@@ -113,6 +124,8 @@ export const createOrUpdateStripeOrder = internalMutation({
       currency: args.currency,
       subtotal: args.subtotal,
       shippingFee: args.shippingFee,
+      tax: args.tax,
+      taxDetails: args.taxDetails,
       total: args.total,
       status: "paid",
       paymentMethod: "stripe",
@@ -496,6 +509,8 @@ export const getOrderByOrderNumberAndEmail = query({
         customerPhone: undefined,
         subtotal: undefined,
         shippingFee: undefined,
+        tax: undefined,
+        taxDetails: undefined,
         total: undefined,
         paymentMethod: undefined,
         isGuestView: true,
@@ -514,6 +529,8 @@ export const getOrderByOrderNumberAndEmail = query({
       currency: order.currency,
       subtotal: order.subtotal,
       shippingFee: order.shippingFee,
+      tax: order.tax,
+      taxDetails: order.taxDetails,
       total: order.total,
       status: order.status,
       paymentMethod: order.paymentMethod,

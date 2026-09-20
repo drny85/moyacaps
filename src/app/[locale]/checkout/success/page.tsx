@@ -237,10 +237,21 @@ export default function CheckoutSuccessPage() {
                   {order.shippingFee === 0 ? "FREE" : `$${order.shippingFee}.00 ${order.currency}`}
                 </span>
               </div>
+              {typeof order.tax === "number" && order.tax > 0 && (
+                <div className="flex justify-between text-zinc-500">
+                  <span>
+                    {t("tax")}
+                    {order.taxDetails?.jurisdiction ? ` (${order.taxDetails.jurisdiction})` : ""}
+                  </span>
+                  <span className="font-mono text-zinc-800 dark:text-zinc-200">
+                    ${order.tax.toFixed(2)} {order.currency}
+                  </span>
+                </div>
+              )}
               <div className="flex justify-between font-display font-bold text-sm text-zinc-900 dark:text-white pt-2 border-t border-black/[0.06] dark:border-white/[0.06]">
                 <span>{t("total")}</span>
                 <span className="font-mono text-emerald-600 dark:text-moya-green-light text-base">
-                  ${order.total}.00 {order.currency}
+                  ${Number(order.total).toFixed(2)} {order.currency}
                 </span>
               </div>
             </div>

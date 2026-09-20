@@ -266,6 +266,12 @@ export default function CheckoutPage() {
                     {freeShipping ? t("freeShipping") : `$${shippingFee}.00 ${currency}`}
                   </span>
                 </div>
+                <div className="flex justify-between text-[11px] text-zinc-500">
+                  <span>{t("tax")}</span>
+                  <span className="font-mono italic text-zinc-400">
+                    {t("taxesNotice")}
+                  </span>
+                </div>
                 <div className="flex justify-between font-display font-bold text-sm text-zinc-900 dark:text-white pt-2 border-t border-black/[0.06] dark:border-white/[0.06]">
                   <span>{t("total")}</span>
                   <span className="font-mono text-emerald-600 dark:text-moya-green-light text-base">

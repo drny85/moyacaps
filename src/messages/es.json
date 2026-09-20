@@ -27,6 +27,8 @@
     "standardShipping": "Mensajería Express Rastreada en EE. UU.",
     "subtotal": "Subtotal",
     "shipping": "Envío",
+    "taxesNotice": "Impuestos calculados en el pago",
+    "tax": "Impuesto estimado",
     "total": "Total",
     "secureNotice": "Transacción encriptada SSL de 256 bits procesada por Stripe Payments",
     "outOfStockTitle": "Inventario No Disponible",
@@ -104,6 +106,8 @@
     "subtotal": "Subtotal",
     "shipping": "Envío",
     "shippingFree": "GRATIS",
+    "taxesNotice": "Impuestos calculados en el pago",
+    "tax": "Impuesto estimado",
     "total": "Total",
     "checkoutStripe": "Pagar con Tarjeta / Apple Pay",
     "signInToCheckout": "Iniciar Sesión para Pagar",
@@ -211,6 +215,7 @@
     "loading": "Verificando orden...",
     "subtotal": "Subtotal",
     "shipping": "Envío",
+    "tax": "Impuesto de venta",
     "total": "Total Pagado"
   },
   "account": {
@@ -443,6 +448,7 @@
     "subtotal": "Subtotal",
     "shipping": "Envío",
     "freeShipping": "Express GRATIS",
+    "tax": "Impuesto de venta",
     "total": "Total",
     "conciergeBanner": "¿Tienes dudas sobre tu entrega? Habla con nuestro Concierge en WhatsApp 24/7.",
     "chatWhatsApp": "WhatsApp Concierge",

@@ -459,9 +459,17 @@ export default function TrackOrderPage() {
                             {orderResult.shippingFee ? `$${orderResult.shippingFee}.00` : t("freeShipping")}
                           </span>
                         </p>
+                        {orderResult.tax !== undefined && orderResult.tax > 0 && (
+                          <p className="text-zinc-500">
+                            {t("tax")}{orderResult.taxDetails?.jurisdiction ? ` (${orderResult.taxDetails.jurisdiction})` : ""}:{" "}
+                            <span className="font-mono text-zinc-900 dark:text-white">
+                              ${orderResult.tax.toFixed(2)}
+                            </span>
+                          </p>
+                        )}
                         {orderResult.total !== undefined && (
                           <p className="text-base font-mono font-bold text-zinc-900 dark:text-white pt-1 border-t border-black/[0.04] dark:border-white/[0.06]">
-                            {t("total")}: ${orderResult.total}.00 {orderResult.currency}
+                            {t("total")}: ${Number(orderResult.total).toFixed(2)} {orderResult.currency}
                           </p>
                         )}
                       </div>

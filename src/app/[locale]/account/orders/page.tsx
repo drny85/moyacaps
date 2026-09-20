@@ -342,9 +342,16 @@ export default function AccountOrdersPage() {
                       </span>
                     )}
 
-                    <span className="font-mono font-bold text-base text-zinc-900 dark:text-white">
-                      ${ord.total}.00 {ord.currency}
-                    </span>
+                    <div className="text-right">
+                      <span className="font-mono font-bold text-base text-zinc-900 dark:text-white block">
+                        ${Number(ord.total).toFixed(2)} {ord.currency}
+                      </span>
+                      {typeof ord.tax === "number" && ord.tax > 0 && (
+                        <span className="text-[10px] font-mono text-zinc-500 block">
+                          (incl. ${ord.tax.toFixed(2)} tax)
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -632,7 +639,7 @@ export default function AccountOrdersPage() {
               <div className="flex justify-between font-mono mt-1">
                 <span className="text-zinc-500">Refund Amount:</span>
                 <span className="font-bold text-emerald-600 dark:text-emerald-400">
-                  ${cancellingOrder.total}.00 {cancellingOrder.currency}
+                  ${Number(cancellingOrder.total).toFixed(2)} {cancellingOrder.currency}
                 </span>
               </div>
             </div>

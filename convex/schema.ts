@@ -60,6 +60,14 @@ export default defineSchema({
     currency: v.string(),
     subtotal: v.optional(v.number()),
     shippingFee: v.optional(v.number()),
+    tax: v.optional(v.number()),
+    taxDetails: v.optional(
+      v.object({
+        amount: v.number(),
+        rate: v.optional(v.number()),
+        jurisdiction: v.optional(v.string()),
+      })
+    ),
     total: v.number(),
     status: v.string(), // "pending" | "paid" | "dispatched" | "delivered" | "cancelled" | "whatsapp_initiated"
     paymentMethod: v.string(), // "stripe" | "whatsapp"

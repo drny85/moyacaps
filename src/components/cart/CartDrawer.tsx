@@ -318,6 +318,12 @@ export function CartDrawer() {
                       {shippingFee === 0 ? t("shippingFree") : `$${shippingFee}.00 USD`}
                     </span>
                   </div>
+                  <div className="flex justify-between text-[11px] text-zinc-500">
+                    <span>{t("tax")}</span>
+                    <span className="font-mono italic text-zinc-400">
+                      {t("taxesNotice")}
+                    </span>
+                  </div>
                   <div className="flex justify-between text-sm font-display font-bold pt-2 border-t border-black/[0.06] dark:border-white/[0.06] text-zinc-900 dark:text-white">
                     <span>{t("total")}</span>
                     <span className="font-mono text-emerald-600 dark:text-moya-green-light text-base">
