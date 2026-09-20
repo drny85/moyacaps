@@ -396,6 +396,7 @@
       "subscriberHeaderProduct": "Requested Colorway",
       "subscriberHeaderDate": "Signed Up At",
       "noSubscribers": "No drop alert subscribers yet.",
+      "liveCountdown": "Launches in",
       "manageDrop": "Manage Drop",
       "dropSavedSuccess": "VIP Drop successfully scheduled!",
       "dropLiveSuccess": "VIP Drop is now LIVE and purchasable!",
