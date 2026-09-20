@@ -82,11 +82,17 @@ export const createCheckoutSession = action({
         );
       }
 
-      if (variant.isDrop && typeof variant.dropDate === "number" && Date.now() < variant.dropDate) {
+      const isUpcomingDrop =
+        variant.isDrop &&
+        variant.dropStatus !== "live" &&
+        ((typeof variant.dropDate === "number" && Date.now() < variant.dropDate) ||
+          variant.dropStatus === "scheduled");
+
+      if (isUpcomingDrop) {
         throw new ConvexError(
           args.locale === "es"
-            ? `La gorra "${variantName}" es un lanzamiento programado y aún no está disponible para compra.`
-            : `The cap "${variantName}" is an upcoming drop and is not yet available for purchase.`
+            ? `La gorra "${variantName}" es un drop VIP programado y aún no está disponible para compra.`
+            : `The cap "${variantName}" is an upcoming VIP drop and is not yet available for purchase.`
         );
       }
 

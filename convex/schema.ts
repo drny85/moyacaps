@@ -30,6 +30,7 @@ export default defineSchema({
     dropDate: v.optional(v.number()), // epoch ms
     dropBadgeTextEn: v.optional(v.string()),
     dropBadgeTextEs: v.optional(v.string()),
+    dropStatus: v.optional(v.string()), // "scheduled" | "live" | "archived"
   }).index("by_variantId", ["variantId"]),
   orders: defineTable({
     orderNumber: v.string(),

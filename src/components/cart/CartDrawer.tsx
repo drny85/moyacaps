@@ -52,6 +52,19 @@ export function CartDrawer() {
     return variant.isAvailable === false || variant.stock <= 0 || item.quantity > variant.stock;
   });
 
+  // Check if any cart item is an unreleased upcoming drop
+  const hasUnreleasedDropItem = cart.some((item) => {
+    const variant = convexVariants?.find((v) => v.variantId === item.id);
+    if (!variant) return false;
+    return Boolean(
+      variant.isDrop &&
+      variant.dropStatus !== "live" &&
+      ((typeof variant.dropDate === "number" && Date.now() < variant.dropDate) || variant.dropStatus === "scheduled")
+    );
+  });
+
+  const cannotCheckout = hasOutOfStockItem || hasUnreleasedDropItem;
+
   // Free shipping threshold: 2+ caps
   const freeShippingUnlocked = totalItems >= 2;
   const shippingFee = freeShippingUnlocked ? 0 : 8;
@@ -59,7 +72,7 @@ export function CartDrawer() {
 
   // Launch WhatsApp order with itemized list
   const handleWhatsAppOrder = () => {
-    if (hasOutOfStockItem || checkoutStep === "processing") return;
+    if (cannotCheckout || checkoutStep === "processing") return;
 
     let message = `${t("whatsappGreeting")}\n\n`;
 
@@ -77,7 +90,7 @@ export function CartDrawer() {
   };
 
   const handleStripeCheckout = async () => {
-    if (hasOutOfStockItem || checkoutStep === "processing") return;
+    if (cannotCheckout || checkoutStep === "processing") return;
 
     try {
       setCheckoutStep("processing");
@@ -334,9 +347,9 @@ export function CartDrawer() {
                           signUpFallbackRedirectUrl={`/${locale}/checkout`}
                         >
                           <button
-                            disabled={hasOutOfStockItem}
+                            disabled={cannotCheckout}
                             className={`w-full py-3.5 rounded-2xl font-display font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-xl ${
-                              hasOutOfStockItem
+                              cannotCheckout
                                 ? "bg-zinc-300 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-600 cursor-not-allowed"
                                 : "bg-zinc-900 hover:bg-zinc-800 dark:bg-white dark:hover:bg-zinc-100 text-white dark:text-zinc-900 hover:scale-[1.01] active:scale-[0.99]"
                             }`}
@@ -352,9 +365,9 @@ export function CartDrawer() {
                     ) : (
                       <button
                         onClick={handleStripeCheckout}
-                        disabled={checkoutStep === "processing" || hasOutOfStockItem}
+                        disabled={checkoutStep === "processing" || cannotCheckout}
                         className={`w-full py-3.5 rounded-2xl font-display font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-xl ${
-                          hasOutOfStockItem
+                          cannotCheckout
                             ? "bg-zinc-300 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-600 cursor-not-allowed"
                             : "bg-moya-red hover:bg-rose-500 text-white shadow-moya-red-deep/50"
                         }`}
@@ -364,6 +377,8 @@ export function CartDrawer() {
                             <Loader2 className="w-4 h-4 animate-spin text-white" />
                             <span>Connecting to Gateway...</span>
                           </>
+                        ) : hasUnreleasedDropItem ? (
+                          <span>{locale === "es" ? "Drop no disponible aún" : "Drop Not Released Yet"}</span>
                         ) : hasOutOfStockItem ? (
                           <span>{t("soldOutItem")}</span>
                         ) : (
@@ -378,9 +393,9 @@ export function CartDrawer() {
                     {/* WhatsApp Direct Order Button */}
                     <button
                       onClick={handleWhatsAppOrder}
-                      disabled={checkoutStep === "processing" || hasOutOfStockItem}
+                      disabled={checkoutStep === "processing" || cannotCheckout}
                       className={`w-full py-3 rounded-2xl font-display font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg ${
-                        hasOutOfStockItem
+                        cannotCheckout
                           ? "bg-zinc-300 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-600 cursor-not-allowed"
                           : "bg-moya-green-deep/80 hover:bg-moya-green text-white shadow-moya-green-deep/40"
                       }`}
@@ -388,6 +403,17 @@ export function CartDrawer() {
                       <MessageCircle className="w-4 h-4" />
                       <span>{t("checkoutWhatsApp")}</span>
                     </button>
+
+                    {hasUnreleasedDropItem && (
+                      <div className="flex items-start gap-2 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-600 dark:text-amber-400 text-xs">
+                        <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                        <span className="leading-tight">
+                          {locale === "es"
+                            ? "Tu bolsa contiene un drop exclusivo que aún no se ha liberado. No puede ser comprado hasta su hora de lanzamiento."
+                            : "Your bag contains an exclusive drop that has not been released yet. It cannot be purchased until launch."}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 )}
 

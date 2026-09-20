@@ -16,6 +16,7 @@ export interface CapVariant {
   dropDate?: number; // epoch ms
   dropBadgeTextEn?: string;
   dropBadgeTextEs?: string;
+  dropStatus?: string;
 }
 
 export const CAP_VARIANTS: CapVariant[] = [

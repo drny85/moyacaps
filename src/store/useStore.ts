@@ -22,7 +22,15 @@ interface StoreState {
   addToCart: (cap: CapVariant, quantity?: number, maxStock?: number) => void;
   removeFromCart: (id: string) => void;
   updateQuantity: (id: string, delta: number, maxStock?: number) => void;
-  clampCartToStock: (variants: { variantId: string; stock: number; nameEn?: string; isAvailable?: boolean }[]) => {
+  clampCartToStock: (variants: {
+    variantId: string;
+    stock: number;
+    nameEn?: string;
+    isAvailable?: boolean;
+    isDrop?: boolean;
+    dropDate?: number;
+    dropStatus?: string;
+  }[]) => {
     adjusted: boolean;
     adjustedNames: string[];
   };
@@ -58,6 +66,16 @@ export const useStore = create<StoreState>()(
       toggleCart: () => set((state) => ({ isCartOpen: !state.isCartOpen })),
 
       addToCart: (cap, quantity = 1, maxStock?: number) => {
+        // Enforce strict drop lock: cannot add drops to cart if not released yet
+        const isUpcomingDrop = Boolean(
+          cap.isDrop &&
+          cap.dropStatus !== "live" &&
+          ((typeof cap.dropDate === "number" && Date.now() < cap.dropDate) || cap.dropStatus === "scheduled")
+        );
+        if (isUpcomingDrop) {
+          return;
+        }
+
         const { cart } = get();
         const existing = cart.find((item) => item.id === cap.id);
         const limit = maxStock !== undefined ? maxStock : (cap.stock ?? 99);
@@ -135,10 +153,16 @@ export const useStore = create<StoreState>()(
 
             const isAvailable = variant.isAvailable !== false;
             const stock = typeof variant.stock === "number" ? variant.stock : 0;
-            if (!isAvailable || stock <= 0) {
+            const isUpcomingDrop = Boolean(
+              variant.isDrop &&
+              variant.dropStatus !== "live" &&
+              ((typeof variant.dropDate === "number" && Date.now() < variant.dropDate) || variant.dropStatus === "scheduled")
+            );
+
+            if (!isAvailable || stock <= 0 || isUpcomingDrop) {
               adjusted = true;
               adjustedNames.push(item.name);
-              return null; // Remove depleted or unavailable items
+              return null; // Remove depleted, unavailable, or unreleased drop items
             }
 
             if (item.quantity > stock) {

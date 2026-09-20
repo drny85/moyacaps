@@ -15,6 +15,7 @@ import {
   X,
   ShieldAlert,
   Sparkles,
+  Flame,
   RefreshCw,
   Globe,
 } from "lucide-react";
@@ -47,6 +48,11 @@ export default function AdminLayout({
       label: t("nav.products"),
       href: "/admin/products",
       icon: Layers,
+    },
+    {
+      label: t("nav.drops"),
+      href: "/admin/drops",
+      icon: Flame,
     },
   ];
 

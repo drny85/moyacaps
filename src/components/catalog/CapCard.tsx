@@ -28,7 +28,11 @@ export function CapCard({ cap, index = 0 }: { cap: CapVariant; index?: number })
   const isOutOfStock = stock <= 0;
   const isMaxInCart = inCartQty >= stock;
 
-  const isDropUpcoming = Boolean(cap.isDrop && cap.dropDate && Date.now() < cap.dropDate);
+  const isDropUpcoming = Boolean(
+    cap.isDrop &&
+    cap.dropStatus !== "live" &&
+    ((cap.dropDate && Date.now() < cap.dropDate) || cap.dropStatus === "scheduled")
+  );
   const dropBadge = locale === "es" ? cap.dropBadgeTextEs || cap.dropBadgeTextEn : cap.dropBadgeTextEn;
 
   const name = locale === "es" ? cap.nameEs : cap.nameEn;

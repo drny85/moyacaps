@@ -34,10 +34,13 @@ export function ProductQuickView() {
   const stock = liveVariant ? (typeof liveVariant.stock === "number" ? liveVariant.stock : 0) : (quickViewCap.stock ?? 0);
   const isOutOfStock = stock <= 0;
 
+  const dropStatus = liveVariant?.dropStatus ?? quickViewCap.dropStatus;
   const isDrop = Boolean(
     (liveVariant?.isDrop ?? quickViewCap.isDrop) &&
-    (liveVariant?.dropDate ?? quickViewCap.dropDate) &&
-    Date.now() < (liveVariant?.dropDate ?? quickViewCap.dropDate ?? 0)
+    dropStatus !== "live" &&
+    (((liveVariant?.dropDate ?? quickViewCap.dropDate) &&
+      Date.now() < (liveVariant?.dropDate ?? quickViewCap.dropDate ?? 0)) ||
+      dropStatus === "scheduled")
   );
 
   const name = locale === "es" ? quickViewCap.nameEs : quickViewCap.nameEn;
@@ -49,7 +52,7 @@ export function ProductQuickView() {
   const priceDisplay = `$${quickViewCap.priceUsd * Math.max(1, quantity)}.00 USD`;
 
   const handleAdd = () => {
-    if (isOutOfStock || maxAvailableToAdd <= 0) return;
+    if (isDrop || isOutOfStock || maxAvailableToAdd <= 0) return;
     const addQty = Math.min(maxAvailableToAdd, Math.max(1, quantity));
     addToCart(quickViewCap, addQty, stock);
     setAddedSuccess(true);
@@ -66,6 +69,11 @@ export function ProductQuickView() {
   };
 
   const handleWhatsAppBuy = () => {
+    if (isDrop) {
+      closeQuickView();
+      openDropAlert(quickViewCap);
+      return;
+    }
     if (isOutOfStock) return;
     const greeting =
       locale === "es"
@@ -262,18 +270,20 @@ export function ProductQuickView() {
                   </button>
                 )}
 
-                <button
-                  onClick={handleWhatsAppBuy}
-                  disabled={isOutOfStock}
-                  className={`w-full py-3 rounded-2xl font-display font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg ${
-                    isOutOfStock
-                      ? "bg-zinc-200 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 cursor-not-allowed opacity-50"
-                      : "bg-moya-green-deep/80 hover:bg-moya-green text-white shadow-moya-green-deep/40"
-                  }`}
-                >
-                  <MessageCircle className="w-4 h-4" />
-                  <span>{isOutOfStock ? t("soldOut") : t("buyNow")}</span>
-                </button>
+                {!isDrop && (
+                  <button
+                    onClick={handleWhatsAppBuy}
+                    disabled={isOutOfStock}
+                    className={`w-full py-3 rounded-2xl font-display font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg ${
+                      isOutOfStock
+                        ? "bg-zinc-200 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 cursor-not-allowed opacity-50"
+                        : "bg-moya-green-deep/80 hover:bg-moya-green text-white shadow-moya-green-deep/40"
+                    }`}
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    <span>{isOutOfStock ? t("soldOut") : t("buyNow")}</span>
+                  </button>
+                )}
 
                 <Link
                   href={`/caps/${quickViewCap.id}`}

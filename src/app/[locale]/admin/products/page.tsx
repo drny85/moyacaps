@@ -31,6 +31,7 @@ import {
   Users,
   Clock,
   Calendar,
+  Flame,
 } from "lucide-react";
 import StockConfirmDialog, { StockConfirmTarget } from "@/components/admin/StockConfirmDialog";
 import AvailabilityConfirmDialog, { AvailabilityConfirmTarget } from "@/components/admin/AvailabilityConfirmDialog";
@@ -414,6 +415,13 @@ export default function AdminProductsPage() {
         </div>
 
         <div className="flex items-center gap-3">
+          <Link
+            href="/admin/drops"
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-zinc-100 dark:bg-white/[0.06] hover:bg-zinc-200 dark:hover:bg-white/[0.1] text-zinc-900 dark:text-white text-xs font-semibold transition-all border border-zinc-200 dark:border-white/[0.08]"
+          >
+            <Flame className="w-4 h-4 text-moya-red" />
+            <span>VIP Drops Desk</span>
+          </Link>
           <button
             onClick={openCreateModal}
             className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-moya-red hover:bg-moya-red-light text-white text-xs font-semibold shadow-md shadow-moya-red/20 transition-all active:scale-95"
@@ -572,7 +580,7 @@ export default function AdminProductsPage() {
                   <th className="py-3 px-4">Stock & Quick Restock</th>
                   <th className="py-3 px-4 text-center">{t("availability")}</th>
                   <th className="py-3 px-4 text-center">Featured</th>
-                  <th className="py-3 px-4 text-center">VIP Drop Radar</th>
+                  <th className="py-3 px-4 text-center">VIP Drop</th>
                   <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
               </thead>
@@ -742,19 +750,18 @@ export default function AdminProductsPage() {
                         </button>
                       </td>
 
-                      {/* VIP Drop Radar */}
+                      {/* VIP Drop Status */}
                       <td className="py-3 px-4 text-center">
                         {variant.isDrop ? (
                           <div className="inline-flex flex-col items-center gap-0.5">
-                            <button
-                              type="button"
-                              onClick={() => openDropScheduleDialog(variant)}
-                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-mono font-bold bg-moya-red/15 text-moya-red border border-moya-red/30 hover:bg-moya-red/25 transition-all shadow-xs cursor-pointer"
-                              title="Configure VIP Drop Radar"
+                            <Link
+                              href="/admin/drops"
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-mono font-bold bg-moya-red/15 text-moya-red border border-moya-red/30 hover:bg-moya-red/25 transition-all shadow-xs"
+                              title="Manage on VIP Drops Desk"
                             >
-                              <Radio className="w-3 h-3 animate-pulse text-moya-red" />
-                              <span>RADAR ON</span>
-                            </button>
+                              <Flame className="w-3 h-3 text-moya-red" />
+                              <span>DROP ACTIVE</span>
+                            </Link>
                             {variant.dropDate && (
                               <span className="text-[10px] font-mono text-zinc-500">
                                 {new Date(variant.dropDate).toLocaleDateString(locale === "es" ? "es-ES" : "en-US", {
@@ -763,21 +770,20 @@ export default function AdminProductsPage() {
                                 })}
                               </span>
                             )}
-                            <span className="inline-flex items-center gap-1 text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-semibold">
+                            <span className="inline-flex items-center gap-1 text-[10px] font-mono text-amber-500 font-semibold">
                               <Users className="w-2.5 h-2.5" />
-                              <span>{variant.subscribersCount || 0} VIPs</span>
+                              <span>{variant.subscribersCount || 0} alerts</span>
                             </span>
                           </div>
                         ) : (
-                          <button
-                            type="button"
-                            onClick={() => openDropScheduleDialog(variant)}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-mono text-zinc-500 hover:text-zinc-900 dark:hover:text-white bg-zinc-100 dark:bg-white/[0.04] hover:bg-zinc-200 dark:hover:bg-white/[0.08] transition-colors cursor-pointer"
-                            title="Schedule as VIP Drop"
+                          <Link
+                            href="/admin/drops"
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-mono text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 bg-zinc-100/70 dark:bg-white/[0.03] hover:bg-zinc-200 dark:hover:bg-white/[0.06] transition-colors"
+                            title="Schedule in VIP Drops Desk"
                           >
-                            <Bell className="w-3 h-3" />
+                            <Flame className="w-2.5 h-2.5" />
                             <span>+ Drop</span>
-                          </button>
+                          </Link>
                         )}
                       </td>
 

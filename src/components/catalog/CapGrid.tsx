@@ -33,6 +33,11 @@ export function CapGrid() {
         isFeatured: v.isFeatured,
         tagEn: v.isFeatured ? "Signature Edition" : undefined,
         tagEs: v.isFeatured ? "Edición Insignia" : undefined,
+        isDrop: v.isDrop,
+        dropDate: v.dropDate,
+        dropBadgeTextEn: v.dropBadgeTextEn,
+        dropBadgeTextEs: v.dropBadgeTextEs,
+        dropStatus: v.dropStatus,
       }));
     }
     return CAP_VARIANTS;

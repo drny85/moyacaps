@@ -96,7 +96,10 @@ export function DropRadar() {
     priceUsd: activeDrop.priceUsd,
     isDrop: activeDrop.isDrop,
     dropDate: activeDrop.dropDate,
+    dropStatus: activeDrop.dropStatus,
   };
+
+  const isDropLive = activeDrop.dropStatus === "live" || (time.isLive && activeDrop.dropStatus !== "scheduled");
 
   const formattedTargetDate = new Date(dropDateMs).toLocaleDateString(
     locale === "es" ? "es-ES" : "en-US",
@@ -293,7 +296,7 @@ export function DropRadar() {
               </div>
 
               <div className="flex items-center gap-2.5 flex-1 justify-end">
-                {time.isLive ? (
+                {isDropLive ? (
                   <button
                     onClick={() => addToCart(capForStore, 1, activeDrop.stock)}
                     className="flex-1 sm:flex-initial py-3 px-6 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-display font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/20 dark:shadow-emerald-950/50 transition-all active:scale-95"

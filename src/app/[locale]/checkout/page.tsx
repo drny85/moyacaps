@@ -6,7 +6,7 @@ import { Link } from "@/i18n/routing";
 import { useTranslations, useLocale } from "next-intl";
 import { useStore } from "@/store/useStore";
 import { useSafeUser, SafeSignInButton } from "@/lib/useSafeUser";
-import { useAction } from "convex/react";
+import { useAction, useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import {
   ShieldCheck,
@@ -26,6 +26,7 @@ export default function CheckoutPage() {
   const { user, isLoaded, isSignedIn } = useSafeUser();
   const { cart, currency } = useStore();
   const createCheckoutSession = useAction(api.stripe.createCheckoutSession);
+  const convexVariants = useQuery(api.products.getVariants, { includeUnavailable: true });
 
   const [status, setStatus] = useState<"idle" | "connecting" | "redirecting" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -33,7 +34,21 @@ export default function CheckoutPage() {
   const hasInitiatedRef = useRef(false);
   const isSubmittingRef = useRef(false);
 
+  const hasUnreleasedDrop = Boolean(
+    convexVariants &&
+      cart.some((item) => {
+        const variant = convexVariants.find((v) => v.variantId === item.id);
+        if (!variant) return false;
+        return Boolean(
+          variant.isDrop &&
+          variant.dropStatus !== "live" &&
+          ((typeof variant.dropDate === "number" && Date.now() < variant.dropDate) || variant.dropStatus === "scheduled")
+        );
+      })
+  );
+
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+
   const subtotal = cart.reduce((sum, item) => {
     return sum + item.priceUsd * item.quantity;
   }, 0);
@@ -43,6 +58,17 @@ export default function CheckoutPage() {
 
   const handleCheckout = async () => {
     if (cart.length === 0 || !user?.id || isSubmittingRef.current) return;
+
+    if (hasUnreleasedDrop) {
+      isSubmittingRef.current = false;
+      setStatus("error");
+      setErrorMessage(
+        locale === "es"
+          ? "Tu bolsa contiene un drop VIP exclusivo que aún no está disponible para compra. Por favor remuévelo de tu bolsa para continuar con el pago."
+          : "Your bag contains an exclusive VIP drop that is not yet released for purchase. Please remove it from your bag to proceed."
+      );
+      return;
+    }
 
     try {
       isSubmittingRef.current = true;
@@ -78,11 +104,20 @@ export default function CheckoutPage() {
 
   // Automatically initiate checkout as soon as the authenticated user and cart are ready
   useEffect(() => {
-    if (isLoaded && isSignedIn && user?.id && cart.length > 0 && !hasInitiatedRef.current) {
+    if (isLoaded && isSignedIn && user?.id && cart.length > 0 && convexVariants !== undefined && !hasInitiatedRef.current) {
+      if (hasUnreleasedDrop) {
+        setStatus("error");
+        setErrorMessage(
+          locale === "es"
+            ? "Tu bolsa contiene un drop VIP exclusivo que aún no está disponible para compra. Por favor remuévelo de tu bolsa para continuar con el pago."
+            : "Your bag contains an exclusive VIP drop that is not yet released for purchase. Please remove it from your bag to proceed."
+        );
+        return;
+      }
       hasInitiatedRef.current = true;
       handleCheckout();
     }
-  }, [isLoaded, isSignedIn, user?.id, cart.length]);
+  }, [isLoaded, isSignedIn, user?.id, cart.length, convexVariants, hasUnreleasedDrop, locale]);
 
   return (
     <div className="min-h-[70vh] flex items-center justify-center px-4 sm:px-6 lg:px-8 py-12 sm:py-20">

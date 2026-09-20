@@ -2,7 +2,7 @@
 
 import { useTranslations, useLocale } from "next-intl";
 import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
-import { Sparkles, ArrowRight, ShieldCheck, CheckCircle2, RotateCw, Pause, Play, ChevronDown, Check } from "lucide-react";
+import { Sparkles, ArrowRight, ShieldCheck, CheckCircle2, RotateCw, Pause, Play, ChevronDown, Check, Bell } from "lucide-react";
 import Image from "next/image";
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useStore } from "@/store/useStore";
@@ -27,7 +27,7 @@ export function HeroInteractive() {
   const t = useTranslations("hero");
   const tCatalog = useTranslations("catalog");
   const locale = useLocale();
-  const { addToCart, currency, cart } = useStore();
+  const { addToCart, openDropAlert, currency, cart } = useStore();
   const convexVariants = useQuery(api.products.getVariants, {});
   const upcomingDrops = useQuery(api.products.getUpcomingDrops);
   const activeUpcomingDrop = upcomingDrops && upcomingDrops.length > 0 ? upcomingDrops[0] : null;
@@ -49,12 +49,26 @@ export function HeroInteractive() {
         stock: v.stock,
         priceUsd: v.priceUsd,
         isFeatured: v.isFeatured,
+        isDrop: v.isDrop,
+        dropDate: v.dropDate,
+        dropBadgeTextEn: v.dropBadgeTextEn,
+        dropBadgeTextEs: v.dropBadgeTextEs,
+        dropStatus: v.dropStatus,
       }));
       const featured = mapped.filter((c) => c.isFeatured || c.stock <= 8).slice(0, 5);
       return featured.length >= 3 ? featured : mapped.slice(0, 5);
     }
     return QUICK_SWAP_CAPS;
   }, [convexVariants]);
+
+  const liveVariant = convexVariants?.find((v) => v.variantId === activeCap.id);
+  const isDropUpcoming = Boolean(
+    (liveVariant?.isDrop ?? activeCap.isDrop) &&
+    (liveVariant?.dropStatus ?? activeCap.dropStatus) !== "live" &&
+    ((typeof (liveVariant?.dropDate ?? activeCap.dropDate) === "number" &&
+      Date.now() < (liveVariant?.dropDate ?? activeCap.dropDate ?? 0)) ||
+      (liveVariant?.dropStatus ?? activeCap.dropStatus) === "scheduled")
+  );
 
   // If activeCap is no longer in live available variants, swap to first available
   useEffect(() => {
@@ -73,7 +87,6 @@ export function HeroInteractive() {
     setIsMounted(true);
   }, []);
 
-  const liveVariant = convexVariants?.find((v) => v.variantId === activeCap.id);
   const stock = liveVariant ? (typeof liveVariant.stock === "number" ? liveVariant.stock : 0) : (activeCap.stock ?? 0);
   const isOutOfStock = stock <= 0;
 
@@ -374,7 +387,15 @@ export function HeroInteractive() {
             <ArrowRight className="w-4 h-4 group-hover:translate-x-1.5 transition-transform" />
           </a>
 
-          {isOutOfStock ? (
+          {isDropUpcoming ? (
+            <button
+              onClick={() => openDropAlert(activeCap)}
+              className="px-6 py-4 rounded-2xl bg-gradient-to-r from-moya-red via-rose-600 to-amber-600 hover:brightness-110 active:scale-95 text-white font-display font-bold text-sm sm:text-base transition-all flex items-center justify-center gap-2.5 shadow-xl shadow-moya-red-deep/40"
+            >
+              <Bell className="w-4 h-4 animate-pulse" />
+              <span>{locale === "es" ? "Solicitar Alerta VIP" : "Claim VIP Drop Alert"}</span>
+            </button>
+          ) : isOutOfStock ? (
             <button
               disabled
               className="px-6 py-4 rounded-2xl bg-zinc-200 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 font-display font-semibold text-sm sm:text-base cursor-not-allowed border border-transparent"

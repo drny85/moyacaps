@@ -64,6 +64,7 @@ export function ProductDetailView({ cap, allCaps }: ProductDetailViewProps) {
         dropDate: v.dropDate,
         dropBadgeTextEn: v.dropBadgeTextEn,
         dropBadgeTextEs: v.dropBadgeTextEs,
+        dropStatus: v.dropStatus,
         tagEn: v.isFeatured ? "Signature Edition" : undefined,
         tagEs: v.isFeatured ? "Edición Insignia" : undefined,
       }));
@@ -130,7 +131,9 @@ export function ProductDetailView({ cap, allCaps }: ProductDetailViewProps) {
   const currentMedia = angles.find((a) => a.key === activeAngle) || angles[0];
 
   const isDropUpcoming = Boolean(
-    currentLiveCap.isDrop && currentLiveCap.dropDate && Date.now() < currentLiveCap.dropDate
+    currentLiveCap.isDrop &&
+    currentLiveCap.dropStatus !== "live" &&
+    ((currentLiveCap.dropDate && Date.now() < currentLiveCap.dropDate) || currentLiveCap.dropStatus === "scheduled")
   );
 
   const handleAdd = () => {

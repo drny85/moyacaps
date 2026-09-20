@@ -509,6 +509,7 @@ export const saveVariant = mutation({
     dropDate: v.optional(v.number()),
     dropBadgeTextEn: v.optional(v.string()),
     dropBadgeTextEs: v.optional(v.string()),
+    dropStatus: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
@@ -551,6 +552,7 @@ export const saveVariant = mutation({
         dropDate: args.dropDate !== undefined ? args.dropDate : existing.dropDate,
         dropBadgeTextEn: args.dropBadgeTextEn !== undefined ? args.dropBadgeTextEn : existing.dropBadgeTextEn,
         dropBadgeTextEs: args.dropBadgeTextEs !== undefined ? args.dropBadgeTextEs : existing.dropBadgeTextEs,
+        dropStatus: args.dropStatus !== undefined ? args.dropStatus : existing.dropStatus,
       });
       return { success: true, action: "updated", id: existing._id };
     }
@@ -573,6 +575,7 @@ export const saveVariant = mutation({
       dropDate: args.dropDate,
       dropBadgeTextEn: args.dropBadgeTextEn,
       dropBadgeTextEs: args.dropBadgeTextEs,
+      dropStatus: args.dropStatus,
     });
 
     return { success: true, action: "created", id };
@@ -612,7 +615,12 @@ export const getUpcomingDrops = query({
   handler: async (ctx) => {
     const rawVariants = await ctx.db.query("variants").collect();
     const dropVariants = rawVariants.filter(
-      (v) => v.isDrop === true && typeof v.dropDate === "number" && v.isAvailable !== false
+      (v) =>
+        v.isDrop === true &&
+        typeof v.dropDate === "number" &&
+        v.isAvailable !== false &&
+        Date.now() < v.dropDate &&
+        v.dropStatus !== "live"
     );
 
     // Sort by earliest dropDate
@@ -692,6 +700,39 @@ export const updateVariantDropStatus = mutation({
     dropDate: v.optional(v.number()),
     dropBadgeTextEn: v.optional(v.string()),
     dropBadgeTextEs: v.optional(v.string()),
+    dropStatus: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    const variant = await ctx.db
+      .query("variants")
+      .withIndex("by_variantId", (q) => q.eq("variantId", args.variantId))
+      .first();
+
+    if (!variant) {
+      throw new Error(`Variant ${args.variantId} not found`);
+    }
+
+    const nextStatus = args.dropStatus || (args.isDrop ? "scheduled" : "archived");
+
+    await ctx.db.patch(variant._id, {
+      isDrop: args.isDrop,
+      dropDate: args.isDrop ? (args.dropDate || Date.now() + 86400000 * 2) : undefined,
+      dropBadgeTextEn: args.dropBadgeTextEn,
+      dropBadgeTextEs: args.dropBadgeTextEs,
+      dropStatus: nextStatus,
+    });
+
+    return { success: true, variantId: args.variantId, isDrop: args.isDrop, dropStatus: nextStatus };
+  },
+});
+
+export const scheduleDrop = mutation({
+  args: {
+    variantId: v.string(),
+    dropDate: v.number(),
+    dropBadgeTextEn: v.optional(v.string()),
+    dropBadgeTextEs: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
@@ -705,13 +746,167 @@ export const updateVariantDropStatus = mutation({
     }
 
     await ctx.db.patch(variant._id, {
-      isDrop: args.isDrop,
-      dropDate: args.isDrop ? (args.dropDate || Date.now() + 86400000 * 2) : undefined,
-      dropBadgeTextEn: args.dropBadgeTextEn,
-      dropBadgeTextEs: args.dropBadgeTextEs,
+      isDrop: true,
+      dropDate: args.dropDate,
+      dropBadgeTextEn: args.dropBadgeTextEn?.trim() || "VIP Exclusive Drop",
+      dropBadgeTextEs: args.dropBadgeTextEs?.trim() || "Drop Exclusivo VIP",
+      dropStatus: "scheduled",
     });
 
-    return { success: true, variantId: args.variantId, isDrop: args.isDrop };
+    return { success: true, variantId: args.variantId, dropDate: args.dropDate, dropStatus: "scheduled" };
+  },
+});
+
+export const releaseDropNow = mutation({
+  args: {
+    variantId: v.string(),
+    keepBadge: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    const variant = await ctx.db
+      .query("variants")
+      .withIndex("by_variantId", (q) => q.eq("variantId", args.variantId))
+      .first();
+
+    if (!variant) {
+      throw new Error(`Variant ${args.variantId} not found`);
+    }
+
+    await ctx.db.patch(variant._id, {
+      dropDate: Date.now() - 1000,
+      dropStatus: "live",
+      dropBadgeTextEn: args.keepBadge ? variant.dropBadgeTextEn : "Released Drop",
+      dropBadgeTextEs: args.keepBadge ? variant.dropBadgeTextEs : "Drop Lanzado",
+    });
+
+    return { success: true, variantId: args.variantId, dropStatus: "live" };
+  },
+});
+
+export const postponeDrop = mutation({
+  args: {
+    variantId: v.string(),
+    newDropDate: v.number(),
+  },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    const variant = await ctx.db
+      .query("variants")
+      .withIndex("by_variantId", (q) => q.eq("variantId", args.variantId))
+      .first();
+
+    if (!variant) {
+      throw new Error(`Variant ${args.variantId} not found`);
+    }
+
+    await ctx.db.patch(variant._id, {
+      dropDate: args.newDropDate,
+      dropStatus: "scheduled",
+    });
+
+    return { success: true, variantId: args.variantId, dropDate: args.newDropDate };
+  },
+});
+
+export const cancelDrop = mutation({
+  args: {
+    variantId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    const variant = await ctx.db
+      .query("variants")
+      .withIndex("by_variantId", (q) => q.eq("variantId", args.variantId))
+      .first();
+
+    if (!variant) {
+      throw new Error(`Variant ${args.variantId} not found`);
+    }
+
+    await ctx.db.patch(variant._id, {
+      isDrop: false,
+      dropDate: undefined,
+      dropBadgeTextEn: undefined,
+      dropBadgeTextEs: undefined,
+      dropStatus: "archived",
+    });
+
+    return { success: true, variantId: args.variantId };
+  },
+});
+
+export const deleteDrop = mutation({
+  args: {
+    variantId: v.string(),
+    deleteSubscribers: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    const variant = await ctx.db
+      .query("variants")
+      .withIndex("by_variantId", (q) => q.eq("variantId", args.variantId))
+      .first();
+
+    if (!variant) {
+      throw new Error(`Variant ${args.variantId} not found`);
+    }
+
+    // Completely clear all drop attributes from the variant
+    await ctx.db.patch(variant._id, {
+      isDrop: false,
+      dropDate: undefined,
+      dropBadgeTextEn: undefined,
+      dropBadgeTextEs: undefined,
+      dropStatus: undefined,
+    });
+
+    // Delete any registered drop alerts/waitlist entries for this variant
+    if (args.deleteSubscribers !== false) {
+      const alerts = await ctx.db
+        .query("drop_alerts")
+        .withIndex("by_variantId", (q) => q.eq("variantId", args.variantId))
+        .collect();
+      for (const alert of alerts) {
+        await ctx.db.delete(alert._id);
+      }
+    }
+
+    return { success: true, variantId: args.variantId };
+  },
+});
+
+
+export const getAllDropsAdmin = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireAdmin(ctx);
+    const rawVariants = await ctx.db.query("variants").collect();
+    const dropVariants = rawVariants.filter(
+      (v) => v.isDrop === true || v.dropDate !== undefined || v.dropStatus !== undefined
+    );
+
+    // Sort by dropDate or variantId
+    dropVariants.sort((a, b) => (b.dropDate || 0) - (a.dropDate || 0));
+
+    return await Promise.all(
+      dropVariants.map(async (v) => {
+        const withUrl = await resolveVariantWithStorageUrl(ctx, v);
+        const subscribers = await ctx.db
+          .query("drop_alerts")
+          .withIndex("by_variantId", (q) => q.eq("variantId", v.variantId))
+          .collect();
+
+        const isLive = v.dropStatus === "live" || (typeof v.dropDate === "number" && Date.now() >= v.dropDate && v.isDrop);
+        const isScheduled = v.isDrop === true && typeof v.dropDate === "number" && Date.now() < v.dropDate && v.dropStatus !== "live";
+
+        return {
+          ...withUrl,
+          subscribersCount: subscribers.length,
+          computedStatus: isLive ? ("live" as const) : isScheduled ? ("scheduled" as const) : ("archived" as const),
+        };
+      })
+    );
   },
 });
 
@@ -728,5 +923,48 @@ export const getDropSubscribers = query({
         .collect();
     }
     return await ctx.db.query("drop_alerts").collect();
+  },
+});
+
+export const getDropSubscribersList = query({
+  args: {
+    variantId: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    let alerts;
+    if (args.variantId && args.variantId !== "all") {
+      alerts = await ctx.db
+        .query("drop_alerts")
+        .withIndex("by_variantId", (q) => q.eq("variantId", args.variantId!))
+        .collect();
+    } else {
+      alerts = await ctx.db.query("drop_alerts").collect();
+    }
+
+    const variants = await ctx.db.query("variants").collect();
+    const variantMap = new Map(variants.map((v) => [v.variantId, v]));
+
+    return alerts
+      .map((a) => {
+        const v = variantMap.get(a.variantId);
+        return {
+          _id: a._id,
+          variantId: a.variantId,
+          contact: a.contact,
+          channel: a.channel,
+          name: a.name,
+          locale: a.locale,
+          createdAt: a.createdAt,
+          notifiedAt: a.notifiedAt,
+          variantNameEn: v?.nameEn || a.variantId,
+          variantNameEs: v?.nameEs || a.variantId,
+          silhouette: v?.silhouette,
+          dropDate: v?.dropDate,
+          primaryHex: v?.primaryHex,
+          image: v?.image,
+        };
+      })
+      .sort((a, b) => b.createdAt - a.createdAt);
   },
 });
