@@ -16,6 +16,8 @@ export default defineSchema({
     nameEn: v.string(),
     nameEs: v.string(),
     silhouette: v.string(), // "snapback" | "trucker"
+    category: v.optional(v.string()), // "headwear" | "hoodies" | "sweaters" | "apparel"
+    taxCode: v.optional(v.string()), // e.g. "txcd_30060006" (hats) or "txcd_30011000" (clothing/hoodies)
     primaryHex: v.string(),
     secondaryHex: v.string(),
     image: v.string(),

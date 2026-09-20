@@ -15,6 +15,45 @@ function getStripe(): Stripe {
   });
 }
 
+/**
+ * Resolves the appropriate Stripe Product Tax Code (PTC).
+ * - "txcd_30060006": Hats, caps, beanies, headwear
+ * - "txcd_30011000": Clothing & footwear (hoodies, sweaters, sweatshirts, t-shirts, jackets)
+ */
+function resolveProductTaxCode(item: {
+  taxCode?: string;
+  category?: string;
+  silhouette?: string;
+  name?: string;
+}): string {
+  if (item.taxCode && item.taxCode.trim().length > 0) {
+    return item.taxCode.trim();
+  }
+
+  const descriptor = `${item.category || ""} ${item.silhouette || ""} ${item.name || ""}`.toLowerCase();
+
+  // General apparel (hoodies, sweaters, knitwear, jackets, shirts)
+  if (
+    descriptor.includes("hoodie") ||
+    descriptor.includes("sweater") ||
+    descriptor.includes("sweatshirt") ||
+    descriptor.includes("jacket") ||
+    descriptor.includes("fleece") ||
+    descriptor.includes("tee") ||
+    descriptor.includes("t-shirt") ||
+    descriptor.includes("shirt") ||
+    descriptor.includes("pant") ||
+    descriptor.includes("short") ||
+    descriptor.includes("clothing") ||
+    descriptor.includes("apparel")
+  ) {
+    return "txcd_30011000"; // Clothing & Footwear
+  }
+
+  // Default to Hats & Headwear for Moya Caps
+  return "txcd_30060006"; // Hats
+}
+
 export const createCheckoutSession = action({
   args: {
     items: v.array(
@@ -34,11 +73,15 @@ export const createCheckoutSession = action({
     args
   ): Promise<{
     url: string | null;
-    orderNumber: string;
     sessionId: string;
+    orderNumber: string;
   }> => {
     if (!args.items || args.items.length === 0) {
-      throw new Error("Cart is empty");
+      throw new ConvexError(
+        args.locale === "es"
+          ? "El carrito está vacío. Agrega gorras antes de pagar."
+          : "Your cart is empty. Add caps before checking out."
+      );
     }
 
     // Try to resolve authenticated user identity from Clerk JWT
@@ -48,26 +91,26 @@ export const createCheckoutSession = action({
       resolvedClerkId = identity.subject;
     }
 
-    // Query official variants from Convex database
-    const allVariants = await ctx.runQuery(api.products.getVariants, {});
-
-    let totalItems = 0;
     let subtotal = 0;
+    let totalItems = 0;
     const validatedItems: {
       variantId: string;
       name: string;
       quantity: number;
       price: number;
       image: string;
+      taxCode?: string;
+      category?: string;
+      silhouette?: string;
     }[] = [];
 
     for (const item of args.items) {
-      const variant = allVariants.find((v: any) => v.variantId === item.variantId);
+      const variant = await ctx.runQuery(api.products.getVariantById, { variantId: item.variantId });
       if (!variant) {
         throw new ConvexError(
           args.locale === "es"
-            ? `Este modelo ya no está disponible para compra: ${item.variantId}`
-            : `This product variant is no longer available for purchase: ${item.variantId}`
+            ? `Producto no encontrado o no disponible: ${item.variantId}`
+            : `Product not found or unavailable: ${item.variantId}`
         );
       }
 
@@ -82,11 +125,12 @@ export const createCheckoutSession = action({
         );
       }
 
-      const isUpcomingDrop =
+      // Ironclad Purchase Gate: Drop products cannot be purchased until released
+      const isUpcomingDrop = Boolean(
         variant.isDrop &&
         variant.dropStatus !== "live" &&
-        ((typeof variant.dropDate === "number" && Date.now() < variant.dropDate) ||
-          variant.dropStatus === "scheduled");
+        ((typeof variant.dropDate === "number" && Date.now() < variant.dropDate) || variant.dropStatus === "scheduled")
+      );
 
       if (isUpcomingDrop) {
         throw new ConvexError(
@@ -116,6 +160,9 @@ export const createCheckoutSession = action({
         quantity: qty,
         price: unitPrice,
         image: variant.image,
+        taxCode: (variant as any).taxCode,
+        category: (variant as any).category,
+        silhouette: variant.silhouette,
       });
     }
 
@@ -132,7 +179,7 @@ export const createCheckoutSession = action({
         product_data: {
           name: `Moya Caps 0880 — ${item.name}`,
           images: [item.image.startsWith("http") ? item.image : `${args.origin}${item.image}`],
-          tax_code: "txcd_30060006", // Hats: A shaped covering for the head worn for warmth, as a fashion item, or as part of a uniform
+          tax_code: resolveProductTaxCode(item),
           metadata: {
             variantId: item.variantId,
           },

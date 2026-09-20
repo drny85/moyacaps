@@ -510,6 +510,8 @@ export const saveVariant = mutation({
     dropBadgeTextEn: v.optional(v.string()),
     dropBadgeTextEs: v.optional(v.string()),
     dropStatus: v.optional(v.string()),
+    category: v.optional(v.string()),
+    taxCode: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
@@ -539,6 +541,8 @@ export const saveVariant = mutation({
         nameEn: args.nameEn,
         nameEs: args.nameEs,
         silhouette: args.silhouette,
+        category: args.category !== undefined ? args.category : existing.category,
+        taxCode: args.taxCode !== undefined ? args.taxCode : existing.taxCode,
         primaryHex: args.primaryHex,
         secondaryHex: args.secondaryHex,
         image: resolvedImage,
@@ -562,6 +566,8 @@ export const saveVariant = mutation({
       nameEn: args.nameEn,
       nameEs: args.nameEs,
       silhouette: args.silhouette,
+      category: args.category,
+      taxCode: args.taxCode,
       primaryHex: args.primaryHex,
       secondaryHex: args.secondaryHex,
       image: resolvedImage,
