@@ -1,11 +1,14 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { Link, usePathname, useRouter } from "@/i18n/routing";
 import { AdminGuard } from "@/components/admin/AdminGuard";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
-import { SafeUserButton } from "@/lib/useSafeUser";
+import { SafeUserButton, useSafeUser } from "@/lib/useSafeUser";
+import { checkIsAdmin } from "@/lib/adminAuth";
+import { useQuery } from "convex/react";
+import { api } from "@convex/_generated/api";
 import {
   BarChart3,
   PackageCheck,
@@ -13,25 +16,113 @@ import {
   ArrowUpRight,
   Menu,
   X,
-  ShieldAlert,
   Sparkles,
   Flame,
-  RefreshCw,
   Globe,
+  Volume2,
+  VolumeX,
+  Bell,
 } from "lucide-react";
+
+/**
+ * Plays a pleasant, high-contrast two-tone notification chime
+ * using the Web Audio API without needing external sound asset downloads.
+ */
+function playOrderChime() {
+  try {
+    const AudioContextClass =
+      window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    if (!AudioContextClass) return;
+    const ctx = new AudioContextClass();
+
+    // Note 1: 880Hz (A5)
+    const osc1 = ctx.createOscillator();
+    const gain1 = ctx.createGain();
+    osc1.type = "sine";
+    osc1.frequency.setValueAtTime(880, ctx.currentTime);
+    gain1.gain.setValueAtTime(0.12, ctx.currentTime);
+    gain1.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+    osc1.connect(gain1);
+    gain1.connect(ctx.destination);
+    osc1.start(ctx.currentTime);
+    osc1.stop(ctx.currentTime + 0.3);
+
+    // Note 2: 1320Hz (E6)
+    const osc2 = ctx.createOscillator();
+    const gain2 = ctx.createGain();
+    osc2.type = "sine";
+    osc2.frequency.setValueAtTime(1320, ctx.currentTime + 0.12);
+    gain2.gain.setValueAtTime(0.15, ctx.currentTime + 0.12);
+    gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.55);
+    osc2.connect(gain2);
+    gain2.connect(ctx.destination);
+    osc2.start(ctx.currentTime + 0.12);
+    osc2.stop(ctx.currentTime + 0.55);
+  } catch (e) {
+    console.warn("Audio cue error:", e);
+  }
+}
 
 export default function AdminLayout({
   children,
-  params,
 }: {
   children: React.ReactNode;
-  params?: Promise<{ locale: string }>;
 }) {
   const t = useTranslations("admin");
   const locale = useLocale();
   const pathname = usePathname();
   const router = useRouter();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
+  // Sound preference state persisted in localStorage
+  const [soundEnabled, setSoundEnabled] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("moya_admin_sound");
+      return stored === null ? true : stored === "true";
+    }
+    return true;
+  });
+
+  const toggleSound = () => {
+    setSoundEnabled((prev) => {
+      const next = !prev;
+      if (typeof window !== "undefined") {
+        localStorage.setItem("moya_admin_sound", String(next));
+      }
+      if (next) {
+        playOrderChime();
+      }
+      return next;
+    });
+  };
+
+  const { user, isLoaded, isSignedIn } = useSafeUser();
+  const isAuthorized = isLoaded && isSignedIn && checkIsAdmin(user);
+
+  // Real-time attention telemetry from Convex (only query when authenticated & authorized)
+  const attentionStats = useQuery(
+    api.orders.getOrdersAttentionStats,
+    isAuthorized ? {} : "skip"
+  );
+
+  // Real-time order arrival sound cue watcher
+  const lastTimestampRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (!attentionStats?.latestOrderTimestamp) return;
+
+    if (lastTimestampRef.current === null) {
+      // First query resolution, capture baseline
+      lastTimestampRef.current = attentionStats.latestOrderTimestamp;
+      return;
+    }
+
+    if (attentionStats.latestOrderTimestamp > lastTimestampRef.current) {
+      lastTimestampRef.current = attentionStats.latestOrderTimestamp;
+      if (soundEnabled) {
+        playOrderChime();
+      }
+    }
+  }, [attentionStats?.latestOrderTimestamp, soundEnabled]);
 
   const navItems = [
     {
@@ -43,6 +134,8 @@ export default function AdminLayout({
       label: t("nav.orders"),
       href: "/admin/orders",
       icon: PackageCheck,
+      badgeCount: attentionStats?.totalActionRequired || 0,
+      isOverdue: (attentionStats?.overduePaid || 0) > 0,
     },
     {
       label: t("nav.products"),
@@ -62,9 +155,9 @@ export default function AdminLayout({
 
   return (
     <AdminGuard>
-      <div className="min-h-screen bg-[#f7f8fa] dark:bg-[#07070b] text-zinc-900 dark:text-zinc-100 flex flex-col md:flex-row transition-colors duration-300">
+      <div className="min-h-screen bg-[#f7f8fa] dark:bg-[#07070b] text-zinc-900 dark:text-zinc-100 flex flex-col md:flex-row transition-colors duration-300 print:bg-white print:text-black print:min-h-0 print:block">
         {/* ── Desktop Sidebar ── */}
-        <aside className="hidden md:flex flex-col w-64 lg:w-72 bg-white dark:bg-[#0a0a10] border-r border-zinc-200 dark:border-white/[0.06] shrink-0 sticky top-0 h-screen z-30">
+        <aside className="print:hidden hidden md:flex flex-col w-64 lg:w-72 bg-white dark:bg-[#0a0a10] border-r border-zinc-200 dark:border-white/[0.06] shrink-0 sticky top-0 h-screen z-30">
           {/* Brand Header */}
           <div className="p-5 border-b border-zinc-200 dark:border-white/[0.06] flex items-center justify-between">
             <Link href="/admin/analytics" className="flex items-center gap-2.5 group">
@@ -94,7 +187,9 @@ export default function AdminLayout({
 
             {navItems.map((item) => {
               const Icon = item.icon;
-              const isActive = pathname === item.href || (item.href === "/admin/analytics" && pathname === "/admin");
+              const isActive =
+                pathname === item.href ||
+                (item.href === "/admin/analytics" && pathname === "/admin");
 
               return (
                 <Link
@@ -106,8 +201,25 @@ export default function AdminLayout({
                       : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/[0.04]"
                   }`}
                 >
-                  <Icon className={`w-4 h-4 ${isActive ? "text-white" : "text-zinc-600 dark:text-zinc-400"}`} />
-                  <span>{item.label}</span>
+                  <Icon
+                    className={`w-4 h-4 ${isActive ? "text-white" : "text-zinc-600 dark:text-zinc-400"}`}
+                  />
+                  <span className="truncate">{item.label}</span>
+
+                  {item.badgeCount && item.badgeCount > 0 ? (
+                    <span
+                      title={`${item.badgeCount} orders requiring attention`}
+                      className={`ml-auto flex items-center justify-center min-w-[20px] h-5 px-1.5 text-[10px] font-mono font-bold rounded-full ${
+                        isActive
+                          ? "bg-white text-moya-red shadow-xs"
+                          : item.isOverdue
+                            ? "bg-rose-500 text-white animate-pulse"
+                            : "bg-amber-500 text-black animate-pulse"
+                      }`}
+                    >
+                      {item.badgeCount}
+                    </span>
+                  ) : null}
                 </Link>
               );
             })}
@@ -129,7 +241,7 @@ export default function AdminLayout({
             </Link>
           </nav>
 
-          {/* Footer Controls: Locale, Theme, User */}
+          {/* Footer Controls: Audio Toggle, Locale, Theme, User */}
           <div className="p-3 border-t border-zinc-200 dark:border-white/[0.06] space-y-3 bg-zinc-50/50 dark:bg-white/[0.01]">
             <div className="flex items-center justify-between px-2">
               <div className="flex items-center gap-1.5">
@@ -158,7 +270,23 @@ export default function AdminLayout({
                 </div>
               </div>
 
-              <ThemeToggle />
+              <div className="flex items-center gap-1">
+                {/* Audio alert toggle */}
+                <button
+                  onClick={toggleSound}
+                  title={soundEnabled ? "Order sound alerts enabled (Click to mute)" : "Order sound alerts muted (Click to enable)"}
+                  className={`p-2 rounded-xl transition-colors ${
+                    soundEnabled
+                      ? "text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20"
+                      : "text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 bg-zinc-100 dark:bg-white/[0.04]"
+                  }`}
+                  aria-label="Toggle audio alerts"
+                >
+                  {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+                </button>
+
+                <ThemeToggle />
+              </div>
             </div>
 
             <div className="flex items-center justify-between px-2 pt-2 border-t border-zinc-200/60 dark:border-white/[0.04]">
@@ -174,21 +302,35 @@ export default function AdminLayout({
         </aside>
 
         {/* ── Mobile Top Header ── */}
-        <div className="md:hidden sticky top-0 z-40 bg-white/95 dark:bg-[#0a0a10]/95 backdrop-blur-md border-b border-zinc-200 dark:border-white/[0.06] px-4 py-3 flex items-center justify-between">
+        <div className="print:hidden md:hidden sticky top-0 z-40 bg-white/95 dark:bg-[#0a0a10]/95 backdrop-blur-md border-b border-zinc-200 dark:border-white/[0.06] px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <button
               onClick={() => setMobileNavOpen(!mobileNavOpen)}
-              className="p-1.5 rounded-xl border border-zinc-200 dark:border-white/10 text-zinc-700 dark:text-zinc-300"
+              className="p-1.5 rounded-xl border border-zinc-200 dark:border-white/10 text-zinc-700 dark:text-zinc-300 relative"
               aria-label="Toggle admin navigation"
             >
               {mobileNavOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              {attentionStats && attentionStats.totalActionRequired > 0 && (
+                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping" />
+              )}
             </button>
             <span className="font-display font-bold text-sm tracking-tight text-zinc-900 dark:text-white">
-              MOYA<span className="text-moya-red">CAPS</span> <span className="text-[10px] font-mono text-zinc-600 dark:text-zinc-400">HQ</span>
+              MOYA<span className="text-moya-red">CAPS</span>{" "}
+              <span className="text-[10px] font-mono text-zinc-600 dark:text-zinc-400">HQ</span>
             </span>
           </div>
 
           <div className="flex items-center gap-2">
+            <button
+              onClick={toggleSound}
+              title={soundEnabled ? "Mute order chimes" : "Enable order chimes"}
+              className={`p-1.5 rounded-xl border border-zinc-200 dark:border-white/10 ${
+                soundEnabled ? "text-emerald-600 dark:text-emerald-400" : "text-zinc-400"
+              }`}
+              aria-label="Toggle audio alerts"
+            >
+              {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+            </button>
             <ThemeToggle />
             <SafeUserButton />
           </div>
@@ -196,7 +338,7 @@ export default function AdminLayout({
 
         {/* ── Mobile Dropdown Menu ── */}
         {mobileNavOpen && (
-          <div className="md:hidden bg-white dark:bg-[#0c0c14] border-b border-zinc-200 dark:border-white/[0.06] p-4 space-y-2 z-30 shadow-xl">
+          <div className="print:hidden md:hidden bg-white dark:bg-[#0c0c14] border-b border-zinc-200 dark:border-white/[0.06] p-4 space-y-2 z-30 shadow-xl">
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = pathname === item.href;
@@ -205,14 +347,30 @@ export default function AdminLayout({
                   key={item.href}
                   href={item.href}
                   onClick={() => setMobileNavOpen(false)}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium ${
+                  className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium ${
                     isActive
                       ? "bg-moya-red text-white font-semibold"
                       : "text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/[0.04]"
                   }`}
                 >
-                  <Icon className="w-4 h-4" />
-                  <span>{item.label}</span>
+                  <div className="flex items-center gap-3">
+                    <Icon className="w-4 h-4" />
+                    <span>{item.label}</span>
+                  </div>
+
+                  {item.badgeCount && item.badgeCount > 0 ? (
+                    <span
+                      className={`px-2 py-0.5 text-[10px] font-mono font-bold rounded-full ${
+                        isActive
+                          ? "bg-white text-moya-red"
+                          : item.isOverdue
+                            ? "bg-rose-500 text-white"
+                            : "bg-amber-500 text-black"
+                      }`}
+                    >
+                      {item.badgeCount}
+                    </span>
+                  ) : null}
                 </Link>
               );
             })}
@@ -243,10 +401,8 @@ export default function AdminLayout({
         )}
 
         {/* ── Main Operations Content Surface ── */}
-        <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8 overflow-y-auto">
-          <div className="max-w-7xl mx-auto">
-            {children}
-          </div>
+        <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8 overflow-y-auto print:p-0 print:overflow-visible">
+          <div className="max-w-7xl mx-auto print:max-w-none print:m-0">{children}</div>
         </main>
       </div>
     </AdminGuard>

@@ -76,7 +76,7 @@ export function DropAlertModal() {
         channel,
         name: name.trim() || undefined,
         clerkUserId: user?.id,
-        locale,
+        locale: locale === "es" ? "es" : "en",
       });
 
       if (result.alreadySubscribed) {

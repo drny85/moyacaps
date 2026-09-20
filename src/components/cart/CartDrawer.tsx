@@ -9,7 +9,7 @@ import { useState, useEffect } from "react";
 import confetti from "canvas-confetti";
 import { useSafeUser, SafeSignInButton } from "@/lib/useSafeUser";
 import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
-import { useAction, useQuery } from "convex/react";
+import { useAction, useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 
 export function CartDrawer() {
@@ -19,6 +19,7 @@ export function CartDrawer() {
   const locale = useLocale();
   const { user, isSignedIn } = useSafeUser();
   const createCheckoutSession = useAction(api.stripe.createCheckoutSession);
+  const createWhatsAppLead = useMutation(api.orders.createWhatsAppOrderLead);
   const convexVariants = useQuery(api.products.getVariants, {
     includeUnavailable: true,
   });
@@ -73,6 +74,24 @@ export function CartDrawer() {
   // Launch WhatsApp order with itemized list
   const handleWhatsAppOrder = () => {
     if (cannotCheckout || checkoutStep === "processing") return;
+
+    // Record WhatsApp lead in Convex and trigger admin notifications asynchronously
+    createWhatsAppLead({
+      items: cart.map((i) => ({
+        variantId: i.id,
+        name: i.name,
+        quantity: i.quantity,
+        price: i.priceUsd,
+        image: i.image,
+      })),
+      currency: "USD",
+      subtotal,
+      shippingFee,
+      total,
+      customerName: user?.fullName || undefined,
+      customerEmail: user?.primaryEmailAddress?.emailAddress || undefined,
+      clerkUserId: user?.id || undefined,
+    }).catch((e) => console.warn("Could not record WhatsApp lead:", e));
 
     let message = `${t("whatsappGreeting")}\n\n`;
 

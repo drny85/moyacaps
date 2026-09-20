@@ -32,7 +32,7 @@ export default defineSchema({
     dropDate: v.optional(v.number()), // epoch ms
     dropBadgeTextEn: v.optional(v.string()),
     dropBadgeTextEs: v.optional(v.string()),
-    dropStatus: v.optional(v.string()), // "scheduled" | "live" | "archived"
+    dropStatus: v.optional(v.union(v.literal("scheduled"), v.literal("live"), v.literal("archived"))),
   }).index("by_variantId", ["variantId"]),
   orders: defineTable({
     orderNumber: v.string(),
@@ -71,8 +71,15 @@ export default defineSchema({
       })
     ),
     total: v.number(),
-    status: v.string(), // "pending" | "paid" | "dispatched" | "delivered" | "cancelled" | "whatsapp_initiated"
-    paymentMethod: v.string(), // "stripe" | "whatsapp"
+    status: v.union(
+      v.literal("pending"),
+      v.literal("paid"),
+      v.literal("dispatched"),
+      v.literal("delivered"),
+      v.literal("cancelled"),
+      v.literal("whatsapp_initiated")
+    ),
+    paymentMethod: v.union(v.literal("stripe"), v.literal("whatsapp")),
     stripeSessionId: v.optional(v.string()),
     trackingNumber: v.optional(v.string()),
     carrier: v.optional(v.string()),
@@ -89,7 +96,7 @@ export default defineSchema({
     clerkId: v.string(),
     email: v.string(),
     name: v.optional(v.string()),
-    role: v.string(), // "admin" | "customer"
+    role: v.union(v.literal("admin"), v.literal("customer")),
     imageUrl: v.optional(v.string()),
     phone: v.optional(v.string()),
     deletedAt: v.optional(v.number()),
@@ -102,10 +109,10 @@ export default defineSchema({
   drop_alerts: defineTable({
     variantId: v.string(),
     contact: v.string(), // email or WhatsApp number
-    channel: v.string(), // "whatsapp" | "email"
+    channel: v.union(v.literal("whatsapp"), v.literal("email")),
     name: v.optional(v.string()),
     clerkUserId: v.optional(v.string()),
-    locale: v.string(), // "en" | "es"
+    locale: v.union(v.literal("en"), v.literal("es")),
     createdAt: v.number(),
     notifiedAt: v.optional(v.number()),
   })

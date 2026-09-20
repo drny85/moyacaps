@@ -71,7 +71,7 @@ export const upsertUser = internalMutation({
     clerkId: v.string(),
     email: v.string(),
     name: v.optional(v.string()),
-    role: v.string(), // "admin" | "customer"
+    role: v.union(v.literal("admin"), v.literal("customer")),
     imageUrl: v.optional(v.string()),
     phone: v.optional(v.string()),
   },

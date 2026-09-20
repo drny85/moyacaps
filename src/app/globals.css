@@ -373,3 +373,27 @@ html.light .skeleton {
   background-size: 200% 100%;
 }
 
+/* ── Print Media Optimization ── */
+@media print {
+  @page {
+    margin: 1.2cm;
+    size: auto;
+  }
+
+  html,
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    overflow: visible !important;
+    max-width: 100% !important;
+    font-size: 12pt;
+  }
+
+  .noise-overlay,
+  nav,
+  aside,
+  header {
+    display: none !important;
+  }
+}
+

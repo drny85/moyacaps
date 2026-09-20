@@ -509,7 +509,7 @@ export const saveVariant = mutation({
     dropDate: v.optional(v.number()),
     dropBadgeTextEn: v.optional(v.string()),
     dropBadgeTextEs: v.optional(v.string()),
-    dropStatus: v.optional(v.string()),
+    dropStatus: v.optional(v.union(v.literal("scheduled"), v.literal("live"), v.literal("archived"))),
     category: v.optional(v.string()),
     taxCode: v.optional(v.string()),
   },
@@ -656,7 +656,7 @@ export const subscribeToDropAlert = mutation({
     channel: v.union(v.literal("whatsapp"), v.literal("email")),
     name: v.optional(v.string()),
     clerkUserId: v.optional(v.string()),
-    locale: v.string(),
+    locale: v.union(v.literal("en"), v.literal("es")),
   },
   handler: async (ctx, args) => {
     const cleanContact = args.contact.trim().toLowerCase();
@@ -706,7 +706,7 @@ export const updateVariantDropStatus = mutation({
     dropDate: v.optional(v.number()),
     dropBadgeTextEn: v.optional(v.string()),
     dropBadgeTextEs: v.optional(v.string()),
-    dropStatus: v.optional(v.string()),
+    dropStatus: v.optional(v.union(v.literal("scheduled"), v.literal("live"), v.literal("archived"))),
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
@@ -719,7 +719,7 @@ export const updateVariantDropStatus = mutation({
       throw new Error(`Variant ${args.variantId} not found`);
     }
 
-    const nextStatus = args.dropStatus || (args.isDrop ? "scheduled" : "archived");
+    const nextStatus: "scheduled" | "live" | "archived" = args.dropStatus || (args.isDrop ? "scheduled" : "archived");
 
     await ctx.db.patch(variant._id, {
       isDrop: args.isDrop,

@@ -42,11 +42,11 @@ export default async function LocaleLayout({
           <ConvexClientProvider>
             <UserSyncProvider>
               <SmoothScrollProvider>
-                <div className="flex min-h-screen flex-col pb-20 md:pb-0">
+                <div className="flex min-h-screen flex-col pb-20 md:pb-0 print:pb-0 print:min-h-0">
                   {/* Film grain noise overlay */}
-                  <div className="noise-overlay" aria-hidden="true" />
+                  <div className="noise-overlay print:hidden" aria-hidden="true" />
                   <Navbar />
-                  <main className="flex-1">{children}</main>
+                  <main className="flex-1 print:p-0">{children}</main>
                   <Footer />
                   <MobileActionBar />
                   <CartDrawer />

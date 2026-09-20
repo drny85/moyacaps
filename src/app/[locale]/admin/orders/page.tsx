@@ -32,7 +32,11 @@ import {
   Edit3,
   Undo2,
   AlertCircle,
+  Maximize2,
+  Printer,
 } from "lucide-react";
+import { Link } from "@/i18n/routing";
+import { useSearchParams } from "next/navigation";
 
 export default function AdminOrdersPage() {
   const t = useTranslations("admin.orders");
@@ -46,6 +50,23 @@ export default function AdminOrdersPage() {
 
   // Selected order for detail drawer
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
+
+  // URL query param synchronization
+  const searchParams = useSearchParams();
+  const orderParam = searchParams.get("order");
+
+  const handleSelectOrder = (order: any | null) => {
+    setSelectedOrder(order);
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      if (order) {
+        url.searchParams.set("order", order.orderNumber);
+      } else {
+        url.searchParams.delete("order");
+      }
+      window.history.replaceState({}, "", url.toString());
+    }
+  };
 
   // Modals state
   const [dispatchModalOrder, setDispatchModalOrder] = useState<any | null>(null);
@@ -91,10 +112,44 @@ export default function AdminOrdersPage() {
     search: searchQuery,
   });
 
+  // Auto-open drawer if ?order= is present in URL
+  React.useEffect(() => {
+    if (orderParam && orders && orders.length > 0 && !selectedOrder) {
+      const cleanTarget = orderParam.trim().toUpperCase().replace(/^#/, "");
+      const match = orders.find(
+        (o: any) =>
+          o.orderNumber.toUpperCase() === cleanTarget ||
+          o.orderNumber.toUpperCase() === `MC-${cleanTarget}`
+      );
+      if (match) {
+        setSelectedOrder(match);
+      }
+    }
+  }, [orderParam, orders, selectedOrder]);
+
   const updateOrderStatus = useMutation(api.orders.updateOrderStatusAdmin);
   const updateOrderFulfillment = useMutation(api.orders.updateOrderFulfillmentAdmin);
   const updateShippingAddressAdmin = useMutation(api.orders.updateShippingAddressAdmin);
   const cancelAndRefundAdmin = useAction(api.stripe.cancelAndRefundOrderAdmin);
+
+  // Attention stats & Resend test alert action
+  const attentionStats = useQuery(api.orders.getOrdersAttentionStats);
+  const sendTestAlert = useAction(api.emails.sendTestAdminOrderAlert);
+  const [isSendingTestAlert, setIsSendingTestAlert] = useState(false);
+
+  const handleSendTestAlert = async () => {
+    try {
+      setIsSendingTestAlert(true);
+      setActionError(null);
+      const res = await sendTestAlert({});
+      triggerSuccess(`Test order alert dispatched via Resend to ${res.recipient}!`);
+    } catch (err: any) {
+      console.error("Failed to send test alert:", err);
+      setActionError(err?.message || "Failed to dispatch test order alert via Resend.");
+    } finally {
+      setIsSendingTestAlert(false);
+    }
+  };
 
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -382,8 +437,22 @@ export default function AdminOrdersPage() {
           </p>
         </div>
 
-        {/* Counter */}
+        {/* Actions & Counter */}
         <div className="flex items-center gap-2">
+          <button
+            onClick={handleSendTestAlert}
+            disabled={isSendingTestAlert}
+            className="px-3 py-1.5 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-white/[0.03] hover:bg-zinc-50 dark:hover:bg-white/[0.08] text-xs font-medium text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5 transition-colors disabled:opacity-50"
+            title="Dispatch a test order alert to verify Resend email delivery"
+          >
+            {isSendingTestAlert ? (
+              <span className="w-3.5 h-3.5 border-2 border-moya-red border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <Mail className="w-3.5 h-3.5 text-moya-red" />
+            )}
+            <span>{isSendingTestAlert ? "Sending..." : "Test Resend Alert"}</span>
+          </button>
+
           <span className="px-3 py-1.5 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-white/[0.03] text-xs font-mono text-zinc-700 dark:text-zinc-300">
             {orders ? `${orders.length} orders` : "Loading..."}
           </span>
@@ -418,6 +487,37 @@ export default function AdminOrdersPage() {
             className="p-1 rounded hover:bg-emerald-500/20 text-emerald-500"
           >
             <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {/* Realtime Attention Warning Banner */}
+      {attentionStats && attentionStats.totalActionRequired > 0 && statusFilter !== "needs_attention" && (
+        <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border border-amber-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs animate-in fade-in">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400">
+              <AlertCircle className="w-4 h-4 animate-pulse" />
+            </div>
+            <div>
+              <p className="font-semibold text-zinc-900 dark:text-white">
+                {attentionStats.totalActionRequired} order(s) require operational attention
+              </p>
+              <p className="text-zinc-600 dark:text-zinc-400 text-[11px]">
+                {attentionStats.unfulfilledPaid} awaiting dispatch
+                {attentionStats.pendingWhatsApp > 0 && ` • ${attentionStats.pendingWhatsApp} WhatsApp leads awaiting verification`}
+                {attentionStats.overduePaid > 0 && (
+                  <span className="text-rose-500 font-bold ml-1">
+                    • {attentionStats.overduePaid} overdue (&gt;24h)
+                  </span>
+                )}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setStatusFilter("needs_attention")}
+            className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs transition-colors shrink-0 flex items-center gap-1 shadow-xs"
+          >
+            Filter Action Items →
           </button>
         </div>
       )}
@@ -463,27 +563,68 @@ export default function AdminOrdersPage() {
         {/* Status Pills */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs font-medium">
           {[
+            {
+              id: "needs_attention",
+              label: "⚠️ Action Required",
+              count: attentionStats?.totalActionRequired || 0,
+              highlight: true,
+            },
+            {
+              id: "overdue",
+              label: "⏳ Overdue (>24h)",
+              count: attentionStats?.overduePaid || 0,
+              danger: true,
+            },
             { id: "all", label: t("allStatuses") },
             { id: "paid", label: "Paid" },
             { id: "dispatched", label: "Dispatched" },
             { id: "delivered", label: "Delivered" },
             { id: "whatsapp_initiated", label: "WhatsApp Leads" },
             { id: "cancelled", label: "Cancelled" },
-          ].map((pill) => {
-            const isSelected = statusFilter === pill.id;
-            return (
-              <button
-                key={pill.id}
-                onClick={() => setStatusFilter(pill.id)}
-                className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all ${isSelected
-                  ? "bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-semibold shadow-xs"
-                  : "bg-zinc-100 dark:bg-white/[0.04] text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
+          ]
+            .filter((pill) => {
+              if (pill.id === "overdue") return (attentionStats?.overduePaid || 0) > 0;
+              return true;
+            })
+            .map((pill) => {
+              const isSelected = statusFilter === pill.id;
+              return (
+                <button
+                  key={pill.id}
+                  onClick={() => setStatusFilter(pill.id)}
+                  className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all flex items-center gap-1.5 ${
+                    isSelected
+                      ? pill.highlight
+                        ? "bg-amber-500 text-black font-bold shadow-xs"
+                        : pill.danger
+                          ? "bg-rose-500 text-white font-bold shadow-xs"
+                          : "bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-semibold shadow-xs"
+                      : pill.highlight && pill.count > 0
+                        ? "bg-amber-500/15 text-amber-700 dark:text-amber-400 hover:bg-amber-500/25 font-semibold"
+                        : pill.danger && pill.count > 0
+                          ? "bg-rose-500/15 text-rose-700 dark:text-rose-400 hover:bg-rose-500/25 font-semibold"
+                          : "bg-zinc-100 dark:bg-white/[0.04] text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
                   }`}
-              >
-                {pill.label}
-              </button>
-            );
-          })}
+                >
+                  <span>{pill.label}</span>
+                  {pill.count !== undefined && pill.count > 0 && (
+                    <span
+                      className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold ${
+                        isSelected
+                          ? "bg-black/20 text-inherit"
+                          : pill.highlight
+                            ? "bg-amber-500 text-black"
+                            : pill.danger
+                              ? "bg-rose-500 text-white"
+                              : "bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300"
+                      }`}
+                    >
+                      {pill.count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
         </div>
       </div>
 
@@ -529,7 +670,7 @@ export default function AdminOrdersPage() {
                   return (
                     <tr
                       key={order._id}
-                      onClick={() => setSelectedOrder(order)}
+                      onClick={() => handleSelectOrder(order)}
                       className="hover:bg-zinc-50/80 dark:hover:bg-white/[0.02] cursor-pointer transition-colors group"
                     >
                       {/* Order Number & Date */}
@@ -610,7 +751,21 @@ export default function AdminOrdersPage() {
 
                       {/* Status Badge */}
                       <td className="py-3.5 px-4">
-                        {getStatusBadge(order.status)}
+                        <div className="flex flex-col items-start gap-1">
+                          {getStatusBadge(order.status)}
+                          {order.status === "paid" &&
+                            order.createdAt &&
+                            Date.now() - order.createdAt > 24 * 60 * 60 * 1000 && (
+                              <span className="inline-flex items-center gap-1 text-[9px] font-mono font-bold uppercase tracking-wider text-rose-500 bg-rose-500/10 px-1.5 py-0.5 rounded">
+                                <Clock className="w-2.5 h-2.5" /> Overdue (&gt;24h)
+                              </span>
+                            )}
+                          {order.status === "whatsapp_initiated" && (
+                            <span className="inline-flex items-center gap-1 text-[9px] font-mono font-bold uppercase tracking-wider text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded">
+                              <AlertCircle className="w-2.5 h-2.5" /> Needs Payment
+                            </span>
+                          )}
+                        </div>
                       </td>
 
                       {/* Action Triggers */}
@@ -669,7 +824,7 @@ export default function AdminOrdersPage() {
 
                           {/* View Drawer Arrow */}
                           <button
-                            onClick={() => setSelectedOrder(order)}
+                            onClick={() => handleSelectOrder(order)}
                             className="p-1 rounded-lg text-zinc-600 hover:text-zinc-900 dark:hover:text-white"
                           >
                             <ChevronRight className="w-4 h-4" />
@@ -688,7 +843,7 @@ export default function AdminOrdersPage() {
       {/* ── Order Detail Drawer ── */}
       {selectedOrder && (
         <div className="fixed inset-0 z-50 overflow-hidden bg-black/60 backdrop-blur-xs flex justify-end animate-in fade-in duration-200">
-          <div className="w-full max-w-lg bg-white dark:bg-[#0d0d14] h-full shadow-2xl flex flex-col border-l border-zinc-200 dark:border-white/10 overflow-hidden">
+          <div className="w-full max-w-2xl bg-white dark:bg-[#0d0d14] h-full shadow-2xl flex flex-col border-l border-zinc-200 dark:border-white/10 overflow-hidden">
             {/* Drawer Header */}
             <div className="p-5 border-b border-zinc-200 dark:border-white/[0.06] flex items-center justify-between bg-zinc-50/50 dark:bg-white/[0.01]">
               <div>
@@ -701,12 +856,23 @@ export default function AdminOrdersPage() {
                 </h3>
               </div>
 
-              <button
-                onClick={() => setSelectedOrder(null)}
-                className="p-1.5 rounded-xl border border-zinc-200 dark:border-white/10 hover:bg-zinc-100 dark:hover:bg-white/10 text-zinc-600 dark:text-zinc-400"
-              >
-                <X className="w-4 h-4" />
-              </button>
+              <div className="flex items-center gap-2">
+                <Link
+                  href={`/admin/orders/${selectedOrder.orderNumber}`}
+                  className="px-3 py-1.5 rounded-xl border border-zinc-200 dark:border-white/10 hover:bg-zinc-100 dark:hover:bg-white/10 text-xs font-semibold text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5 transition-colors"
+                  title="Open dedicated full page workspace"
+                >
+                  <Maximize2 className="w-3.5 h-3.5 text-moya-red" />
+                  <span>Full Page ↗</span>
+                </Link>
+
+                <button
+                  onClick={() => handleSelectOrder(null)}
+                  className="p-1.5 rounded-xl border border-zinc-200 dark:border-white/10 hover:bg-zinc-100 dark:hover:bg-white/10 text-zinc-600 dark:text-zinc-400"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
             {/* Drawer Content */}

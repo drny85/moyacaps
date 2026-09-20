@@ -1,5 +1,6 @@
 import { mutation, query, internalMutation } from "./_generated/server";
 import { v, ConvexError } from "convex/values";
+import { internal } from "./_generated/api";
 import { requireAdmin } from "./auth";
 
 const shippingAddressValidator = v.object({
@@ -32,8 +33,15 @@ export const createOrder = mutation({
     subtotal: v.optional(v.number()),
     shippingFee: v.optional(v.number()),
     total: v.number(),
-    status: v.string(),
-    paymentMethod: v.string(),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("paid"),
+      v.literal("dispatched"),
+      v.literal("delivered"),
+      v.literal("cancelled"),
+      v.literal("whatsapp_initiated")
+    ),
+    paymentMethod: v.union(v.literal("stripe"), v.literal("whatsapp")),
     stripeSessionId: v.optional(v.string()),
     trackingNumber: v.optional(v.string()),
   },
@@ -60,6 +68,25 @@ export const createOrder = mutation({
           });
         }
       }
+    }
+
+    // Schedule admin order alert if paid or whatsapp
+    if (args.status === "paid" || args.paymentMethod === "whatsapp" || args.status === "whatsapp_initiated") {
+      await ctx.scheduler.runAfter(0, internal.emails.sendAdminOrderAlert, {
+        orderNumber: args.orderNumber,
+        total: args.total,
+        currency: args.currency,
+        paymentMethod: args.paymentMethod,
+        isWhatsAppPending: args.status === "whatsapp_initiated" || args.paymentMethod === "whatsapp",
+        customerName: args.customerName,
+        customerEmail: args.customerEmail,
+        customerPhone: args.customerPhone,
+        shippingAddress: args.shippingAddress,
+        items: args.items,
+        subtotal: args.subtotal,
+        shippingFee: args.shippingFee,
+        createdAt: Date.now(),
+      });
     }
 
     return orderId;
@@ -148,6 +175,40 @@ export const createOrUpdateStripeOrder = internalMutation({
       }
     }
 
+    // Schedule Admin Order Alert for new paid Stripe order
+    await ctx.scheduler.runAfter(0, internal.emails.sendAdminOrderAlert, {
+      orderNumber: args.orderNumber,
+      total: args.total,
+      currency: args.currency,
+      paymentMethod: "stripe",
+      isWhatsAppPending: false,
+      customerName: args.customerName,
+      customerEmail: args.customerEmail,
+      customerPhone: args.customerPhone,
+      shippingAddress: args.shippingAddress,
+      items: args.items,
+      subtotal: args.subtotal,
+      shippingFee: args.shippingFee,
+      tax: args.tax,
+      createdAt: Date.now(),
+    });
+
+    // Schedule Customer Order Confirmation receipt if email provided
+    if (args.customerEmail && args.customerEmail.includes("@")) {
+      await ctx.scheduler.runAfter(0, internal.emails.sendCustomerReceipt, {
+        orderNumber: args.orderNumber,
+        total: args.total,
+        currency: args.currency,
+        customerName: args.customerName,
+        customerEmail: args.customerEmail,
+        shippingAddress: args.shippingAddress,
+        items: args.items,
+        subtotal: args.subtotal,
+        shippingFee: args.shippingFee,
+        tax: args.tax,
+      });
+    }
+
     return orderId;
   },
 });
@@ -178,6 +239,39 @@ export const getOrderBySessionOrNumber = query({
       .first();
 
     return sanitizeOrder(bySession);
+  },
+});
+
+/**
+ * Admin query to retrieve complete order details for dedicated fulfillment inspection.
+ */
+export const getOrderDetailAdmin = query({
+  args: {
+    orderNumber: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return null;
+    }
+    await requireAdmin(ctx);
+
+    const cleanNumber = args.orderNumber.trim().toUpperCase().replace(/^#/, "");
+    if (!cleanNumber) return null;
+
+    let order = await ctx.db
+      .query("orders")
+      .withIndex("by_orderNumber", (q) => q.eq("orderNumber", cleanNumber))
+      .first();
+
+    if (!order && !cleanNumber.startsWith("MC-")) {
+      order = await ctx.db
+        .query("orders")
+        .withIndex("by_orderNumber", (q) => q.eq("orderNumber", `MC-${cleanNumber}`))
+        .first();
+    }
+
+    return order;
   },
 });
 
@@ -551,19 +645,48 @@ export const getAllOrdersAdmin = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return [];
+    }
     await requireAdmin(ctx);
     const maxItems = Math.min(args.limit ?? 250, 500);
 
     let orders;
-    if (args.status && args.status !== "all") {
+    if (args.status === "needs_attention") {
+      const [paid, whatsapp] = await Promise.all([
+        ctx.db
+          .query("orders")
+          .withIndex("by_status", (q) => q.eq("status", "paid"))
+          .order("desc")
+          .take(maxItems),
+        ctx.db
+          .query("orders")
+          .withIndex("by_status", (q) => q.eq("status", "whatsapp_initiated"))
+          .order("desc")
+          .take(maxItems),
+      ]);
+      orders = [...paid, ...whatsapp]
+        .sort((a, b) => b.createdAt - a.createdAt)
+        .slice(0, maxItems);
+    } else if (args.status === "overdue") {
+      const twentyFourHoursAgo = Date.now() - 24 * 60 * 60 * 1000;
+      const paid = await ctx.db
+        .query("orders")
+        .withIndex("by_status", (q) => q.eq("status", "paid"))
+        .order("desc")
+        .take(maxItems);
+      orders = paid.filter((o) => (o.createdAt || 0) < twentyFourHoursAgo);
+    } else if (args.status && args.status !== "all") {
       orders = await ctx.db
         .query("orders")
-        .withIndex("by_status", (q) => q.eq("status", args.status!))
+        .withIndex("by_status", (q) => q.eq("status", args.status as any))
         .order("desc")
         .take(maxItems);
     } else {
       orders = await ctx.db
         .query("orders")
+        .withIndex("by_createdAt")
         .order("desc")
         .take(maxItems);
     }
@@ -589,6 +712,126 @@ export const getAllOrdersAdmin = query({
     return orders;
   },
 });
+
+/**
+ * Returns real-time counts and metrics of orders and items requiring operational attention.
+ */
+export const getOrdersAttentionStats = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return null;
+    }
+    await requireAdmin(ctx);
+
+    const now = Date.now();
+    const twentyFourHoursAgo = now - 24 * 60 * 60 * 1000;
+
+    // Utilize by_status index for targeted O(k) queries instead of scanning table
+    const [paidOrders, whatsappOrders, latestOrder] = await Promise.all([
+      ctx.db
+        .query("orders")
+        .withIndex("by_status", (q) => q.eq("status", "paid"))
+        .collect(),
+      ctx.db
+        .query("orders")
+        .withIndex("by_status", (q) => q.eq("status", "whatsapp_initiated"))
+        .collect(),
+      ctx.db
+        .query("orders")
+        .withIndex("by_createdAt")
+        .order("desc")
+        .first(),
+    ]);
+
+    const unfulfilledPaid = paidOrders.length;
+    const pendingWhatsApp = whatsappOrders.length;
+    const overduePaid = paidOrders.filter(
+      (o) => (o.createdAt || 0) < twentyFourHoursAgo
+    ).length;
+    const latestOrderTimestamp = latestOrder?.createdAt || 0;
+
+    // Low stock inventory warnings (<= 2 units remaining)
+    const variants = await ctx.db.query("variants").collect();
+    const lowStockVariants = variants
+      .filter((v) => v.stock <= 2)
+      .map((v) => ({
+        variantId: v.variantId,
+        nameEn: v.nameEn,
+        nameEs: v.nameEs,
+        stock: v.stock,
+      }));
+
+    const totalActionRequired = unfulfilledPaid + pendingWhatsApp;
+
+    return {
+      totalActionRequired,
+      unfulfilledPaid,
+      overduePaid,
+      pendingWhatsApp,
+      lowStockCount: lowStockVariants.length,
+      lowStockVariants,
+      latestOrderTimestamp,
+    };
+  },
+});
+
+/**
+ * Records a customer WhatsApp checkout lead order and triggers admin email alert.
+ */
+export const createWhatsAppOrderLead = mutation({
+  args: {
+    items: v.array(orderItemValidator),
+    currency: v.string(),
+    subtotal: v.number(),
+    shippingFee: v.number(),
+    total: v.number(),
+    customerName: v.optional(v.string()),
+    customerPhone: v.optional(v.string()),
+    customerEmail: v.optional(v.string()),
+    clerkUserId: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const timestamp = Date.now();
+    const orderNumber = `MC-WA-${Math.floor(100000 + Math.random() * 900000)}`;
+
+    const orderId = await ctx.db.insert("orders", {
+      orderNumber,
+      customerName: args.customerName,
+      customerPhone: args.customerPhone,
+      customerEmail: args.customerEmail,
+      clerkUserId: args.clerkUserId,
+      items: args.items,
+      currency: args.currency,
+      subtotal: args.subtotal,
+      shippingFee: args.shippingFee,
+      total: args.total,
+      status: "whatsapp_initiated",
+      paymentMethod: "whatsapp",
+      createdAt: timestamp,
+    });
+
+    // Schedule Admin Order Alert for WhatsApp order
+    await ctx.scheduler.runAfter(0, internal.emails.sendAdminOrderAlert, {
+      orderNumber,
+      total: args.total,
+      currency: args.currency,
+      paymentMethod: "whatsapp",
+      isWhatsAppPending: true,
+      customerName: args.customerName,
+      customerEmail: args.customerEmail,
+      customerPhone: args.customerPhone,
+      items: args.items,
+      subtotal: args.subtotal,
+      shippingFee: args.shippingFee,
+      createdAt: timestamp,
+    });
+
+    return { orderId, orderNumber };
+  },
+});
+
 
 export const updateOrderStatusAdmin = mutation({
   args: {
