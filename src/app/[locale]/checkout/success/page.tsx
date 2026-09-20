@@ -228,13 +228,13 @@ export default function CheckoutSuccessPage() {
               <div className="flex justify-between text-zinc-500">
                 <span>{t("subtotal")}</span>
                 <span className="font-mono text-zinc-800 dark:text-zinc-200">
-                  ${order.subtotal || order.total}.00 {order.currency}
+                  ${Number(order.subtotal || order.total).toFixed(2)} {order.currency}
                 </span>
               </div>
               <div className="flex justify-between text-zinc-500">
                 <span>{t("shipping")}</span>
                 <span className="font-mono text-emerald-600 dark:text-moya-green-light font-semibold">
-                  {order.shippingFee === 0 ? "FREE" : `$${order.shippingFee}.00 ${order.currency}`}
+                  {order.shippingFee === 0 ? "FREE" : `$${Number(order.shippingFee).toFixed(2)} ${order.currency}`}
                 </span>
               </div>
               {typeof order.tax === "number" && order.tax > 0 && (

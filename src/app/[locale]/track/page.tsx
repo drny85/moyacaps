@@ -450,13 +450,13 @@ export default function TrackOrderPage() {
                         </span>
                         {orderResult.subtotal !== undefined && (
                           <p className="text-zinc-500">
-                            {t("subtotal")}: <span className="font-mono">${orderResult.subtotal}.00</span>
+                            {t("subtotal")}: <span className="font-mono">${Number(orderResult.subtotal).toFixed(2)}</span>
                           </p>
                         )}
                         <p className="text-zinc-500">
                           {t("shipping")}:{" "}
                           <span className="font-mono text-emerald-600 dark:text-emerald-400 font-semibold">
-                            {orderResult.shippingFee ? `$${orderResult.shippingFee}.00` : t("freeShipping")}
+                            {orderResult.shippingFee ? `$${Number(orderResult.shippingFee).toFixed(2)}` : t("freeShipping")}
                           </span>
                         </p>
                         {orderResult.tax !== undefined && orderResult.tax > 0 && (

@@ -54,6 +54,79 @@ function resolveProductTaxCode(item: {
   return "txcd_30060006"; // Hats
 }
 
+/**
+ * Extracts normalized sales tax amounts, composite rates, and jurisdictions from a Stripe session.
+ */
+function extractTaxInfo(
+  session: Stripe.Checkout.Session,
+  address?: { state?: string | null } | null
+): {
+  taxAmount?: number;
+  taxDetails?: {
+    amount: number;
+    rate?: number;
+    jurisdiction?: string;
+  };
+} {
+  const taxAmountCents = session.total_details?.amount_tax ?? 0;
+  const taxAmount = taxAmountCents > 0 ? Number((taxAmountCents / 100).toFixed(2)) : undefined;
+
+  let taxDetails: { amount: number; rate?: number; jurisdiction?: string } | undefined = undefined;
+  if (taxAmount && taxAmount > 0) {
+    const taxesList = session.total_details?.breakdown?.taxes || [];
+    const sumRate = taxesList.reduce((acc, t) => acc + (Number(t.rate?.percentage) || 0), 0);
+    const jurisdictionList = Array.from(
+      new Set(
+        taxesList
+          .map((t) => t.rate?.jurisdiction || t.rate?.display_name)
+          .filter(Boolean)
+      )
+    );
+    const jurisdiction = jurisdictionList.length > 0 ? jurisdictionList.join(", ") : address?.state || undefined;
+    taxDetails = {
+      amount: taxAmount,
+      rate: sumRate > 0 ? Number(sumRate.toFixed(2)) : undefined,
+      jurisdiction: jurisdiction || undefined,
+    };
+  }
+
+  return { taxAmount, taxDetails };
+}
+
+/**
+ * Hydrates line items from metadata to guarantee full product information
+ * even if compact representation was used to respect Stripe's 500-char metadata limit.
+ */
+async function hydrateOrderItems(ctx: any, itemsJson?: string): Promise<any[]> {
+  if (!itemsJson) return [];
+  try {
+    const raw = JSON.parse(itemsJson);
+    if (!Array.isArray(raw)) return [];
+
+    return await Promise.all(
+      raw.map(async (i: any) => {
+        if (i.variantId && i.name && i.price !== undefined && i.image) {
+          return i;
+        }
+        const vid = i.variantId || i.id || i.v;
+        const qty = i.quantity || i.q || 1;
+        const fallbackPrice = typeof i.price === "number" ? i.price : typeof i.p === "number" ? i.p : 120;
+        const variant = await ctx.runQuery(api.products.getVariantById, { variantId: vid });
+        return {
+          variantId: vid,
+          name: variant?.nameEn || vid,
+          price: variant?.priceUsd || fallbackPrice,
+          quantity: qty,
+          image: variant?.image || "",
+        };
+      })
+    );
+  } catch (e) {
+    console.error("Failed to parse and hydrate itemsJson:", e);
+    return [];
+  }
+}
+
 export const createCheckoutSession = action({
   args: {
     items: v.array(
@@ -104,8 +177,17 @@ export const createCheckoutSession = action({
       silhouette?: string;
     }[] = [];
 
-    for (const item of args.items) {
-      const variant = await ctx.runQuery(api.products.getVariantById, { variantId: item.variantId });
+    // Concurrently fetch all variants to eliminate sequential network roundtrips
+    const fetchedVariants = await Promise.all(
+      args.items.map((item) =>
+        ctx.runQuery(api.products.getVariantById, { variantId: item.variantId })
+      )
+    );
+
+    for (let i = 0; i < args.items.length; i++) {
+      const item = args.items[i];
+      const variant = fetchedVariants[i];
+
       if (!variant) {
         throw new ConvexError(
           args.locale === "es"
@@ -208,6 +290,13 @@ export const createCheckoutSession = action({
       },
     ];
 
+    // Compact items representation to stay strictly under Stripe's 500-char metadata limit
+    const compactItems = validatedItems.map((item) => ({
+      v: item.variantId,
+      q: item.quantity,
+      p: item.price,
+    }));
+
     const session = await stripe.checkout.sessions.create(
       {
         payment_method_types: ["card", "link"],
@@ -234,7 +323,7 @@ export const createCheckoutSession = action({
           subtotal: subtotal.toString(),
           shippingFee: shippingFee.toString(),
           total: total.toString(),
-          itemsJson: JSON.stringify(validatedItems),
+          itemsJson: JSON.stringify(compactItems),
         },
       },
       {
@@ -431,27 +520,8 @@ export const syncCheckoutSession = action({
       const shipping = (session as any).shipping_details || (session as any).shipping_cost;
       const address = shipping?.address || session.customer_details?.address;
 
-      let parsedItems = [];
-      try {
-        if (metadata.itemsJson) {
-          parsedItems = JSON.parse(metadata.itemsJson);
-        }
-      } catch (e) {
-        console.error("Failed to parse itemsJson in syncCheckoutSession:", e);
-      }
-
-      const taxAmountCents = session.total_details?.amount_tax ?? 0;
-      const taxAmount = taxAmountCents > 0 ? Number((taxAmountCents / 100).toFixed(2)) : undefined;
-
-      let taxDetails: { amount: number; rate?: number; jurisdiction?: string } | undefined = undefined;
-      if (taxAmount && taxAmount > 0) {
-        const breakdownTax = session.total_details?.breakdown?.taxes?.[0];
-        taxDetails = {
-          amount: taxAmount,
-          rate: breakdownTax?.rate?.percentage ? Number(breakdownTax.rate.percentage) : undefined,
-          jurisdiction: breakdownTax?.rate?.jurisdiction || address?.state || undefined,
-        };
-      }
+      const parsedItems = await hydrateOrderItems(ctx, metadata.itemsJson);
+      const { taxAmount, taxDetails } = extractTaxInfo(session, address);
 
       const orderId: any = await ctx.runMutation(internal.orders.createOrUpdateStripeOrder, {
         stripeSessionId: session.id,
@@ -517,32 +587,25 @@ export const fulfillStripeWebhook = action({
     }
 
     if (event.type === "checkout.session.completed") {
-      const session = event.data.object as Stripe.Checkout.Session;
+      let session = event.data.object as Stripe.Checkout.Session;
+
+      // Retrieve full session with tax breakdown if not already present
+      if (!session.total_details?.breakdown && session.id) {
+        try {
+          session = await stripe.checkout.sessions.retrieve(session.id, {
+            expand: ["total_details.breakdown"],
+          });
+        } catch (e) {
+          console.warn("Could not retrieve expanded session in webhook, continuing with payload:", e);
+        }
+      }
+
       const metadata = session.metadata || {};
       const shipping = (session as any).shipping_details || (session as any).shipping_cost;
       const address = shipping?.address || session.customer_details?.address;
 
-      let parsedItems = [];
-      try {
-        if (metadata.itemsJson) {
-          parsedItems = JSON.parse(metadata.itemsJson);
-        }
-      } catch (e) {
-        console.error("Failed to parse itemsJson in webhook:", e);
-      }
-
-      const taxAmountCents = session.total_details?.amount_tax ?? 0;
-      const taxAmount = taxAmountCents > 0 ? Number((taxAmountCents / 100).toFixed(2)) : undefined;
-
-      let taxDetails: { amount: number; rate?: number; jurisdiction?: string } | undefined = undefined;
-      if (taxAmount && taxAmount > 0) {
-        const breakdownTax = session.total_details?.breakdown?.taxes?.[0];
-        taxDetails = {
-          amount: taxAmount,
-          rate: breakdownTax?.rate?.percentage ? Number(breakdownTax.rate.percentage) : undefined,
-          jurisdiction: breakdownTax?.rate?.jurisdiction || address?.state || undefined,
-        };
-      }
+      const parsedItems = await hydrateOrderItems(ctx, metadata.itemsJson);
+      const { taxAmount, taxDetails } = extractTaxInfo(session, address);
 
       await ctx.runMutation(internal.orders.createOrUpdateStripeOrder, {
         stripeSessionId: session.id,

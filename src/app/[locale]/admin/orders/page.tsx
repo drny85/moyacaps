@@ -882,12 +882,12 @@ export default function AdminOrdersPage() {
               <div className="space-y-2 text-xs pt-2 border-t border-zinc-100 dark:border-white/[0.06]">
                 <div className="flex justify-between text-zinc-600 dark:text-zinc-400">
                   <span>Subtotal</span>
-                  <span className="font-mono">${selectedOrder.subtotal || selectedOrder.total}</span>
+                  <span className="font-mono">${Number(selectedOrder.subtotal || selectedOrder.total).toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-zinc-600 dark:text-zinc-400">
                   <span>Shipping Fee</span>
                   <span className="font-mono text-emerald-600 dark:text-emerald-400">
-                    {selectedOrder.shippingFee ? `$${selectedOrder.shippingFee}` : "FREE (Global Express)"}
+                    {selectedOrder.shippingFee ? `$${Number(selectedOrder.shippingFee).toFixed(2)}` : "FREE (Global Express)"}
                   </span>
                 </div>
                 {typeof selectedOrder.tax === "number" && selectedOrder.tax > 0 && (
@@ -895,7 +895,9 @@ export default function AdminOrdersPage() {
                     <span>
                       Sales Tax
                       {selectedOrder.taxDetails?.jurisdiction ? ` (${selectedOrder.taxDetails.jurisdiction})` : ""}
-                      {selectedOrder.taxDetails?.rate ? ` @ ${(selectedOrder.taxDetails.rate * 100).toFixed(2)}%` : ""}
+                      {selectedOrder.taxDetails?.rate !== undefined
+                        ? ` @ ${selectedOrder.taxDetails.rate > 1 ? selectedOrder.taxDetails.rate : (selectedOrder.taxDetails.rate * 100).toFixed(2)}%`
+                        : ""}
                     </span>
                     <span className="font-mono text-zinc-950 dark:text-white font-medium">
                       ${selectedOrder.tax.toFixed(2)}
