@@ -141,10 +141,10 @@ export function AnatomyParallax() {
       ref={containerRef}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
-      className="relative h-[175vh] bg-[#f5f5f8] dark:bg-[#050508] border-b border-black/[0.06] dark:border-white/[0.06] select-none transition-colors duration-300"
+      className="relative h-[125vh] bg-[#f5f5f8] dark:bg-[#050508] border-b border-black/[0.06] dark:border-white/[0.06] select-none transition-colors duration-300"
     >
       {/* ── Sticky Viewport Window ── */}
-      <div className="sticky top-0 h-[100svh] w-full overflow-hidden flex flex-col justify-between py-5 sm:py-8 px-4 sm:px-6 lg:px-8">
+      <div className="sticky top-0 h-[100svh] w-full overflow-hidden flex flex-col justify-between py-3 sm:py-5 px-4 sm:px-6 lg:px-8">
         {/* Film grain noise texture */}
         <div className="noise-overlay pointer-events-none opacity-40" />
 

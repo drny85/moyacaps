@@ -1,6 +1,6 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
 import { Sparkles, ArrowRight, ShieldCheck, CheckCircle2, RotateCw, Pause, Play, ChevronDown, Check } from "lucide-react";
 import Image from "next/image";
@@ -26,8 +26,11 @@ import { api } from "@convex/_generated/api";
 export function HeroInteractive() {
   const t = useTranslations("hero");
   const tCatalog = useTranslations("catalog");
+  const locale = useLocale();
   const { addToCart, currency, cart } = useStore();
   const convexVariants = useQuery(api.products.getVariants, {});
+  const upcomingDrops = useQuery(api.products.getUpcomingDrops);
+  const activeUpcomingDrop = upcomingDrops && upcomingDrops.length > 0 ? upcomingDrops[0] : null;
   const [activeAngle, setActiveAngle] = useState<number>(0);
   const [isSpinning, setIsSpinning] = useState(true);
   const [isPaused, setIsPaused] = useState(false);
@@ -131,7 +134,7 @@ export function HeroInteractive() {
     : activeCap.image;
 
   return (
-    <section id="interactive-studio" ref={sectionRef} className="relative overflow-hidden px-4 sm:px-6 lg:px-8 pt-10 sm:pt-16 pb-16 sm:pb-24">
+    <section id="interactive-studio" ref={sectionRef} className="relative overflow-hidden px-4 sm:px-6 lg:px-8 pt-4 sm:pt-8 pb-16 sm:pb-24">
       {/* ── Parallax Ambient Background ── */}
       <motion.div style={isMounted ? { y: orbY1 } : undefined} className="ambient-orb top-[10%] left-1/2 -translate-x-1/2 w-[700px] h-[700px] bg-moya-red/20 animate-glow-pulse" />
       <motion.div style={isMounted ? { y: orbY2 } : undefined} className="ambient-orb top-[30%] left-[15%] w-[400px] h-[400px] bg-moya-violet/10 animate-glow-pulse" />
@@ -141,16 +144,34 @@ export function HeroInteractive() {
       <div className="absolute inset-0 texture-lines pointer-events-none" />
 
       <div className="relative max-w-7xl mx-auto w-full flex flex-col items-center text-center z-10">
-        {/* ── Sticker Badge ── */}
-        <motion.div
-          initial={{ opacity: 0, y: 20, rotate: -5 }}
-          animate={{ opacity: 1, y: 0, rotate: -2 }}
-          transition={{ duration: 0.5, delay: 0.1 }}
-          className="sticker-badge sticker-badge--red mb-6 sm:mb-8 animate-float-badge"
-        >
-          <Sparkles className="w-3 h-3" />
-          <span>{t("badge")}</span>
-        </motion.div>
+        {/* ── Badges Row ── */}
+        <div className="flex flex-wrap items-center justify-center gap-2.5 mb-3 sm:mb-4">
+          <motion.div
+            initial={{ opacity: 0, y: 20, rotate: -5 }}
+            animate={{ opacity: 1, y: 0, rotate: -2 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            className="sticker-badge sticker-badge--red animate-float-badge"
+          >
+            <Sparkles className="w-3 h-3" />
+            <span>{t("badge")}</span>
+          </motion.div>
+
+          {activeUpcomingDrop && (
+            <motion.a
+              href="#drop-radar"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.4, delay: 0.2 }}
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] sm:text-xs font-mono font-bold bg-moya-red/15 hover:bg-moya-red/25 text-moya-red border border-moya-red/40 transition-all shadow-xs cursor-pointer group"
+            >
+              <span className="w-2 h-2 rounded-full bg-moya-red animate-ping shrink-0" />
+              <span className="uppercase tracking-wider">
+                {locale === "es" ? "Radar VIP Activo" : "VIP Drop Radar Active"}
+              </span>
+              <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform shrink-0" />
+            </motion.a>
+          )}
+        </div>
 
         {/* ── Oversized Headline ── */}
         <motion.h1

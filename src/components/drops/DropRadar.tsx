@@ -110,7 +110,7 @@ export function DropRadar() {
   );
 
   return (
-    <section className="relative w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 overflow-hidden">
+    <section id="drop-radar" className="relative w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 overflow-hidden scroll-mt-24">
       {/* Background Ambient Glow */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3/4 h-80 bg-gradient-to-r from-moya-red/10 via-amber-500/10 to-moya-gold/10 blur-3xl pointer-events-none rounded-full" />
 
