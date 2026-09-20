@@ -8,11 +8,13 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
 import confetti from "canvas-confetti";
 import { useSafeUser, SafeSignInButton } from "@/lib/useSafeUser";
+import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
 import { useAction, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 
 export function CartDrawer() {
   const { cart, isCartOpen, closeCart, updateQuantity, removeFromCart, clearCart, currency, clampCartToStock } = useStore();
+  useLockBodyScroll(isCartOpen);
   const t = useTranslations("cart");
   const locale = useLocale();
   const { user, isSignedIn } = useSafeUser();
@@ -120,7 +122,9 @@ export function CartDrawer() {
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "spring", damping: 25, stiffness: 200 }}
-            className="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-white dark:bg-[#08080e] border-l border-black/[0.08] dark:border-white/[0.06] flex flex-col shadow-2xl transition-colors duration-300"
+            data-lenis-prevent
+            className="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-white dark:bg-[#08080e] border-l border-black/[0.08] dark:border-white/[0.06] flex flex-col shadow-2xl transition-colors duration-300 overscroll-contain"
+            style={{ overscrollBehavior: "contain" }}
           >
             {/* Drawer Header */}
             <div className="p-6 border-b border-black/[0.06] dark:border-white/[0.06] flex items-center justify-between">
@@ -161,7 +165,11 @@ export function CartDrawer() {
             </div>
 
             {/* Cart Items List */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+            <div
+              data-lenis-prevent
+              className="flex-1 overflow-y-auto p-6 space-y-4 overscroll-contain"
+              style={{ overscrollBehavior: "contain" }}
+            >
               {cart.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-center py-16">
                   <div className="w-16 h-16 rounded-2xl bg-black/5 dark:bg-white/5 border border-black/[0.06] dark:border-white/[0.06] flex items-center justify-center mb-4 text-zinc-400 dark:text-zinc-500">

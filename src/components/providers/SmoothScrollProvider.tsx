@@ -13,6 +13,8 @@ export function SmoothScrollProvider({ children }: { children: React.ReactNode }
       smoothWheel: true,
     });
 
+    (window as any).__lenis = lenis;
+
     function raf(time: number) {
       lenis.raf(time);
       requestAnimationFrame(raf);
@@ -21,6 +23,9 @@ export function SmoothScrollProvider({ children }: { children: React.ReactNode }
     requestAnimationFrame(raf);
 
     return () => {
+      if ((window as any).__lenis === lenis) {
+        delete (window as any).__lenis;
+      }
       lenis.destroy();
     };
   }, []);

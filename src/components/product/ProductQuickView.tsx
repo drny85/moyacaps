@@ -4,15 +4,17 @@ import { useStore } from "@/store/useStore";
 import { useTranslations, useLocale } from "next-intl";
 import Image from "next/image";
 import { Link } from "@/i18n/routing";
-import { X, ShoppingBag, MessageCircle, ShieldCheck, Check, ArrowUpRight } from "lucide-react";
+import { X, ShoppingBag, MessageCircle, ShieldCheck, Check, ArrowUpRight, Bell } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
 import confetti from "canvas-confetti";
 import { useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
+import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
 
 export function ProductQuickView() {
-  const { quickViewCap, closeQuickView, addToCart, cart } = useStore();
+  const { quickViewCap, closeQuickView, openDropAlert, addToCart, cart } = useStore();
+  useLockBodyScroll(Boolean(quickViewCap));
   const t = useTranslations("quickView");
   const locale = useLocale();
   const [quantity, setQuantity] = useState(1);
@@ -31,6 +33,12 @@ export function ProductQuickView() {
   const liveVariant = convexVariants?.find((v) => v.variantId === quickViewCap.id);
   const stock = liveVariant ? (typeof liveVariant.stock === "number" ? liveVariant.stock : 0) : (quickViewCap.stock ?? 0);
   const isOutOfStock = stock <= 0;
+
+  const isDrop = Boolean(
+    (liveVariant?.isDrop ?? quickViewCap.isDrop) &&
+    (liveVariant?.dropDate ?? quickViewCap.dropDate) &&
+    Date.now() < (liveVariant?.dropDate ?? quickViewCap.dropDate ?? 0)
+  );
 
   const name = locale === "es" ? quickViewCap.nameEs : quickViewCap.nameEn;
   const inCartItem = isMounted ? cart.find((i) => i.id === quickViewCap.id) : undefined;
@@ -72,7 +80,9 @@ export function ProductQuickView() {
     <AnimatePresence>
       <div
         onClick={closeQuickView}
-        className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-3 pt-3 sm:pt-4 pb-24 sm:pb-4 bg-black/80 backdrop-blur-md overflow-y-auto"
+        data-lenis-prevent
+        className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-3 pt-3 sm:pt-4 pb-24 sm:pb-4 bg-black/80 backdrop-blur-md overflow-y-auto overscroll-contain"
+        style={{ overscrollBehavior: "contain" }}
       >
         <motion.div
           initial={{ opacity: 0, scale: 0.96, y: -15 }}
@@ -80,7 +90,9 @@ export function ProductQuickView() {
           exit={{ opacity: 0, scale: 0.96, y: -15 }}
           transition={{ duration: 0.25, ease: "easeOut" }}
           onClick={(e) => e.stopPropagation()}
-          className="relative w-full max-w-3xl glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-8 pb-6 sm:pb-8 border border-black/[0.08] dark:border-white/[0.06] shadow-2xl max-h-[86vh] sm:max-h-[90vh] overflow-y-auto"
+          data-lenis-prevent
+          className="relative w-full max-w-3xl glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-8 pb-6 sm:pb-8 border border-black/[0.08] dark:border-white/[0.06] shadow-2xl max-h-[86vh] sm:max-h-[90vh] overflow-y-auto overscroll-contain"
+          style={{ overscrollBehavior: "contain" }}
         >
           {/* Close */}
           <button
@@ -202,40 +214,53 @@ export function ProductQuickView() {
 
               {/* Buttons */}
               <div className="flex flex-col gap-2.5 mt-2">
-                <button
-                  onClick={handleAdd}
-                  disabled={addedSuccess || isOutOfStock || maxAvailableToAdd <= 0}
-                  className={`w-full py-3.5 rounded-2xl font-display font-bold text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2 active:scale-[0.98] ${
-                    isOutOfStock || maxAvailableToAdd <= 0
-                      ? "bg-zinc-200 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 cursor-not-allowed"
-                      : addedSuccess
-                      ? "bg-emerald-600 text-white shadow-xl shadow-emerald-950/50"
-                      : isInCart
-                      ? "bg-emerald-600/25 hover:bg-emerald-600/35 active:bg-emerald-600/45 text-emerald-300 border border-emerald-500/40 shadow-xl shadow-emerald-950/40"
-                      : "bg-moya-red hover:bg-rose-500 text-white shadow-xl shadow-moya-red-deep/50"
-                  }`}
-                >
-                  {isOutOfStock ? (
-                    <span>{t("soldOut")}</span>
-                  ) : maxAvailableToAdd <= 0 ? (
-                    <span>{t("maxReached")}</span>
-                  ) : addedSuccess ? (
-                    <>
-                      <Check className="w-4 h-4 text-white" />
-                      <span>{t("addedSuccess")}</span>
-                    </>
-                  ) : isInCart ? (
-                    <>
-                      <ShoppingBag className="w-4 h-4 text-emerald-400" />
-                      <span>{t("addMoreBtn", { count: inCartQty })}</span>
-                    </>
-                  ) : (
-                    <>
-                      <ShoppingBag className="w-4 h-4" />
-                      <span>{t("addToCart")}</span>
-                    </>
-                  )}
-                </button>
+                {isDrop ? (
+                  <button
+                    onClick={() => {
+                      closeQuickView();
+                      openDropAlert(quickViewCap);
+                    }}
+                    className="w-full py-3.5 rounded-2xl font-display font-bold text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-xl shadow-moya-red-deep/40 bg-gradient-to-r from-moya-red via-rose-600 to-amber-600 hover:brightness-110 active:scale-[0.98] text-white"
+                  >
+                    <Bell className="w-4 h-4" />
+                    <span>{locale === "es" ? "Solicitar Alerta VIP" : "Claim VIP Drop Alert"}</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleAdd}
+                    disabled={addedSuccess || isOutOfStock || maxAvailableToAdd <= 0}
+                    className={`w-full py-3.5 rounded-2xl font-display font-bold text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2 active:scale-[0.98] ${
+                      isOutOfStock || maxAvailableToAdd <= 0
+                        ? "bg-zinc-200 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 cursor-not-allowed"
+                        : addedSuccess
+                        ? "bg-emerald-600 text-white shadow-xl shadow-emerald-950/50"
+                        : isInCart
+                        ? "bg-emerald-600/25 hover:bg-emerald-600/35 active:bg-emerald-600/45 text-emerald-300 border border-emerald-500/40 shadow-xl shadow-emerald-950/40"
+                        : "bg-moya-red hover:bg-rose-500 text-white shadow-xl shadow-moya-red-deep/50"
+                    }`}
+                  >
+                    {isOutOfStock ? (
+                      <span>{t("soldOut")}</span>
+                    ) : maxAvailableToAdd <= 0 ? (
+                      <span>{t("maxReached")}</span>
+                    ) : addedSuccess ? (
+                      <>
+                        <Check className="w-4 h-4 text-white" />
+                        <span>{t("addedSuccess")}</span>
+                      </>
+                    ) : isInCart ? (
+                      <>
+                        <ShoppingBag className="w-4 h-4 text-emerald-400" />
+                        <span>{t("addMoreBtn", { count: inCartQty })}</span>
+                      </>
+                    ) : (
+                      <>
+                        <ShoppingBag className="w-4 h-4" />
+                        <span>{t("addToCart")}</span>
+                      </>
+                    )}
+                  </button>
+                )}
 
                 <button
                   onClick={handleWhatsAppBuy}

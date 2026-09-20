@@ -26,9 +26,17 @@ import {
   Image as ImageIcon,
   Loader2,
   EyeOff,
+  Radio,
+  Bell,
+  Users,
+  Clock,
+  Calendar,
 } from "lucide-react";
 import StockConfirmDialog, { StockConfirmTarget } from "@/components/admin/StockConfirmDialog";
 import AvailabilityConfirmDialog, { AvailabilityConfirmTarget } from "@/components/admin/AvailabilityConfirmDialog";
+import { DropScheduleDialog, DropScheduleTarget } from "@/components/admin/DropScheduleDialog";
+import { DateTimePicker } from "@/components/admin/DateTimePicker";
+import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
 
 export default function AdminProductsPage() {
   const t = useTranslations("admin.products");
@@ -41,6 +49,7 @@ export default function AdminProductsPage() {
 
   // Modal state
   const [editingVariant, setEditingVariant] = useState<any | null>(null);
+  useLockBodyScroll(Boolean(editingVariant));
   const [isNewVariant, setIsNewVariant] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -52,6 +61,10 @@ export default function AdminProductsPage() {
   // Availability Confirmation Safeguard State
   const [availabilityConfirmTarget, setAvailabilityConfirmTarget] = useState<AvailabilityConfirmTarget | null>(null);
   const [isTogglingAvailability, setIsTogglingAvailability] = useState(false);
+
+  // Drop Schedule Dialog State
+  const [dropScheduleTarget, setDropScheduleTarget] = useState<DropScheduleTarget | null>(null);
+  const [isSavingDropSchedule, setIsSavingDropSchedule] = useState(false);
 
   // Quick action feedback
   const [updatingStockId, setUpdatingStockId] = useState<string | null>(null);
@@ -66,6 +79,7 @@ export default function AdminProductsPage() {
   const saveVariant = useMutation(api.products.saveVariant);
   const deleteVariant = useMutation(api.products.deleteVariant);
   const generateUploadUrl = useMutation(api.products.generateUploadUrl);
+  const updateVariantDropStatus = useMutation(api.products.updateVariantDropStatus);
 
   // Form state for Modal
   const [formVariantId, setFormVariantId] = useState("");
@@ -79,6 +93,10 @@ export default function AdminProductsPage() {
   const [formPriceUsd, setFormPriceUsd] = useState(120);
   const [formIsFeatured, setFormIsFeatured] = useState(false);
   const [formIsAvailable, setFormIsAvailable] = useState(true);
+  const [formIsDrop, setFormIsDrop] = useState(false);
+  const [formDropTimestamp, setFormDropTimestamp] = useState<number>(Date.now() + 86400000 * 3);
+  const [formDropBadgeTextEn, setFormDropBadgeTextEn] = useState("");
+  const [formDropBadgeTextEs, setFormDropBadgeTextEs] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
 
   // Image Upload State
@@ -122,6 +140,10 @@ export default function AdminProductsPage() {
     setFormPriceUsd(120);
     setFormIsFeatured(false);
     setFormIsAvailable(true);
+    setFormIsDrop(false);
+    setFormDropTimestamp(Date.now() + 86400000 * 3);
+    setFormDropBadgeTextEn("");
+    setFormDropBadgeTextEs("");
     setFormError(null);
     setEditingVariant(true);
   };
@@ -144,8 +166,46 @@ export default function AdminProductsPage() {
     setFormPriceUsd(variant.priceUsd);
     setFormIsFeatured(Boolean(variant.isFeatured));
     setFormIsAvailable(variant.isAvailable !== false);
+    setFormIsDrop(Boolean(variant.isDrop));
+    setFormDropTimestamp(variant.dropDate || Date.now() + 86400000 * 3);
+    setFormDropBadgeTextEn(variant.dropBadgeTextEn || "");
+    setFormDropBadgeTextEs(variant.dropBadgeTextEs || "");
     setFormError(null);
     setEditingVariant(variant);
+  };
+
+  const openDropScheduleDialog = (variant: any) => {
+    setDropScheduleTarget({
+      variantId: variant.variantId,
+      name: locale === "es" ? variant.nameEs : variant.nameEn,
+      silhouette: variant.silhouette,
+      image: variant.image,
+      primaryHex: variant.primaryHex,
+      secondaryHex: variant.secondaryHex,
+      isDrop: Boolean(variant.isDrop),
+      dropDate: variant.dropDate,
+      dropBadgeTextEn: variant.dropBadgeTextEn,
+      dropBadgeTextEs: variant.dropBadgeTextEs,
+      subscribersCount: variant.subscribersCount,
+    });
+  };
+
+  const handleSaveDropSchedule = async (args: {
+    variantId: string;
+    isDrop: boolean;
+    dropDate?: number;
+    dropBadgeTextEn?: string;
+    dropBadgeTextEs?: string;
+  }) => {
+    try {
+      setIsSavingDropSchedule(true);
+      await updateVariantDropStatus(args);
+      setDropScheduleTarget(null);
+    } catch (err: any) {
+      console.error("Failed to update drop schedule", err);
+    } finally {
+      setIsSavingDropSchedule(false);
+    }
   };
 
   const requestQuickAdjust = (variant: any, delta: number) => {
@@ -271,6 +331,10 @@ export default function AdminProductsPage() {
         priceUsd: Number(formPriceUsd),
         isFeatured: formIsFeatured,
         isAvailable: formIsAvailable,
+        isDrop: formIsDrop,
+        dropDate: formIsDrop ? formDropTimestamp : undefined,
+        dropBadgeTextEn: formDropBadgeTextEn.trim() || undefined,
+        dropBadgeTextEs: formDropBadgeTextEs.trim() || undefined,
       });
 
       setEditingVariant(null);
@@ -508,6 +572,7 @@ export default function AdminProductsPage() {
                   <th className="py-3 px-4">Stock & Quick Restock</th>
                   <th className="py-3 px-4 text-center">{t("availability")}</th>
                   <th className="py-3 px-4 text-center">Featured</th>
+                  <th className="py-3 px-4 text-center">VIP Drop Radar</th>
                   <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
               </thead>
@@ -677,6 +742,45 @@ export default function AdminProductsPage() {
                         </button>
                       </td>
 
+                      {/* VIP Drop Radar */}
+                      <td className="py-3 px-4 text-center">
+                        {variant.isDrop ? (
+                          <div className="inline-flex flex-col items-center gap-0.5">
+                            <button
+                              type="button"
+                              onClick={() => openDropScheduleDialog(variant)}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-mono font-bold bg-moya-red/15 text-moya-red border border-moya-red/30 hover:bg-moya-red/25 transition-all shadow-xs cursor-pointer"
+                              title="Configure VIP Drop Radar"
+                            >
+                              <Radio className="w-3 h-3 animate-pulse text-moya-red" />
+                              <span>RADAR ON</span>
+                            </button>
+                            {variant.dropDate && (
+                              <span className="text-[10px] font-mono text-zinc-500">
+                                {new Date(variant.dropDate).toLocaleDateString(locale === "es" ? "es-ES" : "en-US", {
+                                  month: "short",
+                                  day: "numeric",
+                                })}
+                              </span>
+                            )}
+                            <span className="inline-flex items-center gap-1 text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-semibold">
+                              <Users className="w-2.5 h-2.5" />
+                              <span>{variant.subscribersCount || 0} VIPs</span>
+                            </span>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => openDropScheduleDialog(variant)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-mono text-zinc-500 hover:text-zinc-900 dark:hover:text-white bg-zinc-100 dark:bg-white/[0.04] hover:bg-zinc-200 dark:hover:bg-white/[0.08] transition-colors cursor-pointer"
+                            title="Schedule as VIP Drop"
+                          >
+                            <Bell className="w-3 h-3" />
+                            <span>+ Drop</span>
+                          </button>
+                        )}
+                      </td>
+
                       {/* Actions */}
                       <td className="py-3 px-4 text-right">
                         <div className="flex items-center justify-end gap-1.5">
@@ -717,8 +821,16 @@ export default function AdminProductsPage() {
 
       {/* ── Modal: Add / Edit Colorway ── */}
       {editingVariant && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="max-w-xl w-full bg-white dark:bg-[#0c0c14] border border-zinc-200 dark:border-white/10 rounded-2xl p-6 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
+        <div
+          data-lenis-prevent
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto overscroll-contain"
+          style={{ overscrollBehavior: "contain" }}
+        >
+          <div
+            data-lenis-prevent
+            className="max-w-xl w-full bg-white dark:bg-[#0c0c14] border border-zinc-200 dark:border-white/10 rounded-2xl p-6 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto overscroll-contain"
+            style={{ overscrollBehavior: "contain" }}
+          >
             <div className="flex items-center justify-between pb-3 border-b border-zinc-100 dark:border-white/[0.06]">
               <div>
                 <h3 className="font-display font-bold text-lg text-zinc-900 dark:text-white">
@@ -1083,6 +1195,71 @@ export default function AdminProductsPage() {
                     {t("featured")}
                   </label>
                 </div>
+
+                {/* VIP Drop Radar Scheduling */}
+                <div className="p-3.5 rounded-xl bg-zinc-50 dark:bg-white/[0.02] border border-zinc-200 dark:border-white/10 space-y-3">
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      id="isDropCheck"
+                      checked={formIsDrop}
+                      onChange={(e) => setFormIsDrop(e.target.checked)}
+                      className="w-4 h-4 rounded text-moya-red focus:ring-moya-red cursor-pointer"
+                    />
+                    <label htmlFor="isDropCheck" className="flex-1 cursor-pointer">
+                      <div className="flex items-center gap-1.5">
+                        <Radio className="w-3.5 h-3.5 text-moya-red" />
+                        <span className="font-semibold text-zinc-900 dark:text-white block text-xs">
+                          Schedule as Limited Drop (VIP Radar)
+                        </span>
+                      </div>
+                      <span className="text-[11px] text-zinc-500 block">
+                        Activates live countdown ticker, collects waitlist alerts, and gates purchases until drop date.
+                      </span>
+                    </label>
+                  </div>
+
+                  {formIsDrop && (
+                    <div className="pt-2 border-t border-zinc-200 dark:border-white/10 space-y-3">
+                      <div>
+                        <label className="text-[11px] font-medium text-zinc-700 dark:text-zinc-300 block mb-1.5">
+                          Release Target (Date & Time)
+                        </label>
+                        <DateTimePicker
+                          value={formDropTimestamp}
+                          onChange={(newTimestamp) => setFormDropTimestamp(newTimestamp)}
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-[10px] font-medium text-zinc-600 dark:text-zinc-400 block mb-1">
+                            Drop Badge (EN)
+                          </label>
+                          <input
+                            type="text"
+                            value={formDropBadgeTextEn}
+                            onChange={(e) => setFormDropBadgeTextEn(e.target.value)}
+                            placeholder="e.g. Vault Release 01"
+                            className="w-full py-1.5 px-2.5 rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-white/10 text-xs text-zinc-900 dark:text-white placeholder:text-zinc-400"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-medium text-zinc-600 dark:text-zinc-400 block mb-1">
+                            Drop Badge (ES)
+                          </label>
+                          <input
+                            type="text"
+                            value={formDropBadgeTextEs}
+                            onChange={(e) => setFormDropBadgeTextEs(e.target.value)}
+                            placeholder="ej. Lanzamiento de Bóveda"
+                            className="w-full py-1.5 px-2.5 rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-white/10 text-xs text-zinc-900 dark:text-white placeholder:text-zinc-400"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {uploadProgress && (
@@ -1130,6 +1307,15 @@ export default function AdminProductsPage() {
         onClose={() => setAvailabilityConfirmTarget(null)}
         onConfirm={handleConfirmAvailability}
         isProcessing={isTogglingAvailability}
+      />
+
+      {/* ── Modal: VIP Drop Radar Schedule Dialog ── */}
+      <DropScheduleDialog
+        target={dropScheduleTarget}
+        isOpen={Boolean(dropScheduleTarget)}
+        onClose={() => setDropScheduleTarget(null)}
+        onSave={handleSaveDropSchedule}
+        isProcessing={isSavingDropSchedule}
       />
 
       {/* ── Modal: Delete Confirmation ── */}

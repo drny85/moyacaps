@@ -82,6 +82,14 @@ export const createCheckoutSession = action({
         );
       }
 
+      if (variant.isDrop && typeof variant.dropDate === "number" && Date.now() < variant.dropDate) {
+        throw new ConvexError(
+          args.locale === "es"
+            ? `La gorra "${variantName}" es un lanzamiento programado y aún no está disponible para compra.`
+            : `The cap "${variantName}" is an upcoming drop and is not yet available for purchase.`
+        );
+      }
+
       const qty = Math.max(1, Math.floor(item.quantity || 1));
       if (qty > stock) {
         throw new ConvexError(

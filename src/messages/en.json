@@ -66,7 +66,11 @@
     "limited": "Only a few left",
     "viewDetails": "Inspect Details",
     "soldOut": "Sold Out",
-    "maxStockReached": "Max in Bag"
+    "maxStockReached": "Max in Bag",
+    "upcomingDrop": "UPCOMING DROP",
+    "vipAlert": "Get VIP Alert",
+    "dropLive": "DROP IS LIVE",
+    "dropsIn": "Drops in {time}"
   },
   "quickView": {
     "title": "Product Inspection",
@@ -398,5 +402,41 @@
     "invalidPhone": "Please enter a valid phone number",
     "orderNumberMin": "Order number must be at least 3 characters",
     "tooLong": "Input is too long"
+  },
+  "dropRadar": {
+    "badge": "VAULT SURVEILLANCE // RADAR",
+    "title": "Upcoming Limited Drops",
+    "subtitle": "High-heat colorways scheduled for release. Once the countdown expires, vault gates unlock instantly.",
+    "liveNow": "VAULT UNLOCKED — DROP IS LIVE NOW",
+    "days": "Days",
+    "hours": "Hours",
+    "mins": "Mins",
+    "secs": "Secs",
+    "claimAlert": "Claim VIP Access",
+    "subscribersCount": "{count} Collectors Watching",
+    "viewDrop": "Inspect Drop",
+    "dropDate": "Release Target",
+    "noUpcoming": "All colorways are currently unlocked in the live vault.",
+    "dropStartsIn": "Drops in"
+  },
+  "dropAlert": {
+    "title": "VIP Early-Access Alert",
+    "subtitle": "Get notified 15 minutes before the drop goes public. Instant dispatch via your preferred channel.",
+    "selectChannel": "Notification Protocol",
+    "channelWhatsApp": "WhatsApp Direct (Instant)",
+    "channelEmail": "Email Dispatch",
+    "contactLabelWhatsApp": "WhatsApp Phone Number (with Country Code)",
+    "contactLabelEmail": "Your Email Address",
+    "contactPlaceholderWhatsApp": "+1 (555) 019-2834",
+    "contactPlaceholderEmail": "collector@domain.com",
+    "nameLabel": "Your Name / Collector Tag (Optional)",
+    "namePlaceholder": "e.g. Alex M.",
+    "submitBtn": "Secure VIP Drop Alert",
+    "submitting": "Registering Telemetry...",
+    "successTitle": "VIP Access Confirmed",
+    "successDesc": "You are on the priority dispatch list for {name}. Keep your eyes open on drop day.",
+    "alreadySubscribed": "You are already registered on the VIP list for this release.",
+    "whatsappTestBtn": "Open Direct WhatsApp Channel",
+    "close": "Close"
   }
 }

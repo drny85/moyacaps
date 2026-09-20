@@ -5,14 +5,14 @@ import Image from "next/image";
 import { Link } from "@/i18n/routing";
 import { useStore } from "@/store/useStore";
 import type { CapVariant } from "@/data/caps";
-import { ShoppingBag, Eye, Sparkles, Check } from "lucide-react";
+import { ShoppingBag, Eye, Sparkles, Check, Bell, Clock } from "lucide-react";
 import { motion } from "framer-motion";
 import { useRef, useCallback, useState, useEffect } from "react";
 
 export function CapCard({ cap, index = 0 }: { cap: CapVariant; index?: number }) {
   const t = useTranslations("catalog");
   const locale = useLocale();
-  const { addToCart, openQuickView, currency, cart } = useStore();
+  const { addToCart, openQuickView, openDropAlert, currency, cart } = useStore();
   const cardRef = useRef<HTMLDivElement>(null);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
@@ -27,6 +27,9 @@ export function CapCard({ cap, index = 0 }: { cap: CapVariant; index?: number })
   const stock = typeof cap.stock === "number" ? cap.stock : 0;
   const isOutOfStock = stock <= 0;
   const isMaxInCart = inCartQty >= stock;
+
+  const isDropUpcoming = Boolean(cap.isDrop && cap.dropDate && Date.now() < cap.dropDate);
+  const dropBadge = locale === "es" ? cap.dropBadgeTextEs || cap.dropBadgeTextEn : cap.dropBadgeTextEn;
 
   const name = locale === "es" ? cap.nameEs : cap.nameEn;
   const tag = locale === "es" ? cap.tagEs : cap.tagEn;
@@ -73,7 +76,12 @@ export function CapCard({ cap, index = 0 }: { cap: CapVariant; index?: number })
         {/* ── Tags Row ── */}
         <div className="flex items-center justify-between mb-1.5 sm:mb-2 z-10 w-full min-w-0">
           <div className="flex items-center gap-1 sm:gap-1.5 overflow-hidden min-w-0 flex-1">
-            {tag ? (
+            {isDropUpcoming ? (
+              <span className="inline-flex items-center gap-1 text-[7.5px] sm:text-[9px] py-0.5 px-1.5 sm:px-2 rounded-full bg-gradient-to-r from-moya-red/20 to-amber-500/20 border border-moya-red/50 text-moya-red dark:text-moya-red-light font-mono font-bold uppercase tracking-wider shrink-0 animate-pulse">
+                <Bell className="w-2 sm:w-2.5 h-2 sm:h-2.5 shrink-0" />
+                <span className="truncate max-w-[65px] xs:max-w-[85px] sm:max-w-none">{dropBadge || t("upcomingDrop")}</span>
+              </span>
+            ) : tag ? (
               <span className="sticker-badge sticker-badge--red text-[7.5px] sm:text-[9px] py-0.5 px-1 sm:px-2 shrink-0">
                 <Sparkles className="w-2 h-2 shrink-0" />
                 <span className="truncate max-w-[45px] xs:max-w-[70px] sm:max-w-none">{tag}</span>
@@ -158,7 +166,12 @@ export function CapCard({ cap, index = 0 }: { cap: CapVariant; index?: number })
 
           {/* Stock indicator (desktop) */}
           <div className="hidden sm:flex items-center justify-between text-[10px] text-zinc-500">
-            {isOutOfStock ? (
+            {isDropUpcoming ? (
+              <span className="flex items-center gap-1 text-moya-red dark:text-moya-red-light text-[10px] font-mono font-semibold">
+                <Clock className="w-3 h-3 text-amber-500" />
+                <span>{t("upcomingDrop")}</span>
+              </span>
+            ) : isOutOfStock ? (
               <span className="flex items-center gap-1 text-rose-600 dark:text-rose-400 text-[10px] font-medium">
                 <span className="w-1.5 h-1.5 rounded-full bg-rose-600 dark:bg-rose-400" />
                 {t("soldOut")}
@@ -179,8 +192,19 @@ export function CapCard({ cap, index = 0 }: { cap: CapVariant; index?: number })
             </span>
           </div>
 
-          {/* ── Add to Cart ── */}
-          {isOutOfStock ? (
+          {/* ── Add to Cart / VIP Drop Alert ── */}
+          {isDropUpcoming ? (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                openDropAlert(cap);
+              }}
+              className="w-full py-1.5 sm:py-2.5 px-1.5 sm:px-2 rounded-lg sm:rounded-xl bg-gradient-to-r from-moya-red via-rose-600 to-amber-600 hover:brightness-110 active:scale-95 text-white font-display font-bold text-[9px] sm:text-xs uppercase tracking-wider transition-all shadow-md shadow-moya-red-deep/30 flex items-center justify-center gap-1 sm:gap-1.5 mt-0.5 min-w-0"
+            >
+              <Bell className="w-3 sm:w-3.5 h-3 sm:h-3.5 shrink-0" />
+              <span className="truncate">{t("vipAlert")}</span>
+            </button>
+          ) : isOutOfStock ? (
             <button
               disabled
               className="w-full py-1.5 sm:py-2.5 px-1.5 sm:px-2 rounded-lg sm:rounded-xl bg-zinc-200 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 font-display font-bold text-[9px] sm:text-xs uppercase tracking-wider cursor-not-allowed mt-0.5 min-w-0"

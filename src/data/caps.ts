@@ -11,6 +11,11 @@ export interface CapVariant {
   isFeatured?: boolean;
   tagEn?: string;
   tagEs?: string;
+  isAvailable?: boolean;
+  isDrop?: boolean;
+  dropDate?: number; // epoch ms
+  dropBadgeTextEn?: string;
+  dropBadgeTextEs?: string;
 }
 
 export const CAP_VARIANTS: CapVariant[] = [

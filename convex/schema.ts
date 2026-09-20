@@ -26,6 +26,10 @@ export default defineSchema({
     priceMxn: v.optional(v.number()),
     isFeatured: v.boolean(),
     isAvailable: v.optional(v.boolean()),
+    isDrop: v.optional(v.boolean()),
+    dropDate: v.optional(v.number()), // epoch ms
+    dropBadgeTextEn: v.optional(v.string()),
+    dropBadgeTextEs: v.optional(v.string()),
   }).index("by_variantId", ["variantId"]),
   orders: defineTable({
     orderNumber: v.string(),
@@ -84,4 +88,17 @@ export default defineSchema({
     .index("by_clerkId", ["clerkId"])
     .index("by_email", ["email"])
     .index("by_role", ["role"]),
+  drop_alerts: defineTable({
+    variantId: v.string(),
+    contact: v.string(), // email or WhatsApp number
+    channel: v.string(), // "whatsapp" | "email"
+    name: v.optional(v.string()),
+    clerkUserId: v.optional(v.string()),
+    locale: v.string(), // "en" | "es"
+    createdAt: v.number(),
+    notifiedAt: v.optional(v.number()),
+  })
+    .index("by_variantId", ["variantId"])
+    .index("by_variant_contact", ["variantId", "contact"])
+    .index("by_createdAt", ["createdAt"]),
 });

@@ -66,7 +66,11 @@
     "limited": "Últimas Piezas",
     "viewDetails": "Ver Detalles",
     "soldOut": "Agotado",
-    "maxStockReached": "Límite en Bolsa"
+    "maxStockReached": "Límite en Bolsa",
+    "upcomingDrop": "PRÓXIMO DROP",
+    "vipAlert": "Alerta VIP",
+    "dropLive": "DROP DISPONIBLE",
+    "dropsIn": "Lanzamiento en {time}"
   },
   "quickView": {
     "title": "Inspección de Producto",
@@ -398,6 +402,42 @@
     "invalidPhone": "Por favor ingresa un número de teléfono válido",
     "orderNumberMin": "El número de orden debe tener al menos 3 caracteres",
     "tooLong": "El texto es demasiado largo"
+  },
+  "dropRadar": {
+    "badge": "VIGILANCIA DE BÓVEDA // RADAR",
+    "title": "Próximos Lanzamientos Limitados",
+    "subtitle": "Ediciones exclusivas programadas para liberación. Al expirar la cuenta regresiva, el acceso a la bóveda se desbloquea al instante.",
+    "liveNow": "BÓVEDA DESBLOQUEADA — DROP EN VIVO AHORA",
+    "days": "Días",
+    "hours": "Horas",
+    "mins": "Min",
+    "secs": "Seg",
+    "claimAlert": "Solicitar Acceso VIP",
+    "subscribersCount": "{count} Coleccionistas Esperando",
+    "viewDrop": "Inspeccionar Drop",
+    "dropDate": "Fecha Objetivo",
+    "noUpcoming": "Todas las combinaciones están actualmente desbloqueadas en la bóveda.",
+    "dropStartsIn": "Lanzamiento en"
+  },
+  "dropAlert": {
+    "title": "Alerta de Acceso VIP Anticipado",
+    "subtitle": "Recibe un aviso prioritario 15 minutos antes de que el drop se abra al público general.",
+    "selectChannel": "Protocolo de Notificación",
+    "channelWhatsApp": "WhatsApp Directo (Instantáneo)",
+    "channelEmail": "Despacho por Correo",
+    "contactLabelWhatsApp": "Número de WhatsApp (con clave de país)",
+    "contactLabelEmail": "Tu Correo Electrónico",
+    "contactPlaceholderWhatsApp": "+1 (555) 019-2834 o +52 55...",
+    "contactPlaceholderEmail": "coleccionista@dominio.com",
+    "nameLabel": "Tu Nombre / Alias de Coleccionista (Opcional)",
+    "namePlaceholder": "ej. Alex M.",
+    "submitBtn": "Asegurar Alerta VIP",
+    "submitting": "Registrando Telemetría...",
+    "successTitle": "Acceso VIP Confirmado",
+    "successDesc": "Estás en la lista de despacho prioritario para {name}. Atento a tu canal en el momento del drop.",
+    "alreadySubscribed": "Ya estás registrado en la lista VIP para este lanzamiento.",
+    "whatsappTestBtn": "Abrir Canal de WhatsApp Directo",
+    "close": "Cerrar"
   }
 }
 

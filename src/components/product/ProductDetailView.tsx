@@ -21,6 +21,8 @@ import {
   Compass,
   Sparkles,
   Maximize2,
+  Bell,
+  Clock,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
@@ -36,7 +38,7 @@ export function ProductDetailView({ cap, allCaps }: ProductDetailViewProps) {
   const t = useTranslations("pdp");
   const tQuick = useTranslations("quickView");
   const locale = useLocale();
-  const { addToCart, currency, cart } = useStore();
+  const { addToCart, openDropAlert, currency, cart } = useStore();
 
   const [activeAngle, setActiveAngle] = useState<AngleKey>("hero");
   const [quantity, setQuantity] = useState(1);
@@ -58,6 +60,10 @@ export function ProductDetailView({ cap, allCaps }: ProductDetailViewProps) {
         stock: v.stock,
         priceUsd: v.priceUsd,
         isFeatured: v.isFeatured,
+        isDrop: v.isDrop,
+        dropDate: v.dropDate,
+        dropBadgeTextEn: v.dropBadgeTextEn,
+        dropBadgeTextEs: v.dropBadgeTextEs,
         tagEn: v.isFeatured ? "Signature Edition" : undefined,
         tagEs: v.isFeatured ? "Edición Insignia" : undefined,
       }));
@@ -123,8 +129,12 @@ export function ProductDetailView({ cap, allCaps }: ProductDetailViewProps) {
 
   const currentMedia = angles.find((a) => a.key === activeAngle) || angles[0];
 
+  const isDropUpcoming = Boolean(
+    currentLiveCap.isDrop && currentLiveCap.dropDate && Date.now() < currentLiveCap.dropDate
+  );
+
   const handleAdd = () => {
-    if (isOutOfStock || maxAvailableToAdd <= 0) return;
+    if (isDropUpcoming || isOutOfStock || maxAvailableToAdd <= 0) return;
     const addQty = Math.min(maxAvailableToAdd, Math.max(1, quantity));
     addToCart(currentLiveCap, addQty, currentStock);
     setAddedSuccess(true);
@@ -141,6 +151,16 @@ export function ProductDetailView({ cap, allCaps }: ProductDetailViewProps) {
   };
 
   const handleWhatsAppBuy = () => {
+    if (isDropUpcoming) {
+      const greeting =
+        locale === "es"
+          ? `¡Hola Moya Caps! Deseo información y apartar mi acceso prioritario para el drop de la gorra: ${name} (Edición Good Luck 0880). ¿Me podrían compartir más detalles?`
+          : `Hi Moya Caps! I would like priority access and info regarding the upcoming drop of: ${name} (0880 Good Luck Edition). Please share details.`;
+
+      const encoded = encodeURIComponent(greeting);
+      window.open(`https://wa.me/5215500000000?text=${encoded}`, "_blank");
+      return;
+    }
     if (isOutOfStock) return;
     const greeting =
       locale === "es"
@@ -372,55 +392,106 @@ export function ProductDetailView({ cap, allCaps }: ProductDetailViewProps) {
             </div>
           </div>
 
+          {/* Drop Countdown / VIP Telemetry Banner */}
+          {isDropUpcoming && (
+            <div className="p-4 rounded-2xl bg-zinc-100/90 dark:bg-gradient-to-br dark:from-zinc-950/80 dark:via-zinc-900/90 dark:to-zinc-950 border border-moya-red/40 text-zinc-900 dark:text-white shadow-md dark:shadow-xl flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-moya-red/15 dark:bg-moya-red/20 border border-moya-red/40 flex items-center justify-center text-moya-red shrink-0">
+                  <Bell className="w-5 h-5 animate-pulse" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-mono uppercase tracking-widest text-moya-red font-bold">
+                      {locale === "es" ? "PRÓXIMO DROP EXCLUSIVO" : "UPCOMING EXCLUSIVE DROP"}
+                    </span>
+                  </div>
+                  <p className="text-xs font-display text-zinc-600 dark:text-zinc-300">
+                    {locale === "es" ? "Lanzamiento programado:" : "Scheduled Release:"}{" "}
+                    <span className="text-zinc-950 dark:text-white font-mono font-bold">
+                      {new Date(currentLiveCap.dropDate!).toLocaleDateString(locale === "es" ? "es-ES" : "en-US", {
+                        month: "short",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Primary Action Buttons */}
           <div className="flex flex-col gap-3">
-            <button
-              onClick={handleAdd}
-              disabled={addedSuccess || isOutOfStock || maxAvailableToAdd <= 0}
-              className={`w-full py-4 rounded-2xl font-display font-bold text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2 active:scale-[0.98] ${
-                isOutOfStock || maxAvailableToAdd <= 0
-                  ? "bg-zinc-200 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 cursor-not-allowed"
-                  : addedSuccess
-                  ? "bg-emerald-600 text-white shadow-xl shadow-emerald-950/50"
-                  : isInCart
-                  ? "bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-700 dark:text-emerald-300 border border-emerald-500/40 shadow-xl"
-                  : "bg-moya-red hover:bg-rose-500 text-white shadow-xl shadow-moya-red-deep/40"
-              }`}
-            >
-              {isOutOfStock ? (
-                <span>{t("soldOut")}</span>
-              ) : maxAvailableToAdd <= 0 ? (
-                <span>{t("maxReached")}</span>
-              ) : addedSuccess ? (
-                <>
-                  <Check className="w-5 h-5 text-white" />
-                  <span>{tQuick("addedSuccess")}</span>
-                </>
-              ) : isInCart ? (
-                <>
-                  <ShoppingBag className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-                  <span>{tQuick("addMoreBtn", { count: inCartQty })}</span>
-                </>
-              ) : (
-                <>
-                  <ShoppingBag className="w-5 h-5" />
-                  <span>{tQuick("addToCart")}</span>
-                </>
-              )}
-            </button>
+            {isDropUpcoming ? (
+              <>
+                <button
+                  onClick={() => openDropAlert(currentLiveCap)}
+                  className="w-full py-4 rounded-2xl font-display font-bold text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-xl shadow-moya-red-deep/40 bg-gradient-to-r from-moya-red via-rose-600 to-amber-600 hover:brightness-110 active:scale-[0.98] text-white"
+                >
+                  <Bell className="w-5 h-5" />
+                  <span>{locale === "es" ? "Solicitar Alerta VIP" : "Claim VIP Drop Alert"}</span>
+                </button>
 
-            <button
-              onClick={handleWhatsAppBuy}
-              disabled={isOutOfStock}
-              className={`w-full py-3.5 rounded-2xl font-display font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg active:scale-[0.98] ${
-                isOutOfStock
-                  ? "bg-zinc-200 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 cursor-not-allowed opacity-50"
-                  : "bg-moya-green-deep/90 hover:bg-moya-green text-white shadow-moya-green-deep/30"
-              }`}
-            >
-              <MessageCircle className="w-4 h-4" />
-              <span>{isOutOfStock ? t("soldOut") : tQuick("buyNow")}</span>
-            </button>
+                <button
+                  onClick={handleWhatsAppBuy}
+                  className="w-full py-3.5 rounded-2xl font-display font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg active:scale-[0.98] bg-emerald-700/80 hover:bg-emerald-600 text-white shadow-emerald-950/30"
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  <span>{locale === "es" ? "Consultar Drop por WhatsApp" : "Inquire via WhatsApp"}</span>
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={handleAdd}
+                  disabled={addedSuccess || isOutOfStock || maxAvailableToAdd <= 0}
+                  className={`w-full py-4 rounded-2xl font-display font-bold text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2 active:scale-[0.98] ${
+                    isOutOfStock || maxAvailableToAdd <= 0
+                      ? "bg-zinc-200 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 cursor-not-allowed"
+                      : addedSuccess
+                      ? "bg-emerald-600 text-white shadow-xl shadow-emerald-950/50"
+                      : isInCart
+                      ? "bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-700 dark:text-emerald-300 border border-emerald-500/40 shadow-xl"
+                      : "bg-moya-red hover:bg-rose-500 text-white shadow-xl shadow-moya-red-deep/40"
+                  }`}
+                >
+                  {isOutOfStock ? (
+                    <span>{t("soldOut")}</span>
+                  ) : maxAvailableToAdd <= 0 ? (
+                    <span>{t("maxReached")}</span>
+                  ) : addedSuccess ? (
+                    <>
+                      <Check className="w-5 h-5 text-white" />
+                      <span>{tQuick("addedSuccess")}</span>
+                    </>
+                  ) : isInCart ? (
+                    <>
+                      <ShoppingBag className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                      <span>{tQuick("addMoreBtn", { count: inCartQty })}</span>
+                    </>
+                  ) : (
+                    <>
+                      <ShoppingBag className="w-5 h-5" />
+                      <span>{tQuick("addToCart")}</span>
+                    </>
+                  )}
+                </button>
+
+                <button
+                  onClick={handleWhatsAppBuy}
+                  disabled={isOutOfStock}
+                  className={`w-full py-3.5 rounded-2xl font-display font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg active:scale-[0.98] ${
+                    isOutOfStock
+                      ? "bg-zinc-200 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 cursor-not-allowed opacity-50"
+                      : "bg-moya-green-deep/90 hover:bg-moya-green text-white shadow-moya-green-deep/30"
+                  }`}
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  <span>{isOutOfStock ? t("soldOut") : tQuick("buyNow")}</span>
+                </button>
+              </>
+            )}
           </div>
 
           {/* Trust Guarantees */}

@@ -41,6 +41,11 @@ interface StoreState {
   quickViewCap: CapVariant | null;
   openQuickView: (cap: CapVariant) => void;
   closeQuickView: () => void;
+
+  // Drop Alert Modal
+  dropAlertCap: CapVariant | null;
+  openDropAlert: (cap: CapVariant) => void;
+  closeDropAlert: () => void;
 }
 
 export const useStore = create<StoreState>()(
@@ -179,6 +184,10 @@ export const useStore = create<StoreState>()(
       quickViewCap: null,
       openQuickView: (cap) => set({ quickViewCap: cap }),
       closeQuickView: () => set({ quickViewCap: null }),
+
+      dropAlertCap: null,
+      openDropAlert: (cap) => set({ dropAlertCap: cap }),
+      closeDropAlert: () => set({ dropAlertCap: null }),
     }),
     {
       name: "moyacaps-storage",
