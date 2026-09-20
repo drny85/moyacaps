@@ -132,7 +132,7 @@ export const createCheckoutSession = action({
         product_data: {
           name: `Moya Caps 0880 — ${item.name}`,
           images: [item.image.startsWith("http") ? item.image : `${args.origin}${item.image}`],
-          tax_code: "txcd_40030000", // Clothing Accessories: Hats & Headwear
+          tax_code: "txcd_30060006", // Hats: A shaped covering for the head worn for warmth, as a fashion item, or as part of a uniform
           metadata: {
             variantId: item.variantId,
           },
