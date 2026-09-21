@@ -7,6 +7,7 @@ import { Footer } from "@/components/layout/Footer";
 import { CartDrawer } from "@/components/cart/CartDrawer";
 import { ProductQuickView } from "@/components/product/ProductQuickView";
 import { DropAlertModal } from "@/components/drops/DropAlertModal";
+import { ProductShareToast } from "@/components/product/ProductShareToast";
 import { SmoothScrollProvider } from "@/components/providers/SmoothScrollProvider";
 import { ConvexClientProvider } from "@/components/providers/ConvexClientProvider";
 import { ClerkClientProvider } from "@/components/providers/ClerkClientProvider";
@@ -52,6 +53,7 @@ export default async function LocaleLayout({
                   <CartDrawer />
                   <ProductQuickView />
                   <DropAlertModal />
+                  <ProductShareToast />
                   <AdminQuickBar />
                 </div>
               </SmoothScrollProvider>

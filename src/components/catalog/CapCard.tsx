@@ -5,14 +5,17 @@ import Image from "next/image";
 import { Link } from "@/i18n/routing";
 import { useStore } from "@/store/useStore";
 import type { CapVariant } from "@/data/caps";
-import { ShoppingBag, Eye, Sparkles, Check, Bell, Clock } from "lucide-react";
+import { ShoppingBag, Eye, Sparkles, Check, Bell, Clock, Share2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useRef, useCallback, useState, useEffect } from "react";
+import { useProductShare } from "@/lib/useProductShare";
 
 export function CapCard({ cap, index = 0 }: { cap: CapVariant; index?: number }) {
   const t = useTranslations("catalog");
+  const tShare = useTranslations("share");
   const locale = useLocale();
   const { addToCart, openQuickView, openDropAlert, currency, cart } = useStore();
+  const { shareProduct } = useProductShare();
   const cardRef = useRef<HTMLDivElement>(null);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
@@ -38,6 +41,19 @@ export function CapCard({ cap, index = 0 }: { cap: CapVariant; index?: number })
   const name = locale === "es" ? cap.nameEs : cap.nameEn;
   const tag = locale === "es" ? cap.tagEs : cap.tagEn;
   const priceDisplay = `$${cap.priceUsd} USD`;
+
+  const handleShare = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      e.preventDefault();
+      shareProduct({
+        id: cap.id,
+        name,
+        image: cap.image,
+      });
+    },
+    [cap.id, cap.image, name, shareProduct]
+  );
 
   // 3D tilt effect on mouse move (desktop hover only)
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
@@ -104,18 +120,28 @@ export function CapCard({ cap, index = 0 }: { cap: CapVariant; index?: number })
             )}
           </div>
 
-          {/* Colorway swatches */}
-          <div className="flex items-center gap-0.5 sm:gap-1 shrink-0 ml-1">
-            <span
-              className="w-2 sm:w-2.5 md:w-3 h-2 sm:h-2.5 md:h-3 rounded-full border border-white/40 dark:border-white/20 shadow-sm"
-              style={{ backgroundColor: cap.primaryHex }}
-              title="Crown"
-            />
-            <span
-              className="w-2 sm:w-2.5 md:w-3 h-2 sm:h-2.5 md:h-3 rounded-full border border-white/40 dark:border-white/20 shadow-sm"
-              style={{ backgroundColor: cap.secondaryHex }}
-              title="Accent"
-            />
+          {/* Colorway swatches & Share action */}
+          <div className="flex items-center gap-1 sm:gap-1.5 shrink-0 ml-1">
+            <button
+              onClick={handleShare}
+              className="p-1 rounded-full text-zinc-400 hover:text-moya-red hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+              title={tShare("tooltip")}
+              aria-label={tShare("button")}
+            >
+              <Share2 className="w-3 sm:w-3.5 h-3 sm:h-3.5" />
+            </button>
+            <div className="flex items-center gap-0.5 sm:gap-1">
+              <span
+                className="w-2 sm:w-2.5 md:w-3 h-2 sm:h-2.5 md:h-3 rounded-full border border-white/40 dark:border-white/20 shadow-sm"
+                style={{ backgroundColor: cap.primaryHex }}
+                title="Crown"
+              />
+              <span
+                className="w-2 sm:w-2.5 md:w-3 h-2 sm:h-2.5 md:h-3 rounded-full border border-white/40 dark:border-white/20 shadow-sm"
+                style={{ backgroundColor: cap.secondaryHex }}
+                title="Accent"
+              />
+            </div>
           </div>
         </div>
 

@@ -23,9 +23,11 @@ import {
   Maximize2,
   Bell,
   Clock,
+  Share2,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
+import { useProductShare } from "@/lib/useProductShare";
 
 interface ProductDetailViewProps {
   cap: CapVariant;
@@ -37,8 +39,10 @@ type AngleKey = "hero" | "front" | "left" | "right" | "back";
 export function ProductDetailView({ cap, allCaps }: ProductDetailViewProps) {
   const t = useTranslations("pdp");
   const tQuick = useTranslations("quickView");
+  const tShare = useTranslations("share");
   const locale = useLocale();
   const { addToCart, openDropAlert, currency, cart } = useStore();
+  const { shareProduct } = useProductShare();
 
   const [activeAngle, setActiveAngle] = useState<AngleKey>("hero");
   const [quantity, setQuantity] = useState(1);
@@ -174,6 +178,14 @@ export function ProductDetailView({ cap, allCaps }: ProductDetailViewProps) {
     window.open(`https://wa.me/5215500000000?text=${encoded}`, "_blank");
   };
 
+  const handleShare = () => {
+    shareProduct({
+      id: cap.id,
+      name,
+      image: cap.image,
+    });
+  };
+
   return (
     <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
       {/* ── Breadcrumb Navigation ── */}
@@ -215,14 +227,23 @@ export function ProductDetailView({ cap, allCaps }: ProductDetailViewProps) {
               )}
             </div>
 
-            {/* Expand / Zoom Button */}
-            <button
-              onClick={() => setIsZoomed(!isZoomed)}
-              className="absolute top-4 right-4 z-10 p-2 rounded-xl glass-dark text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors"
-              title="Toggle Zoom"
-            >
-              <Maximize2 className="w-4 h-4" />
-            </button>
+            {/* Action Tools: Share & Zoom */}
+            <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
+              <button
+                onClick={handleShare}
+                className="p-2 rounded-xl glass-dark text-zinc-500 hover:text-moya-red dark:hover:text-white transition-colors border border-black/[0.06] dark:border-white/[0.08]"
+                title={tShare("tooltip")}
+              >
+                <Share2 className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setIsZoomed(!isZoomed)}
+                className="p-2 rounded-xl glass-dark text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors border border-black/[0.06] dark:border-white/[0.08]"
+                title="Toggle Zoom"
+              >
+                <Maximize2 className="w-4 h-4" />
+              </button>
+            </div>
 
             {/* Active Image Render */}
             <AnimatePresence mode="wait">
@@ -495,6 +516,15 @@ export function ProductDetailView({ cap, allCaps }: ProductDetailViewProps) {
                 </button>
               </>
             )}
+
+            {/* Share Cap Action */}
+            <button
+              onClick={handleShare}
+              className="w-full py-3 rounded-2xl font-display font-semibold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 glass-dark hover:bg-black/5 dark:hover:bg-white/10 text-zinc-700 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white border border-black/[0.08] dark:border-white/[0.08] active:scale-[0.98]"
+            >
+              <Share2 className="w-4 h-4 text-moya-red" />
+              <span>{tShare("button")}</span>
+            </button>
           </div>
 
           {/* Trust Guarantees */}

@@ -90,7 +90,7 @@
     "addMoreBtn": "Añadir Más ({count} en bolsa)",
     "addedSuccess": "¡Agregado a la Bolsa!",
     "buyNow": "Comprar por WhatsApp",
-    "viewFullSpecs": "Ver Ficha Técnica Completa →",
+    "viewFullSpecs": "Ficha Técnica",
     "shippingNotice": "Despacho en menos de 24 horas con número de guía rastreable en EE. UU.",
     "soldOut": "Agotado",
     "maxReached": "Máximo Disponible Seleccionado",
@@ -497,6 +497,16 @@
     "alreadySubscribed": "Ya estás registrado en la lista VIP para este lanzamiento.",
     "whatsappTestBtn": "Abrir Canal de WhatsApp Directo",
     "close": "Cerrar"
+  },
+  "share": {
+    "button": "Compartir Gorra",
+    "tooltip": "Compartir esta gorra",
+    "copyLink": "Copiar Enlace Directo",
+    "toastBadge": "ENLACE COPIADO",
+    "toastTitle": "¡Enlace Copiado al Portapapeles!",
+    "toastDesc": "Pégalo en WhatsApp, iMessage o redes sociales para compartir esta pieza con tu gente.",
+    "whatsAppAction": "Compartir por WhatsApp",
+    "dismiss": "Cerrar"
   }
 }
 

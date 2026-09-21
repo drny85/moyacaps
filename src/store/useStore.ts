@@ -54,6 +54,16 @@ interface StoreState {
   dropAlertCap: CapVariant | null;
   openDropAlert: (cap: CapVariant) => void;
   closeDropAlert: () => void;
+
+  // Share Notification Toast
+  shareToast: {
+    isOpen: boolean;
+    capName: string;
+    url: string;
+    capImage: string;
+  } | null;
+  showShareToast: (data: { capName: string; url: string; capImage: string }) => void;
+  hideShareToast: () => void;
 }
 
 export const useStore = create<StoreState>()(
@@ -212,6 +222,16 @@ export const useStore = create<StoreState>()(
       dropAlertCap: null,
       openDropAlert: (cap) => set({ dropAlertCap: cap }),
       closeDropAlert: () => set({ dropAlertCap: null }),
+
+      shareToast: null,
+      showShareToast: (data) =>
+        set({
+          shareToast: {
+            isOpen: true,
+            ...data,
+          },
+        }),
+      hideShareToast: () => set({ shareToast: null }),
     }),
     {
       name: "moyacaps-storage",

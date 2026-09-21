@@ -90,7 +90,7 @@
     "addMoreBtn": "Add More ({count} in bag)",
     "addedSuccess": "Added to Bag!",
     "buyNow": "Instant WhatsApp Checkout",
-    "viewFullSpecs": "View Full Blueprint Page →",
+    "viewFullSpecs": "Full Specs",
     "shippingNotice": "Dispatched within 24 hours with US tracked courier delivery.",
     "soldOut": "Sold Out",
     "maxReached": "Max Available Added",
@@ -497,5 +497,15 @@
     "alreadySubscribed": "You are already registered on the VIP list for this release.",
     "whatsappTestBtn": "Open Direct WhatsApp Channel",
     "close": "Close"
+  },
+  "share": {
+    "button": "Share Cap",
+    "tooltip": "Share this cap",
+    "copyLink": "Copy Direct Link",
+    "toastBadge": "LINK COPIED",
+    "toastTitle": "Link Copied to Clipboard!",
+    "toastDesc": "Paste it into WhatsApp, iMessage, or social chat to share this piece with your friends.",
+    "whatsAppAction": "Share via WhatsApp",
+    "dismiss": "Dismiss"
   }
 }

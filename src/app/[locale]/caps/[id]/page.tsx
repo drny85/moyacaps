@@ -76,20 +76,45 @@ export async function generateMetadata({
       ? `Gorra oficial Moya Caps 0880 Good Luck — ${name}. Bordado 3D de alta densidad, diablos laterales y silueta ${cap.silhouette}.`
       : `Official Moya Caps 0880 Good Luck Cap — ${name}. High-density 3D puff embroidery, twin pitchfork devil flanks, and ${cap.silhouette} profile.`;
 
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://moyacaps.vercel.app").replace(/\/$/, "");
+  const canonicalUrl = `${siteUrl}/${locale}/caps/${id}`;
+  const imageUrl = cap.image.startsWith("http")
+    ? cap.image
+    : `${siteUrl}${cap.image.startsWith("/") ? "" : "/"}${cap.image}`;
+
   return {
     title: `${name} | Moya Caps 0880 Good Luck Edition`,
     description,
+    alternates: {
+      canonical: canonicalUrl,
+      languages: {
+        en: `${siteUrl}/en/caps/${id}`,
+        es: `${siteUrl}/es/caps/${id}`,
+      },
+    },
     openGraph: {
-      title: `${name} | Moya Caps 0880`,
+      type: "website",
+      siteName: "Moya Caps",
+      title: `${name} | Moya Caps 0880 Good Luck Edition`,
       description,
+      url: canonicalUrl,
+      locale: locale === "es" ? "es_ES" : "en_US",
       images: [
         {
-          url: cap.image,
+          url: imageUrl,
           width: 800,
           height: 800,
-          alt: name,
+          alt: `${name} - Moya Caps 0880`,
+          type: "image/png",
         },
       ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${name} | Moya Caps 0880`,
+      description,
+      images: [imageUrl],
+      creator: "@moyacaps",
     },
   };
 }
