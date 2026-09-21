@@ -103,8 +103,8 @@ export default function TrackOrderPage() {
   const handleOpenWhatsAppConcierge = (orderNumber: string) => {
     const greeting =
       locale === "es"
-        ? `¡Hola! Necesito asistencia con el seguimiento de mi pedido Moya Caps #${orderNumber}.`
-        : `Hi! I need assistance tracking my Moya Caps order #${orderNumber}.`;
+        ? `¡Hola! Necesito asistencia con el seguimiento de mi pedido Good Luck #${orderNumber}.`
+        : `Hi! I need assistance tracking my Good Luck order #${orderNumber}.`;
     const url = `https://wa.me/5215500000000?text=${encodeURIComponent(greeting)}`;
     window.open(url, "_blank");
   };

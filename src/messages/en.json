@@ -1,6 +1,6 @@
 {
   "nav": {
-    "brand": "MOYA CAPS",
+    "brand": "GOOD LUCK",
     "catalog": "Collection",
     "story": "The Lore",
     "cart": "Cart",
@@ -113,7 +113,7 @@
     "signInToCheckout": "Sign In to Checkout",
     "signInNotice": "Sign in with Clerk to link this order to your Collector Vault.",
     "checkoutWhatsApp": "Order via WhatsApp",
-    "whatsappGreeting": "Hi Moya Caps! I would like to order the following caps from the 0880 Good Luck Collection:",
+    "whatsappGreeting": "Hi Good Luck! I would like to order the following caps from the 0880 Collection:",
     "secureCheckout": "Guaranteed Authentic • 30-Day Hassle-Free Returns",
     "stockAdjusted": "Quantity adjusted to match live stock",
     "onlyXAvailable": "Only {count} available",
@@ -122,7 +122,7 @@
   "story": {
     "eyebrow": "THE 0880 MYTHOS",
     "title": "Good Luck Meets Fearless Grit",
-    "part1": "Moya Caps was forged at the intersection of superstition and streetwear culture. The horseshoe turned upright catches blessings; the four-leaf clover defies the odds; the devil with his pitchfork ensures you never back down from a challenge.",
+    "part1": "Good Luck was forged at the intersection of superstition and streetwear culture. The horseshoe turned upright catches blessings; the four-leaf clover defies the odds; the devil with his pitchfork ensures you never back down from a challenge.",
     "part2": "Every cap is crafted from custom-dyed premium heavyweight cotton twill, built with structured crown reinforcement to maintain its aggressive shape year after year.",
     "stat1Label": "Tactile Stitches",
     "stat1Value": "38,000+",
@@ -141,7 +141,7 @@
   "anatomy": {
     "eyebrow": "DECONSTRUCTED CRAFT",
     "title": "The Anatomy of 0880",
-    "subtitle": "Scroll to deconstruct the architecture behind every Moya Cap.",
+    "subtitle": "Scroll to deconstruct the architecture behind every Good Luck cap.",
     "scrollPrompt": "Scroll to inspect layers",
     "layer1Title": "High-Density 3D Puff",
     "layer1Desc": "Over 38,000 stitches creating tactile, razor-sharp front embroidery.",
@@ -156,7 +156,7 @@
   "footer": {
     "tagline": "Unapologetic headwear crafted for the bold.",
     "support": "Need assistance? Chat directly with our fulfillment team on WhatsApp.",
-    "rights": "All rights reserved. Moya Caps Co.",
+    "rights": "All rights reserved. Good Luck Co.",
     "currencyNote": "Prices shown in {currency}. Dual currency supported."
   },
   "pdp": {
@@ -252,7 +252,7 @@
     "addressUpdated": "Shipping address updated successfully!"
   },
   "admin": {
-    "title": "MoyaCaps HQ",
+    "title": "Good Luck HQ",
     "subtitle": "Operations, Inventory & Fulfillment",
     "backToStore": "Storefront",
     "nav": {
@@ -418,7 +418,7 @@
   "track": {
     "badge": "LUXURY ORDER TRACKING",
     "title": "Track Your Shipment",
-    "subtitle": "Enter your Moya Caps Order Number and the email address used during checkout to inspect live fulfillment progress.",
+    "subtitle": "Enter your Good Luck Order Number and the email address used during checkout to inspect live fulfillment progress.",
     "orderNumberLabel": "Order Number",
     "orderNumberPlaceholder": "e.g. MC-M49X2-8371",
     "emailLabel": "Checkout Email",
@@ -427,7 +427,7 @@
     "searching": "Locating Order...",
     "notFoundTitle": "No Matching Order Found",
     "notFoundDesc": "We couldn't locate an order matching that Order Number and Email address. Please double-check your receipt or contact our Concierge team.",
-    "dropOrder": "Moya Caps Drop Order",
+    "dropOrder": "Good Luck Drop Order",
     "statusPlaced": "Order Received",
     "statusPaid": "Payment Confirmed & Packing",
     "statusDispatched": "Dispatched & In Transit",

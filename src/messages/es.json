@@ -1,6 +1,6 @@
 {
   "nav": {
-    "brand": "MOYA CAPS",
+    "brand": "GOOD LUCK",
     "catalog": "Colección",
     "story": "La Historia",
     "cart": "Carrito",
@@ -113,7 +113,7 @@
     "signInToCheckout": "Iniciar Sesión para Pagar",
     "signInNotice": "Inicia sesión con Clerk para vincular tu pedido a tu Bóveda de Coleccionista.",
     "checkoutWhatsApp": "Pedir por WhatsApp",
-    "whatsappGreeting": "¡Hola Moya Caps! Deseo realizar el pedido de las siguientes gorras de la colección Good Luck 0880:",
+    "whatsappGreeting": "¡Hola Good Luck! Deseo realizar el pedido de las siguientes gorras de la colección 0880:",
     "secureCheckout": "Garantía de Autenticidad • Cambios Sin Complicaciones",
     "stockAdjusted": "Cantidad ajustada al inventario disponible",
     "onlyXAvailable": "Solo {count} disponibles",
@@ -122,7 +122,7 @@
   "story": {
     "eyebrow": "EL MITO 0880",
     "title": "La Suerte y el Carácter Rebelde",
-    "part1": "Moya Caps nace de la unión entre la superstición y la cultura urbana de la calle. La herradura orientada hacia arriba retiene la fortuna; el trébol de cuatro hojas desafía las probabilidades; el diablo con su tridente te recuerda jamás dar un paso atrás.",
+    "part1": "Good Luck nace de la unión entre la superstición y la cultura urbana de la calle. La herradura orientada hacia arriba retiene la fortuna; el trébol de cuatro hojas desafía las probabilidades; el diablo con su tridente te recuerda jamás dar un paso atrás.",
     "part2": "Cada gorra se fabrica con algodón de máxima resistencia teñido a medida y refuerzo de corona frontal para garantizar que conserve su horma perfecta con el paso del tiempo.",
     "stat1Label": "Puntadas Táctiles",
     "stat1Value": "38,000+",
@@ -141,7 +141,7 @@
   "anatomy": {
     "eyebrow": "CONFECCIÓN DECONSTRUIDA",
     "title": "La Anatomía de la 0880",
-    "subtitle": "Desliza para descomponer la arquitectura detrás de cada Moya Cap.",
+    "subtitle": "Desliza para descomponer la arquitectura detrás de cada gorra Good Luck.",
     "scrollPrompt": "Desplaza para inspeccionar las capas",
     "layer1Title": "Bordado 3D de Alto Relieve",
     "layer1Desc": "Más de 38,000 puntadas para un bordado frontal táctil y definido.",
@@ -156,7 +156,7 @@
   "footer": {
     "tagline": "Gorras con carácter sin pedir disculpas.",
     "support": "¿Dudas o pedidos especiales? Escríbenos directo por WhatsApp a nuestro equipo.",
-    "rights": "Todos los derechos reservados. Moya Caps Co.",
+    "rights": "Todos los derechos reservados. Good Luck Co.",
     "currencyNote": "Precios expresados en {currency}. Conversión disponible."
   },
   "pdp": {
@@ -252,7 +252,7 @@
     "addressUpdated": "¡Dirección de envío actualizada correctamente!"
   },
   "admin": {
-    "title": "Sede Central MoyaCaps",
+    "title": "Sede Central Good Luck",
     "subtitle": "Operaciones, Inventario y Despachos",
     "backToStore": "Tienda en Vivo",
     "nav": {
@@ -418,7 +418,7 @@
   "track": {
     "badge": "RASTREO EXCLUSIVO DE PEDIDOS",
     "title": "Rastrea tu Envío",
-    "subtitle": "Ingresa tu Número de Orden Moya Caps y el correo electrónico utilizado en tu compra para consultar el estado en tiempo real.",
+    "subtitle": "Ingresa tu Número de Orden Good Luck y el correo electrónico utilizado en tu compra para consultar el estado en tiempo real.",
     "orderNumberLabel": "Número de Orden",
     "orderNumberPlaceholder": "ej. MC-M49X2-8371",
     "emailLabel": "Correo de Compra",
@@ -427,7 +427,7 @@
     "searching": "Localizando Orden...",
     "notFoundTitle": "Orden No Encontrada",
     "notFoundDesc": "No encontramos ninguna orden que coincida con ese Número de Orden y Correo. Verifica tu recibo o comunícate con nuestro equipo.",
-    "dropOrder": "Orden Exclusiva Moya Caps",
+    "dropOrder": "Orden Exclusiva Good Luck",
     "statusPlaced": "Orden Recibida",
     "statusPaid": "Pago Confirmado y Preparando",
     "statusDispatched": "Despachada y en Tránsito",

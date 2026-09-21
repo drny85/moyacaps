@@ -1,4 +1,4 @@
-# MoyaCaps
+# Good Luck
 
 An e-commerce platform for high-end streetwear caps (gorras) featuring signature collections, bilingual shopping (English/Spanish), interactive 3D/parallax showcase, and streamlined checkout.
 
@@ -13,7 +13,7 @@ A specific combination of crown, visor, underbill, and embroidery thread colors 
 _Avoid_: Color theme, flavor
 
 **Collection**:
-A themed design release encompassing multiple colorways and silhouettes (e.g., the "Good Luck 0880" series).
+A themed design release encompassing multiple colorways and silhouettes (e.g., the "0880 Series").
 _Avoid_: Category, department, bundle
 
 **Silhouette**:

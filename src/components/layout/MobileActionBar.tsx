@@ -34,7 +34,7 @@ export function MobileActionBar() {
     : 0;
 
   const handleWhatsApp = () => {
-    const text = encodeURIComponent("¡Hola Moya Caps! Quisiera consultar sobre las gorras de la colección Good Luck 0880.");
+    const text = encodeURIComponent("¡Hola Good Luck! Quisiera consultar sobre las gorras de la colección 0880.");
     window.open(`https://wa.me/5215500000000?text=${text}`, "_blank");
   };
 

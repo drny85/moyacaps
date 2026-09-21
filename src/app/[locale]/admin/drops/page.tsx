@@ -755,7 +755,7 @@ export default function AdminDropsPage() {
                           {isWhatsApp ? (
                             <a
                               href={`https://wa.me/${sub.contact.replace(/\D/g, "")}?text=${encodeURIComponent(
-                                `¡Hola ${sub.name || ""}! El drop exclusivo de Moya Caps (${productName}) está próximo a abrirse. ¿Te gustaría tener acceso prioritario?`
+                                `¡Hola ${sub.name || ""}! El drop exclusivo de Good Luck (${productName}) está próximo a abrirse. ¿Te gustaría tener acceso prioritario?`
                               )}`}
                               target="_blank"
                               rel="noopener noreferrer"
@@ -767,7 +767,7 @@ export default function AdminDropsPage() {
                           ) : (
                             <a
                               href={`mailto:${sub.contact}?subject=${encodeURIComponent(
-                                `VIP Drop Alert: ${productName} by Moya Caps`
+                                `VIP Drop Alert: ${productName} by Good Luck`
                               )}`}
                               className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 text-[10px] font-mono font-semibold transition-colors"
                             >

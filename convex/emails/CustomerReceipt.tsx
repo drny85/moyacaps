@@ -64,13 +64,13 @@ export function CustomerReceiptEmail({
   return (
     <Html>
       <Head />
-      <Preview>Your Moya Caps order #{orderNumber} has been received!</Preview>
+      <Preview>Your Good Luck order #{orderNumber} has been received!</Preview>
       <Body style={main}>
         <Container style={container}>
           {/* Header Brand */}
           <Section style={headerSection}>
             <Text style={brandTitle}>
-              MOYA<span style={{ color: "#E11D48" }}>CAPS</span>
+              GOOD<span style={{ color: "#E11D48" }}>LUCK</span>
             </Text>
             <Text style={brandSubtitle}>HEADWEAR & APPAREL CRAFTED FOR EXCELLENCE</Text>
           </Section>
@@ -191,7 +191,7 @@ export function CustomerReceiptEmail({
           {/* Footer */}
           <Section style={footer}>
             <Text style={footerText}>
-              © {new Date().getFullYear()} Moya Caps. All rights reserved.
+              © {new Date().getFullYear()} Good Luck. All rights reserved.
             </Text>
           </Section>
         </Container>

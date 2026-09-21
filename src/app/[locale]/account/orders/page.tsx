@@ -152,8 +152,8 @@ export default function AccountOrdersPage() {
   const handleWhatsAppConcierge = (orderNumber: string, actionType: "return" | "tracking" | "support") => {
     const text = encodeURIComponent(
       locale === "es"
-        ? `¡Hola Moya Caps Concierge! Necesito asistencia con mi orden #${orderNumber} (${actionType === "return" ? "Cambio/Devolución" : "Rastreo/Envío"}).`
-        : `Hi Moya Caps Concierge! I need assistance with my Order #${orderNumber} (${actionType === "return" ? "Exchange/Return" : "Tracking/Delivery"}).`
+        ? `¡Hola Good Luck Concierge! Necesito asistencia con mi orden #${orderNumber} (${actionType === "return" ? "Cambio/Devolución" : "Rastreo/Envío"}).`
+        : `Hi Good Luck Concierge! I need assistance with my Order #${orderNumber} (${actionType === "return" ? "Exchange/Return" : "Tracking/Delivery"}).`
     );
     window.open(`https://wa.me/5215500000000?text=${text}`, "_blank");
   };
@@ -263,7 +263,7 @@ export default function AccountOrdersPage() {
               {ordersToDisplay.length} {ordersToDisplay.length === 1 ? "Piece Secured" : "Pieces Secured"}
             </p>
             <p className="text-[11px] font-mono text-zinc-500">
-              Verified Moya Caps 0880 Drop Ownership
+              Verified Good Luck 0880 Drop Ownership
             </p>
           </div>
         </div>

@@ -100,7 +100,7 @@ export function AdminOrderAlertEmail({
             <Row>
               <Column>
                 <Text style={brandTitle}>
-                  MOYA<span style={{ color: "#E11D48" }}>CAPS</span>
+                  GOOD<span style={{ color: "#E11D48" }}>LUCK</span>
                 </Text>
                 <Text style={brandSubtitle}>OPERATIONS HQ — ORDER ALERT</Text>
               </Column>
@@ -244,7 +244,7 @@ export function AdminOrderAlertEmail({
           {/* Footer */}
           <Section style={footer}>
             <Text style={footerText}>
-              Moya Caps Automated Notification System • Confidential Admin Dispatch
+              Good Luck Automated Notification System • Confidential Admin Dispatch
             </Text>
           </Section>
         </Container>

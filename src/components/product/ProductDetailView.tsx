@@ -161,8 +161,8 @@ export function ProductDetailView({ cap, allCaps }: ProductDetailViewProps) {
     if (isDropUpcoming) {
       const greeting =
         locale === "es"
-          ? `¡Hola Moya Caps! Deseo información y apartar mi acceso prioritario para el drop de la gorra: ${name} (Edición Good Luck 0880). ¿Me podrían compartir más detalles?`
-          : `Hi Moya Caps! I would like priority access and info regarding the upcoming drop of: ${name} (0880 Good Luck Edition). Please share details.`;
+          ? `¡Hola Good Luck! Deseo información y apartar mi acceso prioritario para el drop de la gorra: ${name} (Edición 0880). ¿Me podrían compartir más detalles?`
+          : `Hi Good Luck! I would like priority access and info regarding the upcoming drop of: ${name} (0880 Edition). Please share details.`;
 
       const encoded = encodeURIComponent(greeting);
       window.open(`https://wa.me/5215500000000?text=${encoded}`, "_blank");
@@ -171,8 +171,8 @@ export function ProductDetailView({ cap, allCaps }: ProductDetailViewProps) {
     if (isOutOfStock) return;
     const greeting =
       locale === "es"
-        ? `¡Hola Moya Caps! Deseo ordenar ${quantity} pieza(s) de la gorra ${name} (Edición Good Luck 0880 - $${priceSingle * quantity} ${currency}). ¿Me podrían compartir los datos de pago y envío?`
-        : `Hi Moya Caps! I would like to order ${quantity} piece(s) of ${name} (0880 Good Luck Edition - $${priceSingle * quantity} ${currency}). Please share payment and delivery details.`;
+        ? `¡Hola Good Luck! Deseo ordenar ${quantity} pieza(s) de la gorra ${name} (Edición 0880 - $${priceSingle * quantity} ${currency}). ¿Me podrían compartir los datos de pago y envío?`
+        : `Hi Good Luck! I would like to order ${quantity} piece(s) of ${name} (0880 Edition - $${priceSingle * quantity} ${currency}). Please share payment and delivery details.`;
 
     const encoded = encodeURIComponent(greeting);
     window.open(`https://wa.me/5215500000000?text=${encoded}`, "_blank");

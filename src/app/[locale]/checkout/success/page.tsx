@@ -85,8 +85,8 @@ export default function CheckoutSuccessPage() {
   const handleWhatsAppAlerts = () => {
     const text = encodeURIComponent(
       locale === "es"
-        ? `¡Hola Moya Caps! Acabo de completar mi orden #${displayOrderNumber}. Me gustaría recibir actualizaciones de rastreo por WhatsApp.`
-        : `Hi Moya Caps! I just secured Order #${displayOrderNumber}. I would like to receive tracking updates via WhatsApp.`
+        ? `¡Hola Good Luck! Acabo de completar mi orden #${displayOrderNumber}. Me gustaría recibir actualizaciones de rastreo por WhatsApp.`
+        : `Hi Good Luck! I just secured Order #${displayOrderNumber}. I would like to receive tracking updates via WhatsApp.`
     );
     window.open(`https://wa.me/5215500000000?text=${text}`, "_blank");
   };

@@ -15,7 +15,7 @@ export const resend = new Resend(components.resend, {
 });
 
 const DEFAULT_SENDER =
-  process.env.RESEND_FROM_EMAIL || "Moya Caps Alerts <onboarding@resend.dev>";
+  process.env.RESEND_FROM_EMAIL || "Good Luck Alerts <onboarding@resend.dev>";
 const DEFAULT_ADMIN_EMAIL =
   process.env.ADMIN_NOTIFICATION_EMAIL || PRIMARY_ADMIN_EMAIL;
 
@@ -150,7 +150,7 @@ export const sendCustomerReceipt = internalAction({
       const emailId = await resend.sendEmail(ctx, {
         from: DEFAULT_SENDER,
         to: args.customerEmail,
-        subject: `Your Moya Caps Order Confirmation #${args.orderNumber}`,
+        subject: `Your Good Luck Order Confirmation #${args.orderNumber}`,
         html,
         idempotencyKey: `customer-receipt-${args.orderNumber}`,
       });

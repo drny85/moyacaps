@@ -101,8 +101,8 @@ export function DropAlertModal() {
   const handleOpenWhatsAppTest = () => {
     const text = encodeURIComponent(
       locale === "es"
-        ? `¡Hola Moya Caps! Acabo de registrarme para la Alerta VIP del drop: ${capName}.`
-        : `Hi Moya Caps! I just registered for the VIP Drop Alert for: ${capName}.`
+        ? `¡Hola Good Luck! Acabo de registrarme para la Alerta VIP del drop: ${capName}.`
+        : `Hi Good Luck! I just registered for the VIP Drop Alert for: ${capName}.`
     );
     window.open(`https://wa.me/5215500000000?text=${text}`, "_blank");
   };

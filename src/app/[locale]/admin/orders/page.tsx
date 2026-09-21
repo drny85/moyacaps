@@ -367,8 +367,8 @@ export default function AdminOrdersPage() {
     const rawPhone = order.customerPhone || "";
     const cleanPhone = rawPhone.replace(/[^\d+]/g, "");
     const greeting = locale === "es"
-      ? `¡Hola ${order.customerName || "estimado cliente"}! Te contactamos de Moya Caps respecto a tu orden ${order.orderNumber}.`
-      : `Hi ${order.customerName || "Customer"}, this is Moya Caps regarding your order ${order.orderNumber}.`;
+      ? `¡Hola ${order.customerName || "estimado cliente"}! Te contactamos de Good Luck respecto a tu orden ${order.orderNumber}.`
+      : `Hi ${order.customerName || "Customer"}, this is Good Luck regarding your order ${order.orderNumber}.`;
 
     const trackingText = order.trackingNumber
       ? locale === "es"

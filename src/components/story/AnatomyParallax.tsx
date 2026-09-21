@@ -284,7 +284,7 @@ export function AnatomyParallax() {
           >
             <Image
               src="/caps/angles/left.png"
-              alt="Moya Cap Left Devil Flank"
+              alt="Good Luck Cap Left Devil Flank"
               fill
               priority
               sizes="(max-width: 768px) 45vw, 290px"
@@ -309,7 +309,7 @@ export function AnatomyParallax() {
           >
             <Image
               src="/caps/angles/right.png"
-              alt="Moya Cap Right Flank"
+              alt="Good Luck Cap Right Flank"
               fill
               priority
               sizes="(max-width: 768px) 45vw, 290px"
@@ -332,7 +332,7 @@ export function AnatomyParallax() {
           >
             <Image
               src="/caps/angles/back.png"
-              alt="Moya Cap 0880 Rear Snapback"
+              alt="Good Luck Cap 0880 Rear Snapback"
               fill
               priority
               sizes="(max-width: 768px) 40vw, 260px"
@@ -355,7 +355,7 @@ export function AnatomyParallax() {
           >
             <Image
               src="/caps/angles/front.png"
-              alt="Moya Cap Front 3D Puff Embroidery"
+              alt="Good Luck Cap Front 3D Puff Embroidery"
               fill
               priority
               sizes="(max-width: 768px) 55vw, 350px"

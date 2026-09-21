@@ -15,7 +15,7 @@ export function Footer() {
   }
 
   const handleSupportChat = () => {
-    const text = encodeURIComponent("Hi Moya Caps, I need help with an order or have a question about the Good Luck collection.");
+    const text = encodeURIComponent("Hi Good Luck, I need help with an order or have a question about the 0880 collection.");
     window.open(`https://wa.me/5215500000000?text=${text}`, "_blank");
   };
 
@@ -29,7 +29,7 @@ export function Footer() {
         <div className="flex flex-col items-center md:items-start gap-2">
           <div className="flex items-center gap-2">
             <span className="font-display text-xl font-bold text-zinc-900 dark:text-white tracking-tight">
-              MOYA<span className="text-moya-red">CAPS</span>
+              GOOD<span className="text-moya-red">LUCK</span>
             </span>
             <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded-md bg-moya-red-deep/20 dark:bg-moya-red-deep/30 border border-moya-red/30 text-moya-red dark:text-moya-red-light font-bold">
               0880
@@ -57,7 +57,7 @@ export function Footer() {
 
         {/* Copyright */}
         <div className="text-xs text-zinc-500 dark:text-zinc-600 text-center md:text-right">
-          <p>© {new Date().getFullYear()} Moya Caps. {t("rights")}</p>
+          <p>© {new Date().getFullYear()} Good Luck. {t("rights")}</p>
           <p className="text-[10px] text-zinc-400 dark:text-zinc-700 mt-1 font-display">
             Crafted for streetwear connoisseurs
           </p>

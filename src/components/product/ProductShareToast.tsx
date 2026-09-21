@@ -31,8 +31,8 @@ export function ProductShareToast() {
   const handleWhatsAppShare = () => {
     const message =
       locale === "es"
-        ? `¡Checa esta gorra de Moya Caps! ${capName} (Edición Good Luck 0880): ${url}`
-        : `Check out this cap from Moya Caps! ${capName} (0880 Good Luck Edition): ${url}`;
+        ? `¡Checa esta gorra de Good Luck! ${capName} (Edición 0880): ${url}`
+        : `Check out this cap from Good Luck! ${capName} (0880 Edition): ${url}`;
 
     const encoded = encodeURIComponent(message);
     window.open(`https://wa.me/?text=${encoded}`, "_blank");

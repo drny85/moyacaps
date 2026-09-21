@@ -61,14 +61,14 @@ export function Navbar() {
             <div>
               <div className="flex items-center gap-1.5">
                 <span className="font-display font-bold text-lg sm:text-xl tracking-tight text-zinc-900 dark:text-white group-hover:text-moya-red transition-colors">
-                  MOYA<span className="text-moya-red">CAPS</span>
+                  GOOD<span className="text-moya-red">LUCK</span>
                 </span>
                 <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded-md bg-moya-red-deep/10 dark:bg-moya-red-deep/30 border border-moya-red/30 text-moya-red font-bold">
                   0880
                 </span>
               </div>
               <p className="text-[9px] text-zinc-500 tracking-widest uppercase font-display hidden sm:block">
-                Good Luck Edition
+                Signature Headwear
               </p>
             </div>
           </Link>

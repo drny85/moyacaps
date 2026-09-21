@@ -80,8 +80,8 @@ export function ProductQuickView() {
     if (isOutOfStock) return;
     const greeting =
       locale === "es"
-        ? `¡Hola Moya Caps! Deseo comprar ${quantity} pieza(s) de la gorra: ${name} (Edición Good Luck 0880). Por favor indíquenme los métodos de pago disponibles.`
-        : `Hi Moya Caps! I want to purchase ${quantity} piece(s) of: ${name} (Good Luck 0880 Edition). Please let me know how to complete my payment.`;
+        ? `¡Hola Good Luck! Deseo comprar ${quantity} pieza(s) de la gorra: ${name} (Edición 0880). Por favor indíquenme los métodos de pago disponibles.`
+        : `Hi Good Luck! I want to purchase ${quantity} piece(s) of: ${name} (0880 Edition). Please let me know how to complete my payment.`;
 
     const encoded = encodeURIComponent(greeting);
     window.open(`https://wa.me/5215500000000?text=${encoded}`, "_blank");

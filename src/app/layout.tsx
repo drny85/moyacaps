@@ -15,8 +15,8 @@ const spaceGrotesk = Space_Grotesk({
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://moyacaps.vercel.app"),
-  title: "Moya Caps | 0880 Good Luck Signature Streetwear Caps",
-  description: "Official store for Moya Caps. Heavyweight 3D puff embroidery, iconic horseshoe-clover emblem, and devil pitchfork flanks in 16 exclusive colorways.",
+  title: "Good Luck | 0880 Signature Streetwear Caps",
+  description: "Official store for Good Luck. Heavyweight 3D puff embroidery, iconic horseshoe-clover emblem, and devil pitchfork flanks in 16 exclusive colorways.",
   icons: {
     icon: "/caps/negro-rojo.png",
   },

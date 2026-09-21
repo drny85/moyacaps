@@ -114,8 +114,8 @@ export default function DedicatedOrderDetailPage({
       : "";
     const greeting =
       locale === "es"
-        ? `Hola ${ord.customerName || ""}, te contactamos de Moya Caps respecto a tu pedido #${ord.orderNumber}.`
-        : `Hi ${ord.customerName || ""}, contacting you from Moya Caps regarding your order #${ord.orderNumber}.`;
+        ? `Hola ${ord.customerName || ""}, te contactamos de Good Luck respecto a tu pedido #${ord.orderNumber}.`
+        : `Hi ${ord.customerName || ""}, contacting you from Good Luck regarding your order #${ord.orderNumber}.`;
     const url = `https://wa.me/${cleanPhone || "5215500000000"}?text=${encodeURIComponent(greeting + trackingText)}`;
     window.open(url, "_blank");
   };
@@ -823,7 +823,7 @@ export default function DedicatedOrderDetailPage({
         {/* Packing Slip Header */}
         <div className="border-b-2 border-black pb-4 mb-6 flex justify-between items-start">
           <div>
-            <h1 className="text-2xl font-black tracking-tight">MOYA CAPS</h1>
+            <h1 className="text-2xl font-black tracking-tight">GOOD LUCK</h1>
             <p className="text-xs uppercase tracking-widest text-gray-600 font-mono mt-0.5">
               WAREHOUSE PACKING SLIP & DISPATCH INVOICE
             </p>
@@ -948,7 +948,7 @@ export default function DedicatedOrderDetailPage({
             <div className="border-b border-gray-400 w-48 h-8"></div>
           </div>
           <div className="text-right">
-            <p>Thank you for shopping with Moya Caps!</p>
+            <p>Thank you for shopping with Good Luck!</p>
             <p className="font-mono">support@moyacaps.com • moyacaps.com</p>
           </div>
         </div>

@@ -287,7 +287,7 @@ export function HeroInteractive() {
               >
                 <Image
                   src={capImageSrc}
-                  alt={`Moya Cap Good Luck 0880 - ${activeCap.nameEn} - ${currentAngle.label}`}
+                  alt={`Good Luck 0880 - ${activeCap.nameEn} - ${currentAngle.label}`}
                   fill
                   sizes="(max-width: 640px) 100vw, 540px"
                   className="object-contain drop-shadow-[0_30px_60px_rgba(0,0,0,0.9)] select-none"

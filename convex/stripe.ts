@@ -50,7 +50,7 @@ function resolveProductTaxCode(item: {
     return "txcd_30011000"; // Clothing & Footwear
   }
 
-  // Default to Hats & Headwear for Moya Caps
+  // Default to Hats & Headwear for Good Luck Caps
   return "txcd_30060006"; // Hats
 }
 
@@ -259,7 +259,7 @@ export const createCheckoutSession = action({
       price_data: {
         currency: "usd",
         product_data: {
-          name: `Moya Caps 0880 — ${item.name}`,
+          name: `Good Luck 0880 — ${item.name}`,
           images: [item.image.startsWith("http") ? item.image : `${args.origin}${item.image}`],
           tax_code: resolveProductTaxCode(item),
           metadata: {

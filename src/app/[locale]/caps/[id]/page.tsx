@@ -66,15 +66,15 @@ export async function generateMetadata({
 
   if (!cap) {
     return {
-      title: "Cap Not Found | Moya Caps",
+      title: "Cap Not Found | Good Luck",
     };
   }
 
   const name = locale === "es" ? cap.nameEs : cap.nameEn;
   const description =
     locale === "es"
-      ? `Gorra oficial Moya Caps 0880 Good Luck — ${name}. Bordado 3D de alta densidad, diablos laterales y silueta ${cap.silhouette}.`
-      : `Official Moya Caps 0880 Good Luck Cap — ${name}. High-density 3D puff embroidery, twin pitchfork devil flanks, and ${cap.silhouette} profile.`;
+      ? `Gorra oficial Good Luck — Edición 0880 — ${name}. Bordado 3D de alta densidad, diablos laterales y silueta ${cap.silhouette}.`
+      : `Official Good Luck Cap — 0880 Edition — ${name}. High-density 3D puff embroidery, twin pitchfork devil flanks, and ${cap.silhouette} profile.`;
 
   const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://moyacaps.vercel.app").replace(/\/$/, "");
   const canonicalUrl = `${siteUrl}/${locale}/caps/${id}`;
@@ -83,7 +83,7 @@ export async function generateMetadata({
     : `${siteUrl}${cap.image.startsWith("/") ? "" : "/"}${cap.image}`;
 
   return {
-    title: `${name} | Moya Caps 0880 Good Luck Edition`,
+    title: `${name} | Good Luck 0880 Edition`,
     description,
     alternates: {
       canonical: canonicalUrl,
@@ -94,8 +94,8 @@ export async function generateMetadata({
     },
     openGraph: {
       type: "website",
-      siteName: "Moya Caps",
-      title: `${name} | Moya Caps 0880 Good Luck Edition`,
+      siteName: "Good Luck",
+      title: `${name} | Good Luck 0880 Edition`,
       description,
       url: canonicalUrl,
       locale: locale === "es" ? "es_ES" : "en_US",
@@ -104,14 +104,14 @@ export async function generateMetadata({
           url: imageUrl,
           width: 800,
           height: 800,
-          alt: `${name} - Moya Caps 0880`,
+          alt: `${name} - Good Luck 0880`,
           type: "image/png",
         },
       ],
     },
     twitter: {
       card: "summary_large_image",
-      title: `${name} | Moya Caps 0880`,
+      title: `${name} | Good Luck 0880`,
       description,
       images: [imageUrl],
       creator: "@moyacaps",
