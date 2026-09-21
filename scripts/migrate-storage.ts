@@ -6,7 +6,7 @@ const CAPS_DIR = path.resolve(process.cwd(), "public/caps");
 
 async function main() {
   console.log("==================================================");
-  console.log("MoyaCaps: Migrating Cap Images to Convex Storage");
+  console.log("Good Luck: Migrating Cap Images to Convex Storage");
   console.log("==================================================\n");
 
   if (!fs.existsSync(CAPS_DIR)) {

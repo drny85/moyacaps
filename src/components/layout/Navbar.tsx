@@ -158,7 +158,7 @@ export function Navbar() {
               <Link
                 href="/admin/analytics"
                 className="inline-flex items-center gap-2 px-3 py-1.5 sm:py-2 rounded-xl bg-gradient-to-r from-red-600/90 to-rose-700 hover:from-red-600 hover:to-rose-600 text-white text-xs font-display font-bold shadow-lg shadow-red-500/20 hover:shadow-red-500/35 border border-red-400/30 transition-all hover:scale-[1.02] active:scale-[0.98]"
-                title="MoyaCaps Operations HQ (Admin Dashboard)"
+                title="Good Luck Operations HQ (Admin Dashboard)"
               >
                 <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />

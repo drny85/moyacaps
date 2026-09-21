@@ -34,7 +34,7 @@ export function AdminGuard({ children }: { children: React.ReactNode }) {
             <Lock className="w-7 h-7" />
           </div>
           <span className="text-[10px] font-mono tracking-widest uppercase px-2.5 py-1 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 font-semibold mb-3 inline-block">
-            MoyaCaps Operations HQ
+            Good Luck Operations HQ
           </span>
           <h1 className="font-display text-2xl font-bold text-zinc-900 dark:text-white mb-2">
             Administrator Access Required

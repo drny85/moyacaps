@@ -114,7 +114,7 @@ export async function generateMetadata({
       title: `${name} | Good Luck 0880`,
       description,
       images: [imageUrl],
-      creator: "@moyacaps",
+      creator: process.env.NEXT_PUBLIC_TWITTER_HANDLE || "@goodluckcaps",
     },
   };
 }
