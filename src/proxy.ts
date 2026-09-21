@@ -19,7 +19,7 @@ export default proxy;
 
 export const config = {
   matcher: [
-    // Match internationalized routes while ignoring static assets
-    "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
+    // Match internationalized routes while ignoring static assets, sitemaps, and robots.txt
+    "/((?!_next|robots\\.txt|sitemap\\.xml|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest|xml|txt)).*)",
   ],
 };

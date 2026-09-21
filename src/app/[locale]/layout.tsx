@@ -16,6 +16,7 @@ import { UserSyncProvider } from "@/components/providers/UserSyncProvider";
 import { MobileActionBar } from "@/components/layout/MobileActionBar";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { AdminQuickBar } from "@/components/admin/AdminQuickBar";
+import { OrganizationJsonLd } from "@/components/seo/OrganizationJsonLd";
 
 export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
@@ -44,6 +45,7 @@ export default async function LocaleLayout({
             <UserSyncProvider>
               <SmoothScrollProvider>
                 <div className="flex min-h-screen flex-col pb-20 md:pb-0 print:pb-0 print:min-h-0">
+                  <OrganizationJsonLd />
                   {/* Film grain noise overlay */}
                   <div className="noise-overlay print:hidden" aria-hidden="true" />
                   <Navbar />

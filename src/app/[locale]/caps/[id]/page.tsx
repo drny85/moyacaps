@@ -119,12 +119,14 @@ export async function generateMetadata({
   };
 }
 
+import { ProductJsonLd } from "@/components/seo/ProductJsonLd";
+
 export default async function CapDetailPage({
   params,
 }: {
   params: Promise<{ locale: string; id: string }>;
 }) {
-  const { id } = await params;
+  const { id, locale } = await params;
   const cap = await getCapById(id);
 
   if (!cap) {
@@ -133,6 +135,7 @@ export default async function CapDetailPage({
 
   return (
     <main className="min-h-screen pt-4 pb-20">
+      <ProductJsonLd cap={cap} locale={locale} />
       <ProductDetailView cap={cap} allCaps={CAP_VARIANTS} />
     </main>
   );
