@@ -102,6 +102,7 @@ export default defineSchema({
     .index("by_status", ["status"])
     .index("by_status_and_customerEmail", ["status", "customerEmail"])
     .index("by_status_and_customerPhone", ["status", "customerPhone"])
+    .index("by_customerEmail", ["customerEmail"])
     .index("by_reservationExpiresAt", ["reservationExpiresAt"])
     .index("by_createdAt", ["createdAt"]),
   users: defineTable({

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { useTranslations, useLocale } from "next-intl";
 import { Link } from "@/i18n/routing";
@@ -26,7 +26,14 @@ import StockConfirmDialog, { StockConfirmTarget } from "@/components/admin/Stock
 export default function AdminAnalyticsPage() {
   const t = useTranslations("admin");
   const locale = useLocale();
-  const analytics = useQuery(api.orders.getAnalyticsAdmin, {});
+  // Queries must not read the server wall clock (stale reactive caches), so the client
+  // supplies a minute-granularity timestamp for the 7-day daily buckets.
+  const [statsClock, setStatsClock] = useState<number>(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setStatsClock(Date.now()), 60 * 1000);
+    return () => clearInterval(id);
+  }, []);
+  const analytics = useQuery(api.orders.getAnalyticsAdmin, { clientTime: statsClock });
   const adjustStock = useMutation(api.products.adjustVariantStock);
 
   const [restockingId, setRestockingId] = useState<string | null>(null);

@@ -2,7 +2,7 @@
 
 import { internalAction, action } from "./_generated/server";
 import { v, ConvexError } from "convex/values";
-import { components } from "./_generated/api";
+import { api, components, internal } from "./_generated/api";
 import { Resend } from "@convex-dev/resend";
 import { render } from "@react-email/render";
 import React from "react";
@@ -178,7 +178,15 @@ export const sendTestAdminOrderAlert = action({
     }
     const email = identity.email?.toLowerCase() || "";
     const isPrimary = email === PRIMARY_ADMIN_EMAIL || identity.subject === PRIMARY_ADMIN_CLERK_ID;
-    const hasAdminRole = (identity as any).role === "admin";
+    // SECURITY: never trust a token "role" claim (it can originate from client-writable
+    // publicMetadata). Non-allowlisted callers must be verified against the users table.
+    let hasAdminRole = false;
+    if (!isPrimary) {
+      const staffUser = await ctx.runQuery(api.users.getUserByClerkId, {
+        clerkId: identity.subject,
+      });
+      hasAdminRole = staffUser?.role === "admin";
+    }
     if (!isPrimary && !hasAdminRole) {
       throw new ConvexError("Forbidden: Administrator privileges required.");
     }

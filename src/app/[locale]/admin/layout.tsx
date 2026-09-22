@@ -99,10 +99,18 @@ export default function AdminLayout({
   const { user, isLoaded, isSignedIn } = useSafeUser();
   const isAuthorized = isLoaded && isSignedIn && checkIsAdmin(user);
 
+  // Attention telemetry refresh clock (queries must not read wall clock server-side,
+  // so the client supplies a minute-granularity timestamp).
+  const [statsClock, setStatsClock] = useState<number>(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setStatsClock(Date.now()), 60 * 1000);
+    return () => clearInterval(id);
+  }, []);
+
   // Real-time attention telemetry from Convex (only query when authenticated & authorized)
   const attentionStats = useQuery(
     api.orders.getOrdersAttentionStats,
-    isAuthorized ? {} : "skip"
+    isAuthorized ? { clientTime: statsClock } : "skip"
   );
 
   // Real-time order arrival sound cue watcher

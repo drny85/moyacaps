@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import Image from "next/image";
 import { useTranslations, useLocale } from "next-intl";
 import { useQuery, useMutation, useAction } from "convex/react";
@@ -154,7 +154,12 @@ export default function AdminOrdersPage() {
   const cancelAndRefundAdmin = useAction(api.stripe.cancelAndRefundOrderAdmin);
 
   // Attention stats & Resend test alert action
-  const attentionStats = useQuery(api.orders.getOrdersAttentionStats);
+  const [statsClock, setStatsClock] = useState<number>(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setStatsClock(Date.now()), 60 * 1000);
+    return () => clearInterval(id);
+  }, []);
+  const attentionStats = useQuery(api.orders.getOrdersAttentionStats, { clientTime: statsClock });
   const sendTestAlert = useAction(api.emails.sendTestAdminOrderAlert);
   const [isSendingTestAlert, setIsSendingTestAlert] = useState(false);
 

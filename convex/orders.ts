@@ -546,31 +546,6 @@ export const getOrdersByClerkId = query({
   },
 });
 
-export const getOrders = query({
-  args: {},
-  handler: async (ctx) => {
-    await requireAdmin(ctx);
-    const orders = await ctx.db.query("orders").order("desc").collect();
-    return orders.filter((o) => o.status !== "pending");
-  },
-});
-
-export const cleanupPendingOrders = mutation({
-  args: {},
-  handler: async (ctx) => {
-    await requireAdmin(ctx);
-    const pending = await ctx.db
-      .query("orders")
-      .withIndex("by_status", (q) => q.eq("status", "pending"))
-      .collect();
-
-    for (const order of pending) {
-      await ctx.db.delete(order._id);
-    }
-    return { deletedCount: pending.length };
-  },
-});
-
 export const updateShippingAddress = mutation({
   args: {
     orderId: v.id("orders"),
@@ -1008,18 +983,22 @@ export const getAllOrdersAdmin = query({
 });
 
 /**
- * Returns real-time counts and metrics of orders and items requiring operational attention.
+ * Admin query for attention metrics. `clientTime` MUST be supplied by the caller:
+ * queries run on a cached reactive snapshot and never re-run because time advanced,
+ * so reading Date.now() inside would freeze the overdue counters silently.
  */
 export const getOrdersAttentionStats = query({
-  args: {},
-  handler: async (ctx) => {
+  args: {
+    clientTime: v.number(),
+  },
+  handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
       return null;
     }
     await requireAdmin(ctx);
 
-    const now = Date.now();
+    const now = args.clientTime;
     const twentyFourHoursAgo = now - 24 * 60 * 60 * 1000;
 
     // Bounded reads via by_status indexes. Operational queues rarely exceed these caps;
@@ -1124,7 +1103,6 @@ export const createWhatsAppOrderLead = internalMutation({
     const leadLookbackMs = 24 * 60 * 60 * 1000;
     const lookbackStart = timestamp - leadLookbackMs;
     const activeLeadIds = new Set<string>();
-    let recentLeadCount = 0;
 
     for (const anchor of anchors) {
       const leads =
@@ -1144,15 +1122,25 @@ export const createWhatsAppOrderLead = internalMutation({
 
       for (const lead of leads) {
         activeLeadIds.add(lead._id);
-        if ((lead.createdAt || 0) >= lookbackStart) recentLeadCount += 1;
       }
     }
 
     if (activeLeadIds.size >= 3) {
       throw new ConvexError("MAX_ACTIVE_RESERVATIONS");
     }
-    if (recentLeadCount >= 5) {
-      throw new ConvexError("RESERVATION_RATE_LIMITED");
+
+    // True 24h sliding window over ALL reservations this email ever created (including
+    // cancelled/expired ones): cancel-and-recreate cannot launder the active cap.
+    if (cleanEmail) {
+      const recent = await ctx.db
+        .query("orders")
+        .withIndex("by_customerEmail", (q) => q.eq("customerEmail", cleanEmail))
+        .order("desc")
+        .take(10);
+      const createdInWindow = recent.filter((o) => (o.createdAt || 0) >= lookbackStart).length;
+      if (createdInWindow >= 5) {
+        throw new ConvexError("RESERVATION_RATE_LIMITED");
+      }
     }
 
     // 3. Validate real-time stock, compute canonical DB prices, and decrement immediately
