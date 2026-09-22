@@ -75,7 +75,7 @@ export default function CheckoutSuccessPage() {
   );
 
   const displayOrderNumber = order?.orderNumber || orderNumberParam || "GL-0880-SECURED";
-  const trackingNumber = order?.trackingNumber || "GL-TRK-748921";
+  const trackingNumber = order?.trackingNumber || null;
 
   const handleCopyOrder = () => {
     navigator.clipboard.writeText(displayOrderNumber);
@@ -131,7 +131,11 @@ export default function CheckoutSuccessPage() {
 
           <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl glass-dark border border-black/[0.08] dark:border-white/[0.08] text-xs font-mono text-zinc-600 dark:text-zinc-400">
             <span className="text-zinc-500">{t("trackingStub")}:</span>
-            <span className="text-emerald-600 dark:text-emerald-400 font-bold">{trackingNumber}</span>
+            {trackingNumber ? (
+              <span className="text-emerald-600 dark:text-emerald-400 font-bold">{trackingNumber}</span>
+            ) : (
+              <span className="italic text-zinc-400">{locale === "es" ? "Por asignar" : "Awaiting assignment"}</span>
+            )}
           </div>
 
           {isMock && (

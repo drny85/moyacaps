@@ -14,7 +14,7 @@ http.route({
     const payload = await request.text();
 
     try {
-      await ctx.runAction(api.stripe.fulfillStripeWebhook, {
+      await ctx.runAction(internal.stripe.fulfillStripeWebhook, {
         payload,
         signature,
       });
@@ -85,11 +85,14 @@ http.route({
         const imageUrl = data.image_url || undefined;
         const phone = data.phone_numbers?.[0]?.phone_number || undefined;
 
+        // SECURITY: admin is granted ONLY by the allowlist below. Clerk publicMetadata is
+        // client-writable, so data.public_metadata?.role must NEVER confer admin rights.
         const isAdmin =
           email === PRIMARY_ADMIN_EMAIL.toLowerCase() ||
-          clerkId === PRIMARY_ADMIN_CLERK_ID ||
-          data.public_metadata?.role === "admin";
+          clerkId === PRIMARY_ADMIN_CLERK_ID;
 
+        // Admins never lose access through webhook chatter: upsertUser refuses to demote
+        // an established admin row. Removal is a deliberate act via the auth.ts allowlist.
         const role = isAdmin ? "admin" : "customer";
 
         await ctx.runMutation(internal.users.upsertUser, {

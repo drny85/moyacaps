@@ -134,6 +134,17 @@ export default function AdminOrdersPage() {
     }
   }, [orderParam, orders, selectedOrder]);
 
+  // Self-heal stale snapshots: selectedOrder is a frozen copy, so its status can lag the
+  // reactive server data (webhook settlement, expiry job, another tab). Re-sync it so
+  // status-gated buttons never offer a transition the server's state machine will reject.
+  React.useEffect(() => {
+    if (!selectedOrder || !orders) return;
+    const live = orders.find((o: any) => o._id === selectedOrder._id);
+    if (live && live.status !== selectedOrder.status) {
+      setSelectedOrder(live);
+    }
+  }, [orders, selectedOrder]);
+
   const updateOrderStatus = useMutation(api.orders.updateOrderStatusAdmin);
   const markWhatsAppOrderPaidAdmin = useMutation(api.orders.markWhatsAppOrderPaidAdmin);
   const dispatchWhatsAppPaymentLinkAdmin = useMutation(api.orders.dispatchWhatsAppPaymentLinkAdmin);
@@ -212,7 +223,7 @@ export default function AdminOrdersPage() {
         orderId: ord._id,
       });
 
-      const waUrl = getWhatsAppAdminPaymentLinkUrl({
+      const waRes = getWhatsAppAdminPaymentLinkUrl({
         customerPhone: ord.customerPhone,
         customerName: ord.customerName,
         orderNumber: ord.orderNumber,
@@ -222,17 +233,20 @@ export default function AdminOrdersPage() {
         locale,
       });
 
-      window.open(waUrl, "_blank");
-
-      if (selectedOrder?._id === ord._id) {
-        setSelectedOrder({
-          ...selectedOrder,
-          paymentUrl,
-          paymentLinkSentAt: Date.now(),
-        });
+      if (waRes.url) {
+        window.open(waRes.url, "_blank");
+        triggerSuccess("Payment link refreshed with destination taxes & dispatched via WhatsApp! 24h stock hold extended.");
+      } else {
+        // Lean ADR-0011 leads may have no phone: copy the message so staff can paste it
+        // into the concierge thread the customer already opened.
+        try {
+          await navigator.clipboard.writeText(waRes.message);
+        } catch {
+          /* clipboard may be unavailable; message remains in console for staff */
+          console.warn("Payment link message (no customer phone on order):", waRes.message);
+        }
+        triggerSuccess("No WhatsApp number on this lead — payment message copied to clipboard. Paste it into the customer's concierge thread.");
       }
-
-      triggerSuccess("Payment link refreshed with destination taxes & dispatched via WhatsApp! 24h stock hold extended.");
     } catch (err: any) {
       console.error("Failed to dispatch payment link:", err);
       setActionError(err?.message || "Failed to dispatch payment link.");

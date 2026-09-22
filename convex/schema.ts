@@ -81,6 +81,12 @@ export default defineSchema({
     ),
     paymentMethod: v.union(v.literal("stripe"), v.literal("whatsapp")),
     stripeSessionId: v.optional(v.string()),
+    // History of every Stripe Checkout session ever issued for this order (link refreshes).
+    stripeSessionIds: v.optional(v.array(v.string())),
+    // Stripe Customer id (upserted by email) so identity is reused instead of recreated.
+    stripeCustomerId: v.optional(v.string()),
+    // Stripe event ids already processed for this order (webhook replay/dedupe guard). Bounded.
+    webhookEventIds: v.optional(v.array(v.string())),
     trackingNumber: v.optional(v.string()),
     carrier: v.optional(v.string()),
     adminNotes: v.optional(v.string()),
@@ -94,6 +100,9 @@ export default defineSchema({
     .index("by_clerkUserId", ["clerkUserId"])
     .index("by_stripeSessionId", ["stripeSessionId"])
     .index("by_status", ["status"])
+    .index("by_status_and_customerEmail", ["status", "customerEmail"])
+    .index("by_status_and_customerPhone", ["status", "customerPhone"])
+    .index("by_reservationExpiresAt", ["reservationExpiresAt"])
     .index("by_createdAt", ["createdAt"]),
   users: defineTable({
     clerkId: v.string(),
@@ -109,6 +118,21 @@ export default defineSchema({
     .index("by_clerkId", ["clerkId"])
     .index("by_email", ["email"])
     .index("by_role", ["role"]),
+  payment_events: defineTable({
+    orderId: v.id("orders"),
+    orderNumber: v.string(),
+    // lead_created | link_generated | link_dispatched | stripe_settled | zelle_settled |
+    // double_settlement_attempted | session_expired | charge_refunded | dispute_created |
+    // cancelled | refunded | webhook_orphan | inventory_released
+    type: v.string(),
+    stripeEventId: v.optional(v.string()),
+    stripeSessionId: v.optional(v.string()),
+    actor: v.optional(v.string()),
+    details: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_order", ["orderId"])
+    .index("by_stripeEventId", ["stripeEventId"]),
   drop_alerts: defineTable({
     variantId: v.string(),
     contact: v.string(), // email or WhatsApp number

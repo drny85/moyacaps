@@ -116,6 +116,24 @@ export default function TrackOrderPage() {
     window.open(getWhatsAppTrackingUrl(orderNumber, locale), "_blank");
   };
 
+  // Live countdown of the 24h WhatsApp stock hold (core mechanic of the concierge flow).
+  const [nowTs, setNowTs] = useState<number>(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNowTs(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const reservationMsLeft =
+    orderResult?.status === "whatsapp_initiated" && orderResult.reservationExpiresAt
+      ? orderResult.reservationExpiresAt - nowTs
+      : 0;
+  const formatHoldDuration = (ms: number) => {
+    const total = Math.max(0, Math.floor(ms / 1000));
+    const h = Math.floor(total / 3600);
+    const m = Math.floor((total % 3600) / 60);
+    const s = total % 60;
+    return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+  };
+
   const getStatusStep = (status: string) => {
     switch (status) {
       case "pending":
@@ -357,6 +375,12 @@ export default function TrackOrderPage() {
                           <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-1 leading-relaxed">
                             {t("conciergeCardDesc")}
                           </p>
+                          {reservationMsLeft > 0 && (
+                            <p className="text-[11px] font-mono font-bold text-amber-600 dark:text-amber-400 mt-2">
+                              {locale === "es" ? "Inventario reservado por" : "Stock reserved for"}{" "}
+                              {formatHoldDuration(reservationMsLeft)}
+                            </p>
+                          )}
                         </div>
                       </div>
 

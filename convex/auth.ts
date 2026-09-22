@@ -14,15 +14,15 @@ export async function requireAdmin(ctx: QueryCtx | MutationCtx) {
   const email = identity.email?.toLowerCase() || "";
   const tokenIdentifier = identity.tokenIdentifier || "";
   const clerkId = identity.subject;
-  const role = (identity as any).role;
 
-  // 1. Fast-path check: primary email, primary clerk ID, or token claim
+  // SECURITY: admin fast-path is the hardcoded allowlist ONLY. A "role" claim inside the
+  // session token can originate from client-writable publicMetadata and must never
+  // confer privileges by itself — DB verification below is the authoritative check.
   const isPrimaryEmail = email === PRIMARY_ADMIN_EMAIL;
   const isPrimaryClerkId =
     tokenIdentifier.includes(PRIMARY_ADMIN_CLERK_ID) || clerkId === PRIMARY_ADMIN_CLERK_ID;
-  const hasAdminRoleClaim = role === "admin";
 
-  if (isPrimaryEmail || isPrimaryClerkId || hasAdminRoleClaim) {
+  if (isPrimaryEmail || isPrimaryClerkId) {
     return identity;
   }
 

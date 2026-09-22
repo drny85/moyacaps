@@ -33,7 +33,7 @@ The operational lifecycle of packing, carrier assigning, dispatching, and record
 _Avoid_: Shipping process, handling
 
 **WhatsApp Concierge Order**:
-An order initiated via the Loot Bag for domestic US delivery, reserving inventory for 24 hours in Convex while order items and shipping destination are submitted to the store's WhatsApp concierge. The order begins in review (`whatsapp_initiated`) and is not marked as paid until the customer completes checkout via the payment link or verified bank transfer.
+An order initiated via the Loot Bag for domestic US delivery, reserving inventory for 24 hours in Convex. The customer provides their name and email for tracking and receipt dispatch; physical US shipping address entry, phone collection, and real-time state sales taxes are delegated to the official Stripe checkout payment link (or entered manually by an Administrator for offline Zelle settlements). The order begins in review (`whatsapp_initiated`) and is not marked as paid until the customer completes checkout via the payment link or verified bank transfer.
 _Avoid_: Manual order, cash order, off-platform order, instant WhatsApp checkout
 
 **Concierge Payment Link Dispatch**:
@@ -41,7 +41,7 @@ The operational action performed by an Administrator after inspecting a WhatsApp
 _Avoid_: Link sharing, manual text, invoice sending
 
 **WhatsApp Order Settlement**:
-The atomic transition of a WhatsApp Concierge Order from `whatsapp_initiated` to `paid`, triggered either automatically when the Customer completes the Stripe checkout link (reconciled by `orderNumber` in webhook) or manually by an Administrator confirming a verified Zelle / bank transfer receipt (`markWhatsAppOrderPaidAdmin`).
+The atomic transition of a WhatsApp Concierge Order from `whatsapp_initiated` to `paid`, triggered either automatically when the Customer completes the Stripe checkout link (where Stripe captures the shipping address, phone, and sales tax, and reconciles by `orderNumber` in the webhook) or manually by an Administrator confirming a verified Zelle / bank transfer receipt (`markWhatsAppOrderPaidAdmin`).
 _Avoid_: Offline mark, manual pay, cash reconcile
 
 **User Account**:

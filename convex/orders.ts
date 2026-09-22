@@ -2,6 +2,7 @@ import { mutation, query, internalMutation, internalQuery } from "./_generated/s
 import { v, ConvexError } from "convex/values";
 import { internal } from "./_generated/api";
 import { requireAdmin } from "./auth";
+import { randomDigitString } from "./ids";
 
 const shippingAddressValidator = v.object({
   line1: v.string(),
@@ -19,6 +20,52 @@ const orderItemValidator = v.object({
   price: v.number(),
   image: v.string(),
 });
+
+/**
+ * Append-only audit log for every money-relevant state transition on an order.
+ */
+export const recordPaymentEvent = internalMutation({
+  args: {
+    orderId: v.id("orders"),
+    orderNumber: v.string(),
+    type: v.string(),
+    stripeEventId: v.optional(v.string()),
+    stripeSessionId: v.optional(v.string()),
+    actor: v.optional(v.string()),
+    details: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.insert("payment_events", {
+      orderId: args.orderId,
+      orderNumber: args.orderNumber,
+      type: args.type,
+      stripeEventId: args.stripeEventId,
+      stripeSessionId: args.stripeSessionId,
+      actor: args.actor,
+      details: args.details,
+      createdAt: Date.now(),
+    });
+    return { success: true };
+  },
+});
+
+/**
+ * True when this Stripe webhook event id was already processed for the order (replay guard).
+ */
+function hasProcessedWebhookEvent(order: { webhookEventIds?: string[] }, eventId?: string): boolean {
+  return Boolean(eventId && order.webhookEventIds?.includes(eventId));
+}
+
+function withWebhookEventId(
+  order: { webhookEventIds?: string[] },
+  eventId?: string
+): string[] | undefined {
+  if (!eventId) return order.webhookEventIds;
+  const ids = order.webhookEventIds ? [...order.webhookEventIds] : [];
+  if (!ids.includes(eventId)) ids.push(eventId);
+  // Bounded: keep the most recent 10 processed event ids per order.
+  return ids.slice(-10);
+}
 
 export const createOrder = mutation({
   args: {
@@ -102,6 +149,49 @@ export const getOrderByIdInternal = internalQuery({
   },
 });
 
+export const getOrderByNumberInternal = internalQuery({
+  args: {
+    orderNumber: v.string(),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("orders")
+      .withIndex("by_orderNumber", (q) => q.eq("orderNumber", args.orderNumber))
+      .first();
+  },
+});
+
+export const getOrderByStripeSessionIdInternal = internalQuery({
+  args: {
+    stripeSessionId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("orders")
+      .withIndex("by_stripeSessionId", (q) => q.eq("stripeSessionId", args.stripeSessionId))
+      .first();
+  },
+});
+
+/**
+ * INTERNAL: record a processed Stripe event id on the order (bounded replay guard).
+ */
+export const recordWebhookEventIdInternal = internalMutation({
+  args: {
+    orderId: v.id("orders"),
+    webhookEventId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const order = await ctx.db.get(args.orderId);
+    if (!order) return { success: false };
+    const ids = order.webhookEventIds ? [...order.webhookEventIds] : [];
+    if (ids.includes(args.webhookEventId)) return { success: true };
+    ids.push(args.webhookEventId);
+    await ctx.db.patch(args.orderId, { webhookEventIds: ids.slice(-10) });
+    return { success: true };
+  },
+});
+
 export const createOrUpdateStripeOrder = internalMutation({
   args: {
     stripeSessionId: v.string(),
@@ -124,9 +214,13 @@ export const createOrUpdateStripeOrder = internalMutation({
       })
     ),
     total: v.number(),
+    // Stripe event id that triggered this settlement (bounded replay-dedupe guard).
+    webhookEventId: v.optional(v.string()),
+    // True when the session was issued for a WhatsApp concierge lead order.
+    isWhatsAppOrder: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    // Check if order exists by stripeSessionId or orderNumber (e.g. GL-WA-XXXXXX)
+    // Check if order exists by stripeSessionId or orderNumber (e.g. GL-WA-XXXXXXXX)
     let existing = await ctx.db
       .query("orders")
       .withIndex("by_stripeSessionId", (q) => q.eq("stripeSessionId", args.stripeSessionId))
@@ -140,6 +234,54 @@ export const createOrUpdateStripeOrder = internalMutation({
     }
 
     if (existing) {
+      const alreadyPaidLike = ["paid", "dispatched", "delivered"].includes(existing.status);
+
+      // Replay guard: this exact Stripe event was already applied to this order.
+      if (hasProcessedWebhookEvent(existing, args.webhookEventId)) {
+        return existing._id;
+      }
+
+      // Double-settlement guard (M2): order was already settled (typically Zelle marked paid
+      // by staff) and now a Stripe payment landed on it anyway. NEVER silently overwrite —
+      // flag for human review/refund decision.
+      if (alreadyPaidLike && (args.isWhatsAppOrder || existing.paymentMethod === "whatsapp")) {
+        await ctx.runMutation(internal.orders.recordPaymentEvent, {
+          orderId: existing._id,
+          orderNumber: existing.orderNumber,
+          type: "double_settlement_attempted",
+          stripeEventId: args.webhookEventId,
+          stripeSessionId: args.stripeSessionId,
+          details: `Order settled as ${existing.paymentMethod.toUpperCase()} but Stripe session ${args.stripeSessionId} also completed with amount ${args.total}. Manual refund review required.`,
+        });
+        await ctx.db.patch(existing._id, {
+          adminNotes: `${existing.adminNotes ? existing.adminNotes + "\n" : ""}⚠️ DOUBLE SETTLEMENT: Stripe session ${args.stripeSessionId} paid $${args.total} after order was already ${existing.status} via ${existing.paymentMethod}. Refund one side manually.`,
+          updatedAt: Date.now(),
+        });
+        return existing._id;
+      }
+
+      const wasAwaitingPayment = existing.status === "whatsapp_initiated";
+
+      // A cancelled order had its stock released; settling it would sell phantom inventory.
+      // Flag for human review (e.g. refund-after-cancel races), never auto-settle.
+      if (existing.status === "cancelled") {
+        await ctx.runMutation(internal.orders.recordPaymentEvent, {
+          orderId: existing._id,
+          orderNumber: existing.orderNumber,
+          type: "double_settlement_attempted",
+          stripeEventId: args.webhookEventId,
+          stripeSessionId: args.stripeSessionId,
+          details: `Stripe session ${args.stripeSessionId} completed on a CANCELLED order (${args.total} ${args.currency}). Stock was released; review manually.`,
+        });
+        await ctx.db.patch(existing._id, {
+          adminNotes: `${existing.adminNotes ? existing.adminNotes + "\n" : ""}⚠️ Payment received on cancelled order via session ${args.stripeSessionId}. Re-create or refund manually.`,
+          updatedAt: Date.now(),
+        });
+        return existing._id;
+      }
+      const sessionHistory = existing.stripeSessionIds ? [...existing.stripeSessionIds] : [];
+      if (!sessionHistory.includes(args.stripeSessionId)) sessionHistory.push(args.stripeSessionId);
+
       // Update with latest details and ensure paid
       await ctx.db.patch(existing._id, {
         customerEmail: args.customerEmail ?? existing.customerEmail,
@@ -152,9 +294,39 @@ export const createOrUpdateStripeOrder = internalMutation({
         status: "paid",
         paymentMethod: "stripe",
         stripeSessionId: args.stripeSessionId,
-        trackingNumber: existing.trackingNumber ?? `GL-TRK-${Math.floor(100000 + Math.random() * 900000)}`,
+        stripeSessionIds: sessionHistory.slice(-10),
+        webhookEventIds: withWebhookEventId(existing, args.webhookEventId),
+        trackingNumber:
+          existing.trackingNumber ?? `GL-TRK-${randomDigitString(6)}`,
         updatedAt: Date.now(),
       });
+
+      await ctx.runMutation(internal.orders.recordPaymentEvent, {
+        orderId: existing._id,
+        orderNumber: existing.orderNumber,
+        type: "stripe_settled",
+        stripeEventId: args.webhookEventId,
+        stripeSessionId: args.stripeSessionId,
+        details: JSON.stringify({ total: args.total, tax: args.tax }),
+      });
+
+      // M4: a WhatsApp lead settling through Stripe never hit the insert branch below, so the
+      // customer receipt must be queued here or the payer gets no confirmation email.
+      if (wasAwaitingPayment && args.customerEmail && args.customerEmail.includes("@")) {
+        await ctx.scheduler.runAfter(0, internal.emails.sendCustomerReceipt, {
+          orderNumber: existing.orderNumber,
+          total: args.total,
+          currency: args.currency,
+          customerName: args.customerName ?? existing.customerName,
+          customerEmail: args.customerEmail,
+          shippingAddress: args.shippingAddress ?? existing.shippingAddress,
+          items: existing.items,
+          subtotal: args.subtotal ?? existing.subtotal,
+          shippingFee: args.shippingFee ?? existing.shippingFee,
+          tax: args.tax,
+        });
+      }
+
       return existing._id;
     }
 
@@ -176,7 +348,9 @@ export const createOrUpdateStripeOrder = internalMutation({
       status: "paid",
       paymentMethod: "stripe",
       stripeSessionId: args.stripeSessionId,
-      trackingNumber: `GL-TRK-${Math.floor(100000 + Math.random() * 900000)}`,
+      stripeSessionIds: [args.stripeSessionId],
+      webhookEventIds: args.webhookEventId ? [args.webhookEventId] : undefined,
+      trackingNumber: `GL-TRK-${randomDigitString(6)}`,
       createdAt: Date.now(),
     });
 
@@ -193,6 +367,15 @@ export const createOrUpdateStripeOrder = internalMutation({
         });
       }
     }
+
+    await ctx.runMutation(internal.orders.recordPaymentEvent, {
+      orderId,
+      orderNumber: args.orderNumber,
+      type: "stripe_settled",
+      stripeEventId: args.webhookEventId,
+      stripeSessionId: args.stripeSessionId,
+      details: JSON.stringify({ total: args.total, tax: args.tax }),
+    });
 
     // Schedule Admin Order Alert for new paid Stripe order
     await ctx.scheduler.runAfter(0, internal.emails.sendAdminOrderAlert, {
@@ -237,27 +420,63 @@ export const getOrderBySessionOrNumber = query({
     identifier: v.string(),
   },
   handler: async (ctx, args) => {
-    // Try by orderNumber first
+    // Shared core projection: never expose payment links, session ids, or admin notes.
+    const baseProjection = (order: any) => ({
+      _id: order._id,
+      orderNumber: order.orderNumber,
+      status: order.status,
+      carrier: order.carrier,
+      trackingNumber: order.trackingNumber,
+      createdAt: order.createdAt,
+      updatedAt: order.updatedAt,
+      currency: order.currency,
+      items: order.items.map((item: any) => ({
+        variantId: item.variantId,
+        name: item.name,
+        quantity: item.quantity,
+        price: item.price,
+        image: item.image,
+      })),
+      customerName: order.customerName,
+      subtotal: order.subtotal,
+      shippingFee: order.shippingFee,
+      tax: order.tax,
+      taxDetails: order.taxDetails,
+      total: order.total,
+      paymentMethod: order.paymentMethod,
+    });
+
+    // Stripe session ids are high-entropy, unguessable, and only appear in the payer's own
+    // return URL — safe to render the checkout summary (address/phone) for confirmation.
+    if (args.identifier.startsWith("cs_")) {
+      const bySession = await ctx.db
+        .query("orders")
+        .withIndex("by_stripeSessionId", (q) => q.eq("stripeSessionId", args.identifier))
+        .first();
+      if (!bySession) return null;
+      return {
+        ...baseProjection(bySession),
+        customerName: bySession.customerName,
+        shippingAddress: bySession.shippingAddress,
+        customerPhone: bySession.customerPhone,
+        isGuestView: false,
+      };
+    }
+
+    // Bare order-number lookups stay minimal: enumeration must not reveal PII.
     const byNumber = await ctx.db
       .query("orders")
       .withIndex("by_orderNumber", (q) => q.eq("orderNumber", args.identifier))
       .first();
 
-    const sanitizeOrder = (order: any) => {
-      if (!order) return null;
-      const { adminNotes, ...publicFields } = order;
-      return publicFields;
+    if (!byNumber) return null;
+    return {
+      ...baseProjection(byNumber),
+      customerName: byNumber.customerName ? byNumber.customerName.split(" ")[0] : undefined,
+      shippingAddress: undefined,
+      customerPhone: undefined,
+      isGuestView: true,
     };
-
-    if (byNumber) return sanitizeOrder(byNumber);
-
-    // Try by stripeSessionId
-    const bySession = await ctx.db
-      .query("orders")
-      .withIndex("by_stripeSessionId", (q) => q.eq("stripeSessionId", args.identifier))
-      .first();
-
-    return sanitizeOrder(bySession);
   },
 });
 
@@ -418,7 +637,7 @@ export const updateShippingAddressAdmin = mutation({
   },
 });
 
-export const cancelOrder = mutation({
+export const cancelOrder = internalMutation({
   args: {
     orderId: v.id("orders"),
     clerkUserId: v.string(),
@@ -471,6 +690,21 @@ export const cancelOrder = mutation({
       updatedAt: Date.now(),
     });
 
+    // Expire any still-open Stripe session so the link cannot be paid against released stock.
+    if (order.stripeSessionId) {
+      await ctx.scheduler.runAfter(0, internal.stripe.expireOpenCheckoutSessionsInternal, {
+        orderId: args.orderId,
+      });
+    }
+
+    await ctx.runMutation(internal.orders.recordPaymentEvent, {
+      orderId: args.orderId,
+      orderNumber: order.orderNumber,
+      type: "cancelled",
+      actor: identity.subject,
+      details: args.reason,
+    });
+
     return {
       success: true,
       stripeSessionId: order.stripeSessionId,
@@ -481,14 +715,14 @@ export const cancelOrder = mutation({
   },
 });
 
-export const cancelOrderAdmin = mutation({
+export const cancelOrderAdmin = internalMutation({
   args: {
     orderId: v.id("orders"),
     reason: v.optional(v.string()),
     adminNotes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await requireAdmin(ctx);
+    const admin = await requireAdmin(ctx);
     const order = await ctx.db.get(args.orderId);
     if (!order) {
       throw new Error("Order not found");
@@ -526,6 +760,21 @@ export const cancelOrderAdmin = mutation({
       status: "cancelled",
       ...(updatedNotes && { adminNotes: updatedNotes }),
       updatedAt: Date.now(),
+    });
+
+    // Expire any still-open Stripe session so the link cannot be paid against released stock.
+    if (order.stripeSessionId) {
+      await ctx.scheduler.runAfter(0, internal.stripe.expireOpenCheckoutSessionsInternal, {
+        orderId: args.orderId,
+      });
+    }
+
+    await ctx.runMutation(internal.orders.recordPaymentEvent, {
+      orderId: args.orderId,
+      orderNumber: order.orderNumber,
+      type: "cancelled",
+      actor: admin.subject,
+      details: args.reason,
     });
 
     return {
@@ -579,8 +828,8 @@ export const getOrderByOrderNumberAndEmail = query({
 
     const orderEmail = (order.customerEmail || "").trim().toLowerCase();
 
-    // If email was provided in lookup and order has email, verify match
-    if (cleanEmail && orderEmail && orderEmail !== cleanEmail) {
+    // If the order carries an email, the lookup MUST match it (no blank-email bypass).
+    if (orderEmail && orderEmail !== cleanEmail) {
       return null;
     }
 
@@ -608,7 +857,8 @@ export const getOrderByOrderNumberAndEmail = query({
       }
     }
 
-    // Return sanitized data: if unauthenticated, redact sensitive PII and pricing
+    // Return sanitized data: if unauthenticated, redact sensitive PII, pricing anchors, and
+    // NEVER expose the live Stripe payment link to non-owners (enumeration hardening).
     if (!isOwnerOrAdmin) {
       return {
         _id: order._id,
@@ -645,8 +895,9 @@ export const getOrderByOrderNumberAndEmail = query({
         taxDetails: order.taxDetails,
         total: order.total,
         paymentMethod: order.paymentMethod,
-        paymentUrl: order.paymentUrl,
+        paymentUrl: undefined,
         paymentLinkSentAt: order.paymentLinkSentAt,
+        reservationExpiresAt: order.reservationExpiresAt,
         isGuestView: true,
       };
     }
@@ -674,6 +925,7 @@ export const getOrderByOrderNumberAndEmail = query({
       updatedAt: order.updatedAt,
       paymentUrl: order.paymentUrl,
       paymentLinkSentAt: order.paymentLinkSentAt,
+      reservationExpiresAt: order.reservationExpiresAt,
       isGuestView: false,
     };
   },
@@ -770,21 +1022,26 @@ export const getOrdersAttentionStats = query({
     const now = Date.now();
     const twentyFourHoursAgo = now - 24 * 60 * 60 * 1000;
 
-    // Utilize by_status index for targeted O(k) queries instead of scanning table
-    const [paidOrders, whatsappOrders, latestOrder] = await Promise.all([
+    // Bounded reads via by_status indexes. Operational queues rarely exceed these caps;
+    // if they do, the number shown is clamped rather than scanning the whole table.
+    const STATS_WINDOW = 1000;
+    const [paidOrders, whatsappOrders, latestOrder, variants] = await Promise.all([
       ctx.db
         .query("orders")
         .withIndex("by_status", (q) => q.eq("status", "paid"))
-        .collect(),
+        .order("desc")
+        .take(STATS_WINDOW),
       ctx.db
         .query("orders")
         .withIndex("by_status", (q) => q.eq("status", "whatsapp_initiated"))
-        .collect(),
+        .order("desc")
+        .take(STATS_WINDOW),
       ctx.db
         .query("orders")
         .withIndex("by_createdAt")
         .order("desc")
         .first(),
+      ctx.db.query("variants").collect(),
     ]);
 
     const unfulfilledPaid = paidOrders.length;
@@ -795,7 +1052,6 @@ export const getOrdersAttentionStats = query({
     const latestOrderTimestamp = latestOrder?.createdAt || 0;
 
     // Low stock inventory warnings (<= 2 units remaining)
-    const variants = await ctx.db.query("variants").collect();
     const lowStockVariants = variants
       .filter((v) => v.stock <= 2)
       .map((v) => ({
@@ -822,8 +1078,9 @@ export const getOrdersAttentionStats = query({
 /**
  * Records a customer WhatsApp checkout lead order, reserves inventory immediately,
  * and schedules a 24-hour auto-cancellation if payment is not confirmed.
+ * INTERNAL: invoked only by the stripe.ts checkout action, never by clients.
  */
-export const createWhatsAppOrderLead = mutation({
+export const createWhatsAppOrderLead = internalMutation({
   args: {
     items: v.array(orderItemValidator),
     currency: v.string(),
@@ -836,6 +1093,7 @@ export const createWhatsAppOrderLead = mutation({
     shippingAddress: v.optional(shippingAddressValidator),
     clerkUserId: v.optional(v.string()),
     paymentUrl: v.optional(v.string()),
+    stripeSessionId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const timestamp = Date.now();
@@ -848,23 +1106,53 @@ export const createWhatsAppOrderLead = mutation({
       throw new Error("Order exceeds maximum items limit.");
     }
 
-    const cleanPhone = args.customerPhone?.trim().slice(0, 30);
+    const cleanPhone = args.customerPhone?.replace(/\D/g, "").slice(0, 20) || undefined;
     const cleanName = args.customerName?.trim().slice(0, 100);
     const cleanEmail = args.customerEmail?.trim().toLowerCase().slice(0, 100);
 
-    // 2. Prevent inventory hoarding: max 3 active unconfirmed leads per phone number
-    if (cleanPhone) {
-      const activeLeads = await ctx.db
-        .query("orders")
-        .withIndex("by_status", (q) => q.eq("status", "whatsapp_initiated"))
-        .filter((q) => q.eq(q.field("customerPhone"), cleanPhone))
-        .take(4);
+    // The lean concierge flow requires an identity anchor (email, or phone as fallback).
+    if (!cleanEmail && !cleanPhone) {
+      throw new ConvexError("MISSING_IDENTITY");
+    }
 
-      if (activeLeads.length >= 3) {
-        throw new Error(
-          "You already have 3 active reservations awaiting confirmation on WhatsApp. Please complete payment or wait for holds to clear."
-        );
+    // 2. Prevent inventory hoarding: max 3 active unconfirmed leads per email OR phone anchor,
+    //    and a 24h sliding window cap of 5 leads per anchor against rotating-identity spam.
+    const anchors: Array<{ field: "customerEmail" | "customerPhone"; value: string }> = [];
+    if (cleanEmail) anchors.push({ field: "customerEmail", value: cleanEmail });
+    if (cleanPhone) anchors.push({ field: "customerPhone", value: cleanPhone });
+
+    const leadLookbackMs = 24 * 60 * 60 * 1000;
+    const lookbackStart = timestamp - leadLookbackMs;
+    const activeLeadIds = new Set<string>();
+    let recentLeadCount = 0;
+
+    for (const anchor of anchors) {
+      const leads =
+        anchor.field === "customerEmail"
+          ? await ctx.db
+            .query("orders")
+            .withIndex("by_status_and_customerEmail", (q) =>
+              q.eq("status", "whatsapp_initiated").eq("customerEmail", anchor.value)
+            )
+            .collect()
+          : await ctx.db
+            .query("orders")
+            .withIndex("by_status_and_customerPhone", (q) =>
+              q.eq("status", "whatsapp_initiated").eq("customerPhone", anchor.value)
+            )
+            .collect();
+
+      for (const lead of leads) {
+        activeLeadIds.add(lead._id);
+        if ((lead.createdAt || 0) >= lookbackStart) recentLeadCount += 1;
       }
+    }
+
+    if (activeLeadIds.size >= 3) {
+      throw new ConvexError("MAX_ACTIVE_RESERVATIONS");
+    }
+    if (recentLeadCount >= 5) {
+      throw new ConvexError("RESERVATION_RATE_LIMITED");
     }
 
     // 3. Validate real-time stock, compute canonical DB prices, and decrement immediately
@@ -924,7 +1212,7 @@ export const createWhatsAppOrderLead = mutation({
         }
       : undefined;
 
-    const orderNumber = `GL-WA-${Math.floor(100000 + Math.random() * 900000)}`;
+    const orderNumber = `GL-WA-${randomDigitString(8)}`;
     const reservationHoldMs = 24 * 60 * 60 * 1000; // 24 hours reservation hold
     const reservationExpiresAt = timestamp + reservationHoldMs;
 
@@ -943,6 +1231,8 @@ export const createWhatsAppOrderLead = mutation({
       status: "whatsapp_initiated",
       paymentMethod: "whatsapp",
       paymentUrl: args.paymentUrl,
+      stripeSessionId: args.stripeSessionId,
+      stripeSessionIds: args.stripeSessionId ? [args.stripeSessionId] : undefined,
       reservationExpiresAt,
       createdAt: timestamp,
     });
@@ -950,6 +1240,19 @@ export const createWhatsAppOrderLead = mutation({
     // Schedule 24h auto-cancellation of WhatsApp reservation if unpaid
     await ctx.scheduler.runAfter(reservationHoldMs, internal.orders.expireWhatsAppOrderLead, {
       orderId,
+    });
+
+    // Audit: reservation created with server-verified totals
+    await ctx.runMutation(internal.orders.recordPaymentEvent, {
+      orderId,
+      orderNumber,
+      type: "lead_created",
+      actor: cleanEmail || cleanPhone,
+      details: JSON.stringify({
+        subtotal: verifiedSubtotal,
+        shippingFee: verifiedShippingFee,
+        total: verifiedTotal,
+      }),
     });
 
     // Schedule Admin Order Alert for WhatsApp order
@@ -969,20 +1272,67 @@ export const createWhatsAppOrderLead = mutation({
       createdAt: timestamp,
     });
 
-    return { orderId, orderNumber, reservationExpiresAt, paymentUrl: args.paymentUrl };
+    return {
+      orderId,
+      orderNumber,
+      reservationExpiresAt,
+      paymentUrl: args.paymentUrl,
+      // Canonical server-verified amounts for customer-facing messaging
+      subtotal: verifiedSubtotal,
+      shippingFee: verifiedShippingFee,
+      total: verifiedTotal,
+      items: verifiedItems,
+    };
   },
 });
 
-export const updateOrderPaymentUrl = mutation({
+/**
+ * INTERNAL only: records the freshly generated Stripe Checkout link on an order and keeps
+ * a bounded history of every session id ever issued (refund/expiry must target the right one).
+ */
+export const updateOrderPaymentUrl = internalMutation({
   args: {
     orderId: v.id("orders"),
     paymentUrl: v.string(),
     stripeSessionId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const order = await ctx.db.get(args.orderId);
+    if (!order) {
+      throw new Error("Order not found");
+    }
+    if (order.status !== "whatsapp_initiated") {
+      throw new Error(`Cannot attach payment link to order in status ${order.status}`);
+    }
+
+    const sessionHistory = order.stripeSessionIds ? [...order.stripeSessionIds] : [];
+    if (args.stripeSessionId && !sessionHistory.includes(args.stripeSessionId)) {
+      sessionHistory.push(args.stripeSessionId);
+    }
+
     await ctx.db.patch(args.orderId, {
       paymentUrl: args.paymentUrl,
-      ...(args.stripeSessionId && { stripeSessionId: args.stripeSessionId }),
+      ...(args.stripeSessionId && {
+        stripeSessionId: args.stripeSessionId,
+        stripeSessionIds: sessionHistory.slice(-10),
+      }),
+      updatedAt: Date.now(),
+    });
+    return { success: true };
+  },
+});
+
+/**
+ * INTERNAL only: links a (re)used Stripe Customer object to an order.
+ */
+export const attachStripeCustomerInternal = internalMutation({
+  args: {
+    orderId: v.id("orders"),
+    stripeCustomerId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.orderId, {
+      stripeCustomerId: args.stripeCustomerId,
       updatedAt: Date.now(),
     });
     return { success: true };
@@ -994,10 +1344,13 @@ export const dispatchWhatsAppPaymentLinkAdmin = mutation({
     orderId: v.id("orders"),
   },
   handler: async (ctx, args) => {
-    await requireAdmin(ctx);
+    const admin = await requireAdmin(ctx);
     const order = await ctx.db.get(args.orderId);
     if (!order) {
       throw new Error("Order not found");
+    }
+    if (order.status !== "whatsapp_initiated") {
+      throw new ConvexError(`Cannot dispatch a payment link for an order in status ${order.status}.`);
     }
 
     const now = Date.now();
@@ -1010,9 +1363,19 @@ export const dispatchWhatsAppPaymentLinkAdmin = mutation({
       adminNotes: `${order.adminNotes ? order.adminNotes + "\n" : ""}Payment link dispatched via WhatsApp at ${new Date(now).toISOString()}. 24h stock hold extended.`.trim(),
     });
 
-    // Reschedule 24h expiration from link dispatch moment
+    // Reschedule 24h expiration from link dispatch moment (older jobs self-veto via the
+    // reservationExpiresAt guard in expireWhatsAppOrderLead).
     await ctx.scheduler.runAfter(24 * 60 * 60 * 1000, internal.orders.expireWhatsAppOrderLead, {
       orderId: args.orderId,
+    });
+
+    await ctx.runMutation(internal.orders.recordPaymentEvent, {
+      orderId: args.orderId,
+      orderNumber: order.orderNumber,
+      type: "link_dispatched",
+      stripeSessionId: order.stripeSessionId,
+      actor: admin.subject,
+      details: `Stock hold extended to ${new Date(newExpiresAt).toISOString()}`,
     });
 
     return {
@@ -1029,7 +1392,7 @@ export const markWhatsAppOrderPaidAdmin = mutation({
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await requireAdmin(ctx);
+    const admin = await requireAdmin(ctx);
     const order = await ctx.db.get(args.orderId);
     if (!order) {
       throw new Error("Order not found");
@@ -1039,13 +1402,38 @@ export const markWhatsAppOrderPaidAdmin = mutation({
       return { success: true, message: "Order is already marked as paid." };
     }
 
-    const trackingNumber = order.trackingNumber || `GL-TRK-${Math.floor(100000 + Math.random() * 900000)}`;
+    // A cancelled order had its stock restored; settling it would sell phantom inventory.
+    if (order.status === "cancelled") {
+      throw new ConvexError(
+        "This reservation was cancelled and its stock was released. Create a new order instead."
+      );
+    }
+
+    const trackingNumber = order.trackingNumber || `GL-TRK-${randomDigitString(6)}`;
 
     await ctx.db.patch(args.orderId, {
       status: "paid",
       trackingNumber,
       adminNotes: `${order.adminNotes ? order.adminNotes + "\n" : ""}Confirmed paid via WhatsApp (Zelle / Transfer). ${args.notes || ""}`.trim(),
       updatedAt: Date.now(),
+    });
+
+    // Money safety: expire every still-open Stripe Checkout session for this order so the
+    // customer cannot ALSO pay the card link (double settlement). Runs as a scheduled action
+    // because mutations cannot call external APIs.
+    if ((order.stripeSessionIds?.length || 0) > 0 || order.stripeSessionId) {
+      await ctx.scheduler.runAfter(0, internal.stripe.expireOpenCheckoutSessionsInternal, {
+        orderId: args.orderId,
+      });
+    }
+
+    await ctx.runMutation(internal.orders.recordPaymentEvent, {
+      orderId: args.orderId,
+      orderNumber: order.orderNumber,
+      type: "zelle_settled",
+      stripeSessionId: order.stripeSessionId,
+      actor: admin.subject,
+      details: args.notes,
     });
 
     // Schedule Customer Order Confirmation receipt
@@ -1079,6 +1467,13 @@ export const expireWhatsAppOrderLead = internalMutation({
     const order = await ctx.db.get(args.orderId);
     if (!order) return;
 
+    // Race guard: a link dispatch/refresh reschedules a NEW expiry and pushes
+    // reservationExpiresAt forward. A stale job scheduled earlier must self-veto so it
+    // never cancels a reservation that is still inside its extended hold window.
+    if (order.reservationExpiresAt && order.reservationExpiresAt > Date.now()) {
+      return;
+    }
+
     // Only auto-cancel if it's still awaiting WhatsApp payment confirmation
     if (order.status === "whatsapp_initiated") {
       // Restore reserved inventory
@@ -1100,26 +1495,86 @@ export const expireWhatsAppOrderLead = internalMutation({
         adminNotes: `${order.adminNotes ? order.adminNotes + "\n" : ""}Auto-cancelled: 24-hour WhatsApp reservation hold expired without payment.`,
         updatedAt: Date.now(),
       });
+
+      await ctx.runMutation(internal.orders.recordPaymentEvent, {
+        orderId: order._id,
+        orderNumber: order.orderNumber,
+        type: "inventory_released",
+        details: "Reservation hold expired without payment; stock restored.",
+      });
     }
+  },
+});
+
+export const ORDER_STATUSES = [
+  "pending",
+  "paid",
+  "dispatched",
+  "delivered",
+  "cancelled",
+  "whatsapp_initiated",
+] as const;
+
+const orderStatusValidator = v.union(
+  v.literal("pending"),
+  v.literal("paid"),
+  v.literal("dispatched"),
+  v.literal("delivered"),
+  v.literal("cancelled"),
+  v.literal("whatsapp_initiated")
+);
+
+/**
+ * INTERNAL: orders awaiting payment whose reservation hold window has fully elapsed.
+ * Used by the nightly reconciliation cron.
+ */
+export const getExpiredWhatsAppReservationsInternal = internalQuery({
+  args: {
+    now: v.number(),
+    limit: v.number(),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("orders")
+      .withIndex("by_reservationExpiresAt", (q) => q.lte("reservationExpiresAt", args.now))
+      .filter((q) => q.eq(q.field("status"), "whatsapp_initiated"))
+      .order("asc")
+      .take(args.limit);
   },
 });
 
 export const updateOrderStatusAdmin = mutation({
   args: {
     orderId: v.id("orders"),
-    newStatus: v.string(), // "pending" | "paid" | "dispatched" | "delivered" | "cancelled" | "whatsapp_initiated"
+    newStatus: orderStatusValidator,
     carrier: v.optional(v.string()),
     trackingNumber: v.optional(v.string()),
     adminNotes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await requireAdmin(ctx);
+    const admin = await requireAdmin(ctx);
     const order = await ctx.db.get(args.orderId);
     if (!order) {
       throw new Error("Order not found");
     }
 
     const previousStatus = order.status;
+
+    // Guard the state machine: never regress a settled order back into lead/pending states,
+    // which would strand reserved stock and open double-settlement windows.
+    const wasSettled = ["paid", "dispatched", "delivered"].includes(previousStatus);
+    if (wasSettled && ["pending", "whatsapp_initiated"].includes(args.newStatus)) {
+      throw new ConvexError(
+        `Invalid transition: cannot move a ${previousStatus} order back to ${args.newStatus}.`
+      );
+    }
+    // Settling through this endpoint bypasses Stripe/Zelle settlement guards — use the
+    // dedicated payment actions instead.
+    if (previousStatus === "whatsapp_initiated" && ["paid", "dispatched", "delivered"].includes(args.newStatus)) {
+      throw new ConvexError(
+        "Use 'Mark as Paid (Zelle)' or the Stripe payment link flow to settle a WhatsApp reservation."
+      );
+    }
     const isNowPaidLike = ["paid", "dispatched", "delivered"].includes(args.newStatus);
     const wasPaidLike = ["paid", "dispatched", "delivered"].includes(previousStatus);
 
@@ -1167,10 +1622,25 @@ export const updateOrderStatusAdmin = mutation({
 
     // Auto-generate tracking number if transitioning to dispatched without one
     if (args.newStatus === "dispatched" && !order.trackingNumber && !args.trackingNumber) {
-      updatePayload.trackingNumber = `GL-TRK-${Math.floor(100000 + Math.random() * 900000)}`;
+      updatePayload.trackingNumber = `GL-TRK-${randomDigitString(6)}`;
     }
 
     await ctx.db.patch(args.orderId, updatePayload);
+
+    await ctx.runMutation(internal.orders.recordPaymentEvent, {
+      orderId: args.orderId,
+      orderNumber: order.orderNumber,
+      type: args.newStatus === "cancelled" ? "cancelled" : "status_changed",
+      actor: admin.subject,
+      details: `${previousStatus} → ${args.newStatus}`,
+    });
+
+    // Releasing a reservation through status change must also kill any open payment link.
+    if (args.newStatus === "cancelled" && order.stripeSessionId) {
+      await ctx.scheduler.runAfter(0, internal.stripe.expireOpenCheckoutSessionsInternal, {
+        orderId: args.orderId,
+      });
+    }
 
     return { success: true, orderId: args.orderId, status: args.newStatus };
   },

@@ -20,18 +20,25 @@ export const syncCurrentUser = mutation({
     const imageUrl = identity.pictureUrl || (identity as any).imageUrl || undefined;
     const phone = identity.phoneNumber || undefined;
 
-    // Determine role: primary admin or token role claim
+    // Determine role: allowlist only. NEVER derive admin from client-writable
+    // publicMetadata / token role claims (privilege escalation vector).
     const isAdmin =
       email === PRIMARY_ADMIN_EMAIL ||
-      clerkId === PRIMARY_ADMIN_CLERK_ID ||
-      (identity as any).role === "admin";
+      clerkId === PRIMARY_ADMIN_CLERK_ID;
 
+    // Preserve existing admin grants made through trusted paths; only ever assign admin
+    // upward for allowlisted identities, and never demote an existing admin here.
     const role = isAdmin ? "admin" : "customer";
 
     const existing = await ctx.db
       .query("users")
       .withIndex("by_clerkId", (q) => q.eq("clerkId", clerkId))
       .first();
+
+    const finalRole =
+      role === "customer" && existing?.role === "admin" && !isAdmin
+        ? "admin"
+        : role;
 
     const now = Date.now();
 
@@ -41,7 +48,7 @@ export const syncCurrentUser = mutation({
         name: name ?? existing.name,
         imageUrl: imageUrl ?? existing.imageUrl,
         phone: phone ?? existing.phone,
-        role,
+        role: finalRole,
         deletedAt: undefined, // restore if previously deleted
         updatedAt: now,
       });
@@ -52,7 +59,7 @@ export const syncCurrentUser = mutation({
       clerkId,
       email,
       name,
-      role,
+      role: finalRole,
       imageUrl,
       phone,
       createdAt: now,
@@ -83,11 +90,16 @@ export const upsertUser = internalMutation({
 
     const now = Date.now();
 
+    // Never demote an established admin through routine webhook chatter; role changes are a
+    // deliberate admin-management action, not a side effect of user.updated events.
+    const role =
+      args.role === "customer" && existing?.role === "admin" ? "admin" : args.role;
+
     if (existing) {
       await ctx.db.patch(existing._id, {
         email: args.email.toLowerCase(),
         name: args.name ?? existing.name,
-        role: args.role,
+        role,
         imageUrl: args.imageUrl ?? existing.imageUrl,
         phone: args.phone ?? existing.phone,
         deletedAt: undefined,
@@ -100,7 +112,7 @@ export const upsertUser = internalMutation({
       clerkId: args.clerkId,
       email: args.email.toLowerCase(),
       name: args.name,
-      role: args.role,
+      role,
       imageUrl: args.imageUrl,
       phone: args.phone,
       createdAt: now,

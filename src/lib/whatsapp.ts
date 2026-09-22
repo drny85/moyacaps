@@ -3,26 +3,62 @@
  * Enforces US domestic shipping messaging and 24-hour inventory reservation notices.
  */
 
+const DEFAULT_RESERVATION_HOLD_HOURS = 24;
+
+function resolveSupportPhone(): string {
+  const raw = (process.env.NEXT_PUBLIC_WHATSAPP_PHONE || "").replace(/\D/g, "");
+  if (!raw) {
+    // Fail closed in production: never silently point customers at a placeholder number.
+    if (process.env.NODE_ENV === "production") {
+      throw new Error(
+        "NEXT_PUBLIC_WHATSAPP_PHONE is not configured. Set it in the deployment environment."
+      );
+    }
+    console.warn("[whatsapp] NEXT_PUBLIC_WHATSAPP_PHONE not set; using dev placeholder number.");
+    return "13055550880";
+  }
+  return raw;
+}
+
+let cachedPhone: string | undefined;
+function supportPhone(): string {
+  if (!cachedPhone) cachedPhone = resolveSupportPhone();
+  return cachedPhone;
+}
+
+/** Formats a money amount honestly (no hardcoded ".00" string math). */
+export function formatUsd(amount: number): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: Number.isInteger(amount) ? 0 : 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
+}
+
 export const WHATSAPP_CONFIG = {
-  // Configurable via environment variable; defaults to US domestic support number
-  defaultPhone: (process.env.NEXT_PUBLIC_WHATSAPP_PHONE || "13055550880").replace(/\D/g, ""),
-  reservationHoldHours: 24,
+  get defaultPhone(): string {
+    return supportPhone();
+  },
+  reservationHoldHours: DEFAULT_RESERVATION_HOLD_HOURS,
   country: "US",
   shippingNoticeEn: "Domestic US shipping only (2-4 business days express).",
   shippingNoticeEs: "Envíos únicamente dentro de EE.UU. (2-4 días hábiles express).",
 };
 
+/**
+ * Normalizes any customer-provided phone to digits-only for wa.me URLs.
+ */
 export function getCleanWhatsAppNumber(phone?: string): string {
-  if (!phone) return WHATSAPP_CONFIG.defaultPhone;
-  const cleaned = phone.replace(/\D/g, "");
-  return cleaned || WHATSAPP_CONFIG.defaultPhone;
+  if (!phone) return "";
+  return phone.replace(/\D/g, "");
 }
 
 /**
  * Builds standard concierge support URL for floating bars, footer, and general inquiries.
  */
 export function getWhatsAppConciergeUrl(locale = "en", customText?: string): string {
-  const phone = WHATSAPP_CONFIG.defaultPhone;
+  const phone = supportPhone();
   const text =
     customText ||
     (locale === "es"
@@ -36,7 +72,7 @@ export function getWhatsAppConciergeUrl(locale = "en", customText?: string): str
  * Builds order tracking inquiry URL.
  */
 export function getWhatsAppTrackingUrl(orderNumber: string, locale = "en"): string {
-  const phone = WHATSAPP_CONFIG.defaultPhone;
+  const phone = supportPhone();
   const greeting =
     locale === "es"
       ? `¡Hola Good Luck! Necesito asistencia con el seguimiento de mi pedido #${orderNumber}.`
@@ -100,6 +136,7 @@ export interface WhatsAppOrderLeadParams {
   currency?: string;
   customerName?: string;
   customerPhone?: string;
+  customerEmail?: string;
   shippingAddress?: {
     line1?: string;
     line2?: string;
@@ -121,6 +158,7 @@ export function getWhatsAppOrderUrl({
   currency = "USD",
   customerName,
   customerPhone,
+  customerEmail,
   shippingAddress,
   paymentUrl,
   locale = "en",
@@ -143,18 +181,19 @@ export function getWhatsAppOrderUrl({
   }
 
   items.forEach((item, index) => {
-    lines.push(`${index + 1}. ${item.name} (${item.quantity}x) — $${item.price} ${currency} c/u`);
+    lines.push(`${index + 1}. ${item.name} (${item.quantity}x) — ${formatUsd(item.price)} ${currency} c/u`);
   });
 
   lines.push("");
-  lines.push(`Subtotal: $${subtotal}.00 ${currency}`);
-  lines.push(`Shipping (US Domestic): ${shippingFee === 0 ? (isEs ? "GRATIS" : "FREE") : `$${shippingFee}.00 ${currency}`}`);
-  lines.push(`*Total: $${total}.00 ${currency}*`);
+  lines.push(`Subtotal: ${formatUsd(subtotal)} ${currency}`);
+  lines.push(`Shipping (US Domestic): ${shippingFee === 0 ? (isEs ? "GRATIS" : "FREE") : `${formatUsd(shippingFee)} ${currency}`}`);
+  lines.push(`*Total: ${formatUsd(total)} ${currency}* (antes de impuestos / before tax)`);
   lines.push("");
 
-  if (customerName || customerPhone || shippingAddress) {
-    lines.push(isEs ? "*Datos de Envío (EE.UU.):*" : "*US Shipping Destination:*");
+  if (customerName || customerPhone || customerEmail || shippingAddress) {
+    lines.push(isEs ? "*Datos de Contacto y Entrega:*" : "*Contact & US Delivery Details:*");
     if (customerName) lines.push(`${isEs ? "Nombre" : "Name"}: ${customerName}`);
+    if (customerEmail) lines.push(`Email: ${customerEmail}`);
     if (customerPhone) lines.push(`${isEs ? "Teléfono" : "Phone"}: ${customerPhone}`);
     if (shippingAddress) {
       const parts = [
@@ -166,6 +205,12 @@ export function getWhatsAppOrderUrl({
         "US",
       ].filter(Boolean);
       lines.push(`${isEs ? "Dirección" : "Address"}: ${parts.join(", ")}`);
+    } else {
+      lines.push(
+        isEs
+          ? "Dirección: Se ingresará de forma segura en el enlace de pago oficial (Envíos a todo EE.UU.)"
+          : "Address: To be provided securely on the official checkout payment link (US Domestic)"
+      );
     }
     lines.push("");
   }
@@ -212,7 +257,7 @@ export function getWhatsAppAdminPaymentLinkMessage({
       `¡Hola ${name}! 👋`,
       `Hemos revisado y aprobado tu pedido *#${orderNumber}* de Good Luck (Colección 0880) para entrega en EE.UU.`,
       "",
-      `*Total a pagar:* $${total}.00 ${currency}`,
+      `*Total a pagar:* ${formatUsd(total)} ${currency} (los impuestos se calculan en el enlace de pago)`,
       "",
       `💳 *Paga de forma segura aquí (Tarjeta / Apple Pay):*`,
       paymentUrl,
@@ -227,7 +272,7 @@ export function getWhatsAppAdminPaymentLinkMessage({
     `Hi ${name}! 👋`,
     `We've reviewed and approved your order *#${orderNumber}* from Good Luck (0880 Collection) for US delivery.`,
     "",
-    `*Total Due:* $${total}.00 ${currency}`,
+    `*Total Due:* ${formatUsd(total)} ${currency} (sales tax is calculated securely at checkout)`,
     "",
     `💳 *Complete your purchase securely here (Card / Apple Pay):*`,
     paymentUrl,
@@ -238,10 +283,20 @@ export function getWhatsAppAdminPaymentLinkMessage({
   ].join("\n");
 }
 
-export function getWhatsAppAdminPaymentLinkUrl(params: AdminPaymentLinkParams): string {
+/**
+ * Returns the wa.me deep link to the CUSTOMER's number, or null when the lead has no phone —
+ * the caller must then ask the admin to reply inside the concierge thread instead of opening
+ * a chat with the store's own number (which is what the old fallback did).
+ */
+export function getWhatsAppAdminPaymentLinkUrl(
+  params: AdminPaymentLinkParams
+): { url: string | null; message: string } {
   const cleanPhone = getCleanWhatsAppNumber(params.customerPhone);
-  const text = getWhatsAppAdminPaymentLinkMessage(params);
-  return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`;
+  const message = getWhatsAppAdminPaymentLinkMessage(params);
+  if (!cleanPhone) {
+    return { url: null, message };
+  }
+  return { url: `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`, message };
 }
 
 /**

@@ -9,10 +9,12 @@
  */
 
 import type * as auth from "../auth.js";
+import type * as crons from "../crons.js";
 import type * as emails from "../emails.js";
 import type * as emails_AdminOrderAlert from "../emails/AdminOrderAlert.js";
 import type * as emails_CustomerReceipt from "../emails/CustomerReceipt.js";
 import type * as http from "../http.js";
+import type * as ids from "../ids.js";
 import type * as orders from "../orders.js";
 import type * as products from "../products.js";
 import type * as stripe from "../stripe.js";
@@ -26,10 +28,12 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
+  crons: typeof crons;
   emails: typeof emails;
   "emails/AdminOrderAlert": typeof emails_AdminOrderAlert;
   "emails/CustomerReceipt": typeof emails_CustomerReceipt;
   http: typeof http;
+  ids: typeof ids;
   orders: typeof orders;
   products: typeof products;
   stripe: typeof stripe;
