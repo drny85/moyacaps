@@ -1,4 +1,4 @@
-import { mutation, query, internalMutation } from "./_generated/server";
+import { mutation, query, internalMutation, internalQuery } from "./_generated/server";
 import { v, ConvexError } from "convex/values";
 import { internal } from "./_generated/api";
 import { requireAdmin } from "./auth";
@@ -90,6 +90,15 @@ export const createOrder = mutation({
     }
 
     return orderId;
+  },
+});
+
+export const getOrderByIdInternal = internalQuery({
+  args: {
+    orderId: v.id("orders"),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.orderId);
   },
 });
 

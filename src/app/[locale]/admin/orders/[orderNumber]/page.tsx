@@ -58,6 +58,7 @@ export default function DedicatedOrderDetailPage({
   const updateOrderStatus = useMutation(api.orders.updateOrderStatusAdmin);
   const markWhatsAppOrderPaidAdmin = useMutation(api.orders.markWhatsAppOrderPaidAdmin);
   const dispatchWhatsAppPaymentLinkAdmin = useMutation(api.orders.dispatchWhatsAppPaymentLinkAdmin);
+  const generateOrRefreshPaymentLink = useAction(api.stripe.generateOrRefreshWhatsAppPaymentLink);
   const updateOrderFulfillment = useMutation(api.orders.updateOrderFulfillmentAdmin);
   const updateShippingAddressAdmin = useMutation(api.orders.updateShippingAddressAdmin);
   const cancelAndRefundAdmin = useAction(api.stripe.cancelAndRefundOrderAdmin);
@@ -202,9 +203,21 @@ export default function DedicatedOrderDetailPage({
   };
 
   const handleDispatchPaymentLink = async () => {
-    if (!order || !order.paymentUrl) return;
+    if (!order) return;
     try {
       setIsProcessing(true);
+      // Ensure the Stripe Checkout link has destination shipping address and automatic taxes calculated
+      const linkRes = await generateOrRefreshPaymentLink({
+        orderId: order._id,
+        origin: window.location.origin,
+        locale,
+      });
+
+      const paymentUrl = linkRes.paymentUrl || order.paymentUrl;
+      if (!paymentUrl) {
+        throw new Error("Could not generate Stripe payment link. Please check customer shipping address.");
+      }
+
       await dispatchWhatsAppPaymentLinkAdmin({
         orderId: order._id,
       });
@@ -213,7 +226,7 @@ export default function DedicatedOrderDetailPage({
         customerPhone: order.customerPhone,
         customerName: order.customerName,
         orderNumber: order.orderNumber,
-        paymentUrl: order.paymentUrl,
+        paymentUrl,
         total: order.total,
         currency: order.currency || "USD",
         locale,
@@ -221,7 +234,7 @@ export default function DedicatedOrderDetailPage({
 
       window.open(waUrl, "_blank");
 
-      triggerSuccess("Payment link dispatched to customer via WhatsApp! 24h stock hold extended.");
+      triggerSuccess("Payment link refreshed with destination taxes & dispatched via WhatsApp! 24h stock hold extended.");
     } catch (err: any) {
       console.error("Failed to dispatch payment link:", err);
       setActionError(err?.message || "Failed to dispatch payment link.");

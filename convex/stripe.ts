@@ -511,13 +511,73 @@ export const createWhatsAppCheckoutSession = action({
       // Session expires 2 minutes before 24 hours (Stripe limit is strictly < 24h)
       const sessionExpiresAt = Math.floor(Date.now() / 1000) + 24 * 3600 - 120;
 
+      // 3. Pre-create Stripe Customer with US destination address so Stripe Checkout pre-populates address and calculates Automatic Tax
+      let customerId: string | undefined = undefined;
+      try {
+        const stripeCustomer = await stripe.customers.create({
+          name: args.customerName,
+          phone: args.customerPhone,
+          email: args.customerEmail || undefined,
+          address: {
+            line1: args.shippingAddress.line1,
+            line2: args.shippingAddress.line2 || undefined,
+            city: args.shippingAddress.city,
+            state: args.shippingAddress.state,
+            postal_code: args.shippingAddress.postalCode,
+            country: "US",
+          },
+          shipping: {
+            name: args.customerName,
+            phone: args.customerPhone,
+            address: {
+              line1: args.shippingAddress.line1,
+              line2: args.shippingAddress.line2 || undefined,
+              city: args.shippingAddress.city,
+              state: args.shippingAddress.state,
+              postal_code: args.shippingAddress.postalCode,
+              country: "US",
+            },
+          },
+          metadata: {
+            orderNumber: orderLead.orderNumber,
+            clerkUserId: args.clerkUserId || "",
+          },
+        });
+        customerId = stripeCustomer.id;
+      } catch (custErr) {
+        console.warn("Could not create Stripe customer with shipping address for WhatsApp lead:", custErr);
+      }
+
+      const compactItems = validatedItems.map((item) => ({
+        v: item.variantId,
+        q: item.quantity,
+        p: item.price,
+      }));
+
       const session = await stripe.checkout.sessions.create({
         payment_method_types: ["card", "link"],
         line_items: stripeLineItems,
         mode: "payment",
         expires_at: sessionExpiresAt,
-        customer_email: args.customerEmail || undefined,
+        customer: customerId,
+        customer_update: customerId
+          ? {
+              shipping: "auto",
+              address: "auto",
+              name: "auto",
+            }
+          : undefined,
+        customer_email: customerId ? undefined : (args.customerEmail || undefined),
         billing_address_collection: "auto",
+        shipping_address_collection: {
+          allowed_countries: ["US"],
+        },
+        phone_number_collection: {
+          enabled: true,
+        },
+        automatic_tax: {
+          enabled: true,
+        },
         shipping_options: [
           {
             shipping_rate_data: {
@@ -543,6 +603,7 @@ export const createWhatsAppCheckoutSession = action({
           shippingFee: shippingFee.toString(),
           total: total.toString(),
           isWhatsAppOrder: "true",
+          itemsJson: JSON.stringify(compactItems),
         },
       });
 
@@ -565,6 +626,170 @@ export const createWhatsAppCheckoutSession = action({
       orderNumber: orderLead.orderNumber,
       paymentUrl,
       reservationExpiresAt: orderLead.reservationExpiresAt,
+    };
+  },
+});
+
+/**
+ * Regenerates or refreshes a Stripe Checkout payment link for an existing WhatsApp order,
+ * ensuring the destination shipping address is pre-filled and automatic sales tax is computed.
+ */
+export const generateOrRefreshWhatsAppPaymentLink = action({
+  args: {
+    orderId: v.id("orders"),
+    origin: v.string(),
+    locale: v.string(),
+  },
+  handler: async (
+    ctx,
+    args
+  ): Promise<{
+    paymentUrl: string | null;
+    stripeSessionId?: string;
+  }> => {
+    const order: any = await ctx.runQuery(internal.orders.getOrderByIdInternal, {
+      orderId: args.orderId,
+    });
+    if (!order) {
+      throw new Error("Order not found");
+    }
+
+    if (!order.shippingAddress) {
+      throw new Error("Cannot generate payment link: Order has no shipping address");
+    }
+
+    const stripe = getStripe();
+    const items = order.items || [];
+    const stripeLineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = items.map((item: any) => ({
+      price_data: {
+        currency: "usd",
+        product_data: {
+          name: `Good Luck 0880 — ${item.name}`,
+          images: [item.image.startsWith("http") ? item.image : `${args.origin}${item.image}`],
+          tax_code: resolveProductTaxCode(item),
+          metadata: {
+            variantId: item.variantId,
+          },
+        },
+        unit_amount: Math.round(item.price * 100),
+      },
+      quantity: item.quantity,
+    }));
+
+    const totalCaps = items.reduce((acc: number, i: any) => acc + i.quantity, 0);
+    const freeShipping = totalCaps >= 2;
+    const shippingFee = order.shippingFee ?? (freeShipping ? 0 : 8);
+    const subtotal = order.subtotal ?? items.reduce((acc: number, i: any) => acc + i.price * i.quantity, 0);
+    const total = subtotal + shippingFee;
+
+    let customerId: string | undefined = undefined;
+    try {
+      const stripeCustomer = await stripe.customers.create({
+        name: order.customerName || undefined,
+        phone: order.customerPhone || undefined,
+        email: order.customerEmail || undefined,
+        address: {
+          line1: order.shippingAddress.line1,
+          line2: order.shippingAddress.line2 || undefined,
+          city: order.shippingAddress.city,
+          state: order.shippingAddress.state,
+          postal_code: order.shippingAddress.postalCode,
+          country: "US",
+        },
+        shipping: {
+          name: order.customerName || "Customer",
+          phone: order.customerPhone || undefined,
+          address: {
+            line1: order.shippingAddress.line1,
+            line2: order.shippingAddress.line2 || undefined,
+            city: order.shippingAddress.city,
+            state: order.shippingAddress.state,
+            postal_code: order.shippingAddress.postalCode,
+            country: "US",
+          },
+        },
+        metadata: {
+          orderNumber: order.orderNumber,
+          clerkUserId: order.clerkUserId || "",
+        },
+      });
+      customerId = stripeCustomer.id;
+    } catch (custErr) {
+      console.warn("Could not create Stripe customer for payment link refresh:", custErr);
+    }
+
+    const sessionExpiresAt = Math.floor(Date.now() / 1000) + 24 * 3600 - 120;
+
+    const compactItems = items.map((item: any) => ({
+      v: item.variantId,
+      q: item.quantity,
+      p: item.price,
+    }));
+
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ["card", "link"],
+      line_items: stripeLineItems,
+      mode: "payment",
+      expires_at: sessionExpiresAt,
+      customer: customerId,
+      customer_update: customerId
+        ? {
+            shipping: "auto",
+            address: "auto",
+            name: "auto",
+          }
+        : undefined,
+      customer_email: customerId ? undefined : (order.customerEmail || undefined),
+      billing_address_collection: "auto",
+      shipping_address_collection: {
+        allowed_countries: ["US"],
+      },
+      phone_number_collection: {
+        enabled: true,
+      },
+      automatic_tax: {
+        enabled: true,
+      },
+      shipping_options: [
+        {
+          shipping_rate_data: {
+            type: "fixed_amount",
+            fixed_amount: {
+              amount: Math.round(shippingFee * 100),
+              currency: "usd",
+            },
+            display_name: freeShipping ? "Free US Express Delivery" : "US Tracked Express Courier",
+            tax_code: "txcd_92010001",
+            tax_behavior: "exclusive",
+          },
+        },
+      ],
+      success_url: `${args.origin}/${args.locale}/checkout/success?session_id={CHECKOUT_SESSION_ID}&order_number=${order.orderNumber}`,
+      cancel_url: `${args.origin}/${args.locale}?canceled=true`,
+      client_reference_id: order.orderNumber,
+      metadata: {
+        orderNumber: order.orderNumber,
+        clerkUserId: order.clerkUserId || "",
+        currency: "USD",
+        subtotal: subtotal.toString(),
+        shippingFee: shippingFee.toString(),
+        total: total.toString(),
+        isWhatsAppOrder: "true",
+        itemsJson: JSON.stringify(compactItems),
+      },
+    });
+
+    if (session.url) {
+      await ctx.runMutation(api.orders.updateOrderPaymentUrl, {
+        orderId: order._id,
+        paymentUrl: session.url,
+        stripeSessionId: session.id,
+      });
+    }
+
+    return {
+      paymentUrl: session.url,
+      stripeSessionId: session.id,
     };
   },
 });
