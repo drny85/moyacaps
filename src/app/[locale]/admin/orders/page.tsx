@@ -35,6 +35,7 @@ import {
   AlertCircle,
   Maximize2,
   Printer,
+  CreditCard,
 } from "lucide-react";
 import { Link } from "@/i18n/routing";
 import { useSearchParams } from "next/navigation";
@@ -130,6 +131,7 @@ export default function AdminOrdersPage() {
   }, [orderParam, orders, selectedOrder]);
 
   const updateOrderStatus = useMutation(api.orders.updateOrderStatusAdmin);
+  const markWhatsAppOrderPaidAdmin = useMutation(api.orders.markWhatsAppOrderPaidAdmin);
   const updateOrderFulfillment = useMutation(api.orders.updateOrderFulfillmentAdmin);
   const updateShippingAddressAdmin = useMutation(api.orders.updateShippingAddressAdmin);
   const cancelAndRefundAdmin = useAction(api.stripe.cancelAndRefundOrderAdmin);
@@ -164,18 +166,21 @@ export default function AdminOrdersPage() {
     if (!confirmWhatsAppOrder) return;
     try {
       setIsProcessing(true);
-      await updateOrderStatus({
+      const res = await markWhatsAppOrderPaidAdmin({
         orderId: confirmWhatsAppOrder._id,
-        newStatus: "paid",
       });
       setConfirmWhatsAppOrder(null);
       if (selectedOrder?._id === confirmWhatsAppOrder._id) {
-        setSelectedOrder({ ...selectedOrder, status: "paid" });
+        setSelectedOrder({
+          ...selectedOrder,
+          status: "paid",
+          trackingNumber: res.trackingNumber || selectedOrder.trackingNumber,
+        });
       }
-      triggerSuccess("WhatsApp offline payment confirmed and stock deducted.");
+      triggerSuccess("WhatsApp payment (Zelle/Transfer) confirmed, order marked paid & receipt queued.");
     } catch (err: any) {
-      console.error("Failed to confirm WhatsApp payment", err);
-      setActionError(err?.message || "Failed to confirm WhatsApp payment. Please retry.");
+      console.error("Failed to mark WhatsApp order paid:", err);
+      setActionError(err?.message || "Failed to confirm payment.");
     } finally {
       setIsProcessing(false);
     }
@@ -980,6 +985,45 @@ export default function AdminOrdersPage() {
                 </div>
               </div>
 
+              {/* WhatsApp / Stripe Payment Link Section */}
+              {selectedOrder.paymentUrl && (
+                <div className="p-4 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-200/70 dark:border-indigo-500/20 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-indigo-700 dark:text-indigo-400 font-semibold flex items-center gap-1.5">
+                      <CreditCard className="w-3.5 h-3.5" /> Stripe Payment Link (24h)
+                    </span>
+                    <a
+                      href={selectedOrder.paymentUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[11px] text-indigo-600 dark:text-indigo-400 hover:underline inline-flex items-center gap-1 font-medium"
+                    >
+                      <span>Open Link</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
+
+                  <div className="flex items-center gap-2 p-2 rounded-xl bg-white dark:bg-black/30 border border-indigo-100 dark:border-indigo-900/30">
+                    <input
+                      type="text"
+                      readOnly
+                      value={selectedOrder.paymentUrl}
+                      className="flex-1 bg-transparent text-[11px] font-mono text-zinc-700 dark:text-zinc-300 truncate focus:outline-none"
+                    />
+                    <button
+                      onClick={() => handleCopy(selectedOrder.paymentUrl || "")}
+                      className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-semibold flex items-center gap-1 shrink-0 transition-colors"
+                    >
+                      {copiedTracking ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                      <span>Copy</span>
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-zinc-500 leading-tight">
+                    Customer can pay with Card / Apple Pay directly via this link. Stock will automatically reconcile.
+                  </p>
+                </div>
+              )}
+
               {/* Fulfillment & Tracking Section */}
               <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-white/[0.02] border border-zinc-200/70 dark:border-white/[0.06] space-y-3">
                 <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-600 dark:text-zinc-400 font-semibold block">
@@ -1093,9 +1137,10 @@ export default function AdminOrdersPage() {
                 {selectedOrder.status === "whatsapp_initiated" && (
                   <button
                     onClick={() => setConfirmWhatsAppOrder(selectedOrder)}
-                    className="py-2 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition-colors"
+                    className="py-2 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition-colors flex items-center gap-1.5 shadow-md shadow-emerald-600/20"
                   >
-                    {t("confirmWhatsAppBtn")}
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>Mark as Paid (Zelle)</span>
                   </button>
                 )}
 

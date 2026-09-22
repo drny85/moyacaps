@@ -108,6 +108,7 @@ export interface WhatsAppOrderLeadParams {
     postalCode?: string;
     country?: string;
   };
+  paymentUrl?: string | null;
   locale?: string;
 }
 
@@ -121,6 +122,7 @@ export function getWhatsAppOrderUrl({
   customerName,
   customerPhone,
   shippingAddress,
+  paymentUrl,
   locale = "en",
 }: WhatsAppOrderLeadParams): string {
   const phone = WHATSAPP_CONFIG.defaultPhone;
@@ -150,6 +152,19 @@ export function getWhatsAppOrderUrl({
   lines.push(`*Total: $${total}.00 ${currency}*`);
   lines.push("");
 
+  if (paymentUrl) {
+    if (isEs) {
+      lines.push(`💳 *Pagar con Tarjeta / Apple Pay:*`);
+      lines.push(paymentUrl);
+      lines.push(`_O respondan con datos de Zelle / transferencia si prefieren._`);
+    } else {
+      lines.push(`💳 *Pay with Card / Apple Pay:*`);
+      lines.push(paymentUrl);
+      lines.push(`_Or reply with Zelle / bank transfer details if preferred._`);
+    }
+    lines.push("");
+  }
+
   if (customerName || customerPhone || shippingAddress) {
     lines.push(isEs ? "*Datos de Envío (EE.UU.):*" : "*US Shipping Destination:*");
     if (customerName) lines.push(`${isEs ? "Nombre" : "Name"}: ${customerName}`);
@@ -171,11 +186,15 @@ export function getWhatsAppOrderUrl({
   if (isEs) {
     lines.push(`⏱️ *Inventario apartado por 24 horas.*`);
     lines.push(`Envíos exclusivamente dentro de Estados Unidos.`);
-    lines.push(`Por favor facilítenme las opciones de pago (Zelle, tarjeta o transferencia) para liberar el despacho. ¡Gracias!`);
+    if (!paymentUrl) {
+      lines.push(`Por favor facilítenme las opciones de pago (Zelle, tarjeta o transferencia) para liberar el despacho. ¡Gracias!`);
+    }
   } else {
     lines.push(`⏱️ *Inventory reserved for 24 hours.*`);
     lines.push(`Shipping exclusively within the United States.`);
-    lines.push(`Please provide payment instructions (Zelle, card, or transfer) to dispatch my package. Thank you!`);
+    if (!paymentUrl) {
+      lines.push(`Please provide payment instructions (Zelle, card, or transfer) to dispatch my package. Thank you!`);
+    }
   }
 
   return `https://wa.me/${phone}?text=${encodeURIComponent(lines.join("\n"))}`;

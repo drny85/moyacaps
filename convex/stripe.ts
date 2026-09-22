@@ -339,6 +339,236 @@ export const createCheckoutSession = action({
   },
 });
 
+export const createWhatsAppCheckoutSession = action({
+  args: {
+    items: v.array(
+      v.object({
+        variantId: v.string(),
+        quantity: v.number(),
+      })
+    ),
+    customerName: v.string(),
+    customerPhone: v.string(),
+    customerEmail: v.optional(v.string()),
+    shippingAddress: v.object({
+      line1: v.string(),
+      line2: v.optional(v.string()),
+      city: v.string(),
+      state: v.string(),
+      postalCode: v.string(),
+      country: v.string(),
+    }),
+    currency: v.string(),
+    locale: v.string(),
+    origin: v.string(),
+    clerkUserId: v.optional(v.string()),
+  },
+  handler: async (
+    ctx,
+    args
+  ): Promise<{
+    orderId: any;
+    orderNumber: string;
+    paymentUrl: string | null;
+    reservationExpiresAt?: number;
+  }> => {
+    if (!args.items || args.items.length === 0) {
+      throw new ConvexError(
+        args.locale === "es"
+          ? "El carrito está vacío. Agrega gorras antes de apartar."
+          : "Your bag is empty. Add caps before reserving."
+      );
+    }
+
+    let subtotal = 0;
+    let totalItems = 0;
+    const validatedItems: {
+      variantId: string;
+      name: string;
+      quantity: number;
+      price: number;
+      image: string;
+      taxCode?: string;
+      category?: string;
+      silhouette?: string;
+    }[] = [];
+
+    const fetchedVariants = await Promise.all(
+      args.items.map((item) =>
+        ctx.runQuery(api.products.getVariantById, { variantId: item.variantId })
+      )
+    );
+
+    for (let i = 0; i < args.items.length; i++) {
+      const item = args.items[i];
+      const variant = fetchedVariants[i];
+
+      if (!variant) {
+        throw new ConvexError(
+          args.locale === "es"
+            ? `Producto no disponible: ${item.variantId}`
+            : `Product not available: ${item.variantId}`
+        );
+      }
+
+      const variantName = args.locale === "es" ? variant.nameEs : variant.nameEn;
+      const stock = typeof variant.stock === "number" ? variant.stock : 0;
+
+      if (stock <= 0) {
+        throw new ConvexError(
+          args.locale === "es"
+            ? `La gorra "${variantName}" se encuentra agotada.`
+            : `The cap "${variantName}" is sold out.`
+        );
+      }
+
+      const isUpcomingDrop = Boolean(
+        variant.isDrop &&
+        variant.dropStatus !== "live" &&
+        ((typeof variant.dropDate === "number" && Date.now() < variant.dropDate) || variant.dropStatus === "scheduled")
+      );
+
+      if (isUpcomingDrop) {
+        throw new ConvexError(
+          args.locale === "es"
+            ? `La gorra "${variantName}" es un drop VIP programado.`
+            : `The cap "${variantName}" is an upcoming VIP drop.`
+        );
+      }
+
+      const qty = Math.max(1, Math.floor(item.quantity || 1));
+      if (qty > stock) {
+        throw new ConvexError(
+          args.locale === "es"
+            ? `Inventario insuficiente para "${variantName}". Solo quedan ${stock} disponible(s).`
+            : `Insufficient stock for "${variantName}". Only ${stock} available.`
+        );
+      }
+
+      const unitPrice: number = typeof variant.priceUsd === "number" ? variant.priceUsd : 120;
+      totalItems += qty;
+      subtotal += unitPrice * qty;
+
+      validatedItems.push({
+        variantId: variant.variantId,
+        name: variantName,
+        quantity: qty,
+        price: unitPrice,
+        image: variant.image,
+        taxCode: (variant as any).taxCode,
+        category: (variant as any).category,
+        silhouette: variant.silhouette,
+      });
+    }
+
+    const freeShipping = totalItems >= 2;
+    const shippingFee = freeShipping ? 0 : 8;
+    const total = subtotal + shippingFee;
+
+    // 1. Create WhatsApp Order Lead in Convex (reserves inventory for 24 hours)
+    const orderLead = await ctx.runMutation(api.orders.createWhatsAppOrderLead, {
+      items: validatedItems.map((v) => ({
+        variantId: v.variantId,
+        name: v.name,
+        quantity: v.quantity,
+        price: v.price,
+        image: v.image,
+      })),
+      currency: "USD",
+      subtotal,
+      shippingFee,
+      total,
+      customerName: args.customerName,
+      customerPhone: args.customerPhone,
+      customerEmail: args.customerEmail,
+      shippingAddress: args.shippingAddress,
+      clerkUserId: args.clerkUserId,
+    });
+
+    let paymentUrl: string | null = null;
+    let stripeSessionId: string | undefined = undefined;
+
+    // 2. Generate Stripe Payment Link / Checkout Session for this order
+    try {
+      const stripe = getStripe();
+
+      const stripeLineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = validatedItems.map((item) => ({
+        price_data: {
+          currency: "usd",
+          product_data: {
+            name: `Good Luck 0880 — ${item.name}`,
+            images: [item.image.startsWith("http") ? item.image : `${args.origin}${item.image}`],
+            tax_code: resolveProductTaxCode(item),
+            metadata: {
+              variantId: item.variantId,
+            },
+          },
+          unit_amount: Math.round(item.price * 100),
+        },
+        quantity: item.quantity,
+      }));
+
+      // Session expires 2 minutes before 24 hours (Stripe limit is strictly < 24h)
+      const sessionExpiresAt = Math.floor(Date.now() / 1000) + 24 * 3600 - 120;
+
+      const session = await stripe.checkout.sessions.create({
+        payment_method_types: ["card", "link"],
+        line_items: stripeLineItems,
+        mode: "payment",
+        expires_at: sessionExpiresAt,
+        customer_email: args.customerEmail || undefined,
+        billing_address_collection: "auto",
+        shipping_options: [
+          {
+            shipping_rate_data: {
+              type: "fixed_amount",
+              fixed_amount: {
+                amount: Math.round(shippingFee * 100),
+                currency: "usd",
+              },
+              display_name: freeShipping ? "Free US Express Delivery" : "US Tracked Express Courier",
+              tax_code: "txcd_92010001",
+              tax_behavior: "exclusive",
+            },
+          },
+        ],
+        success_url: `${args.origin}/${args.locale}/checkout/success?session_id={CHECKOUT_SESSION_ID}&order_number=${orderLead.orderNumber}`,
+        cancel_url: `${args.origin}/${args.locale}?canceled=true`,
+        client_reference_id: orderLead.orderNumber,
+        metadata: {
+          orderNumber: orderLead.orderNumber,
+          clerkUserId: args.clerkUserId || "",
+          currency: "USD",
+          subtotal: subtotal.toString(),
+          shippingFee: shippingFee.toString(),
+          total: total.toString(),
+          isWhatsAppOrder: "true",
+        },
+      });
+
+      paymentUrl = session.url;
+      stripeSessionId = session.id;
+
+      if (session.url) {
+        await ctx.runMutation(api.orders.updateOrderPaymentUrl, {
+          orderId: orderLead.orderId,
+          paymentUrl: session.url,
+          stripeSessionId: session.id,
+        });
+      }
+    } catch (err) {
+      console.warn("Stripe session creation bypassed for WhatsApp lead:", err);
+    }
+
+    return {
+      orderId: orderLead.orderId,
+      orderNumber: orderLead.orderNumber,
+      paymentUrl,
+      reservationExpiresAt: orderLead.reservationExpiresAt,
+    };
+  },
+});
+
 export const cancelAndRefundOrder = action({
   args: {
     orderId: v.id("orders"),

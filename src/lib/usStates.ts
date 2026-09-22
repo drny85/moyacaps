@@ -75,6 +75,15 @@ export function formatUsPhone(value: string): string {
 }
 
 /**
+ * Capitalizes the first letter of each word (e.g. "123 main street" -> "123 Main Street").
+ * Preserves existing uppercase abbreviations (e.g. "NW", "SW").
+ */
+export function capitalizeWords(str: string): string {
+  if (!str) return "";
+  return str.replace(/\b([a-z])/g, (char) => char.toUpperCase());
+}
+
+/**
  * Validates a 5-digit US ZIP code (or ZIP+4).
  */
 export function isValidUsZip(zip: string): boolean {

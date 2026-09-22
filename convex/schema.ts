@@ -84,6 +84,7 @@ export default defineSchema({
     trackingNumber: v.optional(v.string()),
     carrier: v.optional(v.string()),
     adminNotes: v.optional(v.string()),
+    paymentUrl: v.optional(v.string()),
     reservationExpiresAt: v.optional(v.number()),
     updatedAt: v.optional(v.number()),
     createdAt: v.number(),

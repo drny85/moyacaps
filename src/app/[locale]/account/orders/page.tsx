@@ -509,9 +509,10 @@ export default function AccountOrdersPage() {
                       <FormLabel className="text-[11px] font-mono text-zinc-500">Apartment, Suite, Unit (Optional)</FormLabel>
                       <FormControl>
                         <Input
-                          placeholder="Apt 4B"
-                          className="px-3.5 py-2"
+                          placeholder="APT 4B"
+                          className="px-3.5 py-2 uppercase"
                           {...field}
+                          onChange={(e) => field.onChange(e.target.value.toUpperCase())}
                         />
                       </FormControl>
                       <FormMessage />
@@ -528,8 +529,9 @@ export default function AccountOrdersPage() {
                         <FormLabel className="text-[11px] font-mono text-zinc-500">City</FormLabel>
                         <FormControl>
                           <Input
-                            className="px-3.5 py-2"
+                            className="px-3.5 py-2 capitalize"
                             {...field}
+                            onChange={(e) => field.onChange(e.target.value)}
                           />
                         </FormControl>
                         <FormMessage />
@@ -545,8 +547,9 @@ export default function AccountOrdersPage() {
                         <FormLabel className="text-[11px] font-mono text-zinc-500">State / Province</FormLabel>
                         <FormControl>
                           <Input
-                            className="px-3.5 py-2"
+                            className="px-3.5 py-2 uppercase"
                             {...field}
+                            onChange={(e) => field.onChange(e.target.value.toUpperCase())}
                           />
                         </FormControl>
                         <FormMessage />
@@ -564,8 +567,12 @@ export default function AccountOrdersPage() {
                         <FormLabel className="text-[11px] font-mono text-zinc-500">Postal / ZIP Code</FormLabel>
                         <FormControl>
                           <Input
-                            className="px-3.5 py-2"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            maxLength={5}
+                            className="px-3.5 py-2 font-mono"
                             {...field}
+                            onChange={(e) => field.onChange(e.target.value.replace(/\D/g, "").slice(0, 5))}
                           />
                         </FormControl>
                         <FormMessage />

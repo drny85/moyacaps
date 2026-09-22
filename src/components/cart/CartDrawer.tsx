@@ -2,17 +2,17 @@
 
 import { useStore } from "@/store/useStore";
 import { useTranslations, useLocale } from "next-intl";
-import { X, Trash2, Plus, Minus, ShoppingBag, ArrowRight, ArrowLeft, MessageCircle, ShieldCheck, Check, AlertCircle, Loader2, MapPin, Clock } from "lucide-react";
+import { X, Trash2, Plus, Minus, ShoppingBag, ArrowRight, ArrowLeft, MessageCircle, ShieldCheck, Check, AlertCircle, Loader2, MapPin, Clock, ChevronDown, CreditCard, Edit3 } from "lucide-react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
 import confetti from "canvas-confetti";
 import { useSafeUser, SafeSignInButton } from "@/lib/useSafeUser";
 import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
-import { useAction, useQuery, useMutation } from "convex/react";
+import { useAction, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { getWhatsAppOrderUrl } from "@/lib/whatsapp";
-import { US_STATES, formatUsPhone, validateUsAddress } from "@/lib/usStates";
+import { US_STATES, formatUsPhone, validateUsAddress, capitalizeWords } from "@/lib/usStates";
 
 export function CartDrawer() {
   const { cart, isCartOpen, closeCart, updateQuantity, removeFromCart, clearCart, currency, clampCartToStock } = useStore();
@@ -21,7 +21,7 @@ export function CartDrawer() {
   const locale = useLocale();
   const { user, isSignedIn } = useSafeUser();
   const createCheckoutSession = useAction(api.stripe.createCheckoutSession);
-  const createWhatsAppLead = useMutation(api.orders.createWhatsAppOrderLead);
+  const createWhatsAppCheckoutSession = useAction(api.stripe.createWhatsAppCheckoutSession);
   const convexVariants = useQuery(api.products.getVariants, {
     includeUnavailable: true,
   });
@@ -32,6 +32,7 @@ export function CartDrawer() {
 
   // WhatsApp pre-redirect lead state
   const [isWhatsAppFormOpen, setIsWhatsAppFormOpen] = useState(false);
+  const [waStep, setWaStep] = useState<"form" | "review">("form");
   const [waName, setWaName] = useState("");
   const [waPhone, setWaPhone] = useState("");
   const [waLine1, setWaLine1] = useState("");
@@ -92,15 +93,17 @@ export function CartDrawer() {
   const shippingFee = freeShippingUnlocked ? 0 : 8;
   const total = subtotal + shippingFee;
 
-  // Open WhatsApp pre-redirect lead capture form
+  // Open WhatsApp pre-redirect lead capture form (Step 1: Form)
   const handleWhatsAppOrder = () => {
     if (cannotCheckout || checkoutStep === "processing") return;
     setWaFieldErrors({});
     setWaFormError(null);
+    setWaStep("form");
     setIsWhatsAppFormOpen(true);
   };
 
-  const handleConfirmWhatsAppLead = async (e: React.FormEvent) => {
+  // Step 1: Validate address and proceed to Step 2 Review & Confirmation
+  const handleProceedToReview = (e: React.FormEvent) => {
     e.preventDefault();
     if (cannotCheckout || isSubmittingWhatsApp) return;
 
@@ -126,29 +129,43 @@ export function CartDrawer() {
 
     setWaFieldErrors({});
     setWaFormError(null);
+
+    // Normalize and clean fields
+    setWaName(capitalizeWords(waName.trim()));
+    setWaPhone(waPhone.trim());
+    setWaLine1(capitalizeWords(waLine1.trim()));
+    if (waLine2) setWaLine2(waLine2.trim().toUpperCase());
+    setWaCity(capitalizeWords(waCity.trim()));
+    setWaState(waState.trim().toUpperCase());
+    setWaZip(waZip.replace(/\D/g, "").slice(0, 5));
+
+    // Transition to Review step
+    setWaStep("review");
+  };
+
+  // Step 2: Final Confirmation, 24h Inventory Reservation & Automated Stripe Payment Link Generation
+  const handleConfirmAndLaunchWhatsApp = async () => {
+    if (cannotCheckout || isSubmittingWhatsApp) return;
     setIsSubmittingWhatsApp(true);
+    setWaFormError(null);
 
     try {
-      const cleanName = waName.trim();
+      const cleanName = capitalizeWords(waName.trim());
       const cleanPhone = waPhone.trim();
-      const cleanLine1 = waLine1.trim();
+      const cleanLine1 = capitalizeWords(waLine1.trim());
       const cleanLine2 = waLine2.trim() || undefined;
-      const cleanCity = waCity.trim();
+      const cleanCity = capitalizeWords(waCity.trim());
       const cleanState = waState.trim().toUpperCase();
-      const cleanZip = waZip.trim();
+      const cleanZip = waZip.replace(/\D/g, "").slice(0, 5);
 
-      const orderLead = await createWhatsAppLead({
+      const result = await createWhatsAppCheckoutSession({
         items: cart.map((i) => ({
           variantId: i.id,
-          name: i.name,
           quantity: i.quantity,
-          price: i.priceUsd,
-          image: i.image,
         })),
         currency: "USD",
-        subtotal,
-        shippingFee,
-        total,
+        locale,
+        origin: window.location.origin,
         customerName: cleanName,
         customerPhone: cleanPhone,
         customerEmail: user?.primaryEmailAddress?.emailAddress || undefined,
@@ -164,7 +181,7 @@ export function CartDrawer() {
       });
 
       const waUrl = getWhatsAppOrderUrl({
-        orderNumber: orderLead.orderNumber,
+        orderNumber: result.orderNumber,
         items: cart.map((i) => ({
           name: i.name,
           quantity: i.quantity,
@@ -184,20 +201,22 @@ export function CartDrawer() {
           postalCode: cleanZip,
           country: "US",
         },
+        paymentUrl: result.paymentUrl,
         locale,
       });
 
       window.open(waUrl, "_blank");
 
       confetti({
-        particleCount: 50,
-        spread: 70,
+        particleCount: 60,
+        spread: 80,
         origin: { y: 0.6 },
         colors: ["#e11d48", "#10b981", "#fbbf24"],
       });
 
       clearCart();
       setIsWhatsAppFormOpen(false);
+      setWaStep("form");
       closeCart();
     } catch (err: any) {
       console.error("WhatsApp checkout error:", err);
@@ -262,15 +281,27 @@ export function CartDrawer() {
               {isWhatsAppFormOpen ? (
                 <div className="flex items-center gap-3">
                   <button
-                    onClick={() => setIsWhatsAppFormOpen(false)}
+                    onClick={() => {
+                      if (waStep === "review") {
+                        setWaStep("form");
+                      } else {
+                        setIsWhatsAppFormOpen(false);
+                      }
+                    }}
                     className="p-1.5 rounded-lg glass-dark text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors"
+                    title={waStep === "review" ? "Back to Edit" : "Back to Bag"}
                   >
                     <ArrowLeft className="w-5 h-5" />
                   </button>
                   <div>
-                    <h2 className="font-display font-bold text-base text-zinc-900 dark:text-white">
-                      {t("whatsappLeadTitle")}
-                    </h2>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                        {waStep === "form" ? "Step 1/2" : "Step 2/2"}
+                      </span>
+                      <h2 className="font-display font-bold text-base text-zinc-900 dark:text-white">
+                        {waStep === "form" ? t("whatsappLeadTitle") : t("whatsappReviewTitle")}
+                      </h2>
+                    </div>
                     <p className="text-[11px] text-zinc-500 font-mono">
                       {totalItems} {totalItems === 1 ? "cap" : "caps"} • Total: ${total}.00 USD
                     </p>
@@ -304,293 +335,391 @@ export function CartDrawer() {
                   <span className="text-[11px] font-mono text-zinc-500">US Domestic Only</span>
                 </div>
 
-                <form
-                  onSubmit={handleConfirmWhatsAppLead}
-                  data-lenis-prevent
-                  className="flex-1 p-6 space-y-4 overflow-y-auto"
-                >
-                  <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
-                    {t("whatsappLeadSubtitle")}
-                  </p>
+                {waStep === "form" ? (
+                  <form
+                    onSubmit={handleProceedToReview}
+                    data-lenis-prevent
+                    className="flex-1 p-6 space-y-4 overflow-y-auto"
+                  >
+                    <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
+                      {t("whatsappLeadSubtitle")}
+                    </p>
 
-                  {/* Mini Order Summary Card */}
-                  <div className="p-3.5 rounded-2xl bg-black/[0.03] dark:bg-white/[0.03] border border-black/[0.08] dark:border-white/[0.08] space-y-2.5">
-                    <div className="flex items-center justify-between text-xs font-display font-bold text-zinc-900 dark:text-white pb-2 border-b border-black/[0.06] dark:border-white/[0.06]">
-                      <span>Order Summary</span>
-                      <span className="font-mono text-[11px] font-normal text-zinc-500">
-                        {totalItems} {totalItems === 1 ? "item" : "items"}
-                      </span>
+                    <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400 text-xs flex items-center gap-2">
+                      <MapPin className="w-4 h-4 shrink-0 text-amber-500" />
+                      <span>{t("whatsappUsOnlyNotice")}</span>
                     </div>
 
-                    <div className="space-y-2 max-h-36 overflow-y-auto pr-1">
-                      {cart.map((item) => (
-                        <div key={item.id} className="flex items-center gap-2.5 text-xs">
-                          <div className="relative w-9 h-9 rounded-lg overflow-hidden bg-black/5 dark:bg-white/5 shrink-0 border border-black/[0.04] dark:border-white/[0.04]">
-                            <Image src={item.image} alt={item.name} fill className="object-contain" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-display font-bold text-zinc-900 dark:text-white truncate text-[11px]">
-                              {item.name}
-                            </p>
-                            <p className="font-mono text-[10px] text-zinc-500">Qty: {item.quantity}</p>
-                          </div>
-                          <span className="font-mono font-bold text-[11px] text-zinc-900 dark:text-white shrink-0">
-                            ${item.priceUsd * item.quantity}.00
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="pt-2 border-t border-black/[0.06] dark:border-white/[0.06] space-y-1 text-xs">
-                      <div className="flex justify-between text-zinc-500 text-[11px]">
-                        <span>Subtotal</span>
-                        <span className="font-mono text-zinc-700 dark:text-zinc-300 font-medium">${subtotal}.00 USD</span>
-                      </div>
-                      <div className="flex justify-between text-zinc-500 text-[11px]">
-                        <span>US Shipping</span>
-                        <span className="font-mono text-emerald-600 dark:text-moya-green-light font-bold">
-                          {shippingFee === 0 ? (locale === "es" ? "GRATIS (2+ gorras)" : "FREE (2+ caps)") : `$${shippingFee}.00 USD`}
-                        </span>
-                      </div>
-                      <div className="flex justify-between font-display font-bold text-zinc-900 dark:text-white pt-1 text-sm">
-                        <span>Total</span>
-                        <span className="font-mono text-emerald-600 dark:text-moya-green-light">
-                          ${total}.00 USD
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400 text-xs flex items-center gap-2">
-                    <MapPin className="w-4 h-4 shrink-0 text-amber-500" />
-                    <span>{t("whatsappUsOnlyNotice")}</span>
-                  </div>
-
-                  {/* Input Fields */}
-                  <div className="space-y-3 pt-1">
-                    {/* Full Name */}
-                    <div>
-                      <label className="block text-[11px] font-mono uppercase tracking-wider text-zinc-500 mb-1">
-                        {t("whatsappLeadName")} *
-                      </label>
-                      <input
-                        type="text"
-                        value={waName}
-                        onChange={(e) => {
-                          setWaName(e.target.value);
-                          if (waFieldErrors.name) setWaFieldErrors((prev) => ({ ...prev, name: "" }));
-                        }}
-                        placeholder={t("whatsappLeadNamePlaceholder")}
-                        className={`w-full px-3.5 py-2.5 rounded-xl bg-black/5 dark:bg-white/5 border text-xs text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none transition-colors ${
-                          waFieldErrors.name
-                            ? "border-rose-500 focus:border-rose-500"
-                            : "border-black/[0.08] dark:border-white/[0.08] focus:border-emerald-500"
-                        }`}
-                      />
-                      {waFieldErrors.name && (
-                        <p className="text-[10px] text-rose-500 mt-1 flex items-center gap-1 font-medium">
-                          <AlertCircle className="w-3 h-3 shrink-0" />
-                          {waFieldErrors.name}
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Phone Number */}
-                    <div>
-                      <label className="block text-[11px] font-mono uppercase tracking-wider text-zinc-500 mb-1">
-                        {t("whatsappLeadPhone")} *
-                      </label>
-                      <input
-                        type="tel"
-                        value={waPhone}
-                        onChange={(e) => {
-                          setWaPhone(formatUsPhone(e.target.value));
-                          if (waFieldErrors.phone) setWaFieldErrors((prev) => ({ ...prev, phone: "" }));
-                        }}
-                        placeholder={t("whatsappLeadPhonePlaceholder")}
-                        className={`w-full px-3.5 py-2.5 rounded-xl bg-black/5 dark:bg-white/5 border text-xs text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none font-mono transition-colors ${
-                          waFieldErrors.phone
-                            ? "border-rose-500 focus:border-rose-500"
-                            : "border-black/[0.08] dark:border-white/[0.08] focus:border-emerald-500"
-                        }`}
-                      />
-                      {waFieldErrors.phone && (
-                        <p className="text-[10px] text-rose-500 mt-1 flex items-center gap-1 font-medium">
-                          <AlertCircle className="w-3 h-3 shrink-0" />
-                          {waFieldErrors.phone}
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Street Address Line 1 */}
-                    <div>
-                      <label className="block text-[11px] font-mono uppercase tracking-wider text-zinc-500 mb-1">
-                        {t("whatsappLeadAddress")} *
-                      </label>
-                      <input
-                        type="text"
-                        value={waLine1}
-                        onChange={(e) => {
-                          setWaLine1(e.target.value);
-                          if (waFieldErrors.line1) setWaFieldErrors((prev) => ({ ...prev, line1: "" }));
-                        }}
-                        placeholder={t("whatsappLeadAddressPlaceholder")}
-                        className={`w-full px-3.5 py-2.5 rounded-xl bg-black/5 dark:bg-white/5 border text-xs text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none transition-colors ${
-                          waFieldErrors.line1
-                            ? "border-rose-500 focus:border-rose-500"
-                            : "border-black/[0.08] dark:border-white/[0.08] focus:border-emerald-500"
-                        }`}
-                      />
-                      {waFieldErrors.line1 && (
-                        <p className="text-[10px] text-rose-500 mt-1 flex items-center gap-1 font-medium">
-                          <AlertCircle className="w-3 h-3 shrink-0" />
-                          {waFieldErrors.line1}
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Street Address Line 2 */}
-                    <div>
-                      <label className="block text-[11px] font-mono uppercase tracking-wider text-zinc-500 mb-1">
-                        {t("whatsappLeadAddress2")}
-                      </label>
-                      <input
-                        type="text"
-                        value={waLine2}
-                        onChange={(e) => setWaLine2(e.target.value)}
-                        placeholder={t("whatsappLeadAddress2Placeholder")}
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-black/5 dark:bg-white/5 border border-black/[0.08] dark:border-white/[0.08] text-xs text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:border-emerald-500"
-                      />
-                    </div>
-
-                    {/* City & State */}
-                    <div className="grid grid-cols-2 gap-2.5">
+                    {/* Input Fields */}
+                    <div className="space-y-3 pt-1">
+                      {/* Full Name */}
                       <div>
                         <label className="block text-[11px] font-mono uppercase tracking-wider text-zinc-500 mb-1">
-                          {t("whatsappLeadCity")} *
+                          {t("whatsappLeadName")} *
                         </label>
                         <input
                           type="text"
-                          value={waCity}
+                          value={waName}
                           onChange={(e) => {
-                            setWaCity(e.target.value);
-                            if (waFieldErrors.city) setWaFieldErrors((prev) => ({ ...prev, city: "" }));
+                            setWaName(e.target.value);
+                            if (waFieldErrors.name) setWaFieldErrors((prev) => ({ ...prev, name: "" }));
                           }}
-                          placeholder="Los Angeles"
-                          className={`w-full px-3 py-2.5 rounded-xl bg-black/5 dark:bg-white/5 border text-xs text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none transition-colors ${
-                            waFieldErrors.city
+                          placeholder={t("whatsappLeadNamePlaceholder")}
+                          className={`w-full px-3.5 py-2.5 rounded-xl bg-black/5 dark:bg-white/5 border text-xs text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none transition-colors ${
+                            waFieldErrors.name
                               ? "border-rose-500 focus:border-rose-500"
                               : "border-black/[0.08] dark:border-white/[0.08] focus:border-emerald-500"
                           }`}
                         />
-                        {waFieldErrors.city && (
+                        {waFieldErrors.name && (
                           <p className="text-[10px] text-rose-500 mt-1 flex items-center gap-1 font-medium">
                             <AlertCircle className="w-3 h-3 shrink-0" />
-                            {waFieldErrors.city}
+                            {waFieldErrors.name}
                           </p>
                         )}
                       </div>
 
+                      {/* Phone Number */}
                       <div>
                         <label className="block text-[11px] font-mono uppercase tracking-wider text-zinc-500 mb-1">
-                          {t("whatsappLeadState")} *
+                          {t("whatsappLeadPhone")} *
                         </label>
-                        <select
-                          value={waState}
+                        <input
+                          type="tel"
+                          value={waPhone}
                           onChange={(e) => {
-                            setWaState(e.target.value);
-                            if (waFieldErrors.state) setWaFieldErrors((prev) => ({ ...prev, state: "" }));
+                            setWaPhone(formatUsPhone(e.target.value));
+                            if (waFieldErrors.phone) setWaFieldErrors((prev) => ({ ...prev, phone: "" }));
                           }}
-                          className={`w-full px-2.5 py-2.5 rounded-xl bg-white dark:bg-[#12121c] border text-xs text-zinc-900 dark:text-white focus:outline-none font-mono transition-colors ${
-                            waFieldErrors.state
+                          placeholder={t("whatsappLeadPhonePlaceholder")}
+                          className={`w-full px-3.5 py-2.5 rounded-xl bg-black/5 dark:bg-white/5 border text-xs text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none font-mono transition-colors ${
+                            waFieldErrors.phone
                               ? "border-rose-500 focus:border-rose-500"
                               : "border-black/[0.08] dark:border-white/[0.08] focus:border-emerald-500"
                           }`}
-                        >
-                          <option value="">{t("whatsappLeadStateSelect")}</option>
-                          {US_STATES.map((s) => (
-                            <option key={s.code} value={s.code}>
-                              {s.code} - {s.name}
-                            </option>
-                          ))}
-                        </select>
-                        {waFieldErrors.state && (
+                        />
+                        {waFieldErrors.phone && (
                           <p className="text-[10px] text-rose-500 mt-1 flex items-center gap-1 font-medium">
                             <AlertCircle className="w-3 h-3 shrink-0" />
-                            {waFieldErrors.state}
+                            {waFieldErrors.phone}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Street Address Line 1 */}
+                      <div>
+                        <label className="block text-[11px] font-mono uppercase tracking-wider text-zinc-500 mb-1">
+                          {t("whatsappLeadAddress")} *
+                        </label>
+                        <input
+                          type="text"
+                          value={waLine1}
+                          onChange={(e) => {
+                            setWaLine1(capitalizeWords(e.target.value));
+                            if (waFieldErrors.line1) setWaFieldErrors((prev) => ({ ...prev, line1: "" }));
+                          }}
+                          onBlur={() => setWaLine1((prev) => capitalizeWords(prev.trim()))}
+                          placeholder={t("whatsappLeadAddressPlaceholder")}
+                          className={`w-full px-3.5 py-2.5 rounded-xl bg-black/5 dark:bg-white/5 border text-xs text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none capitalize transition-colors ${
+                            waFieldErrors.line1
+                              ? "border-rose-500 focus:border-rose-500"
+                              : "border-black/[0.08] dark:border-white/[0.08] focus:border-emerald-500"
+                          }`}
+                        />
+                        {waFieldErrors.line1 && (
+                          <p className="text-[10px] text-rose-500 mt-1 flex items-center gap-1 font-medium">
+                            <AlertCircle className="w-3 h-3 shrink-0" />
+                            {waFieldErrors.line1}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Street Address Line 2 */}
+                      <div>
+                        <label className="block text-[11px] font-mono uppercase tracking-wider text-zinc-500 mb-1">
+                          {t("whatsappLeadAddress2")}
+                        </label>
+                        <input
+                          type="text"
+                          value={waLine2}
+                          onChange={(e) => setWaLine2(e.target.value.toUpperCase())}
+                          placeholder={t("whatsappLeadAddress2Placeholder")}
+                          className="w-full px-3.5 py-2.5 rounded-xl bg-black/5 dark:bg-white/5 border border-black/[0.08] dark:border-white/[0.08] text-xs text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:border-emerald-500 uppercase font-mono"
+                        />
+                      </div>
+
+                      {/* City & State */}
+                      <div className="grid grid-cols-2 gap-2.5">
+                        <div>
+                          <label className="block text-[11px] font-mono uppercase tracking-wider text-zinc-500 mb-1">
+                            {t("whatsappLeadCity")} *
+                          </label>
+                          <input
+                            type="text"
+                            value={waCity}
+                            onChange={(e) => {
+                              setWaCity(capitalizeWords(e.target.value));
+                              if (waFieldErrors.city) setWaFieldErrors((prev) => ({ ...prev, city: "" }));
+                            }}
+                            onBlur={() => setWaCity((prev) => capitalizeWords(prev.trim()))}
+                            placeholder="Los Angeles"
+                            className={`w-full px-3.5 py-2.5 rounded-xl bg-black/5 dark:bg-white/5 border text-xs text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none capitalize transition-colors ${
+                              waFieldErrors.city
+                                ? "border-rose-500 focus:border-rose-500"
+                                : "border-black/[0.08] dark:border-white/[0.08] focus:border-emerald-500"
+                            }`}
+                          />
+                          {waFieldErrors.city && (
+                            <p className="text-[10px] text-rose-500 mt-1 flex items-center gap-1 font-medium">
+                              <AlertCircle className="w-3 h-3 shrink-0" />
+                              {waFieldErrors.city}
+                            </p>
+                          )}
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-mono uppercase tracking-wider text-zinc-500 mb-1">
+                            {t("whatsappLeadState")} *
+                          </label>
+                          <div className="relative">
+                            <select
+                              value={waState}
+                              onChange={(e) => {
+                                setWaState(e.target.value);
+                                if (waFieldErrors.state) setWaFieldErrors((prev) => ({ ...prev, state: "" }));
+                              }}
+                              className={`w-full appearance-none pl-3.5 pr-8 py-2.5 rounded-xl bg-black/5 dark:bg-white/5 border text-xs focus:outline-none font-mono cursor-pointer transition-colors ${
+                                !waState
+                                  ? "text-zinc-400 dark:text-zinc-500"
+                                  : "text-zinc-900 dark:text-white font-medium"
+                              } ${
+                                waFieldErrors.state
+                                  ? "border-rose-500 focus:border-rose-500"
+                                  : "border-black/[0.08] dark:border-white/[0.08] focus:border-emerald-500"
+                              }`}
+                            >
+                              <option
+                                value=""
+                                className="bg-white dark:bg-[#12121c] text-zinc-400 dark:text-zinc-500"
+                              >
+                                {t("whatsappLeadStateSelect")}
+                              </option>
+                              {US_STATES.map((s) => (
+                                <option
+                                  key={s.code}
+                                  value={s.code}
+                                  className="bg-white dark:bg-[#12121c] text-zinc-900 dark:text-white"
+                                >
+                                  {s.code} — {s.name}
+                                </option>
+                              ))}
+                            </select>
+                            <ChevronDown className="w-3.5 h-3.5 text-zinc-400 dark:text-zinc-500 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                          </div>
+                          {waFieldErrors.state && (
+                            <p className="text-[10px] text-rose-500 mt-1 flex items-center gap-1 font-medium">
+                              <AlertCircle className="w-3 h-3 shrink-0" />
+                              {waFieldErrors.state}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* ZIP Code */}
+                      <div>
+                        <label className="block text-[11px] font-mono uppercase tracking-wider text-zinc-500 mb-1">
+                          {t("whatsappLeadZip")} *
+                        </label>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          value={waZip}
+                          onChange={(e) => {
+                            const digitsOnly = e.target.value.replace(/\D/g, "").slice(0, 5);
+                            setWaZip(digitsOnly);
+                            if (waFieldErrors.postalCode) setWaFieldErrors((prev) => ({ ...prev, postalCode: "" }));
+                          }}
+                          placeholder="90001"
+                          maxLength={5}
+                          className={`w-full px-3.5 py-2.5 rounded-xl bg-black/5 dark:bg-white/5 border text-xs text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none font-mono transition-colors ${
+                            waFieldErrors.postalCode
+                              ? "border-rose-500 focus:border-rose-500"
+                              : "border-black/[0.08] dark:border-white/[0.08] focus:border-emerald-500"
+                          }`}
+                        />
+                        {waFieldErrors.postalCode && (
+                          <p className="text-[10px] text-rose-500 mt-1 flex items-center gap-1 font-medium">
+                            <AlertCircle className="w-3 h-3 shrink-0" />
+                            {waFieldErrors.postalCode}
                           </p>
                         )}
                       </div>
                     </div>
 
-                    {/* ZIP Code */}
-                    <div>
-                      <label className="block text-[11px] font-mono uppercase tracking-wider text-zinc-500 mb-1">
-                        {t("whatsappLeadZip")} *
-                      </label>
-                      <input
-                        type="text"
-                        value={waZip}
-                        onChange={(e) => {
-                          setWaZip(e.target.value.trim());
-                          if (waFieldErrors.postalCode) setWaFieldErrors((prev) => ({ ...prev, postalCode: "" }));
-                        }}
-                        placeholder="90001"
-                        maxLength={10}
-                        className={`w-full px-3.5 py-2.5 rounded-xl bg-black/5 dark:bg-white/5 border text-xs text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none font-mono transition-colors ${
-                          waFieldErrors.postalCode
-                            ? "border-rose-500 focus:border-rose-500"
-                            : "border-black/[0.08] dark:border-white/[0.08] focus:border-emerald-500"
-                        }`}
-                      />
-                      {waFieldErrors.postalCode && (
-                        <p className="text-[10px] text-rose-500 mt-1 flex items-center gap-1 font-medium">
-                          <AlertCircle className="w-3 h-3 shrink-0" />
-                          {waFieldErrors.postalCode}
-                        </p>
-                      )}
+                    <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-400 text-xs flex items-center gap-2">
+                      <Clock className="w-4 h-4 shrink-0 text-emerald-500" />
+                      <span>{t("whatsappReservationNotice")}</span>
+                    </div>
+
+                    {waFormError && (
+                      <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs flex items-start gap-2">
+                        <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                        <span>{waFormError}</span>
+                      </div>
+                    )}
+
+                    <div className="pt-2 space-y-2">
+                      <button
+                        type="submit"
+                        className="w-full py-3.5 rounded-2xl font-display font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-600/30 active:scale-[0.99]"
+                      >
+                        <span>{t("whatsappContinueToReview")}</span>
+                        <ArrowRight className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setIsWhatsAppFormOpen(false)}
+                        className="w-full py-2.5 rounded-xl text-xs font-display uppercase tracking-wider text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors"
+                      >
+                        {locale === "es" ? "← Volver a la bolsa" : "← Back to Loot Bag"}
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  /* Step 2: Review & Confirmation Screen */
+                  <div
+                    data-lenis-prevent
+                    className="flex-1 p-6 space-y-4 overflow-y-auto"
+                  >
+                    <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
+                      {t("whatsappReviewSubtitle")}
+                    </p>
+
+                    {/* Destination Address Review Card */}
+                    <div className="p-4 rounded-2xl bg-black/[0.03] dark:bg-white/[0.03] border border-black/[0.08] dark:border-white/[0.08] space-y-2.5">
+                      <div className="flex items-center justify-between pb-2 border-b border-black/[0.06] dark:border-white/[0.06]">
+                        <div className="flex items-center gap-1.5 text-xs font-display font-bold text-zinc-900 dark:text-white">
+                          <MapPin className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                          <span>{t("whatsappReviewDeliveryTo")}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setWaStep("form")}
+                          className="flex items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400 hover:underline"
+                        >
+                          <Edit3 className="w-3 h-3" />
+                          <span>{t("whatsappEditDetails")}</span>
+                        </button>
+                      </div>
+
+                      <div className="text-xs space-y-1 text-zinc-700 dark:text-zinc-300">
+                        <p className="font-display font-bold text-zinc-900 dark:text-white">{waName}</p>
+                        <p className="font-mono text-zinc-500 text-[11px]">{waPhone}</p>
+                        <p className="pt-1">{waLine1}</p>
+                        {waLine2 && <p className="font-mono text-zinc-600 dark:text-zinc-400">{waLine2}</p>}
+                        <p>{waCity}, {waState} {waZip}</p>
+                        <p className="font-mono text-[11px] text-zinc-400">United States (US)</p>
+                      </div>
+                    </div>
+
+                    {/* Order Summary Card */}
+                    <div className="p-4 rounded-2xl bg-black/[0.03] dark:bg-white/[0.03] border border-black/[0.08] dark:border-white/[0.08] space-y-2.5">
+                      <div className="flex items-center justify-between text-xs font-display font-bold text-zinc-900 dark:text-white pb-2 border-b border-black/[0.06] dark:border-white/[0.06]">
+                        <span>Order Summary</span>
+                        <span className="font-mono text-[11px] font-normal text-zinc-500">
+                          {totalItems} {totalItems === 1 ? "item" : "items"}
+                        </span>
+                      </div>
+
+                      <div className="space-y-2 max-h-36 overflow-y-auto pr-1">
+                        {cart.map((item) => (
+                          <div key={item.id} className="flex items-center gap-2.5 text-xs">
+                            <div className="relative w-9 h-9 rounded-lg overflow-hidden bg-black/5 dark:bg-white/5 shrink-0 border border-black/[0.04] dark:border-white/[0.04]">
+                              <Image src={item.image} alt={item.name} fill className="object-contain" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-display font-bold text-zinc-900 dark:text-white truncate text-[11px]">
+                                {item.name}
+                              </p>
+                              <p className="font-mono text-[10px] text-zinc-500">Qty: {item.quantity}</p>
+                            </div>
+                            <span className="font-mono font-bold text-[11px] text-zinc-900 dark:text-white shrink-0">
+                              ${item.priceUsd * item.quantity}.00
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="pt-2 border-t border-black/[0.06] dark:border-white/[0.06] space-y-1 text-xs">
+                        <div className="flex justify-between text-zinc-500 text-[11px]">
+                          <span>Subtotal</span>
+                          <span className="font-mono text-zinc-700 dark:text-zinc-300 font-medium">${subtotal}.00 USD</span>
+                        </div>
+                        <div className="flex justify-between text-zinc-500 text-[11px]">
+                          <span>US Shipping</span>
+                          <span className="font-mono text-emerald-600 dark:text-moya-green-light font-bold">
+                            {shippingFee === 0 ? (locale === "es" ? "GRATIS (2+ gorras)" : "FREE (2+ caps)") : `$${shippingFee}.00 USD`}
+                          </span>
+                        </div>
+                        <div className="flex justify-between font-display font-bold text-zinc-900 dark:text-white pt-1 text-sm">
+                          <span>Total</span>
+                          <span className="font-mono text-emerald-600 dark:text-moya-green-light">
+                            ${total}.00 USD
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Payment Options Note */}
+                    <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-700 dark:text-blue-300 text-xs flex items-start gap-2.5">
+                      <CreditCard className="w-4 h-4 shrink-0 text-blue-500 mt-0.5" />
+                      <span className="leading-relaxed">{t("whatsappReviewPaymentNote")}</span>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-400 text-xs flex items-center gap-2">
+                      <Clock className="w-4 h-4 shrink-0 text-emerald-500" />
+                      <span>{t("whatsappReservationNotice")}</span>
+                    </div>
+
+                    {waFormError && (
+                      <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs flex items-start gap-2">
+                        <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                        <span>{waFormError}</span>
+                      </div>
+                    )}
+
+                    {/* Action Buttons */}
+                    <div className="pt-2 space-y-2">
+                      <button
+                        type="button"
+                        onClick={handleConfirmAndLaunchWhatsApp}
+                        disabled={isSubmittingWhatsApp}
+                        className="w-full py-3.5 rounded-2xl font-display font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-600/30 active:scale-[0.99]"
+                      >
+                        {isSubmittingWhatsApp ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin text-white" />
+                            <span>{t("whatsappGeneratingPayment")}</span>
+                          </>
+                        ) : (
+                          <>
+                            <MessageCircle className="w-4 h-4" />
+                            <span>{t("whatsappConfirmAndReserve")}</span>
+                          </>
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setWaStep("form")}
+                        disabled={isSubmittingWhatsApp}
+                        className="w-full py-2.5 rounded-xl text-xs font-display uppercase tracking-wider text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors"
+                      >
+                        {locale === "es" ? "← Modificar datos de entrega" : "← Edit Delivery Details"}
+                      </button>
                     </div>
                   </div>
-
-                  <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-400 text-xs flex items-center gap-2">
-                    <Clock className="w-4 h-4 shrink-0 text-emerald-500" />
-                    <span>{t("whatsappReservationNotice")}</span>
-                  </div>
-
-                  {waFormError && (
-                    <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs flex items-start gap-2">
-                      <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                      <span>{waFormError}</span>
-                    </div>
-                  )}
-
-                  <div className="pt-2 space-y-2">
-                    <button
-                      type="submit"
-                      disabled={isSubmittingWhatsApp}
-                      className="w-full py-3.5 rounded-2xl font-display font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-600/30 active:scale-[0.99]"
-                    >
-                      {isSubmittingWhatsApp ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin text-white" />
-                          <span>Reserving Stock & Connecting...</span>
-                        </>
-                      ) : (
-                        <>
-                          <MessageCircle className="w-4 h-4" />
-                          <span>{t("whatsappLeadContinue")}</span>
-                        </>
-                      )}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setIsWhatsAppFormOpen(false)}
-                      className="w-full py-2.5 rounded-xl text-xs font-display uppercase tracking-wider text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors"
-                    >
-                      {locale === "es" ? "← Volver a la bolsa" : "← Back to Loot Bag"}
-                    </button>
-                  </div>
-                </form>
+                )}
               </div>
             ) : (
               <>

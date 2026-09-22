@@ -117,11 +117,18 @@ export const createOrUpdateStripeOrder = internalMutation({
     total: v.number(),
   },
   handler: async (ctx, args) => {
-    // Check if order exists by stripeSessionId
-    const existing = await ctx.db
+    // Check if order exists by stripeSessionId or orderNumber (e.g. GL-WA-XXXXXX)
+    let existing = await ctx.db
       .query("orders")
       .withIndex("by_stripeSessionId", (q) => q.eq("stripeSessionId", args.stripeSessionId))
       .first();
+
+    if (!existing && args.orderNumber) {
+      existing = await ctx.db
+        .query("orders")
+        .withIndex("by_orderNumber", (q) => q.eq("orderNumber", args.orderNumber))
+        .first();
+    }
 
     if (existing) {
       // Update with latest details and ensure paid
@@ -134,7 +141,10 @@ export const createOrUpdateStripeOrder = internalMutation({
         taxDetails: args.taxDetails ?? existing.taxDetails,
         total: args.total ?? existing.total,
         status: "paid",
+        paymentMethod: "stripe",
+        stripeSessionId: args.stripeSessionId,
         trackingNumber: existing.trackingNumber ?? `GL-TRK-${Math.floor(100000 + Math.random() * 900000)}`,
+        updatedAt: Date.now(),
       });
       return existing._id;
     }
@@ -429,17 +439,21 @@ export const cancelOrder = mutation({
       throw new ConvexError("Order is already cancelled");
     }
 
-    // Restore stock in variants
-    for (const item of order.items) {
-      const variant = await ctx.db
-        .query("variants")
-        .withIndex("by_variantId", (q) => q.eq("variantId", item.variantId))
-        .first();
+    const hadStockReserved = ["paid", "dispatched", "delivered", "whatsapp_initiated"].includes(order.status);
 
-      if (variant) {
-        await ctx.db.patch(variant._id, {
-          stock: variant.stock + item.quantity,
-        });
+    // Restore stock in variants only if stock was actually reserved or deducted
+    if (hadStockReserved) {
+      for (const item of order.items) {
+        const variant = await ctx.db
+          .query("variants")
+          .withIndex("by_variantId", (q) => q.eq("variantId", item.variantId))
+          .first();
+
+        if (variant) {
+          await ctx.db.patch(variant._id, {
+            stock: variant.stock + item.quantity,
+          });
+        }
       }
     }
 
@@ -475,10 +489,10 @@ export const cancelOrderAdmin = mutation({
       throw new Error("Order is already cancelled");
     }
 
-    const wasPaidLike = ["paid", "dispatched", "delivered"].includes(order.status);
+    const hadStockReserved = ["paid", "dispatched", "delivered", "whatsapp_initiated"].includes(order.status);
 
-    // Restore stock if it was previously deducted
-    if (wasPaidLike) {
+    // Restore stock if it was previously deducted or reserved
+    if (hadStockReserved) {
       for (const item of order.items) {
         const variant = await ctx.db
           .query("variants")
@@ -807,12 +821,48 @@ export const createWhatsAppOrderLead = mutation({
     customerEmail: v.optional(v.string()),
     shippingAddress: v.optional(shippingAddressValidator),
     clerkUserId: v.optional(v.string()),
+    paymentUrl: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const timestamp = Date.now();
 
-    // 1. Validate real-time stock and decrement immediately to reserve it
+    // 1. Validate bag constraints
+    if (!args.items || args.items.length === 0) {
+      throw new Error("Cannot create an order with an empty bag.");
+    }
+    if (args.items.length > 20) {
+      throw new Error("Order exceeds maximum items limit.");
+    }
+
+    const cleanPhone = args.customerPhone?.trim().slice(0, 30);
+    const cleanName = args.customerName?.trim().slice(0, 100);
+    const cleanEmail = args.customerEmail?.trim().toLowerCase().slice(0, 100);
+
+    // 2. Prevent inventory hoarding: max 3 active unconfirmed leads per phone number
+    if (cleanPhone) {
+      const activeLeads = await ctx.db
+        .query("orders")
+        .withIndex("by_status", (q) => q.eq("status", "whatsapp_initiated"))
+        .filter((q) => q.eq(q.field("customerPhone"), cleanPhone))
+        .take(4);
+
+      if (activeLeads.length >= 3) {
+        throw new Error(
+          "You already have 3 active reservations awaiting confirmation on WhatsApp. Please complete payment or wait for holds to clear."
+        );
+      }
+    }
+
+    // 3. Validate real-time stock, compute canonical DB prices, and decrement immediately
+    let verifiedSubtotal = 0;
+    let totalCaps = 0;
+    const verifiedItems = [];
+
     for (const item of args.items) {
+      if (!Number.isInteger(item.quantity) || item.quantity <= 0 || item.quantity > 10) {
+        throw new Error(`Invalid quantity for ${item.name}. Must be an integer between 1 and 10.`);
+      }
+
       const variant = await ctx.db
         .query("variants")
         .withIndex("by_variantId", (q) => q.eq("variantId", item.variantId))
@@ -821,14 +871,44 @@ export const createWhatsAppOrderLead = mutation({
       if (!variant) {
         throw new Error(`Item ${item.name} is no longer available.`);
       }
+      if (variant.isAvailable === false || variant.stock <= 0) {
+        throw new Error(`"${variant.nameEn}" is currently sold out.`);
+      }
       if (variant.stock < item.quantity) {
-        throw new Error(`Insufficient stock for ${item.name}. Only ${variant.stock} available.`);
+        throw new Error(`Insufficient stock for ${variant.nameEn}. Only ${variant.stock} available.`);
       }
 
       await ctx.db.patch(variant._id, {
         stock: Math.max(0, variant.stock - item.quantity),
       });
+
+      const unitPrice = variant.priceUsd;
+      verifiedSubtotal += unitPrice * item.quantity;
+      totalCaps += item.quantity;
+
+      verifiedItems.push({
+        variantId: variant.variantId,
+        name: variant.nameEn,
+        quantity: item.quantity,
+        price: unitPrice,
+        image: variant.image,
+      });
     }
+
+    // Domestic US Free Express Shipping threshold: 2+ caps ($0), otherwise $8
+    const verifiedShippingFee = totalCaps >= 2 ? 0 : 8;
+    const verifiedTotal = verifiedSubtotal + verifiedShippingFee;
+
+    const cleanAddress = args.shippingAddress
+      ? {
+          line1: args.shippingAddress.line1.trim().slice(0, 150),
+          line2: args.shippingAddress.line2?.trim().slice(0, 100) || undefined,
+          city: args.shippingAddress.city.trim().slice(0, 100),
+          state: args.shippingAddress.state.trim().toUpperCase().slice(0, 2),
+          postalCode: args.shippingAddress.postalCode.trim().slice(0, 10),
+          country: "US",
+        }
+      : undefined;
 
     const orderNumber = `GL-WA-${Math.floor(100000 + Math.random() * 900000)}`;
     const reservationHoldMs = 24 * 60 * 60 * 1000; // 24 hours reservation hold
@@ -836,18 +916,19 @@ export const createWhatsAppOrderLead = mutation({
 
     const orderId = await ctx.db.insert("orders", {
       orderNumber,
-      customerName: args.customerName,
-      customerPhone: args.customerPhone,
-      customerEmail: args.customerEmail,
+      customerName: cleanName,
+      customerPhone: cleanPhone,
+      customerEmail: cleanEmail,
       clerkUserId: args.clerkUserId,
-      shippingAddress: args.shippingAddress,
-      items: args.items,
-      currency: args.currency,
-      subtotal: args.subtotal,
-      shippingFee: args.shippingFee,
-      total: args.total,
+      shippingAddress: cleanAddress,
+      items: verifiedItems,
+      currency: "USD",
+      subtotal: verifiedSubtotal,
+      shippingFee: verifiedShippingFee,
+      total: verifiedTotal,
       status: "whatsapp_initiated",
       paymentMethod: "whatsapp",
+      paymentUrl: args.paymentUrl,
       reservationExpiresAt,
       createdAt: timestamp,
     });
@@ -860,21 +941,82 @@ export const createWhatsAppOrderLead = mutation({
     // Schedule Admin Order Alert for WhatsApp order
     await ctx.scheduler.runAfter(0, internal.emails.sendAdminOrderAlert, {
       orderNumber,
-      total: args.total,
-      currency: args.currency,
+      total: verifiedTotal,
+      currency: "USD",
       paymentMethod: "whatsapp",
       isWhatsAppPending: true,
-      customerName: args.customerName,
-      customerEmail: args.customerEmail,
-      customerPhone: args.customerPhone,
-      shippingAddress: args.shippingAddress,
-      items: args.items,
-      subtotal: args.subtotal,
-      shippingFee: args.shippingFee,
+      customerName: cleanName,
+      customerEmail: cleanEmail,
+      customerPhone: cleanPhone,
+      shippingAddress: cleanAddress,
+      items: verifiedItems,
+      subtotal: verifiedSubtotal,
+      shippingFee: verifiedShippingFee,
       createdAt: timestamp,
     });
 
-    return { orderId, orderNumber, reservationExpiresAt };
+    return { orderId, orderNumber, reservationExpiresAt, paymentUrl: args.paymentUrl };
+  },
+});
+
+export const updateOrderPaymentUrl = mutation({
+  args: {
+    orderId: v.id("orders"),
+    paymentUrl: v.string(),
+    stripeSessionId: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.orderId, {
+      paymentUrl: args.paymentUrl,
+      ...(args.stripeSessionId && { stripeSessionId: args.stripeSessionId }),
+      updatedAt: Date.now(),
+    });
+    return { success: true };
+  },
+});
+
+export const markWhatsAppOrderPaidAdmin = mutation({
+  args: {
+    orderId: v.id("orders"),
+    notes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    const order = await ctx.db.get(args.orderId);
+    if (!order) {
+      throw new Error("Order not found");
+    }
+
+    if (order.status === "paid" || order.status === "dispatched" || order.status === "delivered") {
+      return { success: true, message: "Order is already marked as paid." };
+    }
+
+    const trackingNumber = order.trackingNumber || `GL-TRK-${Math.floor(100000 + Math.random() * 900000)}`;
+
+    await ctx.db.patch(args.orderId, {
+      status: "paid",
+      trackingNumber,
+      adminNotes: `${order.adminNotes ? order.adminNotes + "\n" : ""}Confirmed paid via WhatsApp (Zelle / Transfer). ${args.notes || ""}`.trim(),
+      updatedAt: Date.now(),
+    });
+
+    // Schedule Customer Order Confirmation receipt
+    if (order.customerEmail && order.customerEmail.includes("@")) {
+      await ctx.scheduler.runAfter(0, internal.emails.sendCustomerReceipt, {
+        orderNumber: order.orderNumber,
+        total: order.total,
+        currency: order.currency,
+        customerName: order.customerName,
+        customerEmail: order.customerEmail,
+        shippingAddress: order.shippingAddress,
+        items: order.items,
+        subtotal: order.subtotal,
+        shippingFee: order.shippingFee,
+        tax: order.tax,
+      });
+    }
+
+    return { success: true, orderNumber: order.orderNumber, trackingNumber };
   },
 });
 
