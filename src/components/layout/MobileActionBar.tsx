@@ -1,7 +1,7 @@
 "use client";
 
 import { useStore } from "@/store/useStore";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { Link, usePathname } from "@/i18n/routing";
 import { ShoppingBag, Compass, MessageCircle, Package, Shield } from "lucide-react";
 import { motion } from "framer-motion";
@@ -9,10 +9,12 @@ import { useState, useEffect } from "react";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { useSafeUser } from "@/lib/useSafeUser";
 import { checkIsAdmin } from "@/lib/adminAuth";
+import { getWhatsAppConciergeUrl } from "@/lib/whatsapp";
 
 export function MobileActionBar() {
   const { cart, toggleCart } = useStore();
   const t = useTranslations("nav");
+  const locale = useLocale();
   const { user, isSignedIn } = useSafeUser();
   const isAdmin = checkIsAdmin(user);
   const pathname = usePathname();
@@ -34,8 +36,7 @@ export function MobileActionBar() {
     : 0;
 
   const handleWhatsApp = () => {
-    const text = encodeURIComponent("¡Hola Good Luck! Quisiera consultar sobre las gorras de la colección 0880.");
-    window.open(`https://wa.me/5215500000000?text=${text}`, "_blank");
+    window.open(getWhatsAppConciergeUrl(locale), "_blank");
   };
 
   return (

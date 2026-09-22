@@ -7,6 +7,7 @@ import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
 import { getCarrierTrackingUrl } from "@/lib/tracking";
+import { getWhatsAppAdminCustomerUrl } from "@/lib/whatsapp";
 import {
   Search,
   Filter,
@@ -119,6 +120,7 @@ export default function AdminOrdersPage() {
       const match = orders.find(
         (o: any) =>
           o.orderNumber.toUpperCase() === cleanTarget ||
+          o.orderNumber.toUpperCase() === `GL-${cleanTarget}` ||
           o.orderNumber.toUpperCase() === `MC-${cleanTarget}`
       );
       if (match) {
@@ -364,19 +366,14 @@ export default function AdminOrdersPage() {
   };
 
   const openWhatsAppCustomer = (order: any) => {
-    const rawPhone = order.customerPhone || "";
-    const cleanPhone = rawPhone.replace(/[^\d+]/g, "");
-    const greeting = locale === "es"
-      ? `¡Hola ${order.customerName || "estimado cliente"}! Te contactamos de Good Luck respecto a tu orden ${order.orderNumber}.`
-      : `Hi ${order.customerName || "Customer"}, this is Good Luck regarding your order ${order.orderNumber}.`;
-
-    const trackingText = order.trackingNumber
-      ? locale === "es"
-        ? ` Tu número de guía es: ${order.trackingNumber} (${order.carrier || "Express"}).`
-        : ` Your express tracking code is: ${order.trackingNumber} (${order.carrier || "Express"}).`
-      : "";
-
-    const url = `https://wa.me/${cleanPhone || "5215500000000"}?text=${encodeURIComponent(greeting + trackingText)}`;
+    const url = getWhatsAppAdminCustomerUrl({
+      customerPhone: order.customerPhone,
+      customerName: order.customerName,
+      orderNumber: order.orderNumber,
+      trackingNumber: order.trackingNumber,
+      carrier: order.carrier,
+      locale,
+    });
     window.open(url, "_blank");
   };
 
@@ -1247,7 +1244,7 @@ export default function AdminOrdersPage() {
                     type="text"
                     value={trackingInput}
                     onChange={(e) => setTrackingInput(e.target.value)}
-                    placeholder="e.g. MC-TRK-749204 or 1234567890"
+                    placeholder="e.g. GL-TRK-749204 or 1234567890"
                     className="w-full py-2.5 px-3 rounded-xl bg-zinc-50 dark:bg-white/[0.03] border border-zinc-200 dark:border-white/10 text-zinc-900 dark:text-white font-mono placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-moya-red"
                   />
                 </div>

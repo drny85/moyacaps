@@ -2,7 +2,7 @@
 
 import { useStore } from "@/store/useStore";
 import { useTranslations, useLocale } from "next-intl";
-import { X, Trash2, Plus, Minus, ShoppingBag, ArrowRight, MessageCircle, ShieldCheck, Check, AlertCircle, Loader2 } from "lucide-react";
+import { X, Trash2, Plus, Minus, ShoppingBag, ArrowRight, ArrowLeft, MessageCircle, ShieldCheck, Check, AlertCircle, Loader2, MapPin, Clock } from "lucide-react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
@@ -11,6 +11,8 @@ import { useSafeUser, SafeSignInButton } from "@/lib/useSafeUser";
 import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
 import { useAction, useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
+import { getWhatsAppOrderUrl } from "@/lib/whatsapp";
+import { US_STATES, formatUsPhone, validateUsAddress } from "@/lib/usStates";
 
 export function CartDrawer() {
   const { cart, isCartOpen, closeCart, updateQuantity, removeFromCart, clearCart, currency, clampCartToStock } = useStore();
@@ -27,6 +29,25 @@ export function CartDrawer() {
   const [checkoutStep, setCheckoutStep] = useState<"idle" | "processing" | "success">("idle");
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [stockAdjustmentNotice, setStockAdjustmentNotice] = useState<string | null>(null);
+
+  // WhatsApp pre-redirect lead state
+  const [isWhatsAppFormOpen, setIsWhatsAppFormOpen] = useState(false);
+  const [waName, setWaName] = useState("");
+  const [waPhone, setWaPhone] = useState("");
+  const [waLine1, setWaLine1] = useState("");
+  const [waLine2, setWaLine2] = useState("");
+  const [waCity, setWaCity] = useState("");
+  const [waState, setWaState] = useState("");
+  const [waZip, setWaZip] = useState("");
+  const [waFieldErrors, setWaFieldErrors] = useState<Record<string, string>>({});
+  const [waFormError, setWaFormError] = useState<string | null>(null);
+  const [isSubmittingWhatsApp, setIsSubmittingWhatsApp] = useState(false);
+
+  useEffect(() => {
+    if (user?.fullName && !waName) {
+      setWaName(user.fullName);
+    }
+  }, [user, waName]);
 
   // Synchronize cart with live Convex database stock whenever drawer is opened or variants change
   useEffect(() => {
@@ -71,41 +92,119 @@ export function CartDrawer() {
   const shippingFee = freeShippingUnlocked ? 0 : 8;
   const total = subtotal + shippingFee;
 
-  // Launch WhatsApp order with itemized list
+  // Open WhatsApp pre-redirect lead capture form
   const handleWhatsAppOrder = () => {
     if (cannotCheckout || checkoutStep === "processing") return;
+    setWaFieldErrors({});
+    setWaFormError(null);
+    setIsWhatsAppFormOpen(true);
+  };
 
-    // Record WhatsApp lead in Convex and trigger admin notifications asynchronously
-    createWhatsAppLead({
-      items: cart.map((i) => ({
-        variantId: i.id,
-        name: i.name,
-        quantity: i.quantity,
-        price: i.priceUsd,
-        image: i.image,
-      })),
-      currency: "USD",
-      subtotal,
-      shippingFee,
-      total,
-      customerName: user?.fullName || undefined,
-      customerEmail: user?.primaryEmailAddress?.emailAddress || undefined,
-      clerkUserId: user?.id || undefined,
-    }).catch((e) => console.warn("Could not record WhatsApp lead:", e));
+  const handleConfirmWhatsAppLead = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (cannotCheckout || isSubmittingWhatsApp) return;
 
-    let message = `${t("whatsappGreeting")}\n\n`;
-
-    cart.forEach((item, index) => {
-      message += `${index + 1}. ${item.name} (${item.quantity}x) - $${item.priceUsd} USD c/u\n`;
+    const validation = validateUsAddress({
+      name: waName,
+      phone: waPhone,
+      line1: waLine1,
+      city: waCity,
+      state: waState,
+      postalCode: waZip,
+      locale,
     });
 
-    message += `\nSubtotal: $${subtotal}.00 USD\n`;
-    message += `Envío/Shipping: ${freeShippingUnlocked ? "GRATIS / FREE" : "$8.00 USD"}\n`;
-    message += `Total a pagar: $${total}.00 USD\n\n`;
-    message += `Por favor confirmen disponibilidad para coordinar envío y pago. ¡Gracias!`;
+    if (!validation.isValid) {
+      setWaFieldErrors(validation.errors);
+      setWaFormError(
+        locale === "es"
+          ? "Por favor completa correctamente todos los campos obligatorios marcados."
+          : "Please correct the highlighted fields before proceeding."
+      );
+      return;
+    }
 
-    const encoded = encodeURIComponent(message);
-    window.open(`https://wa.me/5215500000000?text=${encoded}`, "_blank");
+    setWaFieldErrors({});
+    setWaFormError(null);
+    setIsSubmittingWhatsApp(true);
+
+    try {
+      const cleanName = waName.trim();
+      const cleanPhone = waPhone.trim();
+      const cleanLine1 = waLine1.trim();
+      const cleanLine2 = waLine2.trim() || undefined;
+      const cleanCity = waCity.trim();
+      const cleanState = waState.trim().toUpperCase();
+      const cleanZip = waZip.trim();
+
+      const orderLead = await createWhatsAppLead({
+        items: cart.map((i) => ({
+          variantId: i.id,
+          name: i.name,
+          quantity: i.quantity,
+          price: i.priceUsd,
+          image: i.image,
+        })),
+        currency: "USD",
+        subtotal,
+        shippingFee,
+        total,
+        customerName: cleanName,
+        customerPhone: cleanPhone,
+        customerEmail: user?.primaryEmailAddress?.emailAddress || undefined,
+        shippingAddress: {
+          line1: cleanLine1,
+          line2: cleanLine2,
+          city: cleanCity,
+          state: cleanState,
+          postalCode: cleanZip,
+          country: "US",
+        },
+        clerkUserId: user?.id || undefined,
+      });
+
+      const waUrl = getWhatsAppOrderUrl({
+        orderNumber: orderLead.orderNumber,
+        items: cart.map((i) => ({
+          name: i.name,
+          quantity: i.quantity,
+          price: i.priceUsd,
+        })),
+        subtotal,
+        shippingFee,
+        total,
+        currency: "USD",
+        customerName: cleanName,
+        customerPhone: cleanPhone,
+        shippingAddress: {
+          line1: cleanLine1,
+          line2: cleanLine2,
+          city: cleanCity,
+          state: cleanState,
+          postalCode: cleanZip,
+          country: "US",
+        },
+        locale,
+      });
+
+      window.open(waUrl, "_blank");
+
+      confetti({
+        particleCount: 50,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: ["#e11d48", "#10b981", "#fbbf24"],
+      });
+
+      clearCart();
+      setIsWhatsAppFormOpen(false);
+      closeCart();
+    } catch (err: any) {
+      console.error("WhatsApp checkout error:", err);
+      setWaFormError(err?.message || "Failed to reserve inventory. Please try again.");
+    } finally {
+      setIsSubmittingWhatsApp(false);
+    }
   };
 
   const handleStripeCheckout = async () => {
@@ -160,13 +259,32 @@ export function CartDrawer() {
           >
             {/* Drawer Header */}
             <div className="p-6 border-b border-black/[0.06] dark:border-white/[0.06] flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <ShoppingBag className="w-5 h-5 text-moya-red" />
-                <h2 className="font-display font-bold text-lg text-zinc-900 dark:text-white">{t("title")}</h2>
-                <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-black/5 dark:bg-white/10 text-zinc-700 dark:text-zinc-300">
-                  {totalItems}
-                </span>
-              </div>
+              {isWhatsAppFormOpen ? (
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setIsWhatsAppFormOpen(false)}
+                    className="p-1.5 rounded-lg glass-dark text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors"
+                  >
+                    <ArrowLeft className="w-5 h-5" />
+                  </button>
+                  <div>
+                    <h2 className="font-display font-bold text-base text-zinc-900 dark:text-white">
+                      {t("whatsappLeadTitle")}
+                    </h2>
+                    <p className="text-[11px] text-zinc-500 font-mono">
+                      {totalItems} {totalItems === 1 ? "cap" : "caps"} • Total: ${total}.00 USD
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <ShoppingBag className="w-5 h-5 text-moya-red" />
+                  <h2 className="font-display font-bold text-lg text-zinc-900 dark:text-white">{t("title")}</h2>
+                  <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-black/5 dark:bg-white/10 text-zinc-700 dark:text-zinc-300">
+                    {totalItems}
+                  </span>
+                </div>
+              )}
               <button
                 onClick={closeCart}
                 className="p-2 rounded-full glass-dark text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors"
@@ -175,278 +293,581 @@ export function CartDrawer() {
               </button>
             </div>
 
-            {/* Free Shipping Progress Indicator */}
-            <div className="px-6 py-3 bg-moya-red/10 dark:bg-moya-red-deep/20 border-b border-moya-red/20 text-xs">
-              {freeShippingUnlocked ? (
-                <p className="text-emerald-600 dark:text-moya-green-light font-display font-bold text-center">
-                  {t("freeShippingAchieved")}
-                </p>
-              ) : (
-                <p className="text-zinc-700 dark:text-zinc-300 text-center">
-                  {t("freeShippingRemaining", {
-                    amount: currency === "USD" ? `$${Math.max(0, 240 - subtotal)} USD (1 more cap)` : "1 gorra más",
-                  })}
-                </p>
-              )}
-              <div className="w-full bg-black/10 dark:bg-black/50 h-1.5 rounded-full mt-2 overflow-hidden">
-                <div
-                  className="bg-gradient-to-r from-moya-red to-moya-green h-full rounded-full transition-all duration-500"
-                  style={{ width: `${Math.min(100, (totalItems / 2) * 100)}%` }}
-                />
-              </div>
-            </div>
-
-            {/* Cart Items List */}
-            <div
-              data-lenis-prevent
-              className="flex-1 overflow-y-auto p-6 space-y-4 overscroll-contain"
-              style={{ overscrollBehavior: "contain" }}
-            >
-              {cart.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center text-center py-16">
-                  <div className="w-16 h-16 rounded-2xl bg-black/5 dark:bg-white/5 border border-black/[0.06] dark:border-white/[0.06] flex items-center justify-center mb-4 text-zinc-400 dark:text-zinc-500">
-                    <ShoppingBag className="w-8 h-8" />
+            {isWhatsAppFormOpen ? (
+              <div className="flex-1 flex flex-col overflow-y-auto">
+                {/* 24-hr Hold + US Shipping Indicator */}
+                <div className="px-6 py-2.5 bg-emerald-500/10 dark:bg-emerald-950/20 border-b border-emerald-500/20 text-xs flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-mono font-semibold">
+                    <Clock className="w-3.5 h-3.5" />
+                    <span>24h Stock Reservation</span>
                   </div>
-                  <h3 className="text-lg font-display font-bold text-zinc-900 dark:text-white mb-1">
-                    {t("emptyTitle")}
-                  </h3>
-                  <p className="text-xs text-zinc-600 dark:text-zinc-400 max-w-xs mb-6">
-                    {t("emptyDesc")}
-                  </p>
-                  <button
-                    onClick={closeCart}
-                    className="px-6 py-3 rounded-xl bg-moya-red hover:bg-rose-500 text-white text-xs font-display font-bold uppercase tracking-wider transition-colors"
-                  >
-                    {t("exploreBtn")}
-                  </button>
+                  <span className="text-[11px] font-mono text-zinc-500">US Domestic Only</span>
                 </div>
-              ) : (
-                cart.map((item) => {
-                  const variant = convexVariants?.find((v) => v.variantId === item.id);
-                  const stock = variant ? (typeof variant.stock === "number" ? variant.stock : 0) : (item.maxStock ?? 99);
-                  const isOutOfStock = stock <= 0;
-                  const isAtMaxStock = item.quantity >= stock;
 
-                  return (
-                    <div
-                      key={item.id}
-                      className={`glass-card rounded-2xl p-3.5 flex items-center gap-4 border transition-all ${
-                        isOutOfStock
-                          ? "border-rose-500/40 bg-rose-500/5 opacity-80"
-                          : "border-black/[0.06] dark:border-white/[0.06]"
-                      }`}
-                    >
-                      <div className="relative w-16 h-16 rounded-xl bg-black/5 dark:bg-white/5 shrink-0 overflow-hidden p-1">
-                        <Image
-                          src={item.image}
-                          alt={item.name}
-                          fill
-                          className="object-contain"
-                        />
-                      </div>
+                <form
+                  onSubmit={handleConfirmWhatsAppLead}
+                  data-lenis-prevent
+                  className="flex-1 p-6 space-y-4 overflow-y-auto"
+                >
+                  <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
+                    {t("whatsappLeadSubtitle")}
+                  </p>
 
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-1">
-                          <h4 className="font-display font-bold text-sm text-zinc-900 dark:text-white truncate">
-                            {item.name}
-                          </h4>
-                          {isOutOfStock && (
-                            <span className="text-[10px] font-display font-bold px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-500 shrink-0">
-                              {t("soldOutItem")}
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <span className="text-xs font-mono font-bold text-emerald-600 dark:text-moya-green-light">
-                            ${item.priceUsd}.00 USD
-                          </span>
-                          {!isOutOfStock && isAtMaxStock && (
-                            <span className="text-[10px] font-mono text-amber-600 dark:text-amber-400 font-medium">
-                              ({t("onlyXAvailable", { count: stock })})
-                            </span>
-                          )}
-                        </div>
+                  {/* Mini Order Summary Card */}
+                  <div className="p-3.5 rounded-2xl bg-black/[0.03] dark:bg-white/[0.03] border border-black/[0.08] dark:border-white/[0.08] space-y-2.5">
+                    <div className="flex items-center justify-between text-xs font-display font-bold text-zinc-900 dark:text-white pb-2 border-b border-black/[0.06] dark:border-white/[0.06]">
+                      <span>Order Summary</span>
+                      <span className="font-mono text-[11px] font-normal text-zinc-500">
+                        {totalItems} {totalItems === 1 ? "item" : "items"}
+                      </span>
+                    </div>
 
-                        {/* Quantity adjust */}
-                        <div className="flex items-center gap-3 mt-2">
-                          <div className="flex items-center glass-dark rounded-lg border border-black/[0.06] dark:border-white/[0.06]">
-                            <button
-                              onClick={() => updateQuantity(item.id, -1, stock)}
-                              className="px-2 py-1 text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors"
-                            >
-                              <Minus className="w-3 h-3" />
-                            </button>
-                            <span className="px-2 text-xs font-mono font-bold text-zinc-900 dark:text-white">
-                              {item.quantity}
-                            </span>
-                            <button
-                              disabled={isAtMaxStock || isOutOfStock}
-                              onClick={() => updateQuantity(item.id, 1, stock)}
-                              className={`px-2 py-1 transition-colors ${
-                                isAtMaxStock || isOutOfStock
-                                  ? "text-zinc-300 dark:text-zinc-600 cursor-not-allowed opacity-40"
-                                  : "text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
-                              }`}
-                              title={isAtMaxStock ? t("onlyXAvailable", { count: stock }) : undefined}
-                            >
-                              <Plus className="w-3 h-3" />
-                            </button>
+                    <div className="space-y-2 max-h-36 overflow-y-auto pr-1">
+                      {cart.map((item) => (
+                        <div key={item.id} className="flex items-center gap-2.5 text-xs">
+                          <div className="relative w-9 h-9 rounded-lg overflow-hidden bg-black/5 dark:bg-white/5 shrink-0 border border-black/[0.04] dark:border-white/[0.04]">
+                            <Image src={item.image} alt={item.name} fill className="object-contain" />
                           </div>
-
-                          <button
-                            onClick={() => removeFromCart(item.id)}
-                            className="p-1.5 text-zinc-400 hover:text-moya-red transition-colors"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-display font-bold text-zinc-900 dark:text-white truncate text-[11px]">
+                              {item.name}
+                            </p>
+                            <p className="font-mono text-[10px] text-zinc-500">Qty: {item.quantity}</p>
+                          </div>
+                          <span className="font-mono font-bold text-[11px] text-zinc-900 dark:text-white shrink-0">
+                            ${item.priceUsd * item.quantity}.00
+                          </span>
                         </div>
+                      ))}
+                    </div>
+
+                    <div className="pt-2 border-t border-black/[0.06] dark:border-white/[0.06] space-y-1 text-xs">
+                      <div className="flex justify-between text-zinc-500 text-[11px]">
+                        <span>Subtotal</span>
+                        <span className="font-mono text-zinc-700 dark:text-zinc-300 font-medium">${subtotal}.00 USD</span>
+                      </div>
+                      <div className="flex justify-between text-zinc-500 text-[11px]">
+                        <span>US Shipping</span>
+                        <span className="font-mono text-emerald-600 dark:text-moya-green-light font-bold">
+                          {shippingFee === 0 ? (locale === "es" ? "GRATIS (2+ gorras)" : "FREE (2+ caps)") : `$${shippingFee}.00 USD`}
+                        </span>
+                      </div>
+                      <div className="flex justify-between font-display font-bold text-zinc-900 dark:text-white pt-1 text-sm">
+                        <span>Total</span>
+                        <span className="font-mono text-emerald-600 dark:text-moya-green-light">
+                          ${total}.00 USD
+                        </span>
                       </div>
                     </div>
-                  );
-                })
-              )}
-            </div>
+                  </div>
 
-            {/* Drawer Footer & Checkout Controls */}
-            {cart.length > 0 && (
-              <div className="p-6 border-t border-black/[0.06] dark:border-white/[0.06] bg-zinc-50 dark:bg-[#07070c] space-y-4">
-                {stockAdjustmentNotice && (
-                  <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-start gap-2 text-amber-700 dark:text-amber-400 text-xs">
-                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                    <span>{stockAdjustmentNotice}</span>
+                  <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400 text-xs flex items-center gap-2">
+                    <MapPin className="w-4 h-4 shrink-0 text-amber-500" />
+                    <span>{t("whatsappUsOnlyNotice")}</span>
                   </div>
-                )}
 
-                {checkoutError && (
-                  <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-start gap-2 text-rose-600 dark:text-rose-400 text-xs">
-                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                    <span>{checkoutError}</span>
-                  </div>
-                )}
+                  {/* Input Fields */}
+                  <div className="space-y-3 pt-1">
+                    {/* Full Name */}
+                    <div>
+                      <label className="block text-[11px] font-mono uppercase tracking-wider text-zinc-500 mb-1">
+                        {t("whatsappLeadName")} *
+                      </label>
+                      <input
+                        type="text"
+                        value={waName}
+                        onChange={(e) => {
+                          setWaName(e.target.value);
+                          if (waFieldErrors.name) setWaFieldErrors((prev) => ({ ...prev, name: "" }));
+                        }}
+                        placeholder={t("whatsappLeadNamePlaceholder")}
+                        className={`w-full px-3.5 py-2.5 rounded-xl bg-black/5 dark:bg-white/5 border text-xs text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none transition-colors ${
+                          waFieldErrors.name
+                            ? "border-rose-500 focus:border-rose-500"
+                            : "border-black/[0.08] dark:border-white/[0.08] focus:border-emerald-500"
+                        }`}
+                      />
+                      {waFieldErrors.name && (
+                        <p className="text-[10px] text-rose-500 mt-1 flex items-center gap-1 font-medium">
+                          <AlertCircle className="w-3 h-3 shrink-0" />
+                          {waFieldErrors.name}
+                        </p>
+                      )}
+                    </div>
 
-                <div className="space-y-1.5 text-xs">
-                  <div className="flex justify-between text-zinc-600 dark:text-zinc-400">
-                    <span>{t("subtotal")}</span>
-                    <span className="font-mono text-zinc-900 dark:text-white font-semibold">
-                      ${subtotal}.00 USD
-                    </span>
+                    {/* Phone Number */}
+                    <div>
+                      <label className="block text-[11px] font-mono uppercase tracking-wider text-zinc-500 mb-1">
+                        {t("whatsappLeadPhone")} *
+                      </label>
+                      <input
+                        type="tel"
+                        value={waPhone}
+                        onChange={(e) => {
+                          setWaPhone(formatUsPhone(e.target.value));
+                          if (waFieldErrors.phone) setWaFieldErrors((prev) => ({ ...prev, phone: "" }));
+                        }}
+                        placeholder={t("whatsappLeadPhonePlaceholder")}
+                        className={`w-full px-3.5 py-2.5 rounded-xl bg-black/5 dark:bg-white/5 border text-xs text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none font-mono transition-colors ${
+                          waFieldErrors.phone
+                            ? "border-rose-500 focus:border-rose-500"
+                            : "border-black/[0.08] dark:border-white/[0.08] focus:border-emerald-500"
+                        }`}
+                      />
+                      {waFieldErrors.phone && (
+                        <p className="text-[10px] text-rose-500 mt-1 flex items-center gap-1 font-medium">
+                          <AlertCircle className="w-3 h-3 shrink-0" />
+                          {waFieldErrors.phone}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Street Address Line 1 */}
+                    <div>
+                      <label className="block text-[11px] font-mono uppercase tracking-wider text-zinc-500 mb-1">
+                        {t("whatsappLeadAddress")} *
+                      </label>
+                      <input
+                        type="text"
+                        value={waLine1}
+                        onChange={(e) => {
+                          setWaLine1(e.target.value);
+                          if (waFieldErrors.line1) setWaFieldErrors((prev) => ({ ...prev, line1: "" }));
+                        }}
+                        placeholder={t("whatsappLeadAddressPlaceholder")}
+                        className={`w-full px-3.5 py-2.5 rounded-xl bg-black/5 dark:bg-white/5 border text-xs text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none transition-colors ${
+                          waFieldErrors.line1
+                            ? "border-rose-500 focus:border-rose-500"
+                            : "border-black/[0.08] dark:border-white/[0.08] focus:border-emerald-500"
+                        }`}
+                      />
+                      {waFieldErrors.line1 && (
+                        <p className="text-[10px] text-rose-500 mt-1 flex items-center gap-1 font-medium">
+                          <AlertCircle className="w-3 h-3 shrink-0" />
+                          {waFieldErrors.line1}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Street Address Line 2 */}
+                    <div>
+                      <label className="block text-[11px] font-mono uppercase tracking-wider text-zinc-500 mb-1">
+                        {t("whatsappLeadAddress2")}
+                      </label>
+                      <input
+                        type="text"
+                        value={waLine2}
+                        onChange={(e) => setWaLine2(e.target.value)}
+                        placeholder={t("whatsappLeadAddress2Placeholder")}
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-black/5 dark:bg-white/5 border border-black/[0.08] dark:border-white/[0.08] text-xs text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+
+                    {/* City & State */}
+                    <div className="grid grid-cols-2 gap-2.5">
+                      <div>
+                        <label className="block text-[11px] font-mono uppercase tracking-wider text-zinc-500 mb-1">
+                          {t("whatsappLeadCity")} *
+                        </label>
+                        <input
+                          type="text"
+                          value={waCity}
+                          onChange={(e) => {
+                            setWaCity(e.target.value);
+                            if (waFieldErrors.city) setWaFieldErrors((prev) => ({ ...prev, city: "" }));
+                          }}
+                          placeholder="Los Angeles"
+                          className={`w-full px-3 py-2.5 rounded-xl bg-black/5 dark:bg-white/5 border text-xs text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none transition-colors ${
+                            waFieldErrors.city
+                              ? "border-rose-500 focus:border-rose-500"
+                              : "border-black/[0.08] dark:border-white/[0.08] focus:border-emerald-500"
+                          }`}
+                        />
+                        {waFieldErrors.city && (
+                          <p className="text-[10px] text-rose-500 mt-1 flex items-center gap-1 font-medium">
+                            <AlertCircle className="w-3 h-3 shrink-0" />
+                            {waFieldErrors.city}
+                          </p>
+                        )}
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-mono uppercase tracking-wider text-zinc-500 mb-1">
+                          {t("whatsappLeadState")} *
+                        </label>
+                        <select
+                          value={waState}
+                          onChange={(e) => {
+                            setWaState(e.target.value);
+                            if (waFieldErrors.state) setWaFieldErrors((prev) => ({ ...prev, state: "" }));
+                          }}
+                          className={`w-full px-2.5 py-2.5 rounded-xl bg-white dark:bg-[#12121c] border text-xs text-zinc-900 dark:text-white focus:outline-none font-mono transition-colors ${
+                            waFieldErrors.state
+                              ? "border-rose-500 focus:border-rose-500"
+                              : "border-black/[0.08] dark:border-white/[0.08] focus:border-emerald-500"
+                          }`}
+                        >
+                          <option value="">{t("whatsappLeadStateSelect")}</option>
+                          {US_STATES.map((s) => (
+                            <option key={s.code} value={s.code}>
+                              {s.code} - {s.name}
+                            </option>
+                          ))}
+                        </select>
+                        {waFieldErrors.state && (
+                          <p className="text-[10px] text-rose-500 mt-1 flex items-center gap-1 font-medium">
+                            <AlertCircle className="w-3 h-3 shrink-0" />
+                            {waFieldErrors.state}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* ZIP Code */}
+                    <div>
+                      <label className="block text-[11px] font-mono uppercase tracking-wider text-zinc-500 mb-1">
+                        {t("whatsappLeadZip")} *
+                      </label>
+                      <input
+                        type="text"
+                        value={waZip}
+                        onChange={(e) => {
+                          setWaZip(e.target.value.trim());
+                          if (waFieldErrors.postalCode) setWaFieldErrors((prev) => ({ ...prev, postalCode: "" }));
+                        }}
+                        placeholder="90001"
+                        maxLength={10}
+                        className={`w-full px-3.5 py-2.5 rounded-xl bg-black/5 dark:bg-white/5 border text-xs text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none font-mono transition-colors ${
+                          waFieldErrors.postalCode
+                            ? "border-rose-500 focus:border-rose-500"
+                            : "border-black/[0.08] dark:border-white/[0.08] focus:border-emerald-500"
+                        }`}
+                      />
+                      {waFieldErrors.postalCode && (
+                        <p className="text-[10px] text-rose-500 mt-1 flex items-center gap-1 font-medium">
+                          <AlertCircle className="w-3 h-3 shrink-0" />
+                          {waFieldErrors.postalCode}
+                        </p>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex justify-between text-zinc-600 dark:text-zinc-400">
-                    <span>{t("shipping")}</span>
-                    <span className="font-mono text-emerald-600 dark:text-moya-green-light font-bold">
-                      {shippingFee === 0 ? t("shippingFree") : `$${shippingFee}.00 USD`}
-                    </span>
+
+                  <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-400 text-xs flex items-center gap-2">
+                    <Clock className="w-4 h-4 shrink-0 text-emerald-500" />
+                    <span>{t("whatsappReservationNotice")}</span>
                   </div>
-                  <div className="flex justify-between text-[11px] text-zinc-500">
-                    <span>{t("tax")}</span>
-                    <span className="font-mono italic text-zinc-400">
-                      {t("taxesNotice")}
-                    </span>
+
+                  {waFormError && (
+                    <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs flex items-start gap-2">
+                      <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                      <span>{waFormError}</span>
+                    </div>
+                  )}
+
+                  <div className="pt-2 space-y-2">
+                    <button
+                      type="submit"
+                      disabled={isSubmittingWhatsApp}
+                      className="w-full py-3.5 rounded-2xl font-display font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-600/30 active:scale-[0.99]"
+                    >
+                      {isSubmittingWhatsApp ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin text-white" />
+                          <span>Reserving Stock & Connecting...</span>
+                        </>
+                      ) : (
+                        <>
+                          <MessageCircle className="w-4 h-4" />
+                          <span>{t("whatsappLeadContinue")}</span>
+                        </>
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsWhatsAppFormOpen(false)}
+                      className="w-full py-2.5 rounded-xl text-xs font-display uppercase tracking-wider text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors"
+                    >
+                      {locale === "es" ? "← Volver a la bolsa" : "← Back to Loot Bag"}
+                    </button>
                   </div>
-                  <div className="flex justify-between text-sm font-display font-bold pt-2 border-t border-black/[0.06] dark:border-white/[0.06] text-zinc-900 dark:text-white">
-                    <span>{t("total")}</span>
-                    <span className="font-mono text-emerald-600 dark:text-moya-green-light text-base">
-                      ${total}.00 USD
-                    </span>
+                </form>
+              </div>
+            ) : (
+              <>
+                {/* Free Shipping Progress Indicator */}
+                <div className="px-6 py-3 bg-moya-red/10 dark:bg-moya-red-deep/20 border-b border-moya-red/20 text-xs">
+                  {freeShippingUnlocked ? (
+                    <p className="text-emerald-600 dark:text-moya-green-light font-display font-bold text-center">
+                      {t("freeShippingAchieved")}
+                    </p>
+                  ) : (
+                    <p className="text-zinc-700 dark:text-zinc-300 text-center">
+                      {t("freeShippingRemaining", {
+                        amount: currency === "USD" ? `$${Math.max(0, 240 - subtotal)} USD (1 more cap)` : "1 gorra más",
+                      })}
+                    </p>
+                  )}
+                  <div className="w-full bg-black/10 dark:bg-black/50 h-1.5 rounded-full mt-2 overflow-hidden">
+                    <div
+                      className="bg-gradient-to-r from-moya-red to-moya-green h-full rounded-full transition-all duration-500"
+                      style={{ width: `${Math.min(100, (totalItems / 2) * 100)}%` }}
+                    />
                   </div>
                 </div>
 
-                {checkoutStep === "success" ? (
-                  <div className="p-4 rounded-xl bg-moya-green-deep/30 border border-moya-green/40 text-center">
-                    <Check className="w-8 h-8 text-moya-green-light mx-auto mb-2 animate-bounce" />
-                    <p className="font-display font-bold text-sm text-white">Order Confirmed!</p>
-                    <p className="text-xs text-zinc-300 mt-1">
-                      Your 0880 Good Luck drop is reserved. Tracking sent to email.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-2.5">
-                    {/* Authentication Check & Stripe Card Checkout */}
-                    {!isSignedIn ? (
-                      <div className="space-y-1.5">
-                        <SafeSignInButton
-                          mode="modal"
-                          forceRedirectUrl={`/${locale}/checkout`}
-                          fallbackRedirectUrl={`/${locale}/checkout`}
-                          signUpForceRedirectUrl={`/${locale}/checkout`}
-                          signUpFallbackRedirectUrl={`/${locale}/checkout`}
+                {/* Cart Items List */}
+                <div
+                  data-lenis-prevent
+                  className="flex-1 overflow-y-auto p-6 space-y-4 overscroll-contain"
+                  style={{ overscrollBehavior: "contain" }}
+                >
+                  {cart.length === 0 ? (
+                    <div className="h-full flex flex-col items-center justify-center text-center py-16">
+                      <div className="w-16 h-16 rounded-2xl bg-black/5 dark:bg-white/5 border border-black/[0.06] dark:border-white/[0.06] flex items-center justify-center mb-4 text-zinc-400 dark:text-zinc-500">
+                        <ShoppingBag className="w-8 h-8" />
+                      </div>
+                      <h3 className="text-lg font-display font-bold text-zinc-900 dark:text-white mb-1">
+                        {t("emptyTitle")}
+                      </h3>
+                      <p className="text-xs text-zinc-600 dark:text-zinc-400 max-w-xs mb-6">
+                        {t("emptyDesc")}
+                      </p>
+                      <button
+                        onClick={closeCart}
+                        className="px-6 py-3 rounded-xl bg-moya-red hover:bg-rose-500 text-white text-xs font-display font-bold uppercase tracking-wider transition-colors"
+                      >
+                        {t("exploreBtn")}
+                      </button>
+                    </div>
+                  ) : (
+                    cart.map((item) => {
+                      const variant = convexVariants?.find((v) => v.variantId === item.id);
+                      const stock = variant ? (typeof variant.stock === "number" ? variant.stock : 0) : (item.maxStock ?? 99);
+                      const isOutOfStock = stock <= 0;
+                      const isAtMaxStock = item.quantity >= stock;
+
+                      return (
+                        <div
+                          key={item.id}
+                          className={`glass-card rounded-2xl p-3.5 flex items-center gap-4 border transition-all ${
+                            isOutOfStock
+                              ? "border-rose-500/40 bg-rose-500/5 opacity-80"
+                              : "border-black/[0.06] dark:border-white/[0.06]"
+                          }`}
                         >
-                          <button
-                            disabled={cannotCheckout}
-                            className={`w-full py-3.5 rounded-2xl font-display font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-xl ${
-                              cannotCheckout
-                                ? "bg-zinc-300 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-600 cursor-not-allowed"
-                                : "bg-zinc-900 hover:bg-zinc-800 dark:bg-white dark:hover:bg-zinc-100 text-white dark:text-zinc-900 hover:scale-[1.01] active:scale-[0.99]"
-                            }`}
-                          >
-                            <span>{t("signInToCheckout")}</span>
-                            <ArrowRight className="w-4 h-4 text-moya-red" />
-                          </button>
-                        </SafeSignInButton>
-                        <p className="text-[10px] text-center text-zinc-500 leading-tight">
-                          {t("signInNotice")}
+                          <div className="relative w-16 h-16 rounded-xl bg-black/5 dark:bg-white/5 shrink-0 overflow-hidden p-1">
+                            <Image
+                              src={item.image}
+                              alt={item.name}
+                              fill
+                              className="object-contain"
+                            />
+                          </div>
+
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-1">
+                              <h4 className="font-display font-bold text-sm text-zinc-900 dark:text-white truncate">
+                                {item.name}
+                              </h4>
+                              {isOutOfStock && (
+                                <span className="text-[10px] font-display font-bold px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-500 shrink-0">
+                                  {t("soldOutItem")}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <span className="text-xs font-mono font-bold text-emerald-600 dark:text-moya-green-light">
+                                ${item.priceUsd}.00 USD
+                              </span>
+                              {!isOutOfStock && isAtMaxStock && (
+                                <span className="text-[10px] font-mono text-amber-600 dark:text-amber-400 font-medium">
+                                  ({t("onlyXAvailable", { count: stock })})
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Quantity adjust */}
+                            <div className="flex items-center gap-3 mt-2">
+                              <div className="flex items-center glass-dark rounded-lg border border-black/[0.06] dark:border-white/[0.06]">
+                                <button
+                                  onClick={() => updateQuantity(item.id, -1, stock)}
+                                  className="px-2 py-1 text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors"
+                                >
+                                  <Minus className="w-3 h-3" />
+                                </button>
+                                <span className="px-2 text-xs font-mono font-bold text-zinc-900 dark:text-white">
+                                  {item.quantity}
+                                </span>
+                                <button
+                                  disabled={isAtMaxStock || isOutOfStock}
+                                  onClick={() => updateQuantity(item.id, 1, stock)}
+                                  className={`px-2 py-1 transition-colors ${
+                                    isAtMaxStock || isOutOfStock
+                                      ? "text-zinc-300 dark:text-zinc-600 cursor-not-allowed opacity-40"
+                                      : "text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
+                                  }`}
+                                  title={isAtMaxStock ? t("onlyXAvailable", { count: stock }) : undefined}
+                                >
+                                  <Plus className="w-3 h-3" />
+                                </button>
+                              </div>
+
+                              <button
+                                onClick={() => removeFromCart(item.id)}
+                                className="p-1.5 text-zinc-400 hover:text-moya-red transition-colors"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+
+                {/* Drawer Footer & Checkout Controls */}
+                {cart.length > 0 && (
+                  <div className="p-6 border-t border-black/[0.06] dark:border-white/[0.06] bg-zinc-50 dark:bg-[#07070c] space-y-4">
+                    {stockAdjustmentNotice && (
+                      <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-start gap-2 text-amber-700 dark:text-amber-400 text-xs">
+                        <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                        <span>{stockAdjustmentNotice}</span>
+                      </div>
+                    )}
+
+                    {checkoutError && (
+                      <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-start gap-2 text-rose-600 dark:text-rose-400 text-xs">
+                        <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                        <span>{checkoutError}</span>
+                      </div>
+                    )}
+
+                    <div className="space-y-1.5 text-xs">
+                      <div className="flex justify-between text-zinc-600 dark:text-zinc-400">
+                        <span>{t("subtotal")}</span>
+                        <span className="font-mono text-zinc-900 dark:text-white font-semibold">
+                          ${subtotal}.00 USD
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-zinc-600 dark:text-zinc-400">
+                        <span>{t("shipping")}</span>
+                        <span className="font-mono text-emerald-600 dark:text-moya-green-light font-bold">
+                          {shippingFee === 0 ? t("shippingFree") : `$${shippingFee}.00 USD`}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-[11px] text-zinc-500">
+                        <span>{t("tax")}</span>
+                        <span className="font-mono italic text-zinc-400">
+                          {t("taxesNotice")}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-sm font-display font-bold pt-2 border-t border-black/[0.06] dark:border-white/[0.06] text-zinc-900 dark:text-white">
+                        <span>{t("total")}</span>
+                        <span className="font-mono text-emerald-600 dark:text-moya-green-light text-base">
+                          ${total}.00 USD
+                        </span>
+                      </div>
+                    </div>
+
+                    {checkoutStep === "success" ? (
+                      <div className="p-4 rounded-xl bg-moya-green-deep/30 border border-moya-green/40 text-center">
+                        <Check className="w-8 h-8 text-moya-green-light mx-auto mb-2 animate-bounce" />
+                        <p className="font-display font-bold text-sm text-white">Order Confirmed!</p>
+                        <p className="text-xs text-zinc-300 mt-1">
+                          Your 0880 Good Luck drop is reserved. Tracking sent to email.
                         </p>
                       </div>
                     ) : (
-                      <button
-                        onClick={handleStripeCheckout}
-                        disabled={checkoutStep === "processing" || cannotCheckout}
-                        className={`w-full py-3.5 rounded-2xl font-display font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-xl ${
-                          cannotCheckout
-                            ? "bg-zinc-300 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-600 cursor-not-allowed"
-                            : "bg-moya-red hover:bg-rose-500 text-white shadow-moya-red-deep/50"
-                        }`}
-                      >
-                        {checkoutStep === "processing" ? (
-                          <>
-                            <Loader2 className="w-4 h-4 animate-spin text-white" />
-                            <span>Connecting to Gateway...</span>
-                          </>
-                        ) : hasUnreleasedDropItem ? (
-                          <span>{locale === "es" ? "Drop no disponible aún" : "Drop Not Released Yet"}</span>
-                        ) : hasOutOfStockItem ? (
-                          <span>{t("soldOutItem")}</span>
+                      <div className="flex flex-col gap-2.5">
+                        {/* Authentication Check & Stripe Card Checkout */}
+                        {!isSignedIn ? (
+                          <div className="space-y-1.5">
+                            <SafeSignInButton
+                              mode="modal"
+                              forceRedirectUrl={`/${locale}/checkout`}
+                              fallbackRedirectUrl={`/${locale}/checkout`}
+                              signUpForceRedirectUrl={`/${locale}/checkout`}
+                              signUpFallbackRedirectUrl={`/${locale}/checkout`}
+                            >
+                              <button
+                                disabled={cannotCheckout}
+                                className={`w-full py-3.5 rounded-2xl font-display font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-xl ${
+                                  cannotCheckout
+                                    ? "bg-zinc-300 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-600 cursor-not-allowed"
+                                    : "bg-zinc-900 hover:bg-zinc-800 dark:bg-white dark:hover:bg-zinc-100 text-white dark:text-zinc-900 hover:scale-[1.01] active:scale-[0.99]"
+                                }`}
+                              >
+                                <span>{t("signInToCheckout")}</span>
+                                <ArrowRight className="w-4 h-4 text-moya-red" />
+                              </button>
+                            </SafeSignInButton>
+                            <p className="text-[10px] text-center text-zinc-500 leading-tight">
+                              {t("signInNotice")}
+                            </p>
+                          </div>
                         ) : (
-                          <>
-                            <span>{t("checkoutStripe")}</span>
-                            <ArrowRight className="w-4 h-4" />
-                          </>
+                          <button
+                            onClick={handleStripeCheckout}
+                            disabled={checkoutStep === "processing" || cannotCheckout}
+                            className={`w-full py-3.5 rounded-2xl font-display font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-xl ${
+                              cannotCheckout
+                                ? "bg-zinc-300 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-600 cursor-not-allowed"
+                                : "bg-moya-red hover:bg-rose-500 text-white shadow-moya-red-deep/50"
+                            }`}
+                          >
+                            {checkoutStep === "processing" ? (
+                              <>
+                                <Loader2 className="w-4 h-4 animate-spin text-white" />
+                                <span>Connecting to Gateway...</span>
+                              </>
+                            ) : hasUnreleasedDropItem ? (
+                              <span>{locale === "es" ? "Drop no disponible aún" : "Drop Not Released Yet"}</span>
+                            ) : hasOutOfStockItem ? (
+                              <span>{t("soldOutItem")}</span>
+                            ) : (
+                              <>
+                                <span>{t("checkoutStripe")}</span>
+                                <ArrowRight className="w-4 h-4" />
+                              </>
+                            )}
+                          </button>
                         )}
-                      </button>
-                    )}
 
-                    {/* WhatsApp Direct Order Button */}
-                    <button
-                      onClick={handleWhatsAppOrder}
-                      disabled={checkoutStep === "processing" || cannotCheckout}
-                      className={`w-full py-3 rounded-2xl font-display font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg ${
-                        cannotCheckout
-                          ? "bg-zinc-300 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-600 cursor-not-allowed"
-                          : "bg-moya-green-deep/80 hover:bg-moya-green text-white shadow-moya-green-deep/40"
-                      }`}
-                    >
-                      <MessageCircle className="w-4 h-4" />
-                      <span>{t("checkoutWhatsApp")}</span>
-                    </button>
+                        {/* WhatsApp Direct Order Button */}
+                        <button
+                          onClick={handleWhatsAppOrder}
+                          disabled={checkoutStep === "processing" || cannotCheckout}
+                          className={`w-full py-3 rounded-2xl font-display font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg ${
+                            cannotCheckout
+                              ? "bg-zinc-300 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-600 cursor-not-allowed"
+                              : "bg-moya-green-deep/80 hover:bg-moya-green text-white shadow-moya-green-deep/40"
+                          }`}
+                        >
+                          <MessageCircle className="w-4 h-4" />
+                          <span>{t("checkoutWhatsApp")}</span>
+                        </button>
 
-                    {hasUnreleasedDropItem && (
-                      <div className="flex items-start gap-2 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-600 dark:text-amber-400 text-xs">
-                        <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                        <span className="leading-tight">
-                          {locale === "es"
-                            ? "Tu bolsa contiene un drop exclusivo que aún no se ha liberado. No puede ser comprado hasta su hora de lanzamiento."
-                            : "Your bag contains an exclusive drop that has not been released yet. It cannot be purchased until launch."}
-                        </span>
+                        {hasUnreleasedDropItem && (
+                          <div className="flex items-start gap-2 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-600 dark:text-amber-400 text-xs">
+                            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                            <span className="leading-tight">
+                              {locale === "es"
+                                ? "Tu bolsa contiene un drop exclusivo que aún no se ha liberado. No puede ser comprado hasta su hora de lanzamiento."
+                                : "Your bag contains an exclusive drop that has not been released yet. It cannot be purchased until launch."}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     )}
+
+                    <div className="flex items-center justify-center gap-2 text-[10px] text-zinc-500 text-center">
+                      <ShieldCheck className="w-3.5 h-3.5 text-moya-green" />
+                      <span>{t("secureCheckout")}</span>
+                    </div>
                   </div>
                 )}
-
-                <div className="flex items-center justify-center gap-2 text-[10px] text-zinc-500 text-center">
-                  <ShieldCheck className="w-3.5 h-3.5 text-moya-green" />
-                  <span>{t("secureCheckout")}</span>
-                </div>
-              </div>
+              </>
             )}
           </motion.aside>
         </>

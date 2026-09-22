@@ -9,6 +9,7 @@ import { checkIsAdmin } from "@/lib/adminAuth";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { getCarrierTrackingUrl } from "@/lib/tracking";
+import { getWhatsAppConciergeUrl } from "@/lib/whatsapp";
 import {
   Package,
   CheckCircle2,
@@ -150,12 +151,11 @@ export default function AccountOrdersPage() {
   };
 
   const handleWhatsAppConcierge = (orderNumber: string, actionType: "return" | "tracking" | "support") => {
-    const text = encodeURIComponent(
+    const text =
       locale === "es"
         ? `¡Hola Good Luck Concierge! Necesito asistencia con mi orden #${orderNumber} (${actionType === "return" ? "Cambio/Devolución" : "Rastreo/Envío"}).`
-        : `Hi Good Luck Concierge! I need assistance with my Order #${orderNumber} (${actionType === "return" ? "Exchange/Return" : "Tracking/Delivery"}).`
-    );
-    window.open(`https://wa.me/5215500000000?text=${text}`, "_blank");
+        : `Hi Good Luck Concierge! I need assistance with my Order #${orderNumber} (${actionType === "return" ? "Exchange/Return" : "Tracking/Delivery"}).`;
+    window.open(getWhatsAppConciergeUrl(locale, text), "_blank");
   };
 
   return (

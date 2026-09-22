@@ -23,6 +23,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { api } from "../../../../convex/_generated/api";
 import { getCarrierTrackingUrl } from "@/lib/tracking";
+import { getWhatsAppTrackingUrl } from "@/lib/whatsapp";
 import {
   Package,
   Truck,
@@ -101,12 +102,7 @@ export default function TrackOrderPage() {
   };
 
   const handleOpenWhatsAppConcierge = (orderNumber: string) => {
-    const greeting =
-      locale === "es"
-        ? `¡Hola! Necesito asistencia con el seguimiento de mi pedido Good Luck #${orderNumber}.`
-        : `Hi! I need assistance tracking my Good Luck order #${orderNumber}.`;
-    const url = `https://wa.me/5215500000000?text=${encodeURIComponent(greeting)}`;
-    window.open(url, "_blank");
+    window.open(getWhatsAppTrackingUrl(orderNumber, locale), "_blank");
   };
 
   const getStatusStep = (status: string) => {

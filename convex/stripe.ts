@@ -252,7 +252,7 @@ export const createCheckoutSession = action({
     const shippingFee = freeShipping ? 0 : 8;
     const total = subtotal + shippingFee;
 
-    const orderNumber = `MC-${Date.now().toString(36).toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`;
+    const orderNumber = `GL-${Date.now().toString(36).toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`;
     const stripe = getStripe();
 
     const stripeLineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = validatedItems.map((item) => ({
@@ -525,7 +525,7 @@ export const syncCheckoutSession = action({
 
       const orderId: any = await ctx.runMutation(internal.orders.createOrUpdateStripeOrder, {
         stripeSessionId: session.id,
-        orderNumber: metadata.orderNumber || `MC-${session.id.slice(-8).toUpperCase()}`,
+        orderNumber: metadata.orderNumber || `GL-${session.id.slice(-8).toUpperCase()}`,
         customerEmail: session.customer_details?.email || undefined,
         customerName: session.customer_details?.name || undefined,
         customerPhone: session.customer_details?.phone || undefined,
@@ -609,7 +609,7 @@ export const fulfillStripeWebhook = action({
 
       await ctx.runMutation(internal.orders.createOrUpdateStripeOrder, {
         stripeSessionId: session.id,
-        orderNumber: metadata.orderNumber || `MC-${session.id.slice(-8).toUpperCase()}`,
+        orderNumber: metadata.orderNumber || `GL-${session.id.slice(-8).toUpperCase()}`,
         customerEmail: session.customer_details?.email || undefined,
         customerName: session.customer_details?.name || undefined,
         customerPhone: session.customer_details?.phone || undefined,

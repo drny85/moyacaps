@@ -1,12 +1,14 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { MessageCircle, ShieldCheck, RotateCcw, Truck } from "lucide-react";
 import { useStore } from "@/store/useStore";
 import { usePathname } from "@/i18n/routing";
+import { getWhatsAppConciergeUrl } from "@/lib/whatsapp";
 
 export function Footer() {
   const t = useTranslations("footer");
+  const locale = useLocale();
   const { currency } = useStore();
   const pathname = usePathname();
 
@@ -15,8 +17,7 @@ export function Footer() {
   }
 
   const handleSupportChat = () => {
-    const text = encodeURIComponent("Hi Good Luck, I need help with an order or have a question about the 0880 collection.");
-    window.open(`https://wa.me/5215500000000?text=${text}`, "_blank");
+    window.open(getWhatsAppConciergeUrl(locale), "_blank");
   };
 
   return (

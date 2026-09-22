@@ -22,6 +22,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import confetti from "canvas-confetti";
+import { getWhatsAppConciergeUrl } from "@/lib/whatsapp";
 
 export default function CheckoutSuccessPage() {
   const t = useTranslations("checkoutSuccess");
@@ -73,8 +74,8 @@ export default function CheckoutSuccessPage() {
     lookupKey ? { identifier: lookupKey } : "skip"
   );
 
-  const displayOrderNumber = order?.orderNumber || orderNumberParam || "MC-0880-SECURED";
-  const trackingNumber = order?.trackingNumber || "MC-TRK-748921";
+  const displayOrderNumber = order?.orderNumber || orderNumberParam || "GL-0880-SECURED";
+  const trackingNumber = order?.trackingNumber || "GL-TRK-748921";
 
   const handleCopyOrder = () => {
     navigator.clipboard.writeText(displayOrderNumber);
@@ -83,12 +84,11 @@ export default function CheckoutSuccessPage() {
   };
 
   const handleWhatsAppAlerts = () => {
-    const text = encodeURIComponent(
+    const text =
       locale === "es"
-        ? `¡Hola Good Luck! Acabo de completar mi orden #${displayOrderNumber}. Me gustaría recibir actualizaciones de rastreo por WhatsApp.`
-        : `Hi Good Luck! I just secured Order #${displayOrderNumber}. I would like to receive tracking updates via WhatsApp.`
-    );
-    window.open(`https://wa.me/5215500000000?text=${text}`, "_blank");
+        ? `¡Hola Good Luck! Acabo de completar mi orden #${displayOrderNumber} (envío a EE.UU.). Me gustaría recibir actualizaciones de rastreo por WhatsApp.`
+        : `Hi Good Luck! I just secured Order #${displayOrderNumber} (US shipping). I would like to receive tracking updates via WhatsApp.`;
+    window.open(getWhatsAppConciergeUrl(locale, text), "_blank");
   };
 
   return (

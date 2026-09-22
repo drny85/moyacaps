@@ -12,6 +12,7 @@ import { useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
 import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
 import { useProductShare } from "@/lib/useProductShare";
+import { getWhatsAppInquiryUrl } from "@/lib/whatsapp";
 
 export function ProductQuickView() {
   const { quickViewCap, closeQuickView, openDropAlert, addToCart, cart } = useStore();
@@ -78,13 +79,15 @@ export function ProductQuickView() {
       return;
     }
     if (isOutOfStock) return;
-    const greeting =
-      locale === "es"
-        ? `¡Hola Good Luck! Deseo comprar ${quantity} pieza(s) de la gorra: ${name} (Edición 0880). Por favor indíquenme los métodos de pago disponibles.`
-        : `Hi Good Luck! I want to purchase ${quantity} piece(s) of: ${name} (0880 Edition). Please let me know how to complete my payment.`;
-
-    const encoded = encodeURIComponent(greeting);
-    window.open(`https://wa.me/5215500000000?text=${encoded}`, "_blank");
+    const url = getWhatsAppInquiryUrl({
+      name,
+      quantity,
+      priceSingle: quickViewCap.priceUsd,
+      currency: "USD",
+      isDrop: false,
+      locale,
+    });
+    window.open(url, "_blank");
   };
 
   const handleShare = () => {
@@ -292,16 +295,13 @@ export function ProductQuickView() {
 
                 {!isDrop && (
                   <button
+                    type="button"
                     onClick={handleWhatsAppBuy}
                     disabled={isOutOfStock}
-                    className={`w-full py-2 sm:py-2.5 rounded-xl sm:rounded-2xl font-display font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-md ${
-                      isOutOfStock
-                        ? "bg-zinc-200 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 cursor-not-allowed opacity-50"
-                        : "bg-moya-green-deep/80 hover:bg-moya-green text-white shadow-moya-green-deep/30"
-                    }`}
+                    className="w-full py-1.5 text-[11px] font-display text-zinc-500 hover:text-emerald-600 dark:hover:text-emerald-400 flex items-center justify-center gap-1.5 transition-colors disabled:opacity-40"
                   >
-                    <MessageCircle className="w-3.5 h-3.5" />
-                    <span>{isOutOfStock ? t("soldOut") : t("buyNow")}</span>
+                    <MessageCircle className="w-3 h-3 text-emerald-500" />
+                    <span>{locale === "es" ? "¿Dudas de talla o bordado? Consulta con Concierge" : "Questions on sizing or embroidery? Chat with Concierge"}</span>
                   </button>
                 )}
 

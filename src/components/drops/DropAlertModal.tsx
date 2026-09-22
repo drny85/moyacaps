@@ -11,6 +11,7 @@ import { api } from "@convex/_generated/api";
 import { useSafeUser } from "@/lib/useSafeUser";
 import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
 import confetti from "canvas-confetti";
+import { getWhatsAppConciergeUrl } from "@/lib/whatsapp";
 
 export function DropAlertModal() {
   const { dropAlertCap, closeDropAlert } = useStore();
@@ -99,12 +100,11 @@ export function DropAlertModal() {
   };
 
   const handleOpenWhatsAppTest = () => {
-    const text = encodeURIComponent(
+    const text =
       locale === "es"
-        ? `¡Hola Good Luck! Acabo de registrarme para la Alerta VIP del drop: ${capName}.`
-        : `Hi Good Luck! I just registered for the VIP Drop Alert for: ${capName}.`
-    );
-    window.open(`https://wa.me/5215500000000?text=${text}`, "_blank");
+        ? `¡Hola Good Luck! Acabo de registrarme para la Alerta VIP del drop: ${capName} (envío en EE.UU.).`
+        : `Hi Good Luck! I just registered for the VIP Drop Alert for: ${capName} (US shipping).`;
+    window.open(getWhatsAppConciergeUrl(locale, text), "_blank");
   };
 
   return (

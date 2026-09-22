@@ -6,6 +6,7 @@ import { useTranslations, useLocale } from "next-intl";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "@convex/_generated/api";
 import { getCarrierTrackingUrl } from "@/lib/tracking";
+import { getWhatsAppAdminCustomerUrl } from "@/lib/whatsapp";
 import { Link, useRouter } from "@/i18n/routing";
 import {
   ArrowLeft,
@@ -107,16 +108,14 @@ export default function DedicatedOrderDetailPage({
   };
 
   const openWhatsAppCustomer = (ord: any) => {
-    const rawPhone = ord.customerPhone || "";
-    const cleanPhone = rawPhone.replace(/\D/g, "");
-    const trackingText = ord.trackingNumber
-      ? `\nNúmero de Guía / Tracking: ${ord.trackingNumber} (${ord.carrier || "Courier"})`
-      : "";
-    const greeting =
-      locale === "es"
-        ? `Hola ${ord.customerName || ""}, te contactamos de Good Luck respecto a tu pedido #${ord.orderNumber}.`
-        : `Hi ${ord.customerName || ""}, contacting you from Good Luck regarding your order #${ord.orderNumber}.`;
-    const url = `https://wa.me/${cleanPhone || "5215500000000"}?text=${encodeURIComponent(greeting + trackingText)}`;
+    const url = getWhatsAppAdminCustomerUrl({
+      customerPhone: ord.customerPhone,
+      customerName: ord.customerName,
+      orderNumber: ord.orderNumber,
+      trackingNumber: ord.trackingNumber,
+      carrier: ord.carrier,
+      locale,
+    });
     window.open(url, "_blank");
   };
 

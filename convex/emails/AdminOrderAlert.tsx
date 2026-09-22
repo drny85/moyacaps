@@ -48,7 +48,7 @@ export interface AdminOrderAlertProps {
 }
 
 export function AdminOrderAlertEmail({
-  orderNumber = "MC-TEST1234",
+  orderNumber = "GL-TEST1234",
   total = 85.0,
   currency = "USD",
   paymentMethod = "stripe",

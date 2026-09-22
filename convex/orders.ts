@@ -134,7 +134,7 @@ export const createOrUpdateStripeOrder = internalMutation({
         taxDetails: args.taxDetails ?? existing.taxDetails,
         total: args.total ?? existing.total,
         status: "paid",
-        trackingNumber: existing.trackingNumber ?? `MC-TRK-${Math.floor(100000 + Math.random() * 900000)}`,
+        trackingNumber: existing.trackingNumber ?? `GL-TRK-${Math.floor(100000 + Math.random() * 900000)}`,
       });
       return existing._id;
     }
@@ -157,7 +157,7 @@ export const createOrUpdateStripeOrder = internalMutation({
       status: "paid",
       paymentMethod: "stripe",
       stripeSessionId: args.stripeSessionId,
-      trackingNumber: `MC-TRK-${Math.floor(100000 + Math.random() * 900000)}`,
+      trackingNumber: `GL-TRK-${Math.floor(100000 + Math.random() * 900000)}`,
       createdAt: Date.now(),
     });
 
@@ -264,11 +264,18 @@ export const getOrderDetailAdmin = query({
       .withIndex("by_orderNumber", (q) => q.eq("orderNumber", cleanNumber))
       .first();
 
-    if (!order && !cleanNumber.startsWith("MC-")) {
+    if (!order && !cleanNumber.startsWith("GL-") && !cleanNumber.startsWith("MC-")) {
       order = await ctx.db
         .query("orders")
-        .withIndex("by_orderNumber", (q) => q.eq("orderNumber", `MC-${cleanNumber}`))
+        .withIndex("by_orderNumber", (q) => q.eq("orderNumber", `GL-${cleanNumber}`))
         .first();
+
+      if (!order) {
+        order = await ctx.db
+          .query("orders")
+          .withIndex("by_orderNumber", (q) => q.eq("orderNumber", `MC-${cleanNumber}`))
+          .first();
+      }
     }
 
     return order;
@@ -528,12 +535,19 @@ export const getOrderByOrderNumberAndEmail = query({
       .withIndex("by_orderNumber", (q) => q.eq("orderNumber", cleanNumber))
       .first();
 
-    // If not found and input lacked "MC-" prefix, try with prefix
-    if (!order && !cleanNumber.startsWith("MC-")) {
+    // If not found and input lacked prefix, try with "GL-" first, then fallback to legacy "MC-"
+    if (!order && !cleanNumber.startsWith("GL-") && !cleanNumber.startsWith("MC-")) {
       order = await ctx.db
         .query("orders")
-        .withIndex("by_orderNumber", (q) => q.eq("orderNumber", `MC-${cleanNumber}`))
+        .withIndex("by_orderNumber", (q) => q.eq("orderNumber", `GL-${cleanNumber}`))
         .first();
+
+      if (!order) {
+        order = await ctx.db
+          .query("orders")
+          .withIndex("by_orderNumber", (q) => q.eq("orderNumber", `MC-${cleanNumber}`))
+          .first();
+      }
     }
 
     if (!order) {
@@ -778,7 +792,8 @@ export const getOrdersAttentionStats = query({
 });
 
 /**
- * Records a customer WhatsApp checkout lead order and triggers admin email alert.
+ * Records a customer WhatsApp checkout lead order, reserves inventory immediately,
+ * and schedules a 24-hour auto-cancellation if payment is not confirmed.
  */
 export const createWhatsAppOrderLead = mutation({
   args: {
@@ -790,11 +805,34 @@ export const createWhatsAppOrderLead = mutation({
     customerName: v.optional(v.string()),
     customerPhone: v.optional(v.string()),
     customerEmail: v.optional(v.string()),
+    shippingAddress: v.optional(shippingAddressValidator),
     clerkUserId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const timestamp = Date.now();
-    const orderNumber = `MC-WA-${Math.floor(100000 + Math.random() * 900000)}`;
+
+    // 1. Validate real-time stock and decrement immediately to reserve it
+    for (const item of args.items) {
+      const variant = await ctx.db
+        .query("variants")
+        .withIndex("by_variantId", (q) => q.eq("variantId", item.variantId))
+        .first();
+
+      if (!variant) {
+        throw new Error(`Item ${item.name} is no longer available.`);
+      }
+      if (variant.stock < item.quantity) {
+        throw new Error(`Insufficient stock for ${item.name}. Only ${variant.stock} available.`);
+      }
+
+      await ctx.db.patch(variant._id, {
+        stock: Math.max(0, variant.stock - item.quantity),
+      });
+    }
+
+    const orderNumber = `GL-WA-${Math.floor(100000 + Math.random() * 900000)}`;
+    const reservationHoldMs = 24 * 60 * 60 * 1000; // 24 hours reservation hold
+    const reservationExpiresAt = timestamp + reservationHoldMs;
 
     const orderId = await ctx.db.insert("orders", {
       orderNumber,
@@ -802,6 +840,7 @@ export const createWhatsAppOrderLead = mutation({
       customerPhone: args.customerPhone,
       customerEmail: args.customerEmail,
       clerkUserId: args.clerkUserId,
+      shippingAddress: args.shippingAddress,
       items: args.items,
       currency: args.currency,
       subtotal: args.subtotal,
@@ -809,7 +848,13 @@ export const createWhatsAppOrderLead = mutation({
       total: args.total,
       status: "whatsapp_initiated",
       paymentMethod: "whatsapp",
+      reservationExpiresAt,
       createdAt: timestamp,
+    });
+
+    // Schedule 24h auto-cancellation of WhatsApp reservation if unpaid
+    await ctx.scheduler.runAfter(reservationHoldMs, internal.orders.expireWhatsAppOrderLead, {
+      orderId,
     });
 
     // Schedule Admin Order Alert for WhatsApp order
@@ -822,16 +867,52 @@ export const createWhatsAppOrderLead = mutation({
       customerName: args.customerName,
       customerEmail: args.customerEmail,
       customerPhone: args.customerPhone,
+      shippingAddress: args.shippingAddress,
       items: args.items,
       subtotal: args.subtotal,
       shippingFee: args.shippingFee,
       createdAt: timestamp,
     });
 
-    return { orderId, orderNumber };
+    return { orderId, orderNumber, reservationExpiresAt };
   },
 });
 
+/**
+ * Automatically releases reserved stock if a WhatsApp order lead is not confirmed within 24 hours.
+ */
+export const expireWhatsAppOrderLead = internalMutation({
+  args: {
+    orderId: v.id("orders"),
+  },
+  handler: async (ctx, args) => {
+    const order = await ctx.db.get(args.orderId);
+    if (!order) return;
+
+    // Only auto-cancel if it's still awaiting WhatsApp payment confirmation
+    if (order.status === "whatsapp_initiated") {
+      // Restore reserved inventory
+      for (const item of order.items) {
+        const variant = await ctx.db
+          .query("variants")
+          .withIndex("by_variantId", (q) => q.eq("variantId", item.variantId))
+          .first();
+
+        if (variant) {
+          await ctx.db.patch(variant._id, {
+            stock: variant.stock + item.quantity,
+          });
+        }
+      }
+
+      await ctx.db.patch(order._id, {
+        status: "cancelled",
+        adminNotes: `${order.adminNotes ? order.adminNotes + "\n" : ""}Auto-cancelled: 24-hour WhatsApp reservation hold expired without payment.`,
+        updatedAt: Date.now(),
+      });
+    }
+  },
+});
 
 export const updateOrderStatusAdmin = mutation({
   args: {
@@ -852,8 +933,8 @@ export const updateOrderStatusAdmin = mutation({
     const isNowPaidLike = ["paid", "dispatched", "delivered"].includes(args.newStatus);
     const wasPaidLike = ["paid", "dispatched", "delivered"].includes(previousStatus);
 
-    // 1. If transitioning to paid from an unpaid state (like whatsapp_initiated or pending), decrement stock
-    if (!wasPaidLike && isNowPaidLike) {
+    // 1. If transitioning to paid from an unpaid state (where stock was NOT already reserved, e.g. "pending")
+    if (!wasPaidLike && isNowPaidLike && previousStatus !== "whatsapp_initiated") {
       for (const item of order.items) {
         const variant = await ctx.db
           .query("variants")
@@ -868,8 +949,8 @@ export const updateOrderStatusAdmin = mutation({
       }
     }
 
-    // 2. If cancelling an order that was previously paid-like, restore stock
-    if (wasPaidLike && args.newStatus === "cancelled") {
+    // 2. If cancelling an order that had stock reserved (either was paid-like or was whatsapp_initiated), restore stock
+    if ((wasPaidLike || previousStatus === "whatsapp_initiated") && args.newStatus === "cancelled") {
       for (const item of order.items) {
         const variant = await ctx.db
           .query("variants")
@@ -896,7 +977,7 @@ export const updateOrderStatusAdmin = mutation({
 
     // Auto-generate tracking number if transitioning to dispatched without one
     if (args.newStatus === "dispatched" && !order.trackingNumber && !args.trackingNumber) {
-      updatePayload.trackingNumber = `MC-TRK-${Math.floor(100000 + Math.random() * 900000)}`;
+      updatePayload.trackingNumber = `GL-TRK-${Math.floor(100000 + Math.random() * 900000)}`;
     }
 
     await ctx.db.patch(args.orderId, updatePayload);

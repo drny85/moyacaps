@@ -28,6 +28,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
 import { useProductShare } from "@/lib/useProductShare";
+import { getWhatsAppInquiryUrl } from "@/lib/whatsapp";
 
 interface ProductDetailViewProps {
   cap: CapVariant;
@@ -158,24 +159,16 @@ export function ProductDetailView({ cap, allCaps }: ProductDetailViewProps) {
   };
 
   const handleWhatsAppBuy = () => {
-    if (isDropUpcoming) {
-      const greeting =
-        locale === "es"
-          ? `¡Hola Good Luck! Deseo información y apartar mi acceso prioritario para el drop de la gorra: ${name} (Edición 0880). ¿Me podrían compartir más detalles?`
-          : `Hi Good Luck! I would like priority access and info regarding the upcoming drop of: ${name} (0880 Edition). Please share details.`;
-
-      const encoded = encodeURIComponent(greeting);
-      window.open(`https://wa.me/5215500000000?text=${encoded}`, "_blank");
-      return;
-    }
-    if (isOutOfStock) return;
-    const greeting =
-      locale === "es"
-        ? `¡Hola Good Luck! Deseo ordenar ${quantity} pieza(s) de la gorra ${name} (Edición 0880 - $${priceSingle * quantity} ${currency}). ¿Me podrían compartir los datos de pago y envío?`
-        : `Hi Good Luck! I would like to order ${quantity} piece(s) of ${name} (0880 Edition - $${priceSingle * quantity} ${currency}). Please share payment and delivery details.`;
-
-    const encoded = encodeURIComponent(greeting);
-    window.open(`https://wa.me/5215500000000?text=${encoded}`, "_blank");
+    if (!isDropUpcoming && isOutOfStock) return;
+    const url = getWhatsAppInquiryUrl({
+      name,
+      quantity,
+      priceSingle,
+      currency,
+      isDrop: isDropUpcoming,
+      locale,
+    });
+    window.open(url, "_blank");
   };
 
   const handleShare = () => {
@@ -458,11 +451,12 @@ export function ProductDetailView({ cap, allCaps }: ProductDetailViewProps) {
                 </button>
 
                 <button
+                  type="button"
                   onClick={handleWhatsAppBuy}
-                  className="w-full py-3.5 rounded-2xl font-display font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg active:scale-[0.98] bg-emerald-700/80 hover:bg-emerald-600 text-white shadow-emerald-950/30"
+                  className="w-full py-2.5 rounded-xl font-display text-xs text-zinc-600 dark:text-zinc-400 hover:text-emerald-600 dark:hover:text-emerald-400 flex items-center justify-center gap-1.5 transition-colors"
                 >
-                  <MessageCircle className="w-4 h-4" />
-                  <span>{locale === "es" ? "Consultar Drop por WhatsApp" : "Inquire via WhatsApp"}</span>
+                  <MessageCircle className="w-3.5 h-3.5 text-emerald-500" />
+                  <span>{locale === "es" ? "¿Preguntas sobre este drop? Chat con Concierge" : "Questions about this drop? Chat with Concierge"}</span>
                 </button>
               </>
             ) : (
@@ -503,16 +497,13 @@ export function ProductDetailView({ cap, allCaps }: ProductDetailViewProps) {
                 </button>
 
                 <button
+                  type="button"
                   onClick={handleWhatsAppBuy}
                   disabled={isOutOfStock}
-                  className={`w-full py-3.5 rounded-2xl font-display font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg active:scale-[0.98] ${
-                    isOutOfStock
-                      ? "bg-zinc-200 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 cursor-not-allowed opacity-50"
-                      : "bg-moya-green-deep/90 hover:bg-moya-green text-white shadow-moya-green-deep/30"
-                  }`}
+                  className="w-full py-2.5 rounded-xl font-display text-xs text-zinc-600 dark:text-zinc-400 hover:text-emerald-600 dark:hover:text-emerald-400 flex items-center justify-center gap-1.5 transition-colors disabled:opacity-40"
                 >
-                  <MessageCircle className="w-4 h-4" />
-                  <span>{isOutOfStock ? t("soldOut") : tQuick("buyNow")}</span>
+                  <MessageCircle className="w-3.5 h-3.5 text-emerald-500" />
+                  <span>{locale === "es" ? "¿Dudas sobre talla o bordado? Consulta con Concierge" : "Questions on sizing or embroidery? Chat with Concierge"}</span>
                 </button>
               </>
             )}
