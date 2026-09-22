@@ -7,7 +7,11 @@ import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
 import { getCarrierTrackingUrl } from "@/lib/tracking";
-import { getWhatsAppAdminCustomerUrl } from "@/lib/whatsapp";
+import {
+  getWhatsAppAdminCustomerUrl,
+  getWhatsAppAdminPaymentLinkUrl,
+  getWhatsAppAdminPaymentLinkMessage,
+} from "@/lib/whatsapp";
 import {
   Search,
   Filter,
@@ -132,6 +136,7 @@ export default function AdminOrdersPage() {
 
   const updateOrderStatus = useMutation(api.orders.updateOrderStatusAdmin);
   const markWhatsAppOrderPaidAdmin = useMutation(api.orders.markWhatsAppOrderPaidAdmin);
+  const dispatchWhatsAppPaymentLinkAdmin = useMutation(api.orders.dispatchWhatsAppPaymentLinkAdmin);
   const updateOrderFulfillment = useMutation(api.orders.updateOrderFulfillmentAdmin);
   const updateShippingAddressAdmin = useMutation(api.orders.updateShippingAddressAdmin);
   const cancelAndRefundAdmin = useAction(api.stripe.cancelAndRefundOrderAdmin);
@@ -181,6 +186,42 @@ export default function AdminOrdersPage() {
     } catch (err: any) {
       console.error("Failed to mark WhatsApp order paid:", err);
       setActionError(err?.message || "Failed to confirm payment.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleDispatchPaymentLink = async (ord: any) => {
+    if (!ord || !ord.paymentUrl) return;
+    try {
+      setIsProcessing(true);
+      await dispatchWhatsAppPaymentLinkAdmin({
+        orderId: ord._id,
+      });
+
+      const waUrl = getWhatsAppAdminPaymentLinkUrl({
+        customerPhone: ord.customerPhone,
+        customerName: ord.customerName,
+        orderNumber: ord.orderNumber,
+        paymentUrl: ord.paymentUrl,
+        total: ord.total,
+        currency: ord.currency || "USD",
+        locale,
+      });
+
+      window.open(waUrl, "_blank");
+
+      if (selectedOrder?._id === ord._id) {
+        setSelectedOrder({
+          ...selectedOrder,
+          paymentLinkSentAt: Date.now(),
+        });
+      }
+
+      triggerSuccess("Payment link dispatched to customer via WhatsApp! 24h stock hold extended.");
+    } catch (err: any) {
+      console.error("Failed to dispatch payment link:", err);
+      setActionError(err?.message || "Failed to dispatch payment link.");
     } finally {
       setIsProcessing(false);
     }
@@ -404,7 +445,7 @@ export default function AdminOrdersPage() {
         );
       case "whatsapp_initiated":
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-mono font-bold bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-mono font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
             <MessageCircle className="w-3.5 h-3.5" /> WhatsApp Pending
           </span>
         );
@@ -763,8 +804,15 @@ export default function AdminOrdersPage() {
                               </span>
                             )}
                           {order.status === "whatsapp_initiated" && (
-                            <span className="inline-flex items-center gap-1 text-[9px] font-mono font-bold uppercase tracking-wider text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded">
-                              <AlertCircle className="w-2.5 h-2.5" /> Needs Payment
+                            <span
+                              className={`inline-flex items-center gap-1 text-[9px] font-mono font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${
+                                order.paymentLinkSentAt
+                                  ? "text-blue-500 bg-blue-500/10"
+                                  : "text-amber-500 bg-amber-500/10"
+                              }`}
+                            >
+                              <AlertCircle className="w-2.5 h-2.5" />
+                              {order.paymentLinkSentAt ? "Link Sent" : "Needs Payment Link"}
                             </span>
                           )}
                         </div>
@@ -987,21 +1035,37 @@ export default function AdminOrdersPage() {
 
               {/* WhatsApp / Stripe Payment Link Section */}
               {selectedOrder.paymentUrl && (
-                <div className="p-4 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-200/70 dark:border-indigo-500/20 space-y-2.5">
+                <div className="p-4 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-200/70 dark:border-indigo-500/20 space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] font-mono uppercase tracking-wider text-indigo-700 dark:text-indigo-400 font-semibold flex items-center gap-1.5">
                       <CreditCard className="w-3.5 h-3.5" /> Stripe Payment Link (24h)
                     </span>
-                    <a
-                      href={selectedOrder.paymentUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[11px] text-indigo-600 dark:text-indigo-400 hover:underline inline-flex items-center gap-1 font-medium"
-                    >
-                      <span>Open Link</span>
-                      <ExternalLink className="w-3 h-3" />
-                    </a>
+                    {selectedOrder.paymentLinkSentAt ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+                        <CheckCircle2 className="w-3 h-3" /> Link Sent
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400">
+                        <Clock className="w-3 h-3" /> Needs Link Dispatch
+                      </span>
+                    )}
                   </div>
+
+                  {/* 1-Click WhatsApp Dispatch Button for WhatsApp Orders */}
+                  {selectedOrder.status === "whatsapp_initiated" && (
+                    <button
+                      onClick={() => handleDispatchPaymentLink(selectedOrder)}
+                      disabled={isProcessing}
+                      className="w-full py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-md shadow-emerald-600/20 active:scale-[0.99]"
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                      <span>
+                        {selectedOrder.paymentLinkSentAt
+                          ? t("resendPaymentLinkWhatsApp")
+                          : t("sendPaymentLinkWhatsApp")}
+                      </span>
+                    </button>
+                  )}
 
                   <div className="flex items-center gap-2 p-2 rounded-xl bg-white dark:bg-black/30 border border-indigo-100 dark:border-indigo-900/30">
                     <input
@@ -1013,14 +1077,41 @@ export default function AdminOrdersPage() {
                     <button
                       onClick={() => handleCopy(selectedOrder.paymentUrl || "")}
                       className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-semibold flex items-center gap-1 shrink-0 transition-colors"
+                      title={t("copyPaymentLink")}
                     >
                       {copiedTracking ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                      <span>Copy</span>
+                      <span>{t("copyPaymentLink")}</span>
                     </button>
                   </div>
-                  <p className="text-[10px] text-zinc-500 leading-tight">
-                    Customer can pay with Card / Apple Pay directly via this link. Stock will automatically reconcile.
-                  </p>
+
+                  <div className="flex items-center justify-between text-[11px] pt-1 text-zinc-500">
+                    <button
+                      onClick={() => {
+                        const msg = getWhatsAppAdminPaymentLinkMessage({
+                          customerName: selectedOrder.customerName,
+                          orderNumber: selectedOrder.orderNumber,
+                          paymentUrl: selectedOrder.paymentUrl,
+                          total: selectedOrder.total,
+                          currency: selectedOrder.currency || "USD",
+                          locale,
+                        });
+                        handleCopy(msg);
+                      }}
+                      className="text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 font-medium"
+                    >
+                      <Copy className="w-3 h-3" />
+                      <span>{t("copyPaymentMessage")}</span>
+                    </button>
+                    <a
+                      href={selectedOrder.paymentUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-300 hover:underline inline-flex items-center gap-1"
+                    >
+                      <span>Open Checkout</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
                 </div>
               )}
 
@@ -1112,7 +1203,7 @@ export default function AdminOrdersPage() {
                   </div>
                 )}
                 <div className="flex justify-between text-sm font-bold text-zinc-950 dark:text-white pt-2 border-t border-zinc-200 dark:border-white/[0.06]">
-                  <span>Total Paid</span>
+                  <span>{["paid", "dispatched", "delivered"].includes(selectedOrder.status) ? "Total Paid" : "Total Due"}</span>
                   <span className="font-mono">${Number(selectedOrder.total).toFixed(2)} USD</span>
                 </div>
               </div>

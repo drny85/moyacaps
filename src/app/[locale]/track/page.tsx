@@ -39,6 +39,7 @@ import {
   ShieldCheck,
   XCircle,
   Lock,
+  CreditCard,
 } from "lucide-react";
 import { useSafeUser, SafeSignInButton } from "@/lib/useSafeUser";
 
@@ -53,14 +54,17 @@ export default function TrackOrderPage() {
 
   const [activeQuery, setActiveQuery] = useState<{
     orderNumber: string;
-    email: string;
+    email?: string;
   } | null>(
-    initialOrder && initialEmail
-      ? { orderNumber: initialOrder, email: initialEmail }
+    initialOrder
+      ? {
+          orderNumber: initialOrder.trim().toUpperCase().replace(/^#/, ""),
+          email: initialEmail ? initialEmail.trim().toLowerCase() : undefined,
+        }
       : null
   );
 
-  const [hasSearched, setHasSearched] = useState(Boolean(initialOrder && initialEmail));
+  const [hasSearched, setHasSearched] = useState(Boolean(initialOrder));
 
   const form = useForm<TrackingLookupValues>({
     resolver: zodResolver(trackingLookupSchema),
@@ -77,6 +81,13 @@ export default function TrackOrderPage() {
         orderNumber: initialOrder,
         email: initialEmail,
       });
+      if (initialOrder) {
+        setActiveQuery({
+          orderNumber: initialOrder.trim().toUpperCase().replace(/^#/, ""),
+          email: initialEmail ? initialEmail.trim().toLowerCase() : undefined,
+        });
+        setHasSearched(true);
+      }
     }
   }, [initialOrder, initialEmail, form]);
 
@@ -96,7 +107,7 @@ export default function TrackOrderPage() {
     const cleanMail = data.email.trim().toLowerCase();
     setActiveQuery({
       orderNumber: cleanNum,
-      email: cleanMail,
+      email: cleanMail || undefined,
     });
     setHasSearched(true);
   };
@@ -236,7 +247,11 @@ export default function TrackOrderPage() {
                         <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-mono font-bold bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30">
                           <Truck className="w-4 h-4" /> {t("statusDispatched")}
                         </span>
-                      ) : orderResult.status === "pending" || orderResult.status === "whatsapp_initiated" ? (
+                      ) : orderResult.status === "whatsapp_initiated" ? (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-mono font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                          <Clock className="w-4 h-4" /> {t("statusAwaitingLink")}
+                        </span>
+                      ) : orderResult.status === "pending" ? (
                         <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-mono font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
                           <Clock className="w-4 h-4" /> {t("statusPlaced")}
                         </span>
@@ -324,6 +339,46 @@ export default function TrackOrderPage() {
                             {t("statusDelivered")}
                           </span>
                         </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ── WhatsApp Concierge Payment Card (If awaiting payment) ── */}
+                  {orderResult.status === "whatsapp_initiated" && (
+                    <div className="p-5 rounded-2xl bg-amber-500/[0.08] border border-amber-500/25 space-y-3">
+                      <div className="flex items-start gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 mt-0.5">
+                          <Clock className="w-5 h-5" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-display font-bold text-sm text-zinc-900 dark:text-white">
+                            {t("conciergeCardTitle")}
+                          </h4>
+                          <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-1 leading-relaxed">
+                            {t("conciergeCardDesc")}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2.5 pt-1">
+                        {orderResult.paymentUrl && (
+                          <a
+                            href={orderResult.paymentUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-display font-bold tracking-wider transition-all shadow-md shadow-emerald-600/20 active:scale-[0.98]"
+                          >
+                            <CreditCard className="w-3.5 h-3.5" />
+                            <span>{t("payOnlineNow")}</span>
+                          </a>
+                        )}
+                        <button
+                          onClick={() => handleOpenWhatsAppConcierge(orderResult.orderNumber)}
+                          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-xs font-display font-bold tracking-wider transition-all shadow-md hover:opacity-90 active:scale-[0.98]"
+                        >
+                          <MessageCircle className="w-3.5 h-3.5 text-emerald-500" />
+                          <span>{t("conciergeWhatsAppBtn")}</span>
+                        </button>
                       </div>
                     </div>
                   )}
@@ -439,7 +494,7 @@ export default function TrackOrderPage() {
                       </div>
                     )}
 
-                    {isOwnerOrAdmin ? (
+                    {orderResult.total !== undefined ? (
                       <div className="space-y-1.5 sm:text-right">
                         <span className="text-[10px] font-mono uppercase tracking-wider font-semibold text-zinc-500 block">
                           {t("orderSummaryTitle")}
@@ -463,11 +518,9 @@ export default function TrackOrderPage() {
                             </span>
                           </p>
                         )}
-                        {orderResult.total !== undefined && (
-                          <p className="text-base font-mono font-bold text-zinc-900 dark:text-white pt-1 border-t border-black/[0.04] dark:border-white/[0.06]">
-                            {t("total")}: ${Number(orderResult.total).toFixed(2)} {orderResult.currency}
-                          </p>
-                        )}
+                        <p className="text-base font-mono font-bold text-zinc-900 dark:text-white pt-1 border-t border-black/[0.04] dark:border-white/[0.06]">
+                          {["paid", "dispatched", "delivered"].includes(orderResult.status) ? t("totalPaid") : t("totalDue")}: ${Number(orderResult.total).toFixed(2)} {orderResult.currency}
+                        </p>
                       </div>
                     ) : (
                       <div className="p-3.5 rounded-2xl bg-zinc-50 dark:bg-white/[0.02] border border-zinc-200/60 dark:border-white/[0.06] flex flex-col justify-between gap-2.5">

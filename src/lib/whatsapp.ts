@@ -152,19 +152,6 @@ export function getWhatsAppOrderUrl({
   lines.push(`*Total: $${total}.00 ${currency}*`);
   lines.push("");
 
-  if (paymentUrl) {
-    if (isEs) {
-      lines.push(`💳 *Pagar con Tarjeta / Apple Pay:*`);
-      lines.push(paymentUrl);
-      lines.push(`_O respondan con datos de Zelle / transferencia si prefieren._`);
-    } else {
-      lines.push(`💳 *Pay with Card / Apple Pay:*`);
-      lines.push(paymentUrl);
-      lines.push(`_Or reply with Zelle / bank transfer details if preferred._`);
-    }
-    lines.push("");
-  }
-
   if (customerName || customerPhone || shippingAddress) {
     lines.push(isEs ? "*Datos de Envío (EE.UU.):*" : "*US Shipping Destination:*");
     if (customerName) lines.push(`${isEs ? "Nombre" : "Name"}: ${customerName}`);
@@ -186,22 +173,79 @@ export function getWhatsAppOrderUrl({
   if (isEs) {
     lines.push(`⏱️ *Inventario apartado por 24 horas.*`);
     lines.push(`Envíos exclusivamente dentro de Estados Unidos.`);
-    if (!paymentUrl) {
-      lines.push(`Por favor facilítenme las opciones de pago (Zelle, tarjeta o transferencia) para liberar el despacho. ¡Gracias!`);
-    }
+    lines.push(`Por favor revisen mi pedido y compártanme el enlace de pago seguro (Tarjeta / Apple Pay o Zelle) para finalizar mi compra. ¡Gracias!`);
   } else {
     lines.push(`⏱️ *Inventory reserved for 24 hours.*`);
     lines.push(`Shipping exclusively within the United States.`);
-    if (!paymentUrl) {
-      lines.push(`Please provide payment instructions (Zelle, card, or transfer) to dispatch my package. Thank you!`);
-    }
+    lines.push(`Please review my order and share the secure payment link (Card / Apple Pay or Zelle) so I can complete my purchase. Thank you!`);
   }
 
   return `https://wa.me/${phone}?text=${encodeURIComponent(lines.join("\n"))}`;
 }
 
 /**
- * Builds Admin to Customer WhatsApp URL.
+ * Builds Admin to Customer payment link dispatch message & URL.
+ */
+export interface AdminPaymentLinkParams {
+  customerPhone?: string;
+  customerName?: string;
+  orderNumber: string;
+  paymentUrl: string;
+  total: number;
+  currency?: string;
+  locale?: string;
+}
+
+export function getWhatsAppAdminPaymentLinkMessage({
+  customerName,
+  orderNumber,
+  paymentUrl,
+  total,
+  currency = "USD",
+  locale = "en",
+}: Omit<AdminPaymentLinkParams, "customerPhone">): string {
+  const isEs = locale === "es";
+  const name = customerName || (isEs ? "estimado cliente" : "there");
+
+  if (isEs) {
+    return [
+      `¡Hola ${name}! 👋`,
+      `Hemos revisado y aprobado tu pedido *#${orderNumber}* de Good Luck (Colección 0880) para entrega en EE.UU.`,
+      "",
+      `*Total a pagar:* $${total}.00 ${currency}`,
+      "",
+      `💳 *Paga de forma segura aquí (Tarjeta / Apple Pay):*`,
+      paymentUrl,
+      "",
+      `_O si prefieres pagar por Zelle / transferencia bancaria, responde a este mensaje para darte los datos._`,
+      "",
+      `⏱️ *Tus gorras están apartadas por 24 horas.* ¡Quedamos listos para despachar tu paquete!`,
+    ].join("\n");
+  }
+
+  return [
+    `Hi ${name}! 👋`,
+    `We've reviewed and approved your order *#${orderNumber}* from Good Luck (0880 Collection) for US delivery.`,
+    "",
+    `*Total Due:* $${total}.00 ${currency}`,
+    "",
+    `💳 *Complete your purchase securely here (Card / Apple Pay):*`,
+    paymentUrl,
+    "",
+    `_Or if you prefer to pay via Zelle / bank transfer, reply to this message for details._`,
+    "",
+    `⏱️ *Your caps are reserved for 24 hours.* We're ready to dispatch your express delivery!`,
+  ].join("\n");
+}
+
+export function getWhatsAppAdminPaymentLinkUrl(params: AdminPaymentLinkParams): string {
+  const cleanPhone = getCleanWhatsAppNumber(params.customerPhone);
+  const text = getWhatsAppAdminPaymentLinkMessage(params);
+  return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`;
+}
+
+/**
+ * Builds Admin to Customer WhatsApp URL for tracking and general updates.
  */
 export function getWhatsAppAdminCustomerUrl({
   customerPhone,

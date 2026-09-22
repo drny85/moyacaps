@@ -533,13 +533,13 @@ export const cancelOrderAdmin = mutation({
 export const getOrderByOrderNumberAndEmail = query({
   args: {
     orderNumber: v.string(),
-    email: v.string(),
+    email: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const cleanNumber = args.orderNumber.trim().toUpperCase().replace(/^#/, "");
-    const cleanEmail = args.email.trim().toLowerCase();
+    const cleanEmail = args.email?.trim().toLowerCase();
 
-    if (!cleanNumber || !cleanEmail) {
+    if (!cleanNumber) {
       return null;
     }
 
@@ -568,20 +568,21 @@ export const getOrderByOrderNumberAndEmail = query({
       return null;
     }
 
-    // Verify email case-insensitively
     const orderEmail = (order.customerEmail || "").trim().toLowerCase();
-    if (orderEmail !== cleanEmail) {
+
+    // If email was provided in lookup and order has email, verify match
+    if (cleanEmail && orderEmail && orderEmail !== cleanEmail) {
       return null;
     }
 
-    // Verify authentication to gate sensitive PII (street address, phone, financial details)
+    // Verify authentication to gate sensitive PII (exact street address line, phone)
     const identity = await ctx.auth.getUserIdentity();
     let isOwnerOrAdmin = false;
 
     if (identity) {
       if (order.clerkUserId && identity.subject === order.clerkUserId) {
         isOwnerOrAdmin = true;
-      } else if (identity.email && identity.email.toLowerCase() === orderEmail) {
+      } else if (identity.email && orderEmail && identity.email.toLowerCase() === orderEmail) {
         isOwnerOrAdmin = true;
       } else {
         const user = await ctx.db
@@ -591,7 +592,7 @@ export const getOrderByOrderNumberAndEmail = query({
         if (user) {
           if (user.role === "admin") {
             isOwnerOrAdmin = true;
-          } else if (user.email && user.email.toLowerCase() === orderEmail) {
+          } else if (user.email && orderEmail && user.email.toLowerCase() === orderEmail) {
             isOwnerOrAdmin = true;
           }
         }
@@ -613,28 +614,30 @@ export const getOrderByOrderNumberAndEmail = query({
           variantId: item.variantId,
           name: item.name,
           quantity: item.quantity,
-          price: 0,
+          price: item.price,
           image: item.image,
         })),
         shippingAddress: order.shippingAddress
           ? {
-              line1: "",
+              line1: order.shippingAddress.line1 ? "***" : "",
               line2: undefined as string | undefined,
               city: order.shippingAddress.city,
               state: order.shippingAddress.state,
-              postalCode: "",
+              postalCode: order.shippingAddress.postalCode ? "***" : "",
               country: order.shippingAddress.country,
             }
           : undefined,
-        customerName: undefined,
+        customerName: order.customerName ? order.customerName.split(" ")[0] : undefined,
         customerEmail: undefined,
         customerPhone: undefined,
-        subtotal: undefined,
-        shippingFee: undefined,
-        tax: undefined,
-        taxDetails: undefined,
-        total: undefined,
-        paymentMethod: undefined,
+        subtotal: order.subtotal,
+        shippingFee: order.shippingFee,
+        tax: order.tax,
+        taxDetails: order.taxDetails,
+        total: order.total,
+        paymentMethod: order.paymentMethod,
+        paymentUrl: order.paymentUrl,
+        paymentLinkSentAt: order.paymentLinkSentAt,
         isGuestView: true,
       };
     }
@@ -660,6 +663,8 @@ export const getOrderByOrderNumberAndEmail = query({
       trackingNumber: order.trackingNumber,
       createdAt: order.createdAt,
       updatedAt: order.updatedAt,
+      paymentUrl: order.paymentUrl,
+      paymentLinkSentAt: order.paymentLinkSentAt,
       isGuestView: false,
     };
   },
@@ -972,6 +977,40 @@ export const updateOrderPaymentUrl = mutation({
       updatedAt: Date.now(),
     });
     return { success: true };
+  },
+});
+
+export const dispatchWhatsAppPaymentLinkAdmin = mutation({
+  args: {
+    orderId: v.id("orders"),
+  },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    const order = await ctx.db.get(args.orderId);
+    if (!order) {
+      throw new Error("Order not found");
+    }
+
+    const now = Date.now();
+    const newExpiresAt = now + 24 * 60 * 60 * 1000;
+
+    await ctx.db.patch(args.orderId, {
+      paymentLinkSentAt: now,
+      reservationExpiresAt: newExpiresAt,
+      updatedAt: now,
+      adminNotes: `${order.adminNotes ? order.adminNotes + "\n" : ""}Payment link dispatched via WhatsApp at ${new Date(now).toISOString()}. 24h stock hold extended.`.trim(),
+    });
+
+    // Reschedule 24h expiration from link dispatch moment
+    await ctx.scheduler.runAfter(24 * 60 * 60 * 1000, internal.orders.expireWhatsAppOrderLead, {
+      orderId: args.orderId,
+    });
+
+    return {
+      success: true,
+      paymentLinkSentAt: now,
+      reservationExpiresAt: newExpiresAt,
+    };
   },
 });
 

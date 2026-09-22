@@ -33,8 +33,16 @@ The operational lifecycle of packing, carrier assigning, dispatching, and record
 _Avoid_: Shipping process, handling
 
 **WhatsApp Concierge Order**:
-An order initiated directly via WhatsApp chat for customers using manual payment or bank transfer, requiring manual administrator verification before fulfillment.
-_Avoid_: Manual order, cash order, off-platform order
+An order initiated via the Loot Bag for domestic US delivery, reserving inventory for 24 hours in Convex while order items and shipping destination are submitted to the store's WhatsApp concierge. The order begins in review (`whatsapp_initiated`) and is not marked as paid until the customer completes checkout via the payment link or verified bank transfer.
+_Avoid_: Manual order, cash order, off-platform order, instant WhatsApp checkout
+
+**Concierge Payment Link Dispatch**:
+The operational action performed by an Administrator after inspecting a WhatsApp Concierge Order, stamping `paymentLinkSentAt`, extending the 24-hour inventory reservation hold, and delivering the pre-generated Stripe checkout link or Zelle details back to the Customer via WhatsApp chat.
+_Avoid_: Link sharing, manual text, invoice sending
+
+**WhatsApp Order Settlement**:
+The atomic transition of a WhatsApp Concierge Order from `whatsapp_initiated` to `paid`, triggered either automatically when the Customer completes the Stripe checkout link (reconciled by `orderNumber` in webhook) or manually by an Administrator confirming a verified Zelle / bank transfer receipt (`markWhatsAppOrderPaidAdmin`).
+_Avoid_: Offline mark, manual pay, cash reconcile
 
 **User Account**:
 A synchronized customer or administrator identity record mirrored into Convex from Clerk with role-based access control, profile metadata, and soft-delete retention for order audit history.

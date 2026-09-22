@@ -2,6 +2,7 @@
 
 import { useStore } from "@/store/useStore";
 import { useTranslations, useLocale } from "next-intl";
+import { useRouter } from "@/i18n/routing";
 import { X, Trash2, Plus, Minus, ShoppingBag, ArrowRight, ArrowLeft, MessageCircle, ShieldCheck, Check, AlertCircle, Loader2, MapPin, Clock, ChevronDown, CreditCard, Edit3 } from "lucide-react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
@@ -19,6 +20,7 @@ export function CartDrawer() {
   useLockBodyScroll(isCartOpen);
   const t = useTranslations("cart");
   const locale = useLocale();
+  const router = useRouter();
   const { user, isSignedIn } = useSafeUser();
   const createCheckoutSession = useAction(api.stripe.createCheckoutSession);
   const createWhatsAppCheckoutSession = useAction(api.stripe.createWhatsAppCheckoutSession);
@@ -35,6 +37,7 @@ export function CartDrawer() {
   const [waStep, setWaStep] = useState<"form" | "review">("form");
   const [waName, setWaName] = useState("");
   const [waPhone, setWaPhone] = useState("");
+  const [waEmail, setWaEmail] = useState("");
   const [waLine1, setWaLine1] = useState("");
   const [waLine2, setWaLine2] = useState("");
   const [waCity, setWaCity] = useState("");
@@ -48,7 +51,10 @@ export function CartDrawer() {
     if (user?.fullName && !waName) {
       setWaName(user.fullName);
     }
-  }, [user, waName]);
+    if (user?.primaryEmailAddress?.emailAddress && !waEmail) {
+      setWaEmail(user.primaryEmailAddress.emailAddress);
+    }
+  }, [user, waName, waEmail]);
 
   // Synchronize cart with live Convex database stock whenever drawer is opened or variants change
   useEffect(() => {
@@ -127,6 +133,19 @@ export function CartDrawer() {
       return;
     }
 
+    if (waEmail.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(waEmail.trim())) {
+      setWaFieldErrors((prev) => ({
+        ...prev,
+        email: locale === "es" ? "Ingresa un correo electrónico válido." : "Please enter a valid email address.",
+      }));
+      setWaFormError(
+        locale === "es"
+          ? "Por favor completa correctamente todos los campos obligatorios marcados."
+          : "Please correct the highlighted fields before proceeding."
+      );
+      return;
+    }
+
     setWaFieldErrors({});
     setWaFormError(null);
 
@@ -152,6 +171,7 @@ export function CartDrawer() {
     try {
       const cleanName = capitalizeWords(waName.trim());
       const cleanPhone = waPhone.trim();
+      const cleanEmail = waEmail.trim().toLowerCase() || user?.primaryEmailAddress?.emailAddress || undefined;
       const cleanLine1 = capitalizeWords(waLine1.trim());
       const cleanLine2 = waLine2.trim() || undefined;
       const cleanCity = capitalizeWords(waCity.trim());
@@ -168,7 +188,7 @@ export function CartDrawer() {
         origin: window.location.origin,
         customerName: cleanName,
         customerPhone: cleanPhone,
-        customerEmail: user?.primaryEmailAddress?.emailAddress || undefined,
+        customerEmail: cleanEmail,
         shippingAddress: {
           line1: cleanLine1,
           line2: cleanLine2,
@@ -218,6 +238,12 @@ export function CartDrawer() {
       setIsWhatsAppFormOpen(false);
       setWaStep("form");
       closeCart();
+
+      // Redirect user directly to the order details page
+      const trackUrl = cleanEmail
+        ? `/track?order=${encodeURIComponent(result.orderNumber)}&email=${encodeURIComponent(cleanEmail)}`
+        : `/track?order=${encodeURIComponent(result.orderNumber)}`;
+      router.push(trackUrl);
     } catch (err: any) {
       console.error("WhatsApp checkout error:", err);
       setWaFormError(err?.message || "Failed to reserve inventory. Please try again.");
@@ -402,6 +428,33 @@ export function CartDrawer() {
                           <p className="text-[10px] text-rose-500 mt-1 flex items-center gap-1 font-medium">
                             <AlertCircle className="w-3 h-3 shrink-0" />
                             {waFieldErrors.phone}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Email Address (Optional for Tracking & Receipt) */}
+                      <div>
+                        <label className="block text-[11px] font-mono uppercase tracking-wider text-zinc-500 mb-1">
+                          {t("whatsappLeadEmail")}
+                        </label>
+                        <input
+                          type="email"
+                          value={waEmail}
+                          onChange={(e) => {
+                            setWaEmail(e.target.value.toLowerCase());
+                            if (waFieldErrors.email) setWaFieldErrors((prev) => ({ ...prev, email: "" }));
+                          }}
+                          placeholder={t("whatsappLeadEmailPlaceholder")}
+                          className={`w-full px-3.5 py-2.5 rounded-xl bg-black/5 dark:bg-white/5 border text-xs text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none transition-colors ${
+                            waFieldErrors.email
+                              ? "border-rose-500 focus:border-rose-500"
+                              : "border-black/[0.08] dark:border-white/[0.08] focus:border-emerald-500"
+                          }`}
+                        />
+                        {waFieldErrors.email && (
+                          <p className="text-[10px] text-rose-500 mt-1 flex items-center gap-1 font-medium">
+                            <AlertCircle className="w-3 h-3 shrink-0" />
+                            {waFieldErrors.email}
                           </p>
                         )}
                       </div>
@@ -616,6 +669,7 @@ export function CartDrawer() {
                       <div className="text-xs space-y-1 text-zinc-700 dark:text-zinc-300">
                         <p className="font-display font-bold text-zinc-900 dark:text-white">{waName}</p>
                         <p className="font-mono text-zinc-500 text-[11px]">{waPhone}</p>
+                        {waEmail && <p className="font-mono text-zinc-500 text-[11px]">{waEmail}</p>}
                         <p className="pt-1">{waLine1}</p>
                         {waLine2 && <p className="font-mono text-zinc-600 dark:text-zinc-400">{waLine2}</p>}
                         <p>{waCity}, {waState} {waZip}</p>

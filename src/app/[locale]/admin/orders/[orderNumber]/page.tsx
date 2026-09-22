@@ -6,7 +6,11 @@ import { useTranslations, useLocale } from "next-intl";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "@convex/_generated/api";
 import { getCarrierTrackingUrl } from "@/lib/tracking";
-import { getWhatsAppAdminCustomerUrl } from "@/lib/whatsapp";
+import {
+  getWhatsAppAdminCustomerUrl,
+  getWhatsAppAdminPaymentLinkUrl,
+  getWhatsAppAdminPaymentLinkMessage,
+} from "@/lib/whatsapp";
 import { Link, useRouter } from "@/i18n/routing";
 import {
   ArrowLeft,
@@ -51,9 +55,9 @@ export default function DedicatedOrderDetailPage({
     orderNumber: decodeURIComponent(orderNumber),
   });
 
-  // Action mutations & actions
   const updateOrderStatus = useMutation(api.orders.updateOrderStatusAdmin);
   const markWhatsAppOrderPaidAdmin = useMutation(api.orders.markWhatsAppOrderPaidAdmin);
+  const dispatchWhatsAppPaymentLinkAdmin = useMutation(api.orders.dispatchWhatsAppPaymentLinkAdmin);
   const updateOrderFulfillment = useMutation(api.orders.updateOrderFulfillmentAdmin);
   const updateShippingAddressAdmin = useMutation(api.orders.updateShippingAddressAdmin);
   const cancelAndRefundAdmin = useAction(api.stripe.cancelAndRefundOrderAdmin);
@@ -192,6 +196,35 @@ export default function DedicatedOrderDetailPage({
       triggerSuccess("WhatsApp offline payment (Zelle/Transfer) confirmed and receipt queued.");
     } catch (err: any) {
       setActionError(err?.message || "Failed to confirm payment.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleDispatchPaymentLink = async () => {
+    if (!order || !order.paymentUrl) return;
+    try {
+      setIsProcessing(true);
+      await dispatchWhatsAppPaymentLinkAdmin({
+        orderId: order._id,
+      });
+
+      const waUrl = getWhatsAppAdminPaymentLinkUrl({
+        customerPhone: order.customerPhone,
+        customerName: order.customerName,
+        orderNumber: order.orderNumber,
+        paymentUrl: order.paymentUrl,
+        total: order.total,
+        currency: order.currency || "USD",
+        locale,
+      });
+
+      window.open(waUrl, "_blank");
+
+      triggerSuccess("Payment link dispatched to customer via WhatsApp! 24h stock hold extended.");
+    } catch (err: any) {
+      console.error("Failed to dispatch payment link:", err);
+      setActionError(err?.message || "Failed to dispatch payment link.");
     } finally {
       setIsProcessing(false);
     }
@@ -398,11 +431,26 @@ export default function DedicatedOrderDetailPage({
               <span>Print Packing Slip</span>
             </button>
 
+            {order.status === "whatsapp_initiated" && order.paymentUrl && (
+              <button
+                onClick={handleDispatchPaymentLink}
+                disabled={isProcessing}
+                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition-colors flex items-center gap-1.5 shadow-sm"
+              >
+                <MessageCircle className="w-4 h-4" />
+                <span>
+                  {order.paymentLinkSentAt
+                    ? t("resendPaymentLinkWhatsApp")
+                    : t("sendPaymentLinkWhatsApp")}
+                </span>
+              </button>
+            )}
+
             {order.status === "whatsapp_initiated" && (
               <button
                 onClick={handleConfirmWhatsAppPayment}
                 disabled={isProcessing}
-                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition-colors flex items-center gap-1.5 shadow-sm"
+                className="px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white font-semibold text-xs transition-colors flex items-center gap-1.5 shadow-sm"
               >
                 <Check className="w-4 h-4" />
                 <span>Mark as Paid (Zelle)</span>
@@ -488,7 +536,13 @@ export default function DedicatedOrderDetailPage({
               </div>
               <div>
                 <p className="font-semibold text-zinc-900 dark:text-white">Payment</p>
-                <p className="text-[11px] text-zinc-500 capitalize">{order.paymentMethod}</p>
+                <p className="text-[11px] text-zinc-500">
+                  {["paid", "dispatched", "delivered"].includes(order.status)
+                    ? `Paid (${order.paymentMethod})`
+                    : order.status === "whatsapp_initiated"
+                    ? "Awaiting Payment Link"
+                    : order.paymentMethod}
+                </p>
               </div>
             </div>
 
@@ -614,8 +668,8 @@ export default function DedicatedOrderDetailPage({
                 </div>
               )}
               <div className="pt-2 border-t border-zinc-100 dark:border-white/[0.06] flex justify-between font-bold text-sm text-zinc-900 dark:text-white">
-                <span>Total Paid</span>
-                <span className="font-mono text-emerald-600 dark:text-emerald-400">
+                <span>{["paid", "dispatched", "delivered"].includes(order.status) ? "Total Paid" : "Total Due"}</span>
+                <span className={`font-mono ${["paid", "dispatched", "delivered"].includes(order.status) ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}`}>
                   ${order.total.toFixed(2)} {order.currency || "USD"}
                 </span>
               </div>
@@ -722,16 +776,31 @@ export default function DedicatedOrderDetailPage({
                 <span className="text-[10px] font-mono uppercase tracking-wider text-indigo-700 dark:text-indigo-400 font-semibold flex items-center gap-1.5">
                   <CreditCard className="w-3.5 h-3.5" /> Stripe Payment Link (24h)
                 </span>
-                <a
-                  href={order.paymentUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[11px] text-indigo-600 dark:text-indigo-400 hover:underline inline-flex items-center gap-1 font-medium"
-                >
-                  <span>Open Link</span>
-                  <ExternalLink className="w-3 h-3" />
-                </a>
+                {order.paymentLinkSentAt ? (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+                    <CheckCircle2 className="w-3 h-3" /> Link Sent
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400">
+                    <Clock className="w-3 h-3" /> Needs Link Dispatch
+                  </span>
+                )}
               </div>
+
+              {order.status === "whatsapp_initiated" && (
+                <button
+                  onClick={handleDispatchPaymentLink}
+                  disabled={isProcessing}
+                  className="w-full py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-md shadow-emerald-600/20 active:scale-[0.99]"
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  <span>
+                    {order.paymentLinkSentAt
+                      ? t("resendPaymentLinkWhatsApp")
+                      : t("sendPaymentLinkWhatsApp")}
+                  </span>
+                </button>
+              )}
 
               <div className="flex items-center gap-2 p-2 rounded-xl bg-white dark:bg-black/30 border border-indigo-100 dark:border-indigo-900/30">
                 <input
@@ -745,12 +814,38 @@ export default function DedicatedOrderDetailPage({
                   className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-semibold flex items-center gap-1 shrink-0 transition-colors"
                 >
                   {copiedTracking ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                  <span>Copy</span>
+                  <span>{t("copyPaymentLink")}</span>
                 </button>
               </div>
-              <p className="text-[10px] text-zinc-500 leading-tight">
-                Customer can pay with Card / Apple Pay directly via this link. Inventory will automatically reconcile upon Stripe webhook.
-              </p>
+
+              <div className="flex items-center justify-between text-[11px] pt-1 text-zinc-500">
+                <button
+                  onClick={() => {
+                    const msg = getWhatsAppAdminPaymentLinkMessage({
+                      customerName: order.customerName,
+                      orderNumber: order.orderNumber,
+                      paymentUrl: order.paymentUrl || "",
+                      total: order.total,
+                      currency: order.currency || "USD",
+                      locale,
+                    });
+                    handleCopy(msg);
+                  }}
+                  className="text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 font-medium"
+                >
+                  <Copy className="w-3 h-3" />
+                  <span>{t("copyPaymentMessage")}</span>
+                </button>
+                <a
+                  href={order.paymentUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-300 hover:underline inline-flex items-center gap-1"
+                >
+                  <span>Open Checkout</span>
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+              </div>
             </div>
           )}
 
@@ -971,7 +1066,7 @@ export default function DedicatedOrderDetailPage({
               </div>
             )}
             <div className="flex justify-between font-bold text-sm border-t border-black pt-1">
-              <span>Total Paid:</span>
+              <span>{["paid", "dispatched", "delivered"].includes(order.status) ? "Total Paid:" : "Total Due:"}</span>
               <span className="font-mono">
                 ${order.total.toFixed(2)} {order.currency || "USD"}
               </span>
