@@ -472,21 +472,26 @@ export const createCheckoutSession = action({
         invoice_creation: {
           enabled: true,
           invoice_data: {
-            description: `Good Luck 0880 — Order #${orderNumber}`,
+            description: `Good Luck 0880 — Order #${orderNumber} (${totalItems} cap${totalItems > 1 ? "s" : ""})`,
             metadata: {
               orderNumber,
               clerkUserId: resolvedClerkId || "",
+              itemCount: totalItems.toString(),
             },
-            footer: "Good Luck 0880 | Bespoke NYC Headwear | Support: goodluckcaps.com",
+            footer: "Good Luck 0880 | Bespoke NYC Headwear | Support: goodluckcaps.com | All limited drop items are serialized and final sale.",
           },
         },
         payment_intent_data: {
-          description: `Good Luck 0880 — Order #${orderNumber}`,
+          description: `Good Luck 0880 — Order #${orderNumber} (${totalItems} item${totalItems > 1 ? "s" : ""})`,
           statement_descriptor_suffix: "GOODLUCK",
           metadata: {
             orderNumber,
             clerkUserId: resolvedClerkId || "",
             customerEmail: args.customerEmail || "",
+            itemCount: totalItems.toString(),
+            itemSummary: validatedItems.map((i) => `${i.quantity}x ${i.name}`).slice(0, 3).join(", ").slice(0, 450),
+            brand: "Good Luck 0880",
+            storeUrl: "https://goodluckcaps.com",
           },
         },
         custom_text: {
@@ -495,6 +500,9 @@ export const createCheckoutSession = action({
           },
           submit: {
             message: "By confirming payment, you authorize Good Luck 0880 to process your bespoke order.",
+          },
+          after_submit: {
+            message: "Thank you for securing your piece from Good Luck 0880. An order receipt and courier tracking updates will be dispatched immediately.",
           },
         },
         ...(customerId
@@ -531,7 +539,10 @@ export const createCheckoutSession = action({
           subtotal: subtotal.toString(),
           shippingFee: shippingFee.toString(),
           total: total.toString(),
+          itemCount: totalItems.toString(),
+          itemSummary: validatedItems.map((i) => `${i.quantity}x ${i.name}`).slice(0, 3).join(", ").slice(0, 450),
           isWhatsAppOrder: "false",
+          brand: "Good Luck 0880",
           itemsJson: compactItemsMetadata(validatedItems),
         },
       },
@@ -703,19 +714,24 @@ export const createWhatsAppCheckoutSession = action({
         invoice_creation: {
           enabled: true,
           invoice_data: {
-            description: "Good Luck 0880 — Concierge Order",
+            description: `Good Luck 0880 — Concierge Order (${totalItems} cap${totalItems > 1 ? "s" : ""})`,
             metadata: {
               clerkUserId: args.clerkUserId || "",
+              itemCount: totalItems.toString(),
             },
-            footer: "Good Luck 0880 | Bespoke NYC Headwear | Support: goodluckcaps.com",
+            footer: "Good Luck 0880 | Bespoke NYC Headwear | Support: goodluckcaps.com | All limited drop items are serialized and final sale.",
           },
         },
         payment_intent_data: {
-          description: "Good Luck 0880 — Concierge Order",
+          description: `Good Luck 0880 — Concierge Order (${totalItems} item${totalItems > 1 ? "s" : ""})`,
           statement_descriptor_suffix: "GOODLUCK",
           metadata: {
             clerkUserId: args.clerkUserId || "",
             customerEmail: args.customerEmail || "",
+            itemCount: totalItems.toString(),
+            itemSummary: validatedItems.map((i) => `${i.quantity}x ${i.name}`).slice(0, 3).join(", ").slice(0, 450),
+            brand: "Good Luck 0880",
+            storeUrl: "https://goodluckcaps.com",
           },
         },
         custom_text: {
@@ -724,6 +740,9 @@ export const createWhatsAppCheckoutSession = action({
           },
           submit: {
             message: "By confirming payment, you authorize Good Luck 0880 to process your concierge order.",
+          },
+          after_submit: {
+            message: "Your concierge reservation is confirmed. Our studio team will prepare your shipment and provide direct courier tracking.",
           },
         },
         expires_at: sessionExpiresAt,
@@ -759,7 +778,10 @@ export const createWhatsAppCheckoutSession = action({
           subtotal: subtotal.toString(),
           shippingFee: shippingFee.toString(),
           total: total.toString(),
+          itemCount: totalItems.toString(),
+          itemSummary: validatedItems.map((i) => `${i.quantity}x ${i.name}`).slice(0, 3).join(", ").slice(0, 450),
           isWhatsAppOrder: "true",
+          brand: "Good Luck 0880",
           itemsJson: compactItemsMetadata(validatedItems),
         },
       });
@@ -935,21 +957,26 @@ export const generateOrRefreshWhatsAppPaymentLink = action({
       invoice_creation: {
         enabled: true,
         invoice_data: {
-          description: `Good Luck 0880 — Order #${order.orderNumber}`,
+          description: `Good Luck 0880 — Order #${order.orderNumber} (${totalCaps} cap${totalCaps > 1 ? "s" : ""})`,
           metadata: {
             orderNumber: order.orderNumber,
             clerkUserId: order.clerkUserId || "",
+            itemCount: totalCaps.toString(),
           },
-          footer: "Good Luck 0880 | Bespoke NYC Headwear | Support: goodluckcaps.com",
+          footer: "Good Luck 0880 | Bespoke NYC Headwear | Support: goodluckcaps.com | All limited drop items are serialized and final sale.",
         },
       },
       payment_intent_data: {
-        description: `Good Luck 0880 — Order #${order.orderNumber}`,
+        description: `Good Luck 0880 — Order #${order.orderNumber} (${totalCaps} item${totalCaps > 1 ? "s" : ""})`,
         statement_descriptor_suffix: "GOODLUCK",
         metadata: {
           orderNumber: order.orderNumber,
           clerkUserId: order.clerkUserId || "",
           customerEmail: order.customerEmail || "",
+          itemCount: totalCaps.toString(),
+          itemSummary: items.map((i) => `${i.quantity}x ${i.name}`).slice(0, 3).join(", ").slice(0, 450),
+          brand: "Good Luck 0880",
+          storeUrl: "https://goodluckcaps.com",
         },
       },
       custom_text: {
@@ -958,6 +985,9 @@ export const generateOrRefreshWhatsAppPaymentLink = action({
         },
         submit: {
           message: "By confirming payment, you authorize Good Luck 0880 to process your order.",
+        },
+        after_submit: {
+          message: "Thank you for completing your payment. An updated receipt and tracking will be dispatched immediately.",
         },
       },
       expires_at: sessionExpiresAt,
@@ -995,7 +1025,10 @@ export const generateOrRefreshWhatsAppPaymentLink = action({
         subtotal: subtotal.toString(),
         shippingFee: shippingFee.toString(),
         total: total.toString(),
+        itemCount: totalCaps.toString(),
+        itemSummary: items.map((i) => `${i.quantity}x ${i.name}`).slice(0, 3).join(", ").slice(0, 450),
         isWhatsAppOrder: "true",
+        brand: "Good Luck 0880",
         itemsJson: compactItemsMetadata(items),
       },
     });
