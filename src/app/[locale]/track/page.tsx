@@ -444,6 +444,18 @@ export default function TrackOrderPage() {
                           <ExternalLink className="w-3.5 h-3.5" />
                         </a>
                       </div>
+
+                      {orderResult.trackingStatusDetails && (
+                        <div className="pt-2.5 border-t border-blue-500/15 text-xs text-zinc-700 dark:text-zinc-300 flex items-start gap-2">
+                          <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-700 dark:text-blue-400 shrink-0">
+                            {orderResult.trackingStatus}
+                          </span>
+                          <span className="leading-snug">
+                            {orderResult.trackingStatusDetails}
+                            {orderResult.trackingLocation ? ` (${orderResult.trackingLocation})` : ""}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   )}
 

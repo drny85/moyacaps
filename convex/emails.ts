@@ -9,6 +9,8 @@ import React from "react";
 import { AdminOrderAlertEmail } from "./emails/AdminOrderAlert";
 import { AdminDisputeAlertEmail } from "./emails/AdminDisputeAlert";
 import { CustomerReceiptEmail } from "./emails/CustomerReceipt";
+import { OrderDispatchedEmail } from "./emails/OrderDispatchedEmail";
+import { OrderDeliveredEmail } from "./emails/OrderDeliveredEmail";
 import { PRIMARY_ADMIN_EMAIL, PRIMARY_ADMIN_CLERK_ID } from "./auth";
 
 export const resend = new Resend(components.resend, {
@@ -314,4 +316,118 @@ export const sendAdminDisputeAlert = internalAction({
     }
   },
 });
+
+/**
+ * Sends dispatch & tracking notification email to the customer upon label generation.
+ */
+export const sendOrderDispatchedEmail = internalAction({
+  args: {
+    orderNumber: v.string(),
+    customerName: v.optional(v.string()),
+    customerEmail: v.string(),
+    carrier: v.string(),
+    trackingNumber: v.string(),
+    carrierTrackingUrl: v.optional(v.string()),
+    estimatedDelivery: v.optional(v.string()),
+    shippingAddress: shippingAddressValidator,
+    items: v.optional(v.array(orderItemValidator)),
+  },
+  handler: async (ctx, args) => {
+    try {
+      if (!args.customerEmail || !args.customerEmail.includes("@")) {
+        console.warn(`[OrderDispatchedEmail] Skipped: invalid email for order ${args.orderNumber}`);
+        return { success: false, reason: "invalid_email" };
+      }
+
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://goodluckcaps.com";
+      const storeTrackingUrl = `${baseUrl}/track?order=${encodeURIComponent(args.orderNumber)}`;
+
+      const html = await render(
+        React.createElement(OrderDispatchedEmail, {
+          orderNumber: args.orderNumber,
+          customerName: args.customerName || "Valued Customer",
+          carrier: args.carrier,
+          trackingNumber: args.trackingNumber,
+          carrierTrackingUrl: args.carrierTrackingUrl,
+          storeTrackingUrl,
+          estimatedDelivery: args.estimatedDelivery || "2-4 Business Days",
+          shippingAddress: args.shippingAddress,
+          items: args.items,
+          supportEmail: "orders@goodluckcaps.com",
+        })
+      );
+
+      const emailId = await resend.sendEmail(ctx, {
+        from: DEFAULT_SENDER,
+        to: args.customerEmail,
+        subject: `Your Good Luck Cap has Dispatched! #${args.orderNumber} (${args.carrier} ${args.trackingNumber})`,
+        html,
+        idempotencyKey: `customer-dispatched-${args.orderNumber}-${args.trackingNumber}`,
+      });
+
+      console.log(`[OrderDispatchedEmail] Sent dispatch email for ${args.orderNumber} to ${args.customerEmail}, emailId: ${emailId}`);
+      return { success: true, emailId };
+    } catch (err: any) {
+      console.error(`[OrderDispatchedEmail] Failed to send dispatch email for ${args.orderNumber}:`, err?.message || err);
+      return { success: false, error: err?.message || String(err) };
+    }
+  },
+});
+
+/**
+ * Sends celebratory delivery confirmation email with headwear care instructions to customer.
+ */
+export const sendOrderDeliveredEmail = internalAction({
+  args: {
+    orderNumber: v.string(),
+    customerName: v.optional(v.string()),
+    customerEmail: v.string(),
+    carrier: v.string(),
+    trackingNumber: v.string(),
+    deliveredLocation: v.optional(v.string()),
+    deliveredDetails: v.optional(v.string()),
+    items: v.optional(v.array(orderItemValidator)),
+  },
+  handler: async (ctx, args) => {
+    try {
+      if (!args.customerEmail || !args.customerEmail.includes("@")) {
+        console.warn(`[OrderDeliveredEmail] Skipped: invalid email for order ${args.orderNumber}`);
+        return { success: false, reason: "invalid_email" };
+      }
+
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://goodluckcaps.com";
+      const storeTrackingUrl = `${baseUrl}/track?order=${encodeURIComponent(args.orderNumber)}`;
+
+      const html = await render(
+        React.createElement(OrderDeliveredEmail, {
+          orderNumber: args.orderNumber,
+          customerName: args.customerName || "Valued Collector",
+          carrier: args.carrier,
+          trackingNumber: args.trackingNumber,
+          deliveredLocation: args.deliveredLocation || "Delivery Destination",
+          deliveredDetails: args.deliveredDetails || "Courier scan confirmed successful drop-off",
+          storeTrackingUrl,
+          items: args.items,
+          supportEmail: "orders@goodluckcaps.com",
+        })
+      );
+
+      const emailId = await resend.sendEmail(ctx, {
+        from: DEFAULT_SENDER,
+        to: args.customerEmail,
+        subject: `Your Good Luck Piece Has Arrived! #${args.orderNumber} Delivered`,
+        html,
+        idempotencyKey: `customer-delivered-${args.orderNumber}-${args.trackingNumber}`,
+      });
+
+      console.log(`[OrderDeliveredEmail] Sent delivery confirmation email for ${args.orderNumber} to ${args.customerEmail}, emailId: ${emailId}`);
+      return { success: true, emailId };
+    } catch (err: any) {
+      console.error(`[OrderDeliveredEmail] Failed to send delivery email for ${args.orderNumber}:`, err?.message || err);
+      return { success: false, error: err?.message || String(err) };
+    }
+  },
+});
+
+
 

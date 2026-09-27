@@ -612,6 +612,10 @@ export const getOrderBySessionOrNumber = query({
       status: order.status,
       carrier: order.carrier,
       trackingNumber: order.trackingNumber,
+      trackingStatus: order.trackingStatus,
+      trackingStatusDetails: order.trackingStatusDetails,
+      trackingStatusDate: order.trackingStatusDate,
+      trackingLocation: order.trackingLocation,
       createdAt: order.createdAt,
       updatedAt: order.updatedAt,
       currency: order.currency,
@@ -1028,6 +1032,10 @@ export const getOrderByOrderNumberAndEmail = query({
         status: order.status,
         carrier: order.carrier,
         trackingNumber: order.trackingNumber,
+        trackingStatus: order.trackingStatus,
+        trackingStatusDetails: order.trackingStatusDetails,
+        trackingStatusDate: order.trackingStatusDate,
+        trackingLocation: order.trackingLocation,
         createdAt: order.createdAt,
         updatedAt: order.updatedAt,
         currency: order.currency,
@@ -1085,6 +1093,10 @@ export const getOrderByOrderNumberAndEmail = query({
       paymentMethod: order.paymentMethod,
       carrier: order.carrier,
       trackingNumber: order.trackingNumber,
+      trackingStatus: order.trackingStatus,
+      trackingStatusDetails: order.trackingStatusDetails,
+      trackingStatusDate: order.trackingStatusDate,
+      trackingLocation: order.trackingLocation,
       createdAt: order.createdAt,
       updatedAt: order.updatedAt,
       paymentUrl: order.paymentUrl,
@@ -1847,6 +1859,11 @@ export const updateOrderStatusAdmin = mutation({
     if (args.trackingNumber !== undefined) updatePayload.trackingNumber = args.trackingNumber;
     if (args.adminNotes !== undefined) updatePayload.adminNotes = args.adminNotes;
 
+    // If an administrator manually changes/reverts a delivered order, lockout automated carrier webhook overwrites
+    if (previousStatus === "delivered" && args.newStatus !== "delivered") {
+      updatePayload.manualStatusOverride = true;
+    }
+
     // Auto-generate tracking number if transitioning to dispatched without one
     if (args.newStatus === "dispatched" && !order.trackingNumber && !args.trackingNumber) {
       updatePayload.trackingNumber = `GL-TRK-${randomDigitString(6)}`;
@@ -1897,6 +1914,217 @@ export const updateOrderFulfillmentAdmin = mutation({
     return { success: true };
   },
 });
+
+/**
+ * INTERNAL: Commits shipping label purchase to an order, transitions status to dispatched,
+ * logs fulfillment audit trail, and schedules dispatch email notification.
+ */
+export const attachShippingLabelInternal = internalMutation({
+  args: {
+    orderId: v.id("orders"),
+    carrier: v.string(),
+    trackingNumber: v.string(),
+    shippingLabelUrl: v.string(),
+    shippingRateId: v.optional(v.string()),
+    shippingTransactionId: v.optional(v.string()),
+    shippingServiceLevel: v.optional(v.string()),
+    shippingCost: v.optional(v.number()),
+    shippingEstimatedDays: v.optional(v.number()),
+    shippingLabelFileType: v.optional(v.string()),
+    carrierTrackingUrl: v.optional(v.string()),
+    parcelDimensions: v.optional(
+      v.object({
+        length: v.number(),
+        width: v.number(),
+        height: v.number(),
+        weight: v.number(),
+        unit: v.string(),
+      })
+    ),
+    actor: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const order = await ctx.db.get(args.orderId);
+    if (!order) {
+      throw new Error(`Order ${args.orderId} not found`);
+    }
+
+    const previousStatus = order.status;
+    const now = Date.now();
+
+    // If order is transitioning to dispatched, ensure stock was reserved (if not already)
+    const wasPaidLike = ["paid", "dispatched", "delivered"].includes(previousStatus);
+    if (!wasPaidLike && previousStatus !== "whatsapp_initiated") {
+      for (const item of order.items) {
+        const variant = await ctx.db
+          .query("variants")
+          .withIndex("by_variantId", (q) => q.eq("variantId", item.variantId))
+          .first();
+
+        if (variant) {
+          await ctx.db.patch(variant._id, {
+            stock: Math.max(0, variant.stock - item.quantity),
+          });
+        }
+      }
+    }
+
+    const nextStatus = previousStatus === "delivered" ? "delivered" : "dispatched";
+
+    await ctx.db.patch(args.orderId, {
+      status: nextStatus,
+      carrier: args.carrier,
+      trackingNumber: args.trackingNumber,
+      shippingCarrier: args.carrier,
+      shippingLabelUrl: args.shippingLabelUrl,
+      shippingRateId: args.shippingRateId,
+      shippingTransactionId: args.shippingTransactionId,
+      shippingServiceLevel: args.shippingServiceLevel,
+      shippingCost: args.shippingCost,
+      shippingEstimatedDays: args.shippingEstimatedDays,
+      shippingLabelFileType: args.shippingLabelFileType,
+      ...(args.parcelDimensions && { parcelDimensions: args.parcelDimensions }),
+      updatedAt: now,
+    });
+
+    await ctx.runMutation(internal.orders.recordPaymentEvent, {
+      orderId: args.orderId,
+      orderNumber: order.orderNumber,
+      type: "shipping_label_created",
+      actor: args.actor || "admin",
+      details: `${args.carrier} (${args.shippingServiceLevel || "Standard"}) - Tracking: ${args.trackingNumber} - Cost: $${args.shippingCost?.toFixed(2) ?? "0.00"}`,
+    });
+
+    // Send dispatch confirmation email to customer
+    if (order.customerEmail && order.customerEmail.includes("@")) {
+      await ctx.scheduler.runAfter(0, internal.emails.sendOrderDispatchedEmail, {
+        orderNumber: order.orderNumber,
+        customerName: order.customerName,
+        customerEmail: order.customerEmail,
+        carrier: args.carrier,
+        trackingNumber: args.trackingNumber,
+        carrierTrackingUrl: args.carrierTrackingUrl,
+        estimatedDelivery: args.shippingEstimatedDays ? `${args.shippingEstimatedDays} Business Days` : undefined,
+        shippingAddress: order.shippingAddress,
+        items: order.items,
+      });
+    }
+
+    return {
+      success: true,
+      orderId: args.orderId,
+      trackingNumber: args.trackingNumber,
+      labelUrl: args.shippingLabelUrl,
+      status: nextStatus,
+    };
+  },
+});
+
+/**
+ * INTERNAL: Processes automated carrier tracking webhooks (e.g. from Shippo track_updated).
+ * Updates transit status, delivers orders upon DELIVERED scan, triggers delivery emails,
+ * and alerts admins on transit failure or return exceptions while respecting manual overrides.
+ */
+export const handleTrackingWebhookInternal = internalMutation({
+  args: {
+    trackingNumber: v.string(),
+    carrier: v.optional(v.string()),
+    status: v.string(), // "PRE_TRANSIT" | "TRANSIT" | "DELIVERED" | "RETURNED" | "FAILURE" | "UNKNOWN"
+    statusDetails: v.optional(v.string()),
+    statusDate: v.optional(v.string()),
+    location: v.optional(
+      v.object({
+        city: v.optional(v.string()),
+        state: v.optional(v.string()),
+        zip: v.optional(v.string()),
+        country: v.optional(v.string()),
+      })
+    ),
+  },
+  handler: async (ctx, args) => {
+    const cleanTrk = args.trackingNumber.trim();
+    const order = await ctx.db
+      .query("orders")
+      .withIndex("by_trackingNumber", (q) => q.eq("trackingNumber", cleanTrk))
+      .first();
+
+    if (!order) {
+      console.log(`[TrackingWebhook] Order with tracking number "${cleanTrk}" not found in system.`);
+      return { found: false, ignored: true };
+    }
+
+    const now = Date.now();
+    const cleanStatus = args.status.toUpperCase();
+    const locationParts = [args.location?.city, args.location?.state].filter(Boolean);
+    const locationStr = locationParts.length > 0 ? locationParts.join(", ") : undefined;
+
+    const patchPayload: Record<string, any> = {
+      trackingStatus: cleanStatus,
+      updatedAt: now,
+    };
+
+    if (args.statusDetails) patchPayload.trackingStatusDetails = args.statusDetails;
+    if (args.statusDate) patchPayload.trackingStatusDate = args.statusDate;
+    if (locationStr) patchPayload.trackingLocation = locationStr;
+    if (args.carrier && !order.carrier) patchPayload.carrier = args.carrier;
+
+    // 1. Handle DELIVERED scan
+    if (cleanStatus === "DELIVERED") {
+      // Only transition status if human admin hasn't locked out or overridden it
+      if (!order.manualStatusOverride && order.status === "dispatched") {
+        patchPayload.status = "delivered";
+        patchPayload.trackingDeliveredAt = now;
+
+        await ctx.runMutation(internal.orders.recordPaymentEvent, {
+          orderId: order._id,
+          orderNumber: order.orderNumber,
+          type: "carrier_delivered",
+          actor: "courier_webhook",
+          details: `${order.carrier || args.carrier || "Courier"} scan: ${args.statusDetails || "Delivered to destination"} (${locationStr || "Destination"})`,
+        });
+
+        // Send celebratory delivery email
+        if (order.customerEmail && order.customerEmail.includes("@")) {
+          await ctx.scheduler.runAfter(0, internal.emails.sendOrderDeliveredEmail, {
+            orderNumber: order.orderNumber,
+            customerName: order.customerName,
+            customerEmail: order.customerEmail,
+            carrier: order.carrier || args.carrier || "USPS",
+            trackingNumber: order.trackingNumber || cleanTrk,
+            deliveredLocation: locationStr || "Delivery Destination",
+            deliveredDetails: args.statusDetails,
+            items: order.items,
+          });
+        }
+      }
+    } else if (cleanStatus === "FAILURE" || cleanStatus === "RETURNED") {
+      // 2. Handle transit failure or return exceptions
+      patchPayload.trackingFailedAt = now;
+      const alertLine = `⚠️ [Carrier ${cleanStatus}] ${args.statusDetails || "Exception encountered during transit"} (${locationStr || ""}) at ${args.statusDate || new Date(now).toISOString()}`;
+      patchPayload.adminNotes = `${order.adminNotes ? order.adminNotes + "\n" : ""}${alertLine}`.trim();
+
+      await ctx.runMutation(internal.orders.recordPaymentEvent, {
+        orderId: order._id,
+        orderNumber: order.orderNumber,
+        type: cleanStatus === "RETURNED" ? "delivery_returned" : "delivery_failed",
+        actor: "courier_webhook",
+        details: `${order.carrier || args.carrier || "Courier"} exception: ${args.statusDetails || cleanStatus}`,
+      });
+    }
+
+    await ctx.db.patch(order._id, patchPayload);
+
+    return {
+      found: true,
+      orderNumber: order.orderNumber,
+      orderId: order._id,
+      trackingStatus: cleanStatus,
+      status: patchPayload.status || order.status,
+    };
+  },
+});
+
+
 
 export const getAnalyticsAdmin = query({
   args: {

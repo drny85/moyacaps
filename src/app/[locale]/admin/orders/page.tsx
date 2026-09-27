@@ -43,6 +43,7 @@ import {
 } from "lucide-react";
 import { Link } from "@/i18n/routing";
 import { useSearchParams } from "next/navigation";
+import { ShippingLabelModal } from "@/components/admin/ShippingLabelModal";
 
 export default function AdminOrdersPage() {
   const t = useTranslations("admin.orders");
@@ -75,6 +76,7 @@ export default function AdminOrdersPage() {
   };
 
   // Modals state
+  const [shippingLabelModalOrder, setShippingLabelModalOrder] = useState<any | null>(null);
   const [dispatchModalOrder, setDispatchModalOrder] = useState<any | null>(null);
   const [carrierInput, setCarrierInput] = useState("USPS");
   const [trackingInput, setTrackingInput] = useState("");
@@ -888,30 +890,55 @@ export default function AdminOrdersPage() {
                             </button>
                           )}
 
-                          {/* 2. Dispatch Button */}
+                          {/* 2. Dispatch / Shipping Label Buttons */}
                           {order.status === "paid" && (
-                            <button
-                              onClick={() => {
-                                setDispatchModalOrder(order);
-                                setCarrierInput(order.carrier || "USPS");
-                                setTrackingInput(order.trackingNumber || "");
-                                setAdminNotesInput(order.adminNotes || "");
-                              }}
-                              className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-moya-red hover:bg-moya-red-light text-white shadow-xs transition-colors flex items-center gap-1"
-                            >
-                              <Truck className="w-3.5 h-3.5" /> Dispatch
-                            </button>
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                onClick={() => setShippingLabelModalOrder(order)}
+                                className="px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-500 hover:bg-amber-400 text-zinc-950 shadow-xs transition-colors flex items-center gap-1"
+                                title="Buy Postage & Print Shipping Label"
+                              >
+                                <Printer className="w-3.5 h-3.5" /> Buy Label
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setDispatchModalOrder(order);
+                                  setCarrierInput(order.carrier || "USPS");
+                                  setTrackingInput(order.trackingNumber || "");
+                                  setAdminNotesInput(order.adminNotes || "");
+                                }}
+                                className="px-2 py-1 rounded-lg text-xs font-medium bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 transition-colors flex items-center gap-1"
+                                title="Manual Tracking / Courier Assignment"
+                              >
+                                <Truck className="w-3.5 h-3.5" /> Manual
+                              </button>
+                            </div>
                           )}
 
-                          {/* 3. Mark Delivered with Confirmation Dialog */}
+                          {/* 3. Dispatched state in table (Label & Courier Tracking) */}
                           {order.status === "dispatched" && (
-                            <button
-                              onClick={() => setDeliverModalOrder(order)}
-                              disabled={isProcessing}
-                              className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-purple-600 hover:bg-purple-500 text-white shadow-xs transition-colors"
-                            >
-                              Delivered
-                            </button>
+                            <div className="flex items-center gap-1.5">
+                              {order.shippingLabelUrl && (
+                                <button
+                                  onClick={() => setShippingLabelModalOrder(order)}
+                                  className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 dark:text-amber-400 border border-amber-500/20 transition-colors flex items-center gap-1"
+                                  title="Print shipping label"
+                                >
+                                  <Printer className="w-3.5 h-3.5" /> Label
+                                </button>
+                              )}
+                              {order.trackingNumber && (
+                                <a
+                                  href={getCarrierTrackingUrl(order.carrier, order.trackingNumber) || "#"}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="px-2 py-1 rounded-lg text-[11px] font-medium bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 transition-colors flex items-center gap-1"
+                                  title="Track courier"
+                                >
+                                  <ExternalLink className="w-3 h-3 text-zinc-400" /> Track
+                                </a>
+                              )}
+                            </div>
                           )}
 
                           {/* Ping WhatsApp */}
@@ -1223,20 +1250,43 @@ export default function AdminOrdersPage() {
                   </div>
                 )}
 
-                {/* Dispatch Trigger Button */}
-                {selectedOrder.status === "paid" && (
+                {/* Shipping Label & Dispatch Actions */}
+                <div className="space-y-2 mt-2">
                   <button
-                    onClick={() => {
-                      setDispatchModalOrder(selectedOrder);
-                      setCarrierInput(selectedOrder.carrier || "USPS");
-                      setTrackingInput(selectedOrder.trackingNumber || "");
-                      setAdminNotesInput(selectedOrder.adminNotes || "");
-                    }}
-                    className="w-full mt-2 py-2 px-3 rounded-xl bg-moya-red hover:bg-moya-red-light text-white text-xs font-semibold flex items-center justify-center gap-2 transition-colors shadow-xs"
+                    onClick={() => setShippingLabelModalOrder(selectedOrder)}
+                    className="w-full py-2.5 px-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-zinc-950 text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-md shadow-amber-500/10 active:scale-[0.99]"
                   >
-                    <Truck className="w-3.5 h-3.5" /> Dispatch Shipment Now
+                    <Printer className="w-3.5 h-3.5" />
+                    {selectedOrder.shippingLabelUrl
+                      ? "Print Shipping Label (PDF)"
+                      : "Buy & Print Shipping Label (Shippo)"}
                   </button>
-                )}
+
+                  {selectedOrder.status === "paid" && (
+                    <button
+                      onClick={() => {
+                        setDispatchModalOrder(selectedOrder);
+                        setCarrierInput(selectedOrder.carrier || "USPS");
+                        setTrackingInput(selectedOrder.trackingNumber || "");
+                        setAdminNotesInput(selectedOrder.adminNotes || "");
+                      }}
+                      className="w-full py-2 px-3 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-white/5 dark:hover:bg-white/10 text-zinc-700 dark:text-zinc-300 text-xs font-semibold flex items-center justify-center gap-2 transition-colors"
+                    >
+                      <Truck className="w-3.5 h-3.5" /> Manual Tracking Entry
+                    </button>
+                  )}
+
+                  {selectedOrder.status === "dispatched" && (
+                    <button
+                      onClick={() => setDeliverModalOrder(selectedOrder)}
+                      disabled={isProcessing}
+                      className="w-full py-2 px-3 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-600 dark:text-purple-400 border border-purple-500/20 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
+                      title="Force mark as delivered (overrides courier scan)"
+                    >
+                      <ShieldCheck className="w-3.5 h-3.5" /> Mark Delivered (Manual Fallback)
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* Financial Summary */}
@@ -1837,6 +1887,14 @@ export default function AdminOrdersPage() {
           </div>
         </div>
       )}
+
+      {/* ── Modal: Shipping Labels & Multi-Carrier Postage ── */}
+      <ShippingLabelModal
+        order={shippingLabelModalOrder}
+        isOpen={Boolean(shippingLabelModalOrder)}
+        onClose={() => setShippingLabelModalOrder(null)}
+        onSuccess={(msg) => triggerSuccess(msg)}
+      />
     </div>
   );
 }

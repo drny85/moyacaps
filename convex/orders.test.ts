@@ -795,4 +795,267 @@ describe("Stripe Invoice Attachment", () => {
   });
 });
 
+describe("Shipping & Multi-Carrier Label Printing Lifecycle", () => {
+  it("attaches shipping label, transitions order to dispatched, and logs audit event", async () => {
+    const tt = t();
+    await seedVariant(tt, "V_CAP1", 10, 150);
+
+    // 1. Create a paid order
+    await tt.mutation(internal.orders.createOrUpdateStripeOrder, {
+      stripeSessionId: "cs_test_ship_1",
+      orderNumber: "GL-SHIP-01",
+      customerEmail: "collector@example.com",
+      customerName: "Alex Mercer",
+      items: [
+        { variantId: "V_CAP1", name: "Cap V_CAP1", quantity: 1, price: 150, image: "/cap.png" },
+      ],
+      currency: "USD",
+      subtotal: 150,
+      shippingFee: 0,
+      tax: 0,
+      total: 150,
+      isWhatsAppOrder: false,
+    });
+
+    let order = await getOrder(tt, "GL-SHIP-01");
+    expect(order?.status).toBe("paid");
+    expect(order?.shippingLabelUrl).toBeUndefined();
+
+    // 2. Attach shipping label purchased via Shippo
+    const res = await tt.mutation(internal.orders.attachShippingLabelInternal, {
+      orderId: order!._id,
+      carrier: "USPS",
+      trackingNumber: "9400111899223344556677",
+      shippingLabelUrl: "https://delivery.goshippo.com/label_123.pdf",
+      shippingRateId: "rate_shippo_456",
+      shippingTransactionId: "tx_shippo_789",
+      shippingServiceLevel: "USPS Ground Advantage",
+      shippingCost: 5.85,
+      shippingEstimatedDays: 3,
+      shippingLabelFileType: "PDF_4x6",
+      carrierTrackingUrl: "https://tools.usps.com/go/TrackConfirmAction?tLabels=9400111899223344556677",
+      parcelDimensions: {
+        length: 8,
+        width: 8,
+        height: 6,
+        weight: 8,
+        unit: "in",
+      },
+      actor: "admin_user",
+    });
+
+    expect(res.success).toBe(true);
+    expect(res.status).toBe("dispatched");
+    expect(res.trackingNumber).toBe("9400111899223344556677");
+
+    // 3. Verify order document in Convex
+    order = await getOrder(tt, "GL-SHIP-01");
+    expect(order?.status).toBe("dispatched");
+    expect(order?.carrier).toBe("USPS");
+    expect(order?.trackingNumber).toBe("9400111899223344556677");
+    expect(order?.shippingLabelUrl).toBe("https://delivery.goshippo.com/label_123.pdf");
+    expect(order?.shippingRateId).toBe("rate_shippo_456");
+    expect(order?.shippingTransactionId).toBe("tx_shippo_789");
+    expect(order?.shippingServiceLevel).toBe("USPS Ground Advantage");
+    expect(order?.shippingCost).toBe(5.85);
+    expect(order?.shippingEstimatedDays).toBe(3);
+    expect(order?.parcelDimensions?.length).toBe(8);
+    expect(order?.parcelDimensions?.weight).toBe(8);
+
+    // 4. Verify payment/fulfillment audit trail
+    const events = await getEvents(tt, order!._id);
+    const labelEvent = events.find((e: any) => e.type === "shipping_label_created");
+    expect(labelEvent).toBeDefined();
+    expect(labelEvent?.details).toContain("USPS (USPS Ground Advantage)");
+    expect(labelEvent?.details).toContain("9400111899223344556677");
+
+    await drain(tt);
+  });
+
+  it("processes DELIVERED scan: transitions order to delivered, schedules email, and logs audit", async () => {
+    const tt = t();
+    await seedVariant(tt, "V_CAP2", 5, 175);
+
+    // 1. Create order and dispatch with tracking
+    await tt.mutation(internal.orders.createOrUpdateStripeOrder, {
+      stripeSessionId: "cs_test_ship_deliv",
+      orderNumber: "GL-DELIV-01",
+      customerEmail: "vip@example.com",
+      customerName: "Elena Rostova",
+      items: [
+        { variantId: "V_CAP2", name: "Cap V_CAP2", quantity: 1, price: 175, image: "/cap.png" },
+      ],
+      currency: "USD",
+      subtotal: 175,
+      shippingFee: 0,
+      tax: 0,
+      total: 175,
+      isWhatsAppOrder: false,
+    });
+
+    let order = await getOrder(tt, "GL-DELIV-01");
+    await tt.mutation(internal.orders.attachShippingLabelInternal, {
+      orderId: order!._id,
+      carrier: "USPS",
+      trackingNumber: "9400111899000000000001",
+      shippingLabelUrl: "https://delivery.goshippo.com/deliv_label.pdf",
+    });
+
+    order = await getOrder(tt, "GL-DELIV-01");
+    expect(order?.status).toBe("dispatched");
+
+    // 2. Incoming carrier webhook: DELIVERED
+    const webhookRes = await tt.mutation(internal.orders.handleTrackingWebhookInternal, {
+      trackingNumber: "9400111899000000000001",
+      carrier: "USPS",
+      status: "DELIVERED",
+      statusDetails: "Delivered in or at the mailbox",
+      statusDate: "2026-09-27T14:00:00Z",
+      location: {
+        city: "Miami",
+        state: "FL",
+        zip: "33101",
+        country: "US",
+      },
+    });
+
+    expect(webhookRes.found).toBe(true);
+    expect(webhookRes.status).toBe("delivered");
+
+    order = await getOrder(tt, "GL-DELIV-01");
+    expect(order?.status).toBe("delivered");
+    expect(order?.trackingStatus).toBe("DELIVERED");
+    expect(order?.trackingStatusDetails).toBe("Delivered in or at the mailbox");
+    expect(order?.trackingLocation).toBe("Miami, FL");
+    expect(order?.trackingDeliveredAt).toBeDefined();
+
+    // 3. Verify audit trail
+    const events = await getEvents(tt, order!._id);
+    const delivEvent = events.find((e: any) => e.type === "carrier_delivered");
+    expect(delivEvent).toBeDefined();
+    expect(delivEvent?.details).toContain("Delivered in or at the mailbox");
+
+    await drain(tt);
+  });
+
+  it("handles FAILURE/RETURNED scans by logging alerts and updating audit trail", async () => {
+    const tt = t();
+    await seedVariant(tt, "V_CAP3", 5, 175);
+
+    await tt.mutation(internal.orders.createOrUpdateStripeOrder, {
+      stripeSessionId: "cs_test_ship_fail",
+      orderNumber: "GL-FAIL-01",
+      customerEmail: "buyer@example.com",
+      items: [
+        { variantId: "V_CAP3", name: "Cap V_CAP3", quantity: 1, price: 175, image: "/cap.png" },
+      ],
+      currency: "USD",
+      subtotal: 175,
+      shippingFee: 0,
+      tax: 0,
+      total: 175,
+      isWhatsAppOrder: false,
+    });
+
+    let order = await getOrder(tt, "GL-FAIL-01");
+    await tt.mutation(internal.orders.attachShippingLabelInternal, {
+      orderId: order!._id,
+      carrier: "UPS",
+      trackingNumber: "1Z9999999900000002",
+      shippingLabelUrl: "https://delivery.goshippo.com/fail_label.pdf",
+    });
+
+    // Incoming carrier webhook: FAILURE (no access code)
+    const res = await tt.mutation(internal.orders.handleTrackingWebhookInternal, {
+      trackingNumber: "1Z9999999900000002",
+      carrier: "UPS",
+      status: "FAILURE",
+      statusDetails: "Receiver not at address / Gate code required",
+      statusDate: "2026-09-27T14:15:00Z",
+      location: {
+        city: "Austin",
+        state: "TX",
+      },
+    });
+
+    expect(res.found).toBe(true);
+
+    order = await getOrder(tt, "GL-FAIL-01");
+    expect(order?.trackingStatus).toBe("FAILURE");
+    expect(order?.trackingFailedAt).toBeDefined();
+    expect(order?.adminNotes).toContain("Carrier FAILURE");
+    expect(order?.adminNotes).toContain("Gate code required");
+
+    const events = await getEvents(tt, order!._id);
+    const failEvent = events.find((e: any) => e.type === "delivery_failed");
+    expect(failEvent).toBeDefined();
+
+    await drain(tt);
+  });
+
+  it("respects manualStatusOverride when admin manually reverts a delivered order", async () => {
+    const tt = t();
+    await seedVariant(tt, "V_CAP4", 5, 175);
+
+    await tt.mutation(internal.orders.createOrUpdateStripeOrder, {
+      stripeSessionId: "cs_test_override",
+      orderNumber: "GL-OVER-01",
+      customerEmail: "cust@example.com",
+      items: [
+        { variantId: "V_CAP4", name: "Cap V_CAP4", quantity: 1, price: 175, image: "/cap.png" },
+      ],
+      currency: "USD",
+      subtotal: 175,
+      shippingFee: 0,
+      tax: 0,
+      total: 175,
+      isWhatsAppOrder: false,
+    });
+
+    let order = await getOrder(tt, "GL-OVER-01");
+    await tt.mutation(internal.orders.attachShippingLabelInternal, {
+      orderId: order!._id,
+      carrier: "USPS",
+      trackingNumber: "9400111899000000000003",
+      shippingLabelUrl: "https://delivery.goshippo.com/over_label.pdf",
+    });
+
+    // Carrier scans DELIVERED
+    await tt.mutation(internal.orders.handleTrackingWebhookInternal, {
+      trackingNumber: "9400111899000000000003",
+      status: "DELIVERED",
+      statusDetails: "Delivered",
+    });
+
+    order = await getOrder(tt, "GL-OVER-01");
+    expect(order?.status).toBe("delivered");
+
+    // Human admin investigates missing parcel and manually reverts to dispatched
+    await admin(tt).mutation(api.orders.updateOrderStatusAdmin, {
+      orderId: order!._id,
+      newStatus: "dispatched",
+      adminNotes: "Customer called concierge: package not at porch, checking with neighbor.",
+    });
+
+    order = await getOrder(tt, "GL-OVER-01");
+    expect(order?.status).toBe("dispatched");
+    expect(order?.manualStatusOverride).toBe(true);
+
+    // Another DELIVERED webhook arrives from carrier (e.g. carrier system sync)
+    const subsequentRes = await tt.mutation(internal.orders.handleTrackingWebhookInternal, {
+      trackingNumber: "9400111899000000000003",
+      status: "DELIVERED",
+      statusDetails: "Delivered scan re-transmitted",
+    });
+
+    expect(subsequentRes.status).toBe("dispatched"); // Blocked from overwriting!
+    order = await getOrder(tt, "GL-OVER-01");
+    expect(order?.status).toBe("dispatched"); // Still dispatched!
+
+    await drain(tt);
+  });
+});
+
+
+
 

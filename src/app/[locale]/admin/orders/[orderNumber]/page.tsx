@@ -12,6 +12,7 @@ import {
   getWhatsAppAdminPaymentLinkMessage,
 } from "@/lib/whatsapp";
 import { Link, useRouter } from "@/i18n/routing";
+import { ShippingLabelModal } from "@/components/admin/ShippingLabelModal";
 import {
   ArrowLeft,
   Printer,
@@ -71,6 +72,7 @@ export default function DedicatedOrderDetailPage({
   const [feedbackSuccess, setFeedbackSuccess] = useState<string | null>(null);
 
   // Modals state
+  const [isShippingLabelModalOpen, setIsShippingLabelModalOpen] = useState(false);
   const [isDispatchModalOpen, setIsDispatchModalOpen] = useState(false);
   const [carrierInput, setCarrierInput] = useState("USPS");
   const [trackingInput, setTrackingInput] = useState("");
@@ -505,28 +507,50 @@ export default function DedicatedOrderDetailPage({
             )}
 
             {order.status === "paid" && (
-              <button
-                onClick={() => {
-                  setCarrierInput(order.carrier || "USPS");
-                  setTrackingInput(order.trackingNumber || "");
-                  setAdminNotesInput(order.adminNotes || "");
-                  setIsDispatchModalOpen(true);
-                }}
-                className="px-4 py-2 rounded-xl bg-moya-red hover:bg-moya-red-light text-white font-semibold text-xs transition-colors flex items-center gap-2 shadow-md shadow-moya-red/20"
-              >
-                <Truck className="w-4 h-4" />
-                <span>Dispatch Package</span>
-              </button>
+              <>
+                <button
+                  onClick={() => setIsShippingLabelModalOpen(true)}
+                  className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-xs transition-all flex items-center gap-2 shadow-md shadow-amber-500/20 active:scale-[0.98]"
+                >
+                  <Printer className="w-4 h-4" />
+                  <span>Buy Shipping Label</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setCarrierInput(order.carrier || "USPS");
+                    setTrackingInput(order.trackingNumber || "");
+                    setAdminNotesInput(order.adminNotes || "");
+                    setIsDispatchModalOpen(true);
+                  }}
+                  className="px-3.5 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-medium text-xs transition-colors flex items-center gap-1.5"
+                >
+                  <Truck className="w-4 h-4" />
+                  <span>Manual Dispatch</span>
+                </button>
+              </>
             )}
 
             {order.status === "dispatched" && (
-              <button
-                onClick={() => setIsDeliverModalOpen(true)}
-                className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs transition-colors flex items-center gap-1.5 shadow-sm"
-              >
-                <ShieldCheck className="w-4 h-4" />
-                <span>Mark Delivered</span>
-              </button>
+              <>
+                {order.shippingLabelUrl && (
+                  <button
+                    onClick={() => setIsShippingLabelModalOpen(true)}
+                    className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-xs transition-all flex items-center gap-2 shadow-md shadow-amber-500/20 active:scale-[0.98]"
+                  >
+                    <Printer className="w-4 h-4" />
+                    <span>Print Label (PDF)</span>
+                  </button>
+                )}
+                <button
+                  onClick={() => setIsDeliverModalOpen(true)}
+                  className="px-3.5 py-2 rounded-xl bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 border border-purple-500/30 font-semibold text-xs transition-colors flex items-center gap-1.5 shadow-sm"
+                  title="Manual delivery override (if courier scan missed or hand-delivered)"
+                >
+                  <ShieldCheck className="w-4 h-4" />
+                  <span>Mark Delivered (Fallback)</span>
+                </button>
+              </>
             )}
           </div>
         </div>
@@ -971,10 +995,10 @@ export default function DedicatedOrderDetailPage({
             </span>
 
             {order.trackingNumber ? (
-              <div className="space-y-2 text-xs">
+              <div className="space-y-2.5 text-xs">
                 <div className="flex items-center justify-between">
                   <span className="font-semibold text-zinc-900 dark:text-white">
-                    {order.carrier || "USPS"}
+                    {order.carrier || "USPS"} {order.shippingServiceLevel ? `• ${order.shippingServiceLevel}` : ""}
                   </span>
                   <button
                     onClick={() => handleCopy(order.trackingNumber || "")}
@@ -987,6 +1011,18 @@ export default function DedicatedOrderDetailPage({
                 <p className="font-mono text-zinc-600 dark:text-zinc-400 text-xs">
                   {order.trackingNumber}
                 </p>
+
+                {order.shippingLabelUrl && (
+                  <button
+                    type="button"
+                    onClick={() => setIsShippingLabelModalOpen(true)}
+                    className="w-full py-2.5 px-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-sm active:scale-[0.98]"
+                  >
+                    <Printer className="w-4 h-4" />
+                    <span>Print Shipping Label (PDF)</span>
+                  </button>
+                )}
+
                 <a
                   href={getCarrierTrackingUrl(order.carrier, order.trackingNumber) || "#"}
                   target="_blank"
@@ -996,11 +1032,33 @@ export default function DedicatedOrderDetailPage({
                   <span>Track Courier Live</span>
                   <ExternalLink className="w-3.5 h-3.5" />
                 </a>
+
+                {order.shippingCost && (
+                  <div className="pt-2 border-t border-zinc-100 dark:border-white/[0.06] text-[11px] flex justify-between text-zinc-500">
+                    <span>Postage Paid:</span>
+                    <span className="font-mono font-semibold text-zinc-800 dark:text-zinc-200">
+                      ${order.shippingCost.toFixed(2)} USD
+                    </span>
+                  </div>
+                )}
               </div>
             ) : (
-              <p className="text-xs text-zinc-500 italic">
-                Awaiting fulfillment dispatch. Tracking not yet assigned.
-              </p>
+              <div className="space-y-3">
+                <p className="text-xs text-zinc-500 italic">
+                  Awaiting fulfillment dispatch. Tracking not yet assigned.
+                </p>
+
+                {order.status === "paid" && (
+                  <button
+                    type="button"
+                    onClick={() => setIsShippingLabelModalOpen(true)}
+                    className="w-full py-2.5 px-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-sm active:scale-[0.98]"
+                  >
+                    <Printer className="w-4 h-4" />
+                    <span>Buy Shipping Label via Shippo</span>
+                  </button>
+                )}
+              </div>
             )}
 
             {order.status === "dispatched" && (
@@ -1553,6 +1611,14 @@ export default function DedicatedOrderDetailPage({
           </div>
         </div>
       )}
+
+      {/* ── Modal: Shipping Labels & Multi-Carrier Postage ── */}
+      <ShippingLabelModal
+        order={order}
+        isOpen={isShippingLabelModalOpen}
+        onClose={() => setIsShippingLabelModalOpen(false)}
+        onSuccess={(msg) => triggerSuccess(msg)}
+      />
     </div>
   );
 }

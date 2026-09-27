@@ -97,6 +97,30 @@ export default defineSchema({
     disputeDetails: v.optional(v.string()),
     trackingNumber: v.optional(v.string()),
     carrier: v.optional(v.string()),
+    shippingLabelUrl: v.optional(v.string()),
+    shippingCarrier: v.optional(v.string()),
+    shippingRateId: v.optional(v.string()),
+    shippingTransactionId: v.optional(v.string()),
+    shippingServiceLevel: v.optional(v.string()),
+    shippingCost: v.optional(v.number()),
+    shippingEstimatedDays: v.optional(v.number()),
+    shippingLabelFileType: v.optional(v.string()),
+    parcelDimensions: v.optional(
+      v.object({
+        length: v.number(),
+        width: v.number(),
+        height: v.number(),
+        weight: v.number(),
+        unit: v.string(),
+      })
+    ),
+    trackingStatus: v.optional(v.string()),
+    trackingStatusDetails: v.optional(v.string()),
+    trackingStatusDate: v.optional(v.string()),
+    trackingLocation: v.optional(v.string()),
+    trackingDeliveredAt: v.optional(v.number()),
+    trackingFailedAt: v.optional(v.number()),
+    manualStatusOverride: v.optional(v.boolean()),
     adminNotes: v.optional(v.string()),
     paymentUrl: v.optional(v.string()),
     paymentLinkSentAt: v.optional(v.number()),
@@ -105,6 +129,7 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index("by_orderNumber", ["orderNumber"])
+    .index("by_trackingNumber", ["trackingNumber"])
     .index("by_clerkUserId", ["clerkUserId"])
     .index("by_stripeSessionId", ["stripeSessionId"])
     .index("by_stripeInvoiceId", ["stripeInvoiceId"])

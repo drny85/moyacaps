@@ -14,10 +14,13 @@ import type * as emails from "../emails.js";
 import type * as emails_AdminDisputeAlert from "../emails/AdminDisputeAlert.js";
 import type * as emails_AdminOrderAlert from "../emails/AdminOrderAlert.js";
 import type * as emails_CustomerReceipt from "../emails/CustomerReceipt.js";
+import type * as emails_OrderDeliveredEmail from "../emails/OrderDeliveredEmail.js";
+import type * as emails_OrderDispatchedEmail from "../emails/OrderDispatchedEmail.js";
 import type * as http from "../http.js";
 import type * as ids from "../ids.js";
 import type * as orders from "../orders.js";
 import type * as products from "../products.js";
+import type * as shipping from "../shipping.js";
 import type * as stripe from "../stripe.js";
 import type * as users from "../users.js";
 
@@ -34,10 +37,13 @@ declare const fullApi: ApiFromModules<{
   "emails/AdminDisputeAlert": typeof emails_AdminDisputeAlert;
   "emails/AdminOrderAlert": typeof emails_AdminOrderAlert;
   "emails/CustomerReceipt": typeof emails_CustomerReceipt;
+  "emails/OrderDeliveredEmail": typeof emails_OrderDeliveredEmail;
+  "emails/OrderDispatchedEmail": typeof emails_OrderDispatchedEmail;
   http: typeof http;
   ids: typeof ids;
   orders: typeof orders;
   products: typeof products;
+  shipping: typeof shipping;
   stripe: typeof stripe;
   users: typeof users;
 }>;
