@@ -117,12 +117,14 @@ export default defineSchema({
     role: v.union(v.literal("admin"), v.literal("customer")),
     imageUrl: v.optional(v.string()),
     phone: v.optional(v.string()),
+    stripeCustomerId: v.optional(v.string()),
     deletedAt: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.optional(v.number()),
   })
     .index("by_clerkId", ["clerkId"])
     .index("by_email", ["email"])
+    .index("by_stripeCustomerId", ["stripeCustomerId"])
     .index("by_role", ["role"]),
   payment_events: defineTable({
     orderId: v.id("orders"),

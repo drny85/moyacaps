@@ -700,3 +700,53 @@ describe("Stripe Refund and Dispute Webhook Lifecycle", () => {
     await drain(tt);
   });
 });
+
+describe("Stripe Customer Identity Attachment", () => {
+  it("persists stripeCustomerId on order settlement and mirrors to user record", async () => {
+    const tt = t();
+    await seedVariant(tt, "V1", 5, 120);
+
+    // Seed a registered Clerk user
+    const userId = await tt.run(async (ctx) => {
+      return await ctx.db.insert("users", {
+        clerkId: "user_clerk_123",
+        email: "collector@example.com",
+        name: "Collector",
+        role: "customer",
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+    });
+
+    // Settle a new direct order with a Stripe customer id
+    await tt.mutation(internal.orders.createOrUpdateStripeOrder, {
+      stripeSessionId: "cs_test_cust_1",
+      orderNumber: "GL-CUST-1",
+      customerEmail: "collector@example.com",
+      customerName: "Collector",
+      clerkUserId: "user_clerk_123",
+      stripeCustomerId: "cus_test_999",
+      items: [
+        { variantId: "V1", name: "Cap V1", quantity: 1, price: 120, image: "/cap.png" },
+      ],
+      currency: "USD",
+      subtotal: 120,
+      shippingFee: 0,
+      tax: 0,
+      total: 120,
+      isWhatsAppOrder: false,
+    });
+
+    const order = await getOrder(tt, "GL-CUST-1");
+    expect(order?.stripeCustomerId).toBe("cus_test_999");
+    expect(order?.status).toBe("paid");
+
+    const user = await tt.run(async (ctx) => {
+      return await ctx.db.get(userId);
+    });
+    expect(user?.stripeCustomerId).toBe("cus_test_999");
+
+    await drain(tt);
+  });
+});
+

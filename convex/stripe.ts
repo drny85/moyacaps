@@ -455,14 +455,61 @@ export const createCheckoutSession = action({
     const orderNumber = `GL-${Date.now().toString(36).toUpperCase()}-${randomDigitString(4)}`;
     const stripe = getStripe();
 
+    // Resolve or upsert customer if email is provided, so repeat buyers are deduplicated
+    let customerId: string | undefined;
+    if (args.customerEmail) {
+      customerId = await upsertStripeCustomer(stripe, {
+        email: args.customerEmail,
+        orderNumber,
+        clerkUserId: resolvedClerkId || undefined,
+      });
+    }
+
     const session = await stripe.checkout.sessions.create(
       {
         line_items: buildLineItems(validatedItems, args.origin),
         mode: "payment",
         invoice_creation: {
           enabled: true,
+          invoice_data: {
+            description: `Good Luck 0880 — Order #${orderNumber}`,
+            metadata: {
+              orderNumber,
+              clerkUserId: resolvedClerkId || "",
+            },
+            footer: "Good Luck 0880 | Bespoke NYC Headwear | Support: goodluckcaps.com",
+          },
         },
-        customer_email: args.customerEmail || undefined,
+        payment_intent_data: {
+          description: `Good Luck 0880 — Order #${orderNumber}`,
+          statement_descriptor_suffix: "GOODLUCK",
+          metadata: {
+            orderNumber,
+            clerkUserId: resolvedClerkId || "",
+            customerEmail: args.customerEmail || "",
+          },
+        },
+        custom_text: {
+          shipping_address: {
+            message: "Please verify your delivery address carefully. Physical signature may be required for limited drops.",
+          },
+          submit: {
+            message: "By confirming payment, you authorize Good Luck 0880 to process your bespoke order.",
+          },
+        },
+        ...(customerId
+          ? {
+              customer: customerId,
+              customer_update: {
+                shipping: "auto",
+                address: "auto",
+                name: "auto",
+              },
+            }
+          : {
+              customer_creation: "always" as const,
+              customer_email: args.customerEmail || undefined,
+            }),
         billing_address_collection: "required",
         shipping_address_collection: {
           allowed_countries: ["US"],
@@ -655,17 +702,44 @@ export const createWhatsAppCheckoutSession = action({
         mode: "payment",
         invoice_creation: {
           enabled: true,
+          invoice_data: {
+            description: "Good Luck 0880 — Concierge Order",
+            metadata: {
+              clerkUserId: args.clerkUserId || "",
+            },
+            footer: "Good Luck 0880 | Bespoke NYC Headwear | Support: goodluckcaps.com",
+          },
+        },
+        payment_intent_data: {
+          description: "Good Luck 0880 — Concierge Order",
+          statement_descriptor_suffix: "GOODLUCK",
+          metadata: {
+            clerkUserId: args.clerkUserId || "",
+            customerEmail: args.customerEmail || "",
+          },
+        },
+        custom_text: {
+          shipping_address: {
+            message: "Please confirm your delivery address for your concierge order.",
+          },
+          submit: {
+            message: "By confirming payment, you authorize Good Luck 0880 to process your concierge order.",
+          },
         },
         expires_at: sessionExpiresAt,
-        customer: customerId,
-        customer_update: customerId
+        ...(customerId
           ? {
-            shipping: "auto",
-            address: "auto",
-            name: "auto",
-          }
-          : undefined,
-        customer_email: customerId ? undefined : (args.customerEmail || undefined),
+              customer: customerId,
+              customer_update: {
+                shipping: "auto",
+                address: "auto",
+                name: "auto",
+              },
+            }
+          : {
+              customer_creation: "always" as const,
+              customer_email: args.customerEmail || undefined,
+            }),
         billing_address_collection: "auto",
         shipping_address_collection: {
           allowed_countries: ["US"],
@@ -860,17 +934,46 @@ export const generateOrRefreshWhatsAppPaymentLink = action({
       mode: "payment",
       invoice_creation: {
         enabled: true,
+        invoice_data: {
+          description: `Good Luck 0880 — Order #${order.orderNumber}`,
+          metadata: {
+            orderNumber: order.orderNumber,
+            clerkUserId: order.clerkUserId || "",
+          },
+          footer: "Good Luck 0880 | Bespoke NYC Headwear | Support: goodluckcaps.com",
+        },
+      },
+      payment_intent_data: {
+        description: `Good Luck 0880 — Order #${order.orderNumber}`,
+        statement_descriptor_suffix: "GOODLUCK",
+        metadata: {
+          orderNumber: order.orderNumber,
+          clerkUserId: order.clerkUserId || "",
+          customerEmail: order.customerEmail || "",
+        },
+      },
+      custom_text: {
+        shipping_address: {
+          message: "Please ensure your delivery address is accurate. Physical signature may be required for limited drops.",
+        },
+        submit: {
+          message: "By confirming payment, you authorize Good Luck 0880 to process your order.",
+        },
       },
       expires_at: sessionExpiresAt,
-      customer: customerId,
-      customer_update: customerId
+      ...(customerId
         ? {
-          shipping: "auto",
-          address: "auto",
-          name: "auto",
-        }
-        : undefined,
-      customer_email: customerId ? undefined : (order.customerEmail || undefined),
+            customer: customerId,
+            customer_update: {
+              shipping: "auto",
+              address: "auto",
+              name: "auto",
+            },
+          }
+        : {
+            customer_creation: "always" as const,
+            customer_email: order.customerEmail || undefined,
+          }),
       billing_address_collection: "auto",
       shipping_address_collection: {
         allowed_countries: ["US"],
@@ -1127,9 +1230,14 @@ export const syncCheckoutSession = action({
 
       const parsedItems = await hydrateOrderItems(ctx, metadata.itemsJson);
       const { taxAmount, taxDetails } = extractTaxInfo(session, address);
+      const stripeCustomerId =
+        typeof session.customer === "string"
+          ? session.customer
+          : (session.customer as any)?.id || undefined;
 
       const orderId: any = await ctx.runMutation(internal.orders.createOrUpdateStripeOrder, {
         stripeSessionId: session.id,
+        stripeCustomerId,
         orderNumber: metadata.orderNumber || `GL-${session.id.slice(-8).toUpperCase()}`,
         customerEmail: session.customer_details?.email || undefined,
         customerName: session.customer_details?.name || undefined,
@@ -1241,9 +1349,14 @@ export const fulfillStripeWebhook = internalAction({
 
       const parsedItems = await hydrateOrderItems(ctx, metadata.itemsJson);
       const { taxAmount, taxDetails } = extractTaxInfo(session, address);
+      const stripeCustomerId =
+        typeof session.customer === "string"
+          ? session.customer
+          : (session.customer as any)?.id || undefined;
 
       await ctx.runMutation(internal.orders.createOrUpdateStripeOrder, {
         stripeSessionId: session.id,
+        stripeCustomerId,
         orderNumber: metadata.orderNumber || session.client_reference_id || `GL-${session.id.slice(-8).toUpperCase()}`,
         customerEmail: session.customer_details?.email || undefined,
         customerName: session.customer_details?.name || undefined,

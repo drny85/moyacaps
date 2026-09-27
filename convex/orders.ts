@@ -353,6 +353,8 @@ export const createOrUpdateStripeOrder = internalMutation({
       })
     ),
     total: v.number(),
+    // Stripe customer ID (upserted or auto-created by Checkout)
+    stripeCustomerId: v.optional(v.string()),
     // Stripe event id that triggered this settlement (bounded replay-dedupe guard).
     webhookEventId: v.optional(v.string()),
     // True when the session was issued for a WhatsApp concierge lead order.
@@ -427,6 +429,7 @@ export const createOrUpdateStripeOrder = internalMutation({
         customerName: args.customerName ?? existing.customerName,
         customerPhone: args.customerPhone ?? existing.customerPhone,
         shippingAddress: args.shippingAddress ?? existing.shippingAddress,
+        stripeCustomerId: args.stripeCustomerId ?? existing.stripeCustomerId,
         tax: args.tax ?? existing.tax,
         taxDetails: args.taxDetails ?? existing.taxDetails,
         total: args.total ?? existing.total,
@@ -439,6 +442,22 @@ export const createOrUpdateStripeOrder = internalMutation({
           existing.trackingNumber ?? `GL-TRK-${randomDigitString(6)}`,
         updatedAt: Date.now(),
       });
+
+      // Mirror customer id to user record if registered
+      const resolvedClerkId = args.clerkUserId ?? existing.clerkUserId;
+      const resolvedCustId = args.stripeCustomerId ?? existing.stripeCustomerId;
+      if (resolvedClerkId && resolvedCustId) {
+        const user = await ctx.db
+          .query("users")
+          .withIndex("by_clerkId", (q) => q.eq("clerkId", resolvedClerkId))
+          .first();
+        if (user && !user.stripeCustomerId) {
+          await ctx.db.patch(user._id, {
+            stripeCustomerId: resolvedCustId,
+            updatedAt: Date.now(),
+          });
+        }
+      }
 
       await ctx.runMutation(internal.orders.recordPaymentEvent, {
         orderId: existing._id,
@@ -488,10 +507,27 @@ export const createOrUpdateStripeOrder = internalMutation({
       paymentMethod: "stripe",
       stripeSessionId: args.stripeSessionId,
       stripeSessionIds: [args.stripeSessionId],
+      stripeCustomerId: args.stripeCustomerId,
       webhookEventIds: args.webhookEventId ? [args.webhookEventId] : undefined,
       trackingNumber: `GL-TRK-${randomDigitString(6)}`,
       createdAt: Date.now(),
     });
+
+    // Mirror customer id to user record if registered
+    const newClerkId = args.clerkUserId;
+    const newCustId = args.stripeCustomerId;
+    if (newClerkId && newCustId) {
+      const user = await ctx.db
+        .query("users")
+        .withIndex("by_clerkId", (q) => q.eq("clerkId", newClerkId))
+        .first();
+      if (user && !user.stripeCustomerId) {
+        await ctx.db.patch(user._id, {
+          stripeCustomerId: newCustId,
+          updatedAt: Date.now(),
+        });
+      }
+    }
 
     // Decrement stock
     for (const item of args.items) {
