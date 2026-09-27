@@ -37,9 +37,9 @@ const SAMPLE_AVATARS = [
 
 const FIT_PRESETS = [
   { id: "classic", labelEn: "Classic Fit", labelEs: "Corte Clásico", offsetY: 0, scale: 1, tilt: 0 },
-  { id: "low-brow", labelEn: "Low Brow", labelEs: "Ajuste Ceja", offsetY: 22, scale: 1.03, tilt: 0 },
-  { id: "high-crown", labelEn: "Crown High", labelEs: "Corona Alta", offsetY: -18, scale: 0.98, tilt: -2 },
-  { id: "slant", labelEn: "Street Slant", labelEs: "Inclinado", offsetY: -4, scale: 1.02, tilt: 7 },
+  { id: "low-brow", labelEn: "Low Brow", labelEs: "Ajuste Ceja", offsetY: 14, scale: 1.03, tilt: 0 },
+  { id: "high-crown", labelEn: "Crown High", labelEs: "Corona Alta", offsetY: -10, scale: 0.97, tilt: -2 },
+  { id: "slant", labelEn: "Street Slant", labelEs: "Inclinado", offsetY: 2, scale: 1.02, tilt: 8 },
 ];
 
 interface VirtualTryOnStudioProps {
@@ -232,11 +232,11 @@ export function VirtualTryOnStudio({
       });
 
       ctx.save();
-      // Cap Anchor Center
-      const capWidth = 580 * scale;
-      const capHeight = 440 * scale;
+      // Cap Anchor Center — matches the on-screen overlay (brim at forehead)
+      const capWidth = 560 * scale;
+      const capHeight = 450 * scale;
       const centerX = 540;
-      const centerY = 280 + offsetY * 2.2;
+      const centerY = 180 + offsetY * 2.2;
 
       ctx.translate(centerX, centerY);
       ctx.rotate((tilt * Math.PI) / 180);
@@ -394,24 +394,24 @@ export function VirtualTryOnStudio({
               </div>
             )}
 
-            {/* Cap A Overlay */}
+            {/* Cap A Overlay — anchored so brim sits at forehead */}
             {showCapOverlay && (
               <motion.div
                 key={selectedCap.id}
-                initial={{ opacity: 0, y: -8 }}
+                initial={{ opacity: 0, y: -12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.2, ease: "easeOut" }}
                 style={{
                   position: "absolute",
-                  top: `${14 + offsetY * 0.28}%`,
+                  top: `${-2 + offsetY * 0.28}%`,
                   left: "50%",
                   transform: `translateX(-50%) rotate(${tilt}deg) scale(${scale})`,
-                  width: "72%",
-                  maxWidth: "320px",
-                  aspectRatio: "1/0.75",
+                  width: "68%",
+                  maxWidth: "300px",
+                  aspectRatio: "1/0.78",
                   pointerEvents: "none",
                   transition: "transform 0.08s ease-out, top 0.08s ease-out",
-                  filter: "drop-shadow(0 14px 22px rgba(0,0,0,0.55))",
+                  filter: "drop-shadow(0 10px 18px rgba(0,0,0,0.5))",
                   zIndex: 20,
                 }}
               >
@@ -430,14 +430,14 @@ export function VirtualTryOnStudio({
               <div
                 style={{
                   position: "absolute",
-                  top: `${14 + offsetY * 0.28}%`,
-                  left: "75%",
-                  transform: `translateX(-50%) rotate(${tilt}deg) scale(${scale * 0.95})`,
-                  width: "60%",
-                  aspectRatio: "1/0.75",
+                  top: `${-2 + offsetY * 0.28}%`,
+                  left: "72%",
+                  transform: `translateX(-50%) rotate(${tilt}deg) scale(${scale * 0.92})`,
+                  width: "55%",
+                  aspectRatio: "1/0.78",
                   pointerEvents: "none",
                   zIndex: 25,
-                  filter: "drop-shadow(0 14px 22px rgba(0,0,0,0.55))",
+                  filter: "drop-shadow(0 10px 18px rgba(0,0,0,0.5))",
                 }}
               >
                 <Image
