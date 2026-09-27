@@ -599,7 +599,7 @@ export function VirtualTryOnStudio({
                       </div>
                       <input
                         type="range"
-                        min="0.85"
+                        min="0.5"
                         max="1.5"
                         step="0.01"
                         value={scale}
