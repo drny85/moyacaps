@@ -30,9 +30,11 @@ import { CAP_VARIANTS, type CapVariant } from "@/data/caps";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 
 const SAMPLE_AVATARS = [
-  { id: "model-1", name: "Marcus", image: "/avatars/model-marcus-buzz.jpg" },
-  { id: "model-2", name: "Elena", image: "/avatars/model-elena-crop.jpg" },
-  { id: "model-3", name: "Jaden", image: "/avatars/model-jaden-shaved.jpg" },
+  { id: "model-gl-black", name: "Devon (Good Luck Black Hoodie)", image: "/avatars/model-goodluck-hoodie-black.jpg" },
+  { id: "model-gl-grey", name: "Maya (Good Luck Grey Hoodie)", image: "/avatars/model-goodluck-hoodie-grey.jpg" },
+  { id: "model-jaden", name: "Jaden (Shaved Head)", image: "/avatars/model-jaden-shaved.jpg" },
+  { id: "model-marcus", name: "Marcus (Buzz Fade)", image: "/avatars/model-marcus-buzz.jpg" },
+  { id: "model-elena", name: "Elena (Close Crop)", image: "/avatars/model-elena-crop.jpg" },
 ];
 
 const FIT_PRESETS = [
@@ -708,7 +710,7 @@ export function VirtualTryOnStudio({
                 <span className="text-[10px] font-mono text-zinc-400 shrink-0">
                   {isEs ? "Modelos:" : "Models:"}
                 </span>
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 flex-wrap">
                   {SAMPLE_AVATARS.map((avatar) => (
                     <button
                       key={avatar.id}
