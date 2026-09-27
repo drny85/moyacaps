@@ -39,9 +39,9 @@ const SAMPLE_AVATARS = [
 
 const FIT_PRESETS = [
   { id: "classic", labelEn: "Classic Fit", labelEs: "Corte Clásico", offsetX: 0, offsetY: 0, scale: 1, tilt: 0, tiltX: 0 },
-  { id: "low-brow", labelEn: "Low Brow", labelEs: "Ajuste Ceja", offsetX: 0, offsetY: 8, scale: 1.02, tilt: 0, tiltX: 4 },
-  { id: "high-crown", labelEn: "Crown High", labelEs: "Corona Alta", offsetX: 0, offsetY: -8, scale: 0.96, tilt: -2, tiltX: -6 },
-  { id: "slant", labelEn: "Street Slant", labelEs: "Inclinado", offsetX: 5, offsetY: 1, scale: 1.01, tilt: 7, tiltX: 2 },
+  { id: "low-brow", labelEn: "Low Brow", labelEs: "Ajuste Ceja", offsetX: 0, offsetY: 16, scale: 1.02, tilt: 0, tiltX: 4 },
+  { id: "high-crown", labelEn: "Crown High", labelEs: "Corona Alta", offsetX: 0, offsetY: -10, scale: 0.96, tilt: -2, tiltX: -6 },
+  { id: "slant", labelEn: "Street Slant", labelEs: "Inclinado", offsetX: 5, offsetY: 2, scale: 1.01, tilt: 7, tiltX: 2 },
 ];
 
 interface VirtualTryOnStudioProps {
@@ -144,8 +144,8 @@ export function VirtualTryOnStudio({
     const dy = e.clientY - dragStartRef.current.y;
     const nextX = Math.round(dragStartRef.current.initX + dx / 2.8);
     const nextY = Math.round(dragStartRef.current.initY + dy / 2.8);
-    setOffsetX(Math.max(-30, Math.min(30, nextX)));
-    setOffsetY(Math.max(-40, Math.min(40, nextY)));
+    setOffsetX(Math.max(-40, Math.min(40, nextX)));
+    setOffsetY(Math.max(-50, Math.min(80, nextY)));
   };
 
   const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -663,8 +663,8 @@ export function VirtualTryOnStudio({
                       </div>
                       <input
                         type="range"
-                        min="-40"
-                        max="40"
+                        min="-50"
+                        max="80"
                         value={offsetY}
                         onChange={(e) => { setActivePreset("custom"); setOffsetY(Number(e.target.value)); }}
                         className="w-full accent-moya-red h-1"
