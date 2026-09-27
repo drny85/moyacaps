@@ -36,10 +36,10 @@ const SAMPLE_AVATARS = [
 ];
 
 const FIT_PRESETS = [
-  { id: "classic", labelEn: "Classic Fit", labelEs: "Corte Clásico", offsetX: 0, offsetY: 0, scale: 1, tilt: 0 },
-  { id: "low-brow", labelEn: "Low Brow", labelEs: "Ajuste Ceja", offsetX: 0, offsetY: 14, scale: 1.03, tilt: 0 },
-  { id: "high-crown", labelEn: "Crown High", labelEs: "Corona Alta", offsetX: 0, offsetY: -10, scale: 0.97, tilt: -2 },
-  { id: "slant", labelEn: "Street Slant", labelEs: "Inclinado", offsetX: 6, offsetY: 2, scale: 1.02, tilt: 8 },
+  { id: "classic", labelEn: "Classic Fit", labelEs: "Corte Clásico", offsetX: 0, offsetY: 0, scale: 1, tilt: 0, tiltX: 0 },
+  { id: "low-brow", labelEn: "Low Brow", labelEs: "Ajuste Ceja", offsetX: 0, offsetY: 14, scale: 1.03, tilt: 0, tiltX: 5 },
+  { id: "high-crown", labelEn: "Crown High", labelEs: "Corona Alta", offsetX: 0, offsetY: -10, scale: 0.97, tilt: -2, tiltX: -8 },
+  { id: "slant", labelEn: "Street Slant", labelEs: "Inclinado", offsetX: 6, offsetY: 2, scale: 1.02, tilt: 8, tiltX: 3 },
 ];
 
 interface VirtualTryOnStudioProps {
@@ -87,6 +87,7 @@ export function VirtualTryOnStudio({
   const [offsetY, setOffsetY] = useState(tryOnSettings.offsetY || 0);
   const [scale, setScale] = useState(tryOnSettings.scale || 1);
   const [tilt, setTilt] = useState(tryOnSettings.tilt || 0);
+  const [tiltX, setTiltX] = useState(tryOnSettings.tiltX || 0);
   const [showTuningHud, setShowTuningHud] = useState(false);
 
   const [activePreset, setActivePreset] = useState<string>("classic");
@@ -99,8 +100,8 @@ export function VirtualTryOnStudio({
 
   // Update store settings on changes
   useEffect(() => {
-    setTryOnSettings({ offsetX, offsetY, scale, tilt });
-  }, [offsetX, offsetY, scale, tilt, setTryOnSettings]);
+    setTryOnSettings({ offsetX, offsetY, scale, tilt, tiltX });
+  }, [offsetX, offsetY, scale, tilt, tiltX, setTryOnSettings]);
 
   // Handle Photo Upload
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -189,6 +190,7 @@ export function VirtualTryOnStudio({
     setOffsetY(preset.offsetY);
     setScale(preset.scale);
     setTilt(preset.tilt);
+    setTiltX(preset.tiltX);
   };
 
   // Add to Bag
@@ -411,7 +413,7 @@ export function VirtualTryOnStudio({
                     position: "absolute",
                     top: `${-2 + offsetY * 0.28}%`,
                     left: `${50 + offsetX * 0.35}%`,
-                    transform: `translateX(-50%) rotate(${tilt}deg) scale(${scale})`,
+                    transform: `translateX(-50%) perspective(400px) rotateX(${tiltX}deg) rotate(${tilt}deg) scale(${scale})`,
                     width: "68%",
                     maxWidth: "300px",
                     aspectRatio: "1/0.78",
@@ -438,7 +440,7 @@ export function VirtualTryOnStudio({
                   position: "absolute",
                   top: `${-2 + offsetY * 0.28}%`,
                   left: `${72 + offsetX * 0.35}%`,
-                  transform: `translateX(-50%) rotate(${tilt}deg) scale(${scale * 0.92})`,
+                  transform: `translateX(-50%) perspective(400px) rotateX(${tiltX}deg) rotate(${tilt}deg) scale(${scale * 0.92})`,
                   width: "55%",
                   aspectRatio: "1/0.78",
                   pointerEvents: "none",
@@ -548,6 +550,7 @@ export function VirtualTryOnStudio({
                         setOffsetY(0);
                         setScale(1);
                         setTilt(0);
+                        setTiltX(0);
                         setActivePreset("classic");
                       }}
                       className="hover:text-moya-red flex items-center gap-1 transition-colors"
@@ -620,6 +623,22 @@ export function VirtualTryOnStudio({
                         max="15"
                         value={tilt}
                         onChange={(e) => { setActivePreset("custom"); setTilt(Number(e.target.value)); }}
+                        className="w-full accent-moya-red h-1"
+                      />
+                    </div>
+
+                    {/* Vertical Tilt (Pitch) */}
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] text-zinc-500 font-display">{isEs ? "Frente" : "Pitch"}</span>
+                        <span className="font-mono text-[9px] text-zinc-400 tabular-nums">{tiltX}°</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="-25"
+                        max="25"
+                        value={tiltX}
+                        onChange={(e) => { setActivePreset("custom"); setTiltX(Number(e.target.value)); }}
                         className="w-full accent-moya-red h-1"
                       />
                     </div>
