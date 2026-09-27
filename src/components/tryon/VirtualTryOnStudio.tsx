@@ -37,9 +37,9 @@ const SAMPLE_AVATARS = [
 
 const FIT_PRESETS = [
   { id: "classic", labelEn: "Classic Fit", labelEs: "Corte Clásico", offsetX: 0, offsetY: 0, scale: 1, tilt: 0, tiltX: 0 },
-  { id: "low-brow", labelEn: "Low Brow", labelEs: "Ajuste Ceja", offsetX: 0, offsetY: 14, scale: 1.03, tilt: 0, tiltX: 5 },
-  { id: "high-crown", labelEn: "Crown High", labelEs: "Corona Alta", offsetX: 0, offsetY: -10, scale: 0.97, tilt: -2, tiltX: -8 },
-  { id: "slant", labelEn: "Street Slant", labelEs: "Inclinado", offsetX: 6, offsetY: 2, scale: 1.02, tilt: 8, tiltX: 3 },
+  { id: "low-brow", labelEn: "Low Brow", labelEs: "Ajuste Ceja", offsetX: 0, offsetY: 8, scale: 1.02, tilt: 0, tiltX: 4 },
+  { id: "high-crown", labelEn: "Crown High", labelEs: "Corona Alta", offsetX: 0, offsetY: -8, scale: 0.96, tilt: -2, tiltX: -6 },
+  { id: "slant", labelEn: "Street Slant", labelEs: "Inclinado", offsetX: 5, offsetY: 1, scale: 1.01, tilt: 7, tiltX: 2 },
 ];
 
 interface VirtualTryOnStudioProps {
@@ -237,10 +237,10 @@ export function VirtualTryOnStudio({
 
       ctx.save();
       // Cap Anchor Center — matches the on-screen overlay (brim at forehead)
-      const capWidth = 560 * scale;
-      const capHeight = 450 * scale;
-      const centerX = 540 + offsetX * 2.8;
-      const centerY = 180 + offsetY * 2.2;
+      const capWidth = 480 * scale;
+      const capHeight = 384 * scale;
+      const centerX = 540 + offsetX * 2.5;
+      const centerY = 195 + offsetY * 2.2;
 
       ctx.translate(centerX, centerY);
       ctx.rotate((tilt * Math.PI) / 180);
@@ -411,12 +411,12 @@ export function VirtualTryOnStudio({
                 <div
                   style={{
                     position: "absolute",
-                    top: `${-2 + offsetY * 0.28}%`,
+                    top: `${1 + offsetY * 0.28}%`,
                     left: `${50 + offsetX * 0.35}%`,
                     transform: `translateX(-50%) perspective(400px) rotateX(${tiltX}deg) rotate(${tilt}deg) scale(${scale})`,
-                    width: "68%",
-                    maxWidth: "300px",
-                    aspectRatio: "1/0.78",
+                    width: "48%",
+                    maxWidth: "260px",
+                    aspectRatio: "1/0.80",
                     pointerEvents: "none",
                     transition: "transform 0.12s ease-out, top 0.12s ease-out, left 0.12s ease-out",
                     filter: "drop-shadow(0 10px 18px rgba(0,0,0,0.5))",
@@ -438,11 +438,11 @@ export function VirtualTryOnStudio({
               <div
                 style={{
                   position: "absolute",
-                  top: `${-2 + offsetY * 0.28}%`,
-                  left: `${72 + offsetX * 0.35}%`,
-                  transform: `translateX(-50%) perspective(400px) rotateX(${tiltX}deg) rotate(${tilt}deg) scale(${scale * 0.92})`,
-                  width: "55%",
-                  aspectRatio: "1/0.78",
+                  top: `${1 + offsetY * 0.28}%`,
+                  left: `${70 + offsetX * 0.35}%`,
+                  transform: `translateX(-50%) perspective(400px) rotateX(${tiltX}deg) rotate(${tilt}deg) scale(${scale * 0.90})`,
+                  width: "40%",
+                  aspectRatio: "1/0.80",
                   pointerEvents: "none",
                   zIndex: 25,
                   filter: "drop-shadow(0 10px 18px rgba(0,0,0,0.5))",
