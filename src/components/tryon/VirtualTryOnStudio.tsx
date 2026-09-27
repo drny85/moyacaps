@@ -237,10 +237,10 @@ export function VirtualTryOnStudio({
 
       ctx.save();
       // Cap Anchor Center — matches the on-screen overlay (brim at forehead)
-      const capWidth = 480 * scale;
-      const capHeight = 384 * scale;
+      const capWidth = 460 * scale;
+      const capHeight = 368 * scale;
       const centerX = 540 + offsetX * 2.5;
-      const centerY = 195 + offsetY * 2.2;
+      const centerY = 165 + offsetY * 2.2;
 
       ctx.translate(centerX, centerY);
       ctx.rotate((tilt * Math.PI) / 180);
@@ -411,11 +411,11 @@ export function VirtualTryOnStudio({
                 <div
                   style={{
                     position: "absolute",
-                    top: `${1 + offsetY * 0.28}%`,
+                    top: `${-2 + offsetY * 0.28}%`,
                     left: `${50 + offsetX * 0.35}%`,
                     transform: `translateX(-50%) perspective(400px) rotateX(${tiltX}deg) rotate(${tilt}deg) scale(${scale})`,
-                    width: "48%",
-                    maxWidth: "260px",
+                    width: "46%",
+                    maxWidth: "250px",
                     aspectRatio: "1/0.80",
                     pointerEvents: "none",
                     transition: "transform 0.12s ease-out, top 0.12s ease-out, left 0.12s ease-out",
@@ -438,10 +438,10 @@ export function VirtualTryOnStudio({
               <div
                 style={{
                   position: "absolute",
-                  top: `${1 + offsetY * 0.28}%`,
+                  top: `${-2 + offsetY * 0.28}%`,
                   left: `${70 + offsetX * 0.35}%`,
                   transform: `translateX(-50%) perspective(400px) rotateX(${tiltX}deg) rotate(${tilt}deg) scale(${scale * 0.90})`,
-                  width: "40%",
+                  width: "38%",
                   aspectRatio: "1/0.80",
                   pointerEvents: "none",
                   zIndex: 25,
