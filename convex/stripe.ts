@@ -1235,7 +1235,7 @@ export const syncCheckoutSession = action({
   }> => {
     const stripe = getStripe();
     const session = await stripe.checkout.sessions.retrieve(args.sessionId, {
-      expand: ["total_details.breakdown"],
+      expand: ["total_details.breakdown", "invoice"],
     });
 
     // S8 gate: only accept sessions that carry this app's own checkout contract. A paid
@@ -1267,10 +1267,20 @@ export const syncCheckoutSession = action({
         typeof session.customer === "string"
           ? session.customer
           : (session.customer as any)?.id || undefined;
+      const invoiceObj = typeof session.invoice === "object" ? (session.invoice as Stripe.Invoice) : null;
+      const stripeInvoiceId =
+        typeof session.invoice === "string"
+          ? session.invoice
+          : invoiceObj?.id || undefined;
+      const invoicePdfUrl = invoiceObj?.invoice_pdf || undefined;
+      const hostedInvoiceUrl = invoiceObj?.hosted_invoice_url || undefined;
 
       const orderId: any = await ctx.runMutation(internal.orders.createOrUpdateStripeOrder, {
         stripeSessionId: session.id,
         stripeCustomerId,
+        stripeInvoiceId,
+        invoicePdfUrl,
+        hostedInvoiceUrl,
         orderNumber: metadata.orderNumber || `GL-${session.id.slice(-8).toUpperCase()}`,
         customerEmail: session.customer_details?.email || undefined,
         customerName: session.customer_details?.name || undefined,
@@ -1344,9 +1354,30 @@ export const fulfillStripeWebhook = internalAction({
       event.type !== "checkout.session.expired" &&
       event.type !== "charge.refunded" &&
       event.type !== "charge.dispute.created" &&
-      event.type !== "charge.dispute.closed"
+      event.type !== "charge.dispute.closed" &&
+      event.type !== "invoice.paid" &&
+      event.type !== "invoice.payment_succeeded"
     ) {
       // Ack unrelated events quickly (e.g. customer.created) without side effects.
+      return { received: true };
+    }
+
+    // ── Invoice Paid / Official PDF Ready ───────────────────────────────────────
+    if (event.type === "invoice.paid" || event.type === "invoice.payment_succeeded") {
+      const invoice = event.data.object as Stripe.Invoice;
+      const stripeInvoiceId = invoice.id;
+      const invoicePdfUrl = invoice.invoice_pdf || undefined;
+      const hostedInvoiceUrl = invoice.hosted_invoice_url || undefined;
+      const orderNumber = invoice.metadata?.orderNumber;
+
+      if (stripeInvoiceId) {
+        await ctx.runMutation(internal.orders.attachStripeInvoiceInternal, {
+          orderNumber: orderNumber || undefined,
+          stripeInvoiceId,
+          invoicePdfUrl,
+          hostedInvoiceUrl,
+        });
+      }
       return { received: true };
     }
 
@@ -1360,16 +1391,16 @@ export const fulfillStripeWebhook = internalAction({
       if (session.payment_status !== "paid") {
         // completed fires only when paid for card flows; trust the retrieved status.
         session = await stripe.checkout.sessions.retrieve(session.id, {
-          expand: ["total_details.breakdown"],
+          expand: ["total_details.breakdown", "invoice"],
         });
         if (session.payment_status !== "paid") return { received: true };
       }
 
-      // Retrieve full session with tax breakdown if not already present
-      if (!session.total_details?.breakdown && session.id) {
+      // Retrieve full session with tax breakdown and invoice if not already present
+      if ((!session.total_details?.breakdown || !session.invoice) && session.id) {
         try {
           session = await stripe.checkout.sessions.retrieve(session.id, {
-            expand: ["total_details.breakdown"],
+            expand: ["total_details.breakdown", "invoice"],
           });
         } catch (e) {
           console.warn("Could not retrieve expanded session in webhook, continuing with payload:", e);
@@ -1386,10 +1417,20 @@ export const fulfillStripeWebhook = internalAction({
         typeof session.customer === "string"
           ? session.customer
           : (session.customer as any)?.id || undefined;
+      const invoiceObj = typeof session.invoice === "object" ? (session.invoice as Stripe.Invoice) : null;
+      const stripeInvoiceId =
+        typeof session.invoice === "string"
+          ? session.invoice
+          : invoiceObj?.id || undefined;
+      const invoicePdfUrl = invoiceObj?.invoice_pdf || undefined;
+      const hostedInvoiceUrl = invoiceObj?.hosted_invoice_url || undefined;
 
       await ctx.runMutation(internal.orders.createOrUpdateStripeOrder, {
         stripeSessionId: session.id,
         stripeCustomerId,
+        stripeInvoiceId,
+        invoicePdfUrl,
+        hostedInvoiceUrl,
         orderNumber: metadata.orderNumber || session.client_reference_id || `GL-${session.id.slice(-8).toUpperCase()}`,
         customerEmail: session.customer_details?.email || undefined,
         customerName: session.customer_details?.name || undefined,

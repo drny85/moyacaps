@@ -750,3 +750,49 @@ describe("Stripe Customer Identity Attachment", () => {
   });
 });
 
+describe("Stripe Invoice Attachment", () => {
+  it("persists invoicePdfUrl and stripeInvoiceId on settlement and via webhook update", async () => {
+    const tt = t();
+    await seedVariant(tt, "V1", 5, 120);
+
+    // 1. Settle order with invoice details
+    await tt.mutation(internal.orders.createOrUpdateStripeOrder, {
+      stripeSessionId: "cs_test_inv_1",
+      orderNumber: "GL-INV-1",
+      customerEmail: "invoice@example.com",
+      stripeInvoiceId: "in_12345",
+      invoicePdfUrl: "https://stripe.com/invoice_12345.pdf",
+      hostedInvoiceUrl: "https://invoice.stripe.com/i/acct_123/inv_12345",
+      items: [
+        { variantId: "V1", name: "Cap V1", quantity: 1, price: 120, image: "/cap.png" },
+      ],
+      currency: "USD",
+      subtotal: 120,
+      shippingFee: 0,
+      tax: 0,
+      total: 120,
+      isWhatsAppOrder: false,
+    });
+
+    let order = await getOrder(tt, "GL-INV-1");
+    expect(order?.stripeInvoiceId).toBe("in_12345");
+    expect(order?.invoicePdfUrl).toBe("https://stripe.com/invoice_12345.pdf");
+    expect(order?.hostedInvoiceUrl).toBe("https://invoice.stripe.com/i/acct_123/inv_12345");
+
+    // 2. Asynchronous invoice.paid webhook attaches / updates PDF URL
+    const res = await tt.mutation(internal.orders.attachStripeInvoiceInternal, {
+      orderNumber: "GL-INV-1",
+      stripeInvoiceId: "in_12345",
+      invoicePdfUrl: "https://stripe.com/invoice_12345_final.pdf",
+      hostedInvoiceUrl: "https://invoice.stripe.com/i/acct_123/inv_12345_final",
+    });
+    expect(res.success).toBe(true);
+
+    order = await getOrder(tt, "GL-INV-1");
+    expect(order?.invoicePdfUrl).toBe("https://stripe.com/invoice_12345_final.pdf");
+
+    await drain(tt);
+  });
+});
+
+

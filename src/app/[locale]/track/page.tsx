@@ -41,6 +41,8 @@ import {
   RotateCcw,
   Lock,
   CreditCard,
+  FileText,
+  Download,
 } from "lucide-react";
 import { useSafeUser, SafeSignInButton } from "@/lib/useSafeUser";
 
@@ -442,6 +444,34 @@ export default function TrackOrderPage() {
                           <ExternalLink className="w-3.5 h-3.5" />
                         </a>
                       </div>
+                    </div>
+                  )}
+
+                  {/* Official Stripe Tax Invoice (PDF) */}
+                  {orderResult.invoicePdfUrl && (
+                    <div className="p-4 rounded-2xl bg-black/[0.02] dark:bg-white/[0.03] border border-black/[0.06] dark:border-white/[0.06] flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                          <FileText className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-zinc-900 dark:text-white">
+                            {locale === "es" ? "Factura Fiscal Oficial" : "Official Tax Invoice"}
+                          </p>
+                          <p className="text-[11px] text-zinc-500 font-mono">
+                            {locale === "es" ? "Comprobante verificado por Stripe (PDF)" : "Stripe verified tax receipt (PDF)"}
+                          </p>
+                        </div>
+                      </div>
+                      <a
+                        href={orderResult.invoicePdfUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 text-xs font-semibold text-zinc-900 dark:text-white transition-colors"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        <span>PDF</span>
+                      </a>
                     </div>
                   )}
 

@@ -355,6 +355,10 @@ export const createOrUpdateStripeOrder = internalMutation({
     total: v.number(),
     // Stripe customer ID (upserted or auto-created by Checkout)
     stripeCustomerId: v.optional(v.string()),
+    // Stripe Invoice details
+    stripeInvoiceId: v.optional(v.string()),
+    invoicePdfUrl: v.optional(v.string()),
+    hostedInvoiceUrl: v.optional(v.string()),
     // Stripe event id that triggered this settlement (bounded replay-dedupe guard).
     webhookEventId: v.optional(v.string()),
     // True when the session was issued for a WhatsApp concierge lead order.
@@ -430,6 +434,9 @@ export const createOrUpdateStripeOrder = internalMutation({
         customerPhone: args.customerPhone ?? existing.customerPhone,
         shippingAddress: args.shippingAddress ?? existing.shippingAddress,
         stripeCustomerId: args.stripeCustomerId ?? existing.stripeCustomerId,
+        stripeInvoiceId: args.stripeInvoiceId ?? existing.stripeInvoiceId,
+        invoicePdfUrl: args.invoicePdfUrl ?? existing.invoicePdfUrl,
+        hostedInvoiceUrl: args.hostedInvoiceUrl ?? existing.hostedInvoiceUrl,
         tax: args.tax ?? existing.tax,
         taxDetails: args.taxDetails ?? existing.taxDetails,
         total: args.total ?? existing.total,
@@ -508,6 +515,9 @@ export const createOrUpdateStripeOrder = internalMutation({
       stripeSessionId: args.stripeSessionId,
       stripeSessionIds: [args.stripeSessionId],
       stripeCustomerId: args.stripeCustomerId,
+      stripeInvoiceId: args.stripeInvoiceId,
+      invoicePdfUrl: args.invoicePdfUrl,
+      hostedInvoiceUrl: args.hostedInvoiceUrl,
       webhookEventIds: args.webhookEventId ? [args.webhookEventId] : undefined,
       trackingNumber: `GL-TRK-${randomDigitString(6)}`,
       createdAt: Date.now(),
@@ -619,6 +629,8 @@ export const getOrderBySessionOrNumber = query({
       taxDetails: order.taxDetails,
       total: order.total,
       paymentMethod: order.paymentMethod,
+      invoicePdfUrl: order.invoicePdfUrl,
+      hostedInvoiceUrl: order.hostedInvoiceUrl,
     });
 
     // Stripe session ids are high-entropy, unguessable, and only appear in the payer's own
@@ -1048,6 +1060,8 @@ export const getOrderByOrderNumberAndEmail = query({
         paymentUrl: undefined,
         paymentLinkSentAt: order.paymentLinkSentAt,
         reservationExpiresAt: order.reservationExpiresAt,
+        invoicePdfUrl: order.invoicePdfUrl,
+        hostedInvoiceUrl: order.hostedInvoiceUrl,
         isGuestView: true,
       };
     }
@@ -1076,6 +1090,8 @@ export const getOrderByOrderNumberAndEmail = query({
       paymentUrl: order.paymentUrl,
       paymentLinkSentAt: order.paymentLinkSentAt,
       reservationExpiresAt: order.reservationExpiresAt,
+      invoicePdfUrl: order.invoicePdfUrl,
+      hostedInvoiceUrl: order.hostedInvoiceUrl,
       isGuestView: false,
     };
   },
@@ -1499,6 +1515,50 @@ export const attachStripeCustomerInternal = internalMutation({
       updatedAt: Date.now(),
     });
     return { success: true };
+  },
+});
+
+/**
+ * INTERNAL only: attaches Stripe Invoice ID and PDF receipt link to an order.
+ */
+export const attachStripeInvoiceInternal = internalMutation({
+  args: {
+    orderNumber: v.optional(v.string()),
+    stripeSessionId: v.optional(v.string()),
+    stripeInvoiceId: v.string(),
+    invoicePdfUrl: v.optional(v.string()),
+    hostedInvoiceUrl: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    let order = null;
+    if (args.orderNumber) {
+      order = await ctx.db
+        .query("orders")
+        .withIndex("by_orderNumber", (q) => q.eq("orderNumber", args.orderNumber!))
+        .first();
+    }
+    if (!order && args.stripeSessionId) {
+      order = await ctx.db
+        .query("orders")
+        .withIndex("by_stripeSessionId", (q) => q.eq("stripeSessionId", args.stripeSessionId!))
+        .first();
+    }
+    if (!order && args.stripeInvoiceId) {
+      order = await ctx.db
+        .query("orders")
+        .withIndex("by_stripeInvoiceId", (q) => q.eq("stripeInvoiceId", args.stripeInvoiceId))
+        .first();
+    }
+    if (order) {
+      await ctx.db.patch(order._id, {
+        stripeInvoiceId: args.stripeInvoiceId,
+        invoicePdfUrl: args.invoicePdfUrl ?? order.invoicePdfUrl,
+        hostedInvoiceUrl: args.hostedInvoiceUrl ?? order.hostedInvoiceUrl,
+        updatedAt: Date.now(),
+      });
+      return { success: true, orderId: order._id };
+    }
+    return { success: false, reason: "Order not found" };
   },
 });
 

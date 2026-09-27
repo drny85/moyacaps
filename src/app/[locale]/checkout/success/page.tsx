@@ -20,6 +20,8 @@ import {
   MapPin,
   Clock,
   Sparkles,
+  FileText,
+  Download,
 } from "lucide-react";
 import confetti from "canvas-confetti";
 import { getWhatsAppConciergeUrl } from "@/lib/whatsapp";
@@ -298,6 +300,20 @@ export default function CheckoutSuccessPage() {
             <MessageCircle className="w-4 h-4" />
             <span>{t("whatsappUpdates")}</span>
           </button>
+
+          {/* Official Tax Invoice Download (If ready) */}
+          {order?.invoicePdfUrl && (
+            <a
+              href={order.invoicePdfUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full py-3 rounded-2xl bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-zinc-900 dark:text-white font-display font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 border border-black/[0.06] dark:border-white/[0.06]"
+            >
+              <FileText className="w-4 h-4 text-emerald-500" />
+              <span>{locale === "es" ? "Descargar Factura Fiscal (PDF)" : "Download Tax Invoice (PDF)"}</span>
+              <Download className="w-3.5 h-3.5 text-zinc-400" />
+            </a>
+          )}
 
           {/* Account Portal Link */}
           <Link

@@ -87,6 +87,9 @@ export default defineSchema({
     stripeSessionIds: v.optional(v.array(v.string())),
     // Stripe Customer id (upserted by email) so identity is reused instead of recreated.
     stripeCustomerId: v.optional(v.string()),
+    stripeInvoiceId: v.optional(v.string()),
+    invoicePdfUrl: v.optional(v.string()),
+    hostedInvoiceUrl: v.optional(v.string()),
     // Stripe event ids already processed for this order (webhook replay/dedupe guard). Bounded.
     webhookEventIds: v.optional(v.array(v.string())),
     refundedAmount: v.optional(v.number()),
@@ -104,6 +107,7 @@ export default defineSchema({
     .index("by_orderNumber", ["orderNumber"])
     .index("by_clerkUserId", ["clerkUserId"])
     .index("by_stripeSessionId", ["stripeSessionId"])
+    .index("by_stripeInvoiceId", ["stripeInvoiceId"])
     .index("by_status", ["status"])
     .index("by_status_and_customerEmail", ["status", "customerEmail"])
     .index("by_status_and_customerPhone", ["status", "customerPhone"])
