@@ -21,6 +21,8 @@ import {
   ChevronRight,
   Maximize2,
   Lock,
+  Eye,
+  Palette,
 } from "lucide-react";
 import confetti from "canvas-confetti";
 import { useStore } from "@/store/useStore";
@@ -89,6 +91,7 @@ export function VirtualTryOnStudio({
   const [activePreset, setActivePreset] = useState<string>("classic");
   const [addedSuccess, setAddedSuccess] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [showCapOverlay, setShowCapOverlay] = useState(true);
 
   // Hidden canvas for download export
   const exportCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -272,35 +275,63 @@ export function VirtualTryOnStudio({
     }
   };
 
+  // Navigate Colorways
+  const navigateColorway = (direction: "prev" | "next") => {
+    playClick();
+    const idx = CAP_VARIANTS.findIndex((c) => c.id === selectedCap.id);
+    const nextIdx =
+      direction === "next"
+        ? (idx + 1) % CAP_VARIANTS.length
+        : (idx - 1 + CAP_VARIANTS.length) % CAP_VARIANTS.length;
+    setSelectedCap(CAP_VARIANTS[nextIdx]);
+  };
+
   return (
-    <div className="relative w-full max-w-6xl mx-auto rounded-3xl bg-white dark:bg-[#0c0c14] border border-black/10 dark:border-white/10 shadow-2xl overflow-hidden flex flex-col select-none">
+    <div className="relative w-full max-w-6xl mx-auto rounded-3xl bg-white dark:bg-[#0a0a12] border border-black/[0.06] dark:border-white/[0.06] shadow-2xl overflow-hidden flex flex-col select-none">
       {/* Hidden export canvas */}
       <canvas ref={exportCanvasRef} className="hidden" />
 
-      {/* Top Header Bar */}
-      <div className="p-4 sm:p-6 border-b border-black/[0.08] dark:border-white/[0.08] flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-moya-red to-moya-red-deep p-0.5 flex items-center justify-center shadow-lg shadow-moya-red/25 text-white">
-            <Sparkles className="w-5 h-5" />
+      {/* ── Compact Header Bar ── */}
+      <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-black/[0.06] dark:border-white/[0.06] bg-gradient-to-r from-white via-white to-rose-50/30 dark:from-[#0a0a12] dark:via-[#0a0a12] dark:to-rose-950/10 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-br from-moya-red to-rose-600 p-0.5 flex items-center justify-center shadow-lg shadow-moya-red/20 text-white shrink-0">
+            <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="text-[10px] font-mono tracking-widest uppercase text-moya-red font-bold">
-                {isEs ? "PROBADOR VIRTUAL 0880" : "GOOD LUCK VIRTUAL MIRROR"}
+                {isEs ? "PROBADOR VIRTUAL" : "VIRTUAL MIRROR"}
               </span>
-              <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 text-[9px] font-mono font-bold flex items-center gap-1">
+              <span className="hidden sm:inline-flex px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[9px] font-mono font-bold items-center gap-1 border border-emerald-500/20">
                 <Lock className="w-2.5 h-2.5" />
-                {isEs ? "100% Privado en Dispositivo" : "100% On-Device Private"}
+                {isEs ? "Privado" : "On-Device"}
               </span>
             </div>
-            <h2 className="font-display font-bold text-lg sm:text-2xl text-zinc-900 dark:text-white">
-              {isEs ? "Pruébate Cada Gorra en Tu Rostro" : "Try On Each Cap On Your Face"}
+            <h2 className="font-display font-bold text-base sm:text-lg text-zinc-900 dark:text-white leading-tight truncate">
+              {isEs ? "Pruébate Cada Gorra" : "Try On Each Cap"}
             </h2>
           </div>
         </div>
 
         {/* Header Actions */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          {/* Toggle Overlay */}
+          <button
+            type="button"
+            onClick={() => {
+              playClick();
+              setShowCapOverlay(!showCapOverlay);
+            }}
+            className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-display font-semibold transition-all border ${
+              showCapOverlay
+                ? "bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 border-transparent"
+                : "glass-dark text-zinc-500 border-black/[0.06] dark:border-white/[0.06]"
+            }`}
+            title={isEs ? "Mostrar/Ocultar Gorra" : "Toggle Cap Overlay"}
+          >
+            <Eye className="w-3 h-3" />
+          </button>
+
           {/* Compare Toggle */}
           <button
             type="button"
@@ -308,14 +339,14 @@ export function VirtualTryOnStudio({
               playClick();
               setIsCompareMode(!isCompareMode);
             }}
-            className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-display font-semibold transition-all border ${
+            className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-display font-semibold transition-all border ${
               isCompareMode
                 ? "bg-moya-red text-white border-moya-red"
-                : "glass-dark text-zinc-600 dark:text-zinc-400 border-black/10 dark:border-white/10"
+                : "glass-dark text-zinc-500 border-black/[0.06] dark:border-white/[0.06]"
             }`}
           >
-            <Columns className="w-3.5 h-3.5" />
-            <span>{isEs ? "Comparar 2" : "Split Compare"}</span>
+            <Columns className="w-3 h-3" />
+            <span>{isEs ? "Comparar" : "Compare"}</span>
           </button>
 
           {isModal && onClose && (
@@ -332,12 +363,15 @@ export function VirtualTryOnStudio({
         </div>
       </div>
 
-      {/* Main Studio Viewport */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 min-h-[520px]">
-        {/* Left Column: Live Portrait Stage */}
-        <div className="lg:col-span-7 p-4 sm:p-6 bg-zinc-100 dark:bg-[#07070b] flex flex-col items-center justify-between gap-4 border-b lg:border-b-0 lg:border-r border-black/[0.08] dark:border-white/[0.08]">
-          {/* Portrait Mirror Stage */}
-          <div className="relative w-full max-w-[420px] aspect-square rounded-3xl overflow-hidden bg-zinc-900 shadow-2xl border border-black/10 dark:border-white/10 flex items-center justify-center group">
+      {/* ── Main Studio Viewport ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 lg:max-h-[calc(100vh-180px)]">
+        {/* ═══ Left Column: Live Portrait Stage ═══ */}
+        <div className="lg:col-span-7 p-3 sm:p-5 bg-gradient-to-b from-zinc-100 to-zinc-50 dark:from-[#08080e] dark:to-[#0a0a14] flex flex-col items-center gap-3 border-b lg:border-b-0 lg:border-r border-black/[0.06] dark:border-white/[0.06] overflow-y-auto">
+          {/* ── Portrait Mirror Stage ── */}
+          <div className="relative w-full max-w-[380px] aspect-square rounded-2xl overflow-hidden bg-zinc-900 shadow-2xl shadow-black/30 border border-white/[0.06] flex items-center justify-center group">
+            {/* Subtle vignette overlay */}
+            <div className="absolute inset-0 z-10 pointer-events-none rounded-2xl shadow-[inset_0_0_60px_rgba(0,0,0,0.15)]" />
+
             {/* Live Camera Feed */}
             {isCameraActive ? (
               <video
@@ -361,32 +395,38 @@ export function VirtualTryOnStudio({
             )}
 
             {/* Cap A Overlay */}
-            <div
-              style={{
-                position: "absolute",
-                top: `${14 + offsetY * 0.28}%`,
-                left: "50%",
-                transform: `translateX(-50%) rotate(${tilt}deg) scale(${scale})`,
-                width: "72%",
-                maxWidth: "320px",
-                aspectRatio: "1/0.75",
-                pointerEvents: "none",
-                transition: "transform 0.08s ease-out, top 0.08s ease-out",
-                filter: "drop-shadow(0 16px 20px rgba(0,0,0,0.65))",
-                zIndex: 20,
-              }}
-            >
-              <Image
-                src={selectedCap.image}
-                alt={selectedCap.nameEn}
-                fill
-                priority
-                className="object-contain"
-              />
-            </div>
+            {showCapOverlay && (
+              <motion.div
+                key={selectedCap.id}
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
+                style={{
+                  position: "absolute",
+                  top: `${14 + offsetY * 0.28}%`,
+                  left: "50%",
+                  transform: `translateX(-50%) rotate(${tilt}deg) scale(${scale})`,
+                  width: "72%",
+                  maxWidth: "320px",
+                  aspectRatio: "1/0.75",
+                  pointerEvents: "none",
+                  transition: "transform 0.08s ease-out, top 0.08s ease-out",
+                  filter: "drop-shadow(0 14px 22px rgba(0,0,0,0.55))",
+                  zIndex: 20,
+                }}
+              >
+                <Image
+                  src={selectedCap.image}
+                  alt={selectedCap.nameEn}
+                  fill
+                  priority
+                  className="object-contain"
+                />
+              </motion.div>
+            )}
 
             {/* Split Screen Second Cap (if compare mode active) */}
-            {isCompareMode && (
+            {isCompareMode && showCapOverlay && (
               <div
                 style={{
                   position: "absolute",
@@ -397,7 +437,7 @@ export function VirtualTryOnStudio({
                   aspectRatio: "1/0.75",
                   pointerEvents: "none",
                   zIndex: 25,
-                  filter: "drop-shadow(0 16px 20px rgba(0,0,0,0.65))",
+                  filter: "drop-shadow(0 14px 22px rgba(0,0,0,0.55))",
                 }}
               >
                 <Image
@@ -411,20 +451,22 @@ export function VirtualTryOnStudio({
 
             {/* Floating Live Mirror Snap Action */}
             {isCameraActive && (
-              <button
+              <motion.button
                 type="button"
                 onClick={captureSnapshot}
-                className="absolute bottom-4 z-30 px-4 py-2 rounded-2xl bg-white text-zinc-950 font-display font-bold text-xs uppercase tracking-wider shadow-2xl flex items-center gap-2 hover:scale-105 active:scale-95 transition-all"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="absolute bottom-4 z-30 px-4 py-2.5 rounded-2xl bg-white/95 backdrop-blur-sm text-zinc-950 font-display font-bold text-xs uppercase tracking-wider shadow-2xl flex items-center gap-2 hover:scale-105 active:scale-95 transition-transform"
               >
                 <Camera className="w-4 h-4 text-moya-red" />
-                <span>{isEs ? "Congelar Foto" : "Freeze Snapshot"}</span>
-              </button>
+                <span>{isEs ? "Capturar Foto" : "Take Snapshot"}</span>
+              </motion.button>
             )}
 
             {/* Fit Preset Badge */}
             <div className="absolute top-3 left-3 z-30">
-              <span className="px-2.5 py-1 rounded-full bg-black/70 backdrop-blur-md text-[10px] font-mono text-white/90 border border-white/10 font-bold uppercase">
-                {FIT_PRESETS.find((p) => p.id === activePreset)?.[isEs ? "labelEs" : "labelEn"]}
+              <span className="px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md text-[10px] font-mono text-white/80 border border-white/[0.08] font-bold uppercase tracking-wide">
+                {FIT_PRESETS.find((p) => p.id === activePreset)?.[isEs ? "labelEs" : "labelEn"] ?? (isEs ? "Personalizado" : "Custom")}
               </span>
             </div>
 
@@ -435,26 +477,45 @@ export function VirtualTryOnStudio({
                 playClick();
                 setShowTuningHud(!showTuningHud);
               }}
-              className="absolute top-3 right-3 z-30 p-2 rounded-full bg-black/70 backdrop-blur-md text-white/90 border border-white/10 hover:text-moya-red transition-colors"
+              className={`absolute top-3 right-3 z-30 p-2 rounded-full backdrop-blur-md border transition-all ${
+                showTuningHud
+                  ? "bg-moya-red/90 text-white border-moya-red/50"
+                  : "bg-black/50 text-white/80 border-white/[0.08] hover:text-white"
+              }`}
               title="Tune Fit"
             >
               <Sliders className="w-3.5 h-3.5" />
             </button>
+
+            {/* Quick Colorway Prev/Next (Overlay Controls) */}
+            <div className="absolute inset-y-0 left-0 right-0 z-20 flex items-center justify-between px-1.5 pointer-events-none">
+              <button
+                type="button"
+                onClick={() => navigateColorway("prev")}
+                className="pointer-events-auto p-1.5 rounded-full bg-black/40 backdrop-blur-sm text-white/70 hover:text-white hover:bg-black/60 transition-all opacity-0 group-hover:opacity-100"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => navigateColorway("next")}
+                className="pointer-events-auto p-1.5 rounded-full bg-black/40 backdrop-blur-sm text-white/70 hover:text-white hover:bg-black/60 transition-all opacity-0 group-hover:opacity-100"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
           </div>
 
-          {/* Quick Fit Presets Toolbar */}
-          <div className="flex items-center gap-2 overflow-x-auto max-w-full pb-1">
-            <span className="text-[10px] font-mono uppercase text-zinc-500 font-bold shrink-0">
-              {isEs ? "ESTILO:" : "FIT STYLE:"}
-            </span>
+          {/* ── Quick Fit Presets ── */}
+          <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto max-w-full scrollbar-hide">
             {FIT_PRESETS.map((preset) => (
               <button
                 key={preset.id}
                 onClick={() => handleApplyPreset(preset)}
-                className={`px-3 py-1 rounded-xl text-xs font-display font-semibold shrink-0 transition-all border ${
+                className={`px-3 py-1.5 rounded-xl text-[11px] font-display font-semibold shrink-0 transition-all border ${
                   activePreset === preset.id
-                    ? "bg-moya-red text-white border-moya-red shadow-sm"
-                    : "glass-dark text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white border-black/5 dark:border-white/5"
+                    ? "bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 border-transparent shadow-sm"
+                    : "bg-white dark:bg-white/5 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white border-black/[0.06] dark:border-white/[0.06]"
                 }`}
               >
                 {isEs ? preset.labelEs : preset.labelEn}
@@ -462,107 +523,104 @@ export function VirtualTryOnStudio({
             ))}
           </div>
 
-          {/* Collapsible Precision Micro-Tuning Sliders */}
+          {/* ── Collapsible Precision Micro-Tuning Sliders ── */}
           <AnimatePresence>
             {showTuningHud && (
               <motion.div
                 initial={{ height: 0, opacity: 0 }}
                 animate={{ height: "auto", opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
-                className="w-full max-w-[420px] p-3.5 rounded-2xl glass-dark border border-black/10 dark:border-white/10 space-y-3 overflow-hidden text-xs"
+                transition={{ duration: 0.2 }}
+                className="w-full max-w-[380px] overflow-hidden"
               >
-                <div className="flex items-center justify-between text-[11px] font-mono font-bold text-zinc-500">
-                  <span>{isEs ? "AJUSTES DE PRECISIÓN" : "PRECISION FIT CONTROLS"}</span>
-                  <button
-                    onClick={() => {
-                      setOffsetY(0);
-                      setScale(1);
-                      setTilt(0);
-                      setActivePreset("classic");
-                    }}
-                    className="hover:text-moya-red flex items-center gap-1"
-                  >
-                    <RotateCcw className="w-3 h-3" />
-                    <span>Reset</span>
-                  </button>
-                </div>
+                <div className="p-3.5 rounded-2xl bg-white dark:bg-white/[0.03] border border-black/[0.06] dark:border-white/[0.06] space-y-2.5">
+                  <div className="flex items-center justify-between text-[10px] font-mono font-bold text-zinc-400 uppercase tracking-wider">
+                    <span>{isEs ? "Ajustes de Precisión" : "Precision Fit"}</span>
+                    <button
+                      onClick={() => {
+                        setOffsetY(0);
+                        setScale(1);
+                        setTilt(0);
+                        setActivePreset("classic");
+                      }}
+                      className="hover:text-moya-red flex items-center gap-1 transition-colors"
+                    >
+                      <RotateCcw className="w-3 h-3" />
+                      <span>Reset</span>
+                    </button>
+                  </div>
 
-                {/* Vertical Nudge */}
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-[11px] text-zinc-600 dark:text-zinc-400 font-display">
-                    {isEs ? "Altura" : "Height"}
-                  </span>
-                  <input
-                    type="range"
-                    min="-40"
-                    max="40"
-                    value={offsetY}
-                    onChange={(e) => {
-                      setActivePreset("custom");
-                      setOffsetY(Number(e.target.value));
-                    }}
-                    className="w-48 accent-moya-red"
-                  />
-                  <span className="font-mono text-[10px] w-8 text-right">{offsetY}px</span>
-                </div>
+                  {/* Sliders Row */}
+                  <div className="grid grid-cols-3 gap-3">
+                    {/* Vertical Nudge */}
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] text-zinc-500 font-display">{isEs ? "Altura" : "Height"}</span>
+                        <span className="font-mono text-[9px] text-zinc-400 tabular-nums">{offsetY}px</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="-40"
+                        max="40"
+                        value={offsetY}
+                        onChange={(e) => { setActivePreset("custom"); setOffsetY(Number(e.target.value)); }}
+                        className="w-full accent-moya-red h-1"
+                      />
+                    </div>
 
-                {/* Scale */}
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-[11px] text-zinc-600 dark:text-zinc-400 font-display">
-                    {isEs ? "Tamaño" : "Scale"}
-                  </span>
-                  <input
-                    type="range"
-                    min="0.85"
-                    max="1.25"
-                    step="0.01"
-                    value={scale}
-                    onChange={(e) => {
-                      setActivePreset("custom");
-                      setScale(Number(e.target.value));
-                    }}
-                    className="w-48 accent-moya-red"
-                  />
-                  <span className="font-mono text-[10px] w-8 text-right">{Math.round(scale * 100)}%</span>
-                </div>
+                    {/* Scale */}
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] text-zinc-500 font-display">{isEs ? "Tamaño" : "Scale"}</span>
+                        <span className="font-mono text-[9px] text-zinc-400 tabular-nums">{Math.round(scale * 100)}%</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0.85"
+                        max="1.25"
+                        step="0.01"
+                        value={scale}
+                        onChange={(e) => { setActivePreset("custom"); setScale(Number(e.target.value)); }}
+                        className="w-full accent-moya-red h-1"
+                      />
+                    </div>
 
-                {/* Tilt */}
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-[11px] text-zinc-600 dark:text-zinc-400 font-display">
-                    {isEs ? "Inclinación" : "Tilt"}
-                  </span>
-                  <input
-                    type="range"
-                    min="-15"
-                    max="15"
-                    value={tilt}
-                    onChange={(e) => {
-                      setActivePreset("custom");
-                      setTilt(Number(e.target.value));
-                    }}
-                    className="w-48 accent-moya-red"
-                  />
-                  <span className="font-mono text-[10px] w-8 text-right">{tilt}°</span>
+                    {/* Tilt */}
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] text-zinc-500 font-display">{isEs ? "Ángulo" : "Tilt"}</span>
+                        <span className="font-mono text-[9px] text-zinc-400 tabular-nums">{tilt}°</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="-15"
+                        max="15"
+                        value={tilt}
+                        onChange={(e) => { setActivePreset("custom"); setTilt(Number(e.target.value)); }}
+                        className="w-full accent-moya-red h-1"
+                      />
+                    </div>
+                  </div>
                 </div>
               </motion.div>
             )}
           </AnimatePresence>
         </div>
 
-        {/* Right Column: Controls, Colorways & Photo Switcher */}
-        <div className="lg:col-span-5 p-4 sm:p-6 bg-white dark:bg-[#0c0c14] flex flex-col justify-between gap-6">
-          <div className="space-y-5">
-            {/* Input Switcher (Selfie vs Camera vs Samples) */}
-            <div className="space-y-2">
-              <span className="text-[10px] font-mono uppercase text-zinc-500 font-bold block">
-                {isEs ? "TU FOTO O CÁMARA:" : "YOUR PHOTO OR CAMERA:"}
+        {/* ═══ Right Column: Controls, Colorways & Photo Switcher ═══ */}
+        <div className="lg:col-span-5 bg-white dark:bg-[#0a0a12] flex flex-col lg:max-h-[calc(100vh-180px)] overflow-y-auto">
+          <div className="p-4 sm:p-5 space-y-4 flex-1">
+            {/* ── Photo Input Switcher ── */}
+            <div className="space-y-2.5">
+              <span className="text-[10px] font-mono uppercase text-zinc-400 font-bold tracking-wider block">
+                {isEs ? "Elige Tu Foto" : "Choose Your Photo"}
               </span>
 
               <div className="grid grid-cols-2 gap-2">
                 {/* Upload Button */}
-                <label className="cursor-pointer py-2.5 px-3 rounded-2xl glass-dark hover:bg-black/5 dark:hover:bg-white/10 border border-black/10 dark:border-white/10 flex items-center justify-center gap-2 text-xs font-display font-semibold transition-all text-zinc-800 dark:text-zinc-200 active:scale-95">
+                <label className="cursor-pointer py-2.5 px-3 rounded-xl bg-zinc-50 dark:bg-white/[0.03] hover:bg-zinc-100 dark:hover:bg-white/[0.06] border border-black/[0.06] dark:border-white/[0.06] flex items-center justify-center gap-2 text-xs font-display font-semibold transition-all text-zinc-700 dark:text-zinc-300 active:scale-[0.97]">
                   <Upload className="w-3.5 h-3.5 text-moya-red" />
-                  <span>{isEs ? "Subir Mi Foto" : "Upload Selfie"}</span>
+                  <span>{isEs ? "Subir Selfie" : "Upload Selfie"}</span>
                   <input
                     type="file"
                     accept="image/*"
@@ -575,25 +633,25 @@ export function VirtualTryOnStudio({
                 <button
                   type="button"
                   onClick={isCameraActive ? stopCamera : startCamera}
-                  className={`py-2.5 px-3 rounded-2xl border flex items-center justify-center gap-2 text-xs font-display font-semibold transition-all active:scale-95 ${
+                  className={`py-2.5 px-3 rounded-xl border flex items-center justify-center gap-2 text-xs font-display font-semibold transition-all active:scale-[0.97] ${
                     isCameraActive
-                      ? "bg-moya-red text-white border-moya-red shadow-md"
-                      : "glass-dark hover:bg-black/5 dark:hover:bg-white/10 text-zinc-800 dark:text-zinc-200 border-black/10 dark:border-white/10"
+                      ? "bg-moya-red text-white border-moya-red shadow-md shadow-moya-red/20"
+                      : "bg-zinc-50 dark:bg-white/[0.03] hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-700 dark:text-zinc-300 border-black/[0.06] dark:border-white/[0.06]"
                   }`}
                 >
                   <Camera className="w-3.5 h-3.5" />
-                  <span>{isCameraActive ? (isEs ? "Apagar Cámara" : "Stop Camera") : (isEs ? "Cámara en Vivo" : "Live Mirror")}</span>
+                  <span>{isCameraActive ? (isEs ? "Detener" : "Stop") : (isEs ? "Cámara" : "Camera")}</span>
                 </button>
               </div>
 
               {cameraError && (
-                <p className="text-[11px] text-rose-500 font-mono mt-1">{cameraError}</p>
+                <p className="text-[11px] text-rose-500 font-mono">{cameraError}</p>
               )}
 
               {/* Sample Model Avatars */}
-              <div className="flex items-center gap-2 pt-1">
-                <span className="text-[10px] font-mono text-zinc-400">
-                  {isEs ? "O modelos:" : "Or models:"}
+              <div className="flex items-center gap-2.5">
+                <span className="text-[10px] font-mono text-zinc-400 shrink-0">
+                  {isEs ? "Modelos:" : "Models:"}
                 </span>
                 <div className="flex items-center gap-1.5">
                   {SAMPLE_AVATARS.map((avatar) => (
@@ -605,10 +663,10 @@ export function VirtualTryOnStudio({
                         stopCamera();
                         setActivePortrait(avatar.image);
                       }}
-                      className={`relative w-8 h-8 rounded-full overflow-hidden border-2 transition-all ${
+                      className={`relative w-9 h-9 rounded-full overflow-hidden border-2 transition-all ${
                         activePortrait === avatar.image
-                          ? "border-moya-red ring-2 ring-moya-red/30 scale-105"
-                          : "border-black/10 dark:border-white/10 opacity-70 hover:opacity-100"
+                          ? "border-moya-red ring-2 ring-moya-red/20 scale-110"
+                          : "border-zinc-200 dark:border-white/10 opacity-60 hover:opacity-100 hover:scale-105"
                       }`}
                       title={avatar.name}
                     >
@@ -624,42 +682,53 @@ export function VirtualTryOnStudio({
               </div>
             </div>
 
-            {/* Currently Selected Cap Details */}
-            <div className="p-4 rounded-2xl glass-dark border border-black/10 dark:border-white/10 flex items-center justify-between">
-              <div className="space-y-0.5">
-                <span className="text-[10px] font-mono uppercase text-moya-red font-bold">
-                  {isEs ? "GORRA EN PRUEBA" : "FITTING COLORWAY"}
-                </span>
-                <h4 className="font-display font-extrabold text-base text-zinc-900 dark:text-white">
-                  {isEs ? selectedCap.nameEs : selectedCap.nameEn}
-                </h4>
-                <div className="flex items-center gap-2 text-xs font-mono text-zinc-500">
-                  <span>${selectedCap.priceUsd}.00 USD</span>
-                  <span>•</span>
-                  <span>{selectedCap.silhouette}</span>
+            {/* ── Currently Selected Cap Card ── */}
+            <div className="p-3.5 rounded-2xl bg-gradient-to-r from-zinc-50 to-white dark:from-white/[0.03] dark:to-white/[0.02] border border-black/[0.06] dark:border-white/[0.06] flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                {/* Cap Thumbnail */}
+                <div className="relative w-12 h-10 shrink-0">
+                  <Image
+                    src={selectedCap.image}
+                    alt={selectedCap.nameEn}
+                    fill
+                    className="object-contain drop-shadow-md"
+                  />
+                </div>
+                <div className="min-w-0">
+                  <h4 className="font-display font-extrabold text-sm text-zinc-900 dark:text-white truncate">
+                    {isEs ? selectedCap.nameEs : selectedCap.nameEn}
+                  </h4>
+                  <div className="flex items-center gap-2 text-[11px] font-mono text-zinc-400">
+                    <span>${selectedCap.priceUsd}.00</span>
+                    <span className="text-zinc-300 dark:text-zinc-600">•</span>
+                    <span className="capitalize">{selectedCap.silhouette}</span>
+                  </div>
                 </div>
               </div>
 
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1 shrink-0">
                 <span
-                  className="w-4 h-4 rounded-full border border-white/40 shadow-xs"
+                  className="w-4 h-4 rounded-full border border-white/30 shadow-sm"
                   style={{ backgroundColor: selectedCap.primaryHex }}
                 />
                 <span
-                  className="w-4 h-4 rounded-full border border-white/40 shadow-xs"
+                  className="w-4 h-4 rounded-full border border-white/30 shadow-sm"
                   style={{ backgroundColor: selectedCap.secondaryHex }}
                 />
               </div>
             </div>
 
-            {/* 16 Colorways Grid Switcher */}
+            {/* ── 16 Colorways Grid ── */}
             <div className="space-y-2">
-              <div className="flex items-center justify-between text-[10px] font-mono text-zinc-500 font-bold uppercase">
-                <span>{isEs ? "PROBAR OTRA COMBINACIÓN (16)" : "SWITCH COLORWAY (16)"}</span>
-                <span>0880 SERIES</span>
+              <div className="flex items-center justify-between text-[10px] font-mono text-zinc-400 font-bold uppercase tracking-wider">
+                <div className="flex items-center gap-1.5">
+                  <Palette className="w-3 h-3 text-moya-red" />
+                  <span>{isEs ? "Colección Completa" : "All Colorways"}</span>
+                </div>
+                <span className="text-zinc-300 dark:text-zinc-600">16 / 0880</span>
               </div>
 
-              <div className="grid grid-cols-4 sm:grid-cols-4 gap-2 max-h-[190px] overflow-y-auto pr-1">
+              <div className="grid grid-cols-4 gap-1.5 max-h-[200px] lg:max-h-[180px] overflow-y-auto pr-0.5 scrollbar-thin">
                 {CAP_VARIANTS.map((c) => {
                   const isSelected = selectedCap.id === c.id;
                   return (
@@ -670,13 +739,13 @@ export function VirtualTryOnStudio({
                         playClick();
                         setSelectedCap(c);
                       }}
-                      className={`relative p-2 rounded-2xl border text-center flex flex-col items-center gap-1 transition-all ${
+                      className={`relative p-1.5 rounded-xl border text-center flex flex-col items-center gap-0.5 transition-all ${
                         isSelected
-                          ? "bg-moya-red/10 border-moya-red ring-2 ring-moya-red/25 shadow-md"
-                          : "glass-dark border-black/5 dark:border-white/5 hover:border-black/15 dark:hover:border-white/15"
+                          ? "bg-moya-red/8 border-moya-red/50 ring-1 ring-moya-red/20 shadow-sm"
+                          : "bg-zinc-50 dark:bg-white/[0.02] border-black/[0.04] dark:border-white/[0.04] hover:border-black/10 dark:hover:border-white/10 hover:bg-zinc-100 dark:hover:bg-white/[0.04]"
                       }`}
                     >
-                      <div className="relative w-12 h-10">
+                      <div className="relative w-10 h-8">
                         <Image
                           src={c.image}
                           alt={c.nameEn}
@@ -684,8 +753,10 @@ export function VirtualTryOnStudio({
                           className="object-contain"
                         />
                       </div>
-                      <span className="text-[10px] font-display font-bold text-zinc-800 dark:text-zinc-200 truncate max-w-full">
-                        {isEs ? c.nameEs : c.nameEn}
+                      <span className={`text-[9px] font-display font-bold truncate max-w-full leading-tight ${
+                        isSelected ? "text-moya-red" : "text-zinc-600 dark:text-zinc-400"
+                      }`}>
+                        {(isEs ? c.nameEs : c.nameEn).split(" / ")[0]}
                       </span>
                     </button>
                   );
@@ -694,27 +765,27 @@ export function VirtualTryOnStudio({
             </div>
           </div>
 
-          {/* Primary Action Buttons */}
-          <div className="space-y-2 pt-2 border-t border-black/[0.08] dark:border-white/[0.08]">
+          {/* ── Primary Action Buttons (Sticky Bottom) ── */}
+          <div className="p-4 sm:p-5 pt-3 border-t border-black/[0.06] dark:border-white/[0.06] bg-white dark:bg-[#0a0a12] space-y-2">
             <button
               type="button"
               onClick={() => handleAddToCart(selectedCap)}
               disabled={addedSuccess}
-              className={`w-full py-3.5 rounded-2xl font-display font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg transition-all active:scale-95 ${
+              className={`w-full py-3 rounded-2xl font-display font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg transition-all active:scale-[0.97] ${
                 addedSuccess
-                  ? "bg-emerald-600 text-white shadow-emerald-950/30"
-                  : "bg-gradient-to-r from-moya-red via-moya-red-deep to-moya-red text-white shadow-moya-red/30 hover:brightness-110"
+                  ? "bg-emerald-600 text-white shadow-emerald-500/20"
+                  : "bg-gradient-to-r from-moya-red via-rose-600 to-moya-red-deep text-white shadow-moya-red/25 hover:shadow-moya-red/40 hover:brightness-110"
               }`}
             >
               {addedSuccess ? (
                 <>
                   <Check className="w-4 h-4 text-white" />
-                  <span>{isEs ? "¡Agregada a tu Bolsa!" : "Added to Bag!"}</span>
+                  <span>{isEs ? "¡Agregada!" : "Added to Bag!"}</span>
                 </>
               ) : (
                 <>
                   <ShoppingBag className="w-4 h-4" />
-                  <span>{isEs ? `Comprar ${selectedCap.nameEs}` : `Claim ${selectedCap.nameEn}`}</span>
+                  <span>{isEs ? `Comprar ${selectedCap.nameEs.split(" / ")[0]}` : `Claim ${selectedCap.nameEn.split(" / ")[0]}`}</span>
                 </>
               )}
             </button>
@@ -724,17 +795,17 @@ export function VirtualTryOnStudio({
               type="button"
               onClick={handleDownloadPortrait}
               disabled={isExporting}
-              className="w-full py-2.5 rounded-xl glass-dark hover:bg-black/5 dark:hover:bg-white/10 text-zinc-700 dark:text-zinc-300 font-display font-semibold text-xs flex items-center justify-center gap-1.5 transition-all border border-black/10 dark:border-white/10"
+              className="w-full py-2 rounded-xl bg-zinc-50 dark:bg-white/[0.03] hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white font-display font-semibold text-[11px] flex items-center justify-center gap-1.5 transition-all border border-black/[0.06] dark:border-white/[0.06]"
             >
-              <Download className="w-3.5 h-3.5 text-moya-red" />
+              <Download className="w-3 h-3 text-moya-red" />
               <span>
                 {isExporting
                   ? isEs
-                    ? "Generando Foto..."
-                    : "Rendering Card..."
+                    ? "Generando..."
+                    : "Rendering..."
                   : isEs
-                  ? "Descargar Foto con Gorra"
-                  : "Download Fitting Photo"}
+                  ? "Descargar Foto"
+                  : "Download Fitting Card"}
               </span>
             </button>
           </div>
