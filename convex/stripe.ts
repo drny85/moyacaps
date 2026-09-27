@@ -457,9 +457,11 @@ export const createCheckoutSession = action({
 
     const session = await stripe.checkout.sessions.create(
       {
-        payment_method_types: ["card", "link"],
         line_items: buildLineItems(validatedItems, args.origin),
         mode: "payment",
+        invoice_creation: {
+          enabled: true,
+        },
         customer_email: args.customerEmail || undefined,
         billing_address_collection: "required",
         shipping_address_collection: {
@@ -649,9 +651,11 @@ export const createWhatsAppCheckoutSession = action({
     let session: Stripe.Response<Stripe.Checkout.Session>;
     try {
       session = await stripe.checkout.sessions.create({
-        payment_method_types: ["card", "link"],
         line_items: buildLineItems(validatedItems, args.origin),
         mode: "payment",
+        invoice_creation: {
+          enabled: true,
+        },
         expires_at: sessionExpiresAt,
         customer: customerId,
         customer_update: customerId
@@ -852,9 +856,11 @@ export const generateOrRefreshWhatsAppPaymentLink = action({
     const sessionExpiresAt = Math.floor(Date.now() / 1000) + 24 * 3600 - 120;
 
     const session = await stripe.checkout.sessions.create({
-      payment_method_types: ["card", "link"],
       line_items: buildLineItems(items, args.origin),
       mode: "payment",
+      invoice_creation: {
+        enabled: true,
+      },
       expires_at: sessionExpiresAt,
       customer: customerId,
       customer_update: customerId
