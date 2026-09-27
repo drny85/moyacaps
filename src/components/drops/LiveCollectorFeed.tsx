@@ -21,14 +21,14 @@ interface LiveActivity {
 const COLLECTOR_ACTIVITIES: LiveActivity[] = [
   {
     id: "act-1",
-    locationEn: "Mexico City",
-    locationEs: "Ciudad de México",
+    locationEn: "Los Angeles, CA",
+    locationEs: "Los Ángeles, CA",
     capNameEn: "Negro / Rojo (0880 Signature)",
     capNameEs: "Negro / Rojo (Insignia 0880)",
     actionEn: "secured",
     actionEs: "aseguró",
-    timeAgoEn: "1m ago",
-    timeAgoEs: "hace 1m",
+    timeAgoEn: "2m ago",
+    timeAgoEs: "hace 2m",
   },
   {
     id: "act-2",
@@ -38,41 +38,52 @@ const COLLECTOR_ACTIVITIES: LiveActivity[] = [
     capNameEs: "Royal / Blanco",
     actionEn: "claimed",
     actionEs: "adquirió",
-    timeAgoEn: "3m ago",
-    timeAgoEs: "hace 3m",
+    timeAgoEn: "4m ago",
+    timeAgoEs: "hace 4m",
   },
   {
     id: "act-3",
-    locationEn: "Guadalajara",
-    locationEs: "Guadalajara",
+    locationEn: "New York, NY",
+    locationEs: "Nueva York, NY",
     capNameEn: "Olivo / Dorado",
     capNameEs: "Olivo / Dorado",
     actionEn: "reserved via Concierge",
     actionEs: "apartó vía Concierge",
-    timeAgoEn: "5m ago",
-    timeAgoEs: "hace 5m",
+    timeAgoEn: "6m ago",
+    timeAgoEs: "hace 6m",
   },
   {
     id: "act-4",
-    locationEn: "Monterrey",
-    locationEs: "Monterrey",
+    locationEn: "Houston, TX",
+    locationEs: "Houston, TX",
     capNameEn: "Chocolate / Dorado",
     capNameEs: "Chocolate / Dorado",
     actionEn: "secured",
     actionEs: "aseguró",
-    timeAgoEn: "7m ago",
-    timeAgoEs: "hace 7m",
+    timeAgoEn: "8m ago",
+    timeAgoEs: "hace 8m",
   },
   {
     id: "act-5",
-    locationEn: "Los Angeles, CA",
-    locationEs: "Los Ángeles, CA",
+    locationEn: "Chicago, IL",
+    locationEs: "Chicago, IL",
     capNameEn: "Negro / Gris",
     capNameEs: "Negro / Gris",
     actionEn: "added to bag",
     actionEs: "agregó a su bolsa",
-    timeAgoEn: "9m ago",
-    timeAgoEs: "hace 9m",
+    timeAgoEn: "11m ago",
+    timeAgoEs: "hace 11m",
+  },
+  {
+    id: "act-6",
+    locationEn: "San Antonio, TX",
+    locationEs: "San Antonio, TX",
+    capNameEn: "Blanco / Rojo",
+    capNameEs: "Blanco / Rojo",
+    actionEn: "secured",
+    actionEs: "aseguró",
+    timeAgoEn: "14m ago",
+    timeAgoEs: "hace 14m",
   },
 ];
 
@@ -89,7 +100,7 @@ export function LiveCollectorFeed() {
     if (isDismissed || isPaused) return;
     const interval = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % COLLECTOR_ACTIVITIES.length);
-    }, 7000);
+    }, 10000);
     return () => clearInterval(interval);
   }, [isDismissed, isPaused]);
 
@@ -106,20 +117,14 @@ export function LiveCollectorFeed() {
       <AnimatePresence mode="wait">
         <motion.div
           key={current.id}
-          initial={{ y: 20, opacity: 0, scale: 0.95 }}
+          initial={{ y: 15, opacity: 0, scale: 0.96 }}
           animate={{ y: 0, opacity: 1, scale: 1 }}
-          exit={{ y: -20, opacity: 0, scale: 0.95 }}
-          transition={{ type: "spring", stiffness: 350, damping: 25 }}
-          className="relative p-3 rounded-2xl glass-dark border border-black/10 dark:border-white/10 shadow-2xl backdrop-blur-md flex items-center justify-between gap-3 overflow-hidden group"
+          exit={{ y: -15, opacity: 0, scale: 0.96 }}
+          transition={{ duration: 0.25 }}
+          className="relative px-3.5 py-2.5 rounded-2xl glass-dark border border-black/10 dark:border-white/10 shadow-xl backdrop-blur-md flex items-center justify-between gap-3 overflow-hidden group"
         >
-          {/* Subtle animated border laser light */}
-          <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-transparent via-moya-green to-transparent opacity-80" />
-
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="relative w-8 h-8 rounded-xl bg-moya-green/15 text-moya-green flex items-center justify-center shrink-0 border border-moya-green/30">
-              <Zap className="w-4 h-4 animate-pulse" />
-              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-moya-green ring-2 ring-[#09090c]" />
-            </div>
+            <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
 
             <div className="min-w-0 space-y-0.5">
               <div className="flex items-center gap-1.5 text-[10px] font-mono text-zinc-500 dark:text-zinc-400">

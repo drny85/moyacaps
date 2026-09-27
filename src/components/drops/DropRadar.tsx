@@ -19,6 +19,9 @@ import {
   ExternalLink,
   ShoppingBag,
   Zap,
+  Truck,
+  Layers,
+  ShieldCheck,
 } from "lucide-react";
 import { useStore } from "@/store/useStore";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
@@ -125,17 +128,14 @@ export function DropRadar() {
         {/* Radar Telemetry Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-zinc-200/90 dark:border-white/[0.08]">
           <div className="flex items-center gap-3">
-            <div className="relative flex items-center justify-center">
-              <span className="w-3 h-3 rounded-full bg-moya-red animate-ping absolute opacity-75" />
-              <span className="w-3 h-3 rounded-full bg-moya-red relative" />
-            </div>
+            <div className="w-2.5 h-2.5 rounded-full bg-moya-red shadow-sm shadow-moya-red/40 shrink-0" />
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-mono text-[11px] font-bold tracking-widest text-moya-red uppercase">
                   {t("badge")}
                 </span>
                 <span className="text-[10px] font-mono text-zinc-600 dark:text-zinc-400 px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-white/[0.05] border border-zinc-200 dark:border-white/[0.08]">
-                  LIVE RADAR
+                  {locale === "es" ? "PRÓXIMO DROP EE. UU." : "UPCOMING US DROP"}
                 </span>
               </div>
               <h2 className="font-display font-extrabold text-2xl sm:text-3xl text-zinc-950 dark:text-white mt-0.5 tracking-tight">
@@ -172,9 +172,9 @@ export function DropRadar() {
           {/* Left Column: Product Spotlight with Holographic aura */}
           <div className="lg:col-span-5 flex flex-col items-center justify-center relative">
             <div className="relative w-full max-w-xs sm:max-w-sm aspect-square rounded-2xl bg-gradient-to-b from-zinc-100/80 to-zinc-50/20 dark:from-white/[0.04] dark:to-transparent border border-zinc-200/90 dark:border-white/[0.08] flex items-center justify-center p-6 group">
-              {/* Radial target rings */}
-              <div className="absolute inset-4 rounded-full border border-zinc-300/40 dark:border-white/[0.05] pointer-events-none" />
-              <div className="absolute inset-12 rounded-full border border-dashed border-moya-red/25 dark:border-moya-red/20 pointer-events-none animate-[spin_60s_linear_infinite]" />
+              {/* Subtle architectural frame rings */}
+              <div className="absolute inset-4 rounded-full border border-black/[0.04] dark:border-white/[0.04] pointer-events-none" />
+              <div className="absolute inset-12 rounded-full border border-black/[0.04] dark:border-white/[0.04] pointer-events-none" />
 
               {/* Custom Drop Badge */}
               <div className="absolute top-3 left-3 z-10">
@@ -339,61 +339,51 @@ export function DropRadar() {
           </div>
         </div>
 
-        {/* ── VIP War Room Live Allocation Telemetry ── */}
+        {/* ── Editorial US Standards & Craftsmanship Highlights ── */}
         <div className="mt-8 pt-6 border-t border-zinc-200/90 dark:border-white/[0.08] grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-          <div className="p-3.5 rounded-2xl glass-dark border border-black/5 dark:border-white/5 space-y-1.5">
-            <div className="flex items-center justify-between text-[10px] font-mono text-zinc-500 font-bold uppercase">
-              <span>{locale === "es" ? "LOTE ASIGNADO EN ALMACÉN" : "WAREHOUSE ALLOCATION"}</span>
-              <span className="text-moya-green">● LIVE RADAR</span>
+          <div className="p-4 rounded-2xl glass-dark border border-black/5 dark:border-white/5 space-y-1">
+            <div className="flex items-center gap-2 text-[10px] font-mono text-zinc-500 font-bold uppercase">
+              <Truck className="w-3.5 h-3.5 text-moya-gold" />
+              <span>{locale === "es" ? "ENVÍO EXPRESS EE. UU." : "US DOMESTIC EXPRESS"}</span>
             </div>
-            <div className="flex items-baseline justify-between">
-              <span className="font-display font-black text-sm sm:text-base text-zinc-900 dark:text-white">
-                86% RESERVADO
-              </span>
-              <span className="font-mono text-[11px] text-zinc-500">
-                #0880-SERIES
-              </span>
+            <div className="font-display font-bold text-sm text-zinc-900 dark:text-white">
+              {locale === "es" ? "Gratis en 2+ Gorras" : "Free On 2+ Caps"}
             </div>
-            <div className="w-full h-1.5 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden">
-              <div className="w-[86%] h-full bg-gradient-to-r from-moya-red via-moya-gold to-moya-green rounded-full" />
-            </div>
-          </div>
-
-          <div className="p-3.5 rounded-2xl glass-dark border border-black/5 dark:border-white/5 space-y-1.5">
-            <div className="flex items-center justify-between text-[10px] font-mono text-zinc-500 font-bold uppercase">
-              <span>{locale === "es" ? "BLOQUEO DE STOCK" : "TRANSACTION MUTEX"}</span>
-              <span className="text-zinc-400">ATOMIC</span>
-            </div>
-            <div className="flex items-baseline justify-between">
-              <span className="font-display font-black text-sm sm:text-base text-zinc-900 dark:text-white">
-                HOLD DE 24 HORAS
-              </span>
-              <span className="font-mono text-[11px] text-moya-gold font-bold">
-                WHATSAPP & STRIPE
-              </span>
-            </div>
-            <p className="text-[10px] text-zinc-500 dark:text-zinc-400 font-mono">
-              {locale === "es" ? "Inventario garantizado sin sobreventa." : "Idempotent reserve locks stock instantly."}
+            <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+              {locale === "es"
+                ? "Entrega express rastreada en los 50 estados de EE. UU."
+                : "Tracked express courier delivery across all 50 US states."}
             </p>
           </div>
 
-          <div className="p-3.5 rounded-2xl glass-dark border border-black/5 dark:border-white/5 space-y-1.5 flex flex-col justify-between">
-            <div className="flex items-center justify-between text-[10px] font-mono text-zinc-500 font-bold uppercase">
-              <span>{locale === "es" ? "SONIDO HÁPTICO" : "HAPTIC SOUNDSCAPES"}</span>
-              <span className="text-moya-green font-bold">WEB AUDIO</span>
+          <div className="p-4 rounded-2xl glass-dark border border-black/5 dark:border-white/5 space-y-1">
+            <div className="flex items-center gap-2 text-[10px] font-mono text-zinc-500 font-bold uppercase">
+              <Layers className="w-3.5 h-3.5 text-moya-red" />
+              <span>{locale === "es" ? "CONFECCIÓN INSIGNIA" : "SIGNATURE CRAFTSMANSHIP"}</span>
             </div>
-            <div className="flex items-center justify-between">
-              <button
-                type="button"
-                onClick={() => playRadarPing()}
-                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-moya-red/10 border border-moya-red/30 text-moya-red hover:bg-moya-red/20 transition-colors font-mono text-[11px] font-bold"
-              >
-                <span>✦ Sonar Ping Test</span>
-              </button>
-              <span className="text-[10px] font-mono text-zinc-400">
-                0-Latency
-              </span>
+            <div className="font-display font-bold text-sm text-zinc-900 dark:text-white">
+              {locale === "es" ? "Serie 0880 Heritage" : "Series 0880 Heritage"}
             </div>
+            <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+              {locale === "es"
+                ? "Bordado 3D de alta densidad con entretela estructurada."
+                : "High-density 3D puff embroidery with fused buckram crown."}
+            </p>
+          </div>
+
+          <div className="p-4 rounded-2xl glass-dark border border-black/5 dark:border-white/5 space-y-1">
+            <div className="flex items-center gap-2 text-[10px] font-mono text-zinc-500 font-bold uppercase">
+              <ShieldCheck className="w-3.5 h-3.5 text-moya-green" />
+              <span>{locale === "es" ? "SEGURIDAD Y APARTADOS" : "PAYMENT & CONCIERGE"}</span>
+            </div>
+            <div className="font-display font-bold text-sm text-zinc-900 dark:text-white">
+              {locale === "es" ? "Stripe y WhatsApp Hold" : "Stripe & WhatsApp Hold"}
+            </div>
+            <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+              {locale === "es"
+                ? "Pago con tarjeta cifrado o apartado de 24 horas vía Concierge."
+                : "Encrypted card checkout or 24-hour concierge reservation."}
+            </p>
           </div>
         </div>
       </div>
