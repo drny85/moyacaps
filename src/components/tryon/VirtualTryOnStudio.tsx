@@ -600,7 +600,7 @@ export function VirtualTryOnStudio({
                       <input
                         type="range"
                         min="0.85"
-                        max="1.25"
+                        max="1.5"
                         step="0.01"
                         value={scale}
                         onChange={(e) => { setActivePreset("custom"); setScale(Number(e.target.value)); }}
