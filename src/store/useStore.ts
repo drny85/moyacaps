@@ -66,6 +66,16 @@ interface StoreState {
   openSneakerMatcher: (cap?: CapVariant | null) => void;
   closeSneakerMatcher: () => void;
 
+  // Virtual Try-On Fitting Room
+  isTryOnOpen: boolean;
+  tryOnTargetCap: CapVariant | null;
+  tryOnImage: string | null;
+  tryOnSettings: { offsetY: number; scale: number; tilt: number };
+  openTryOn: (cap?: CapVariant | null) => void;
+  closeTryOn: () => void;
+  setTryOnImage: (img: string | null) => void;
+  setTryOnSettings: (settings: { offsetY: number; scale: number; tilt: number }) => void;
+
   // Share Notification Toast
   shareToast: {
     isOpen: boolean;
@@ -248,6 +258,18 @@ export const useStore = create<StoreState>()(
       closeSneakerMatcher: () =>
         set({ isSneakerMatcherOpen: false, sneakerMatcherTargetCap: null }),
 
+      // Virtual Try-On
+      isTryOnOpen: false,
+      tryOnTargetCap: null,
+      tryOnImage: null,
+      tryOnSettings: { offsetY: 0, scale: 1, tilt: 0 },
+      openTryOn: (cap = null) =>
+        set({ isTryOnOpen: true, tryOnTargetCap: cap }),
+      closeTryOn: () =>
+        set({ isTryOnOpen: false, tryOnTargetCap: null }),
+      setTryOnImage: (img) => set({ tryOnImage: img }),
+      setTryOnSettings: (settings) => set({ tryOnSettings: settings }),
+
       shareToast: null,
       showShareToast: (data) =>
         set({
@@ -265,6 +287,8 @@ export const useStore = create<StoreState>()(
         currency: state.currency,
         theme: state.theme,
         soundEnabled: state.soundEnabled,
+        tryOnImage: state.tryOnImage,
+        tryOnSettings: state.tryOnSettings,
       }),
     }
   )

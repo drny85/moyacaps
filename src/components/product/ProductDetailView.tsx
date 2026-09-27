@@ -25,6 +25,7 @@ import {
   Clock,
   Share2,
   Scan,
+  Camera,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
@@ -45,7 +46,7 @@ export function ProductDetailView({ cap, allCaps }: ProductDetailViewProps) {
   const tQuick = useTranslations("quickView");
   const tShare = useTranslations("share");
   const locale = useLocale();
-  const { addToCart, openDropAlert, currency, cart, openSneakerMatcher } = useStore();
+  const { addToCart, openDropAlert, currency, cart, openSneakerMatcher, openTryOn } = useStore();
   const { shareProduct } = useProductShare();
   const { playClick, playSuccessChime, playToggle } = useSoundEffects();
 
@@ -548,6 +549,23 @@ export function ProductDetailView({ cap, allCaps }: ProductDetailViewProps) {
                 </button>
               </>
             )}
+
+            {/* Virtual Try-On Launcher */}
+            <button
+              type="button"
+              onClick={() => {
+                playClick();
+                openTryOn(currentLiveCap);
+              }}
+              className="w-full py-3.5 rounded-2xl font-display font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2.5 bg-gradient-to-r from-moya-red/10 via-rose-500/10 to-moya-gold/10 hover:from-moya-red/20 hover:via-rose-500/20 hover:to-moya-gold/20 text-zinc-900 dark:text-white border border-moya-red/30 hover:border-moya-red/60 shadow-lg shadow-moya-red/5 active:scale-[0.98]"
+            >
+              <Camera className="w-4 h-4 text-moya-red" />
+              <span>
+                {locale === "es"
+                  ? "Probar en Mi Rostro (Virtual Try-On)"
+                  : "Try On Your Face (Virtual Try-On)"}
+              </span>
+            </button>
 
             {/* Sneaker & Fit Matcher Trigger */}
             <button

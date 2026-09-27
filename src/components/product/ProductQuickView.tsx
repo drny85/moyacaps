@@ -4,7 +4,7 @@ import { useStore } from "@/store/useStore";
 import { useTranslations, useLocale } from "next-intl";
 import Image from "next/image";
 import { Link } from "@/i18n/routing";
-import { X, ShoppingBag, MessageCircle, ShieldCheck, Check, ArrowUpRight, Bell, Share2, Sparkles } from "lucide-react";
+import { X, ShoppingBag, MessageCircle, ShieldCheck, Check, ArrowUpRight, Bell, Share2, Sparkles, Camera } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
 import confetti from "canvas-confetti";
@@ -23,6 +23,7 @@ export function ProductQuickView() {
     addToCart,
     cart,
     openSneakerMatcher,
+    openTryOn,
   } = useStore();
   const { playClick, playSuccessChime } = useSoundEffects();
   useLockBodyScroll(Boolean(quickViewCap));
@@ -314,6 +315,21 @@ export function ProductQuickView() {
                     <span>{locale === "es" ? "¿Dudas de talla o bordado? Consulta con Concierge" : "Questions on sizing or embroidery? Chat with Concierge"}</span>
                   </button>
                 )}
+
+                {/* Virtual Try-On Launcher */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    playClick();
+                    const cap = quickViewCap;
+                    closeQuickView();
+                    openTryOn(cap);
+                  }}
+                  className="w-full py-2.5 rounded-xl bg-gradient-to-r from-moya-red/10 via-rose-500/10 to-moya-gold/10 hover:from-moya-red/20 text-zinc-900 dark:text-white font-display font-bold text-xs transition-all flex items-center justify-center gap-2 border border-moya-red/30 hover:border-moya-red/60 active:scale-[0.98]"
+                >
+                  <Camera className="w-3.5 h-3.5 text-moya-red" />
+                  <span>{locale === "es" ? "Probar en Mi Rostro (Try-On)" : "Try On Your Face (Virtual Try-On)"}</span>
+                </button>
 
                 {/* Sneaker & Fit Matcher Trigger */}
                 <button

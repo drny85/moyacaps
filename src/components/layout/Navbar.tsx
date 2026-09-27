@@ -3,7 +3,7 @@
 import { useTranslations, useLocale } from "next-intl";
 import { Link, usePathname, useRouter } from "@/i18n/routing";
 import { useStore } from "@/store/useStore";
-import { ShoppingBag, Globe, Menu, X, Sparkles, User, Package, Shield, Truck } from "lucide-react";
+import { ShoppingBag, Globe, Menu, X, Sparkles, User, Package, Shield, Truck, Camera } from "lucide-react";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
@@ -83,6 +83,16 @@ export function Navbar() {
               <Sparkles className="w-3 h-3 text-moya-green" />
               {t("catalog")}
             </a>
+            <Link
+              href="/try-on"
+              className={`transition-colors hover-underline flex items-center gap-1.5 ${pathname.includes("/try-on")
+                ? "text-moya-red dark:text-moya-red font-bold"
+                : "hover:text-zinc-900 dark:hover:text-white"
+                }`}
+            >
+              <Camera className="w-3.5 h-3.5 text-moya-red" />
+              <span>{locale === "es" ? "Probador" : "Try-On"}</span>
+            </Link>
             <a href="/#story" className="hover:text-zinc-900 dark:hover:text-white transition-colors hover-underline">
               {t("story")}
             </a>
@@ -235,6 +245,14 @@ export function Navbar() {
               >
                 {t("catalog")}
               </a>
+              <Link
+                href="/try-on"
+                onClick={() => setMobileMenuOpen(false)}
+                className="text-zinc-900 dark:text-zinc-200 hover:text-moya-red font-display font-semibold text-base transition-colors flex items-center gap-2"
+              >
+                <Camera className="w-5 h-5 text-moya-red" />
+                <span>{locale === "es" ? "Probador Virtual" : "Virtual Try-On"}</span>
+              </Link>
               <a
                 href="#story"
                 onClick={() => setMobileMenuOpen(false)}
