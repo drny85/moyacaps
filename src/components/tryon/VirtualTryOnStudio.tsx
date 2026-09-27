@@ -113,14 +113,18 @@ export function VirtualTryOnStudio({
   // Hidden canvas for download export
   const exportCanvasRef = useRef<HTMLCanvasElement>(null);
 
-  // Update store settings on changes
-  useEffect(() => {
-    setTryOnSettings({ offsetX, offsetY, scale, tilt, tiltX });
-  }, [offsetX, offsetY, scale, tilt, tiltX, setTryOnSettings]);
-
   // Interactive Direct Drag on Cap Overlay
   const [isDragging, setIsDragging] = useState(false);
   const dragStartRef = useRef({ x: 0, y: 0, initX: 0, initY: 0 });
+
+  // Update store settings on changes (debounced to eliminate localStorage synchronous jank during drag/scrub)
+  useEffect(() => {
+    if (isDragging) return;
+    const timer = setTimeout(() => {
+      setTryOnSettings({ offsetX, offsetY, scale, tilt, tiltX });
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [offsetX, offsetY, scale, tilt, tiltX, isDragging, setTryOnSettings]);
 
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
@@ -271,8 +275,9 @@ export function VirtualTryOnStudio({
       const portraitImg = new window.Image();
       portraitImg.crossOrigin = "anonymous";
       portraitImg.src = activePortrait;
-      await new Promise((resolve) => {
-        portraitImg.onload = resolve;
+      await new Promise<void>((resolve, reject) => {
+        portraitImg.onload = () => resolve();
+        portraitImg.onerror = () => reject(new Error("Failed to load portrait"));
       });
 
       ctx.drawImage(portraitImg, 0, 0, 1080, 1080);
@@ -281,8 +286,9 @@ export function VirtualTryOnStudio({
       const capImg = new window.Image();
       capImg.crossOrigin = "anonymous";
       capImg.src = selectedCap.image;
-      await new Promise((resolve) => {
-        capImg.onload = resolve;
+      await new Promise<void>((resolve, reject) => {
+        capImg.onload = () => resolve();
+        capImg.onerror = () => reject(new Error("Failed to load cap image"));
       });
 
       ctx.save();
@@ -305,8 +311,13 @@ export function VirtualTryOnStudio({
 
       // 3. Draw Watermark & Branding Card
       ctx.fillStyle = "rgba(10, 10, 15, 0.75)";
-      ctx.roundRect(40, 970, 1000, 70, 16);
-      ctx.fill();
+      if (typeof ctx.roundRect === "function") {
+        ctx.beginPath();
+        ctx.roundRect(40, 970, 1000, 70, 16);
+        ctx.fill();
+      } else {
+        ctx.fillRect(40, 970, 1000, 70);
+      }
 
       ctx.font = "bold 24px 'Space Grotesk', sans-serif";
       ctx.fillStyle = "#ffffff";
