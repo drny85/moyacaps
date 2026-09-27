@@ -70,11 +70,11 @@ interface StoreState {
   isTryOnOpen: boolean;
   tryOnTargetCap: CapVariant | null;
   tryOnImage: string | null;
-  tryOnSettings: { offsetY: number; scale: number; tilt: number };
+  tryOnSettings: { offsetX: number; offsetY: number; scale: number; tilt: number };
   openTryOn: (cap?: CapVariant | null) => void;
   closeTryOn: () => void;
   setTryOnImage: (img: string | null) => void;
-  setTryOnSettings: (settings: { offsetY: number; scale: number; tilt: number }) => void;
+  setTryOnSettings: (settings: { offsetX: number; offsetY: number; scale: number; tilt: number }) => void;
 
   // Share Notification Toast
   shareToast: {
@@ -262,7 +262,7 @@ export const useStore = create<StoreState>()(
       isTryOnOpen: false,
       tryOnTargetCap: null,
       tryOnImage: null,
-      tryOnSettings: { offsetY: 0, scale: 1, tilt: 0 },
+      tryOnSettings: { offsetX: 0, offsetY: 0, scale: 1, tilt: 0 },
       openTryOn: (cap = null) =>
         set({ isTryOnOpen: true, tryOnTargetCap: cap }),
       closeTryOn: () =>

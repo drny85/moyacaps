@@ -36,10 +36,10 @@ const SAMPLE_AVATARS = [
 ];
 
 const FIT_PRESETS = [
-  { id: "classic", labelEn: "Classic Fit", labelEs: "Corte Clásico", offsetY: 0, scale: 1, tilt: 0 },
-  { id: "low-brow", labelEn: "Low Brow", labelEs: "Ajuste Ceja", offsetY: 14, scale: 1.03, tilt: 0 },
-  { id: "high-crown", labelEn: "Crown High", labelEs: "Corona Alta", offsetY: -10, scale: 0.97, tilt: -2 },
-  { id: "slant", labelEn: "Street Slant", labelEs: "Inclinado", offsetY: 2, scale: 1.02, tilt: 8 },
+  { id: "classic", labelEn: "Classic Fit", labelEs: "Corte Clásico", offsetX: 0, offsetY: 0, scale: 1, tilt: 0 },
+  { id: "low-brow", labelEn: "Low Brow", labelEs: "Ajuste Ceja", offsetX: 0, offsetY: 14, scale: 1.03, tilt: 0 },
+  { id: "high-crown", labelEn: "Crown High", labelEs: "Corona Alta", offsetX: 0, offsetY: -10, scale: 0.97, tilt: -2 },
+  { id: "slant", labelEn: "Street Slant", labelEs: "Inclinado", offsetX: 6, offsetY: 2, scale: 1.02, tilt: 8 },
 ];
 
 interface VirtualTryOnStudioProps {
@@ -83,6 +83,7 @@ export function VirtualTryOnStudio({
   const mediaStreamRef = useRef<MediaStream | null>(null);
 
   // Tuning controls (nudge, scale, tilt)
+  const [offsetX, setOffsetX] = useState(tryOnSettings.offsetX || 0);
   const [offsetY, setOffsetY] = useState(tryOnSettings.offsetY || 0);
   const [scale, setScale] = useState(tryOnSettings.scale || 1);
   const [tilt, setTilt] = useState(tryOnSettings.tilt || 0);
@@ -98,8 +99,8 @@ export function VirtualTryOnStudio({
 
   // Update store settings on changes
   useEffect(() => {
-    setTryOnSettings({ offsetY, scale, tilt });
-  }, [offsetY, scale, tilt, setTryOnSettings]);
+    setTryOnSettings({ offsetX, offsetY, scale, tilt });
+  }, [offsetX, offsetY, scale, tilt, setTryOnSettings]);
 
   // Handle Photo Upload
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -184,6 +185,7 @@ export function VirtualTryOnStudio({
   const handleApplyPreset = (preset: typeof FIT_PRESETS[0]) => {
     playClick();
     setActivePreset(preset.id);
+    setOffsetX(preset.offsetX);
     setOffsetY(preset.offsetY);
     setScale(preset.scale);
     setTilt(preset.tilt);
@@ -235,7 +237,7 @@ export function VirtualTryOnStudio({
       // Cap Anchor Center — matches the on-screen overlay (brim at forehead)
       const capWidth = 560 * scale;
       const capHeight = 450 * scale;
-      const centerX = 540;
+      const centerX = 540 + offsetX * 2.8;
       const centerY = 180 + offsetY * 2.2;
 
       ctx.translate(centerX, centerY);
@@ -398,30 +400,34 @@ export function VirtualTryOnStudio({
             {showCapOverlay && (
               <motion.div
                 key={selectedCap.id}
-                initial={{ opacity: 0, y: -12 }}
-                animate={{ opacity: 1, y: 0 }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
                 transition={{ duration: 0.2, ease: "easeOut" }}
-                style={{
-                  position: "absolute",
-                  top: `${-2 + offsetY * 0.28}%`,
-                  left: "50%",
-                  transform: `translateX(-50%) rotate(${tilt}deg) scale(${scale})`,
-                  width: "68%",
-                  maxWidth: "300px",
-                  aspectRatio: "1/0.78",
-                  pointerEvents: "none",
-                  transition: "transform 0.08s ease-out, top 0.08s ease-out",
-                  filter: "drop-shadow(0 10px 18px rgba(0,0,0,0.5))",
-                  zIndex: 20,
-                }}
+                className="absolute inset-0 pointer-events-none"
+                style={{ zIndex: 20 }}
               >
-                <Image
-                  src={selectedCap.image}
-                  alt={selectedCap.nameEn}
-                  fill
-                  priority
-                  className="object-contain"
-                />
+                <div
+                  style={{
+                    position: "absolute",
+                    top: `${-2 + offsetY * 0.28}%`,
+                    left: `${50 + offsetX * 0.35}%`,
+                    transform: `translateX(-50%) rotate(${tilt}deg) scale(${scale})`,
+                    width: "68%",
+                    maxWidth: "300px",
+                    aspectRatio: "1/0.78",
+                    pointerEvents: "none",
+                    transition: "transform 0.12s ease-out, top 0.12s ease-out, left 0.12s ease-out",
+                    filter: "drop-shadow(0 10px 18px rgba(0,0,0,0.5))",
+                  }}
+                >
+                  <Image
+                    src={selectedCap.image}
+                    alt={selectedCap.nameEn}
+                    fill
+                    priority
+                    className="object-contain"
+                  />
+                </div>
               </motion.div>
             )}
 
@@ -431,7 +437,7 @@ export function VirtualTryOnStudio({
                 style={{
                   position: "absolute",
                   top: `${-2 + offsetY * 0.28}%`,
-                  left: "72%",
+                  left: `${72 + offsetX * 0.35}%`,
                   transform: `translateX(-50%) rotate(${tilt}deg) scale(${scale * 0.92})`,
                   width: "55%",
                   aspectRatio: "1/0.78",
@@ -538,6 +544,7 @@ export function VirtualTryOnStudio({
                     <span>{isEs ? "Ajustes de Precisión" : "Precision Fit"}</span>
                     <button
                       onClick={() => {
+                        setOffsetX(0);
                         setOffsetY(0);
                         setScale(1);
                         setTilt(0);
@@ -551,7 +558,23 @@ export function VirtualTryOnStudio({
                   </div>
 
                   {/* Sliders Row */}
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    {/* Horizontal Nudge */}
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] text-zinc-500 font-display">{isEs ? "Lateral" : "Shift"}</span>
+                        <span className="font-mono text-[9px] text-zinc-400 tabular-nums">{offsetX}px</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="-30"
+                        max="30"
+                        value={offsetX}
+                        onChange={(e) => { setActivePreset("custom"); setOffsetX(Number(e.target.value)); }}
+                        className="w-full accent-moya-red h-1"
+                      />
+                    </div>
+
                     {/* Vertical Nudge */}
                     <div className="space-y-1">
                       <div className="flex items-center justify-between">
