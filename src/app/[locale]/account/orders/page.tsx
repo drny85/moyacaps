@@ -22,6 +22,7 @@ import {
   Check,
   X,
   AlertTriangle,
+  RotateCcw,
   Loader2,
   ExternalLink,
 } from "lucide-react";
@@ -324,6 +325,16 @@ export default function AccountOrdersPage() {
                       <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-display font-semibold bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30">
                         <XCircle className="w-3.5 h-3.5" />
                         <span>{t("statusCancelled")}</span>
+                      </span>
+                    ) : ord.status === "refunded" ? (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-display font-semibold bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30">
+                        <RotateCcw className="w-3.5 h-3.5" />
+                        <span>Refunded</span>
+                      </span>
+                    ) : ord.status === "partially_refunded" ? (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-display font-semibold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                        <RotateCcw className="w-3.5 h-3.5" />
+                        <span>Partially Refunded</span>
                       </span>
                     ) : ord.status === "delivered" ? (
                       <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-display font-semibold bg-purple-500/15 text-purple-600 dark:text-purple-400 border border-purple-500/30">

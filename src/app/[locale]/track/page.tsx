@@ -38,6 +38,7 @@ import {
   ArrowRight,
   ShieldCheck,
   XCircle,
+  RotateCcw,
   Lock,
   CreditCard,
 } from "lucide-react";
@@ -146,7 +147,10 @@ export default function TrackOrderPage() {
       case "delivered":
         return 4;
       case "cancelled":
+      case "refunded":
         return -1;
+      case "partially_refunded":
+        return 2;
       default:
         return 2;
     }
@@ -257,6 +261,14 @@ export default function TrackOrderPage() {
                         <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-mono font-bold bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30">
                           <XCircle className="w-4 h-4" /> {t("statusCancelled")}
                         </span>
+                      ) : orderResult.status === "refunded" ? (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-mono font-bold bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30">
+                          <RotateCcw className="w-4 h-4" /> Refunded
+                        </span>
+                      ) : orderResult.status === "partially_refunded" ? (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-mono font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                          <RotateCcw className="w-4 h-4" /> Partially Refunded
+                        </span>
                       ) : orderResult.status === "delivered" ? (
                         <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-mono font-bold bg-purple-500/15 text-purple-600 dark:text-purple-400 border border-purple-500/30">
                           <ShieldCheck className="w-4 h-4" /> {t("statusDelivered")}
@@ -282,7 +294,7 @@ export default function TrackOrderPage() {
                   </div>
 
                   {/* Fulfillment Timeline Steps */}
-                  {orderResult.status !== "cancelled" && (
+                  {orderResult.status !== "cancelled" && orderResult.status !== "refunded" && (
                     <div className="py-2">
                       <div className="grid grid-cols-4 relative gap-2 text-center">
                         {/* Connecting Line */}

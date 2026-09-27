@@ -488,6 +488,18 @@ export default function AdminOrdersPage() {
             <XCircle className="w-3.5 h-3.5" /> Cancelled & Restocked
           </span>
         );
+      case "refunded":
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-mono font-bold bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30">
+            <RotateCcw className="w-3.5 h-3.5" /> Refunded
+          </span>
+        );
+      case "partially_refunded":
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-mono font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+            <RotateCcw className="w-3.5 h-3.5" /> Partially Refunded
+          </span>
+        );
       default:
         return (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-mono font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
@@ -656,6 +668,7 @@ export default function AdminOrdersPage() {
             { id: "dispatched", label: "Dispatched" },
             { id: "delivered", label: "Delivered" },
             { id: "whatsapp_initiated", label: "WhatsApp Leads" },
+            { id: "refunded", label: "Refunded" },
             { id: "cancelled", label: "Cancelled" },
           ]
             .filter((pill) => {
@@ -751,9 +764,16 @@ export default function AdminOrdersPage() {
                     >
                       {/* Order Number & Date */}
                       <td className="py-3.5 px-4">
-                        <span className="font-mono font-bold text-zinc-900 dark:text-white block group-hover:text-moya-red transition-colors">
-                          {order.orderNumber}
-                        </span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-mono font-bold text-zinc-900 dark:text-white block group-hover:text-moya-red transition-colors">
+                            {order.orderNumber}
+                          </span>
+                          {(order as any).disputed && (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-rose-500/20 text-rose-500 border border-rose-500/30">
+                              <AlertTriangle className="w-2.5 h-2.5" /> DISPUTE
+                            </span>
+                          )}
+                        </div>
                         <span className="text-[10px] text-zinc-600 dark:text-zinc-400 font-mono block">
                           {dateStr}
                         </span>
@@ -960,6 +980,16 @@ export default function AdminOrdersPage() {
 
             {/* Drawer Content */}
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              {(selectedOrder as any).disputed && (
+                <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/25 text-rose-500 text-xs flex items-start gap-3">
+                  <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5 text-rose-500" />
+                  <div className="space-y-1">
+                    <div className="font-bold uppercase tracking-wider text-xs">Payment Dispute / Chargeback Active</div>
+                    <div className="text-zinc-700 dark:text-zinc-300 text-xs">{(selectedOrder as any).disputeDetails || "A customer initiated a payment dispute with their bank. Respond via Stripe Dashboard before the evidence deadline."}</div>
+                  </div>
+                </div>
+              )}
+
               {/* Customer Card */}
               <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-white/[0.02] border border-zinc-200/70 dark:border-white/[0.06] space-y-3">
                 <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-600 dark:text-zinc-400 font-semibold block">
@@ -1232,6 +1262,14 @@ export default function AdminOrdersPage() {
                     </span>
                     <span className="font-mono text-zinc-950 dark:text-white font-medium">
                       ${selectedOrder.tax.toFixed(2)}
+                    </span>
+                  </div>
+                )}
+                {typeof (selectedOrder as any).refundedAmount === "number" && (selectedOrder as any).refundedAmount > 0 && (
+                  <div className="flex justify-between text-zinc-600 dark:text-zinc-400">
+                    <span className="text-rose-600 dark:text-rose-400 font-medium">Refunded (Stripe)</span>
+                    <span className="font-mono text-rose-600 dark:text-rose-400 font-bold">
+                      -${(selectedOrder as any).refundedAmount.toFixed(2)}
                     </span>
                   </div>
                 )}

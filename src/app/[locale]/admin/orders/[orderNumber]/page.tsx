@@ -374,6 +374,18 @@ export default function DedicatedOrderDetailPage({
             <X className="w-3.5 h-3.5" /> Cancelled
           </span>
         );
+      case "refunded":
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30">
+            <RotateCcw className="w-3.5 h-3.5" /> Refunded
+          </span>
+        );
+      case "partially_refunded":
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+            <RotateCcw className="w-3.5 h-3.5" /> Partially Refunded
+          </span>
+        );
       default:
         return (
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-zinc-500/10 text-zinc-600 dark:text-zinc-400">
@@ -620,6 +632,19 @@ export default function DedicatedOrderDetailPage({
         </div>
       </div>
 
+      {/* Dispute Alert Banner */}
+      {(order as any).disputed && (
+        <div className="print:hidden p-5 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-500 flex items-start gap-4 shadow-sm">
+          <AlertTriangle className="w-6 h-6 shrink-0 mt-0.5 text-rose-500" />
+          <div className="space-y-1">
+            <h3 className="font-bold text-sm uppercase tracking-wider">Payment Dispute / Chargeback Active</h3>
+            <p className="text-zinc-700 dark:text-zinc-300 text-xs leading-relaxed">
+              {(order as any).disputeDetails || "A customer initiated a payment dispute with their card issuer. Submit evidence via Stripe Dashboard before the deadline."}
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* ── Main Two-Column Content Grid ── */}
       <div className="print:hidden grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column (Items & Financials - 2 spans) */}
@@ -700,6 +725,14 @@ export default function DedicatedOrderDetailPage({
                     Sales Tax {order.taxDetails?.rate ? `(${order.taxDetails.rate}%)` : ""}
                   </span>
                   <span className="font-mono">${order.tax.toFixed(2)} USD</span>
+                </div>
+              )}
+              {typeof (order as any).refundedAmount === "number" && (order as any).refundedAmount > 0 && (
+                <div className="flex justify-between text-zinc-600 dark:text-zinc-400">
+                  <span className="text-rose-600 dark:text-rose-400 font-medium">Refunded via Stripe</span>
+                  <span className="font-mono text-rose-600 dark:text-rose-400 font-bold">
+                    -${(order as any).refundedAmount.toFixed(2)} USD
+                  </span>
                 </div>
               )}
               <div className="pt-2 border-t border-zinc-100 dark:border-white/[0.06] flex justify-between font-bold text-sm text-zinc-900 dark:text-white">

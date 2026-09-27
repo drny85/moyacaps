@@ -11,6 +11,7 @@
 import type * as auth from "../auth.js";
 import type * as crons from "../crons.js";
 import type * as emails from "../emails.js";
+import type * as emails_AdminDisputeAlert from "../emails/AdminDisputeAlert.js";
 import type * as emails_AdminOrderAlert from "../emails/AdminOrderAlert.js";
 import type * as emails_CustomerReceipt from "../emails/CustomerReceipt.js";
 import type * as http from "../http.js";
@@ -30,6 +31,7 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   crons: typeof crons;
   emails: typeof emails;
+  "emails/AdminDisputeAlert": typeof emails_AdminDisputeAlert;
   "emails/AdminOrderAlert": typeof emails_AdminOrderAlert;
   "emails/CustomerReceipt": typeof emails_CustomerReceipt;
   http: typeof http;

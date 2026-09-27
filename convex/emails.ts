@@ -7,6 +7,7 @@ import { Resend } from "@convex-dev/resend";
 import { render } from "@react-email/render";
 import React from "react";
 import { AdminOrderAlertEmail } from "./emails/AdminOrderAlert";
+import { AdminDisputeAlertEmail } from "./emails/AdminDisputeAlert";
 import { CustomerReceiptEmail } from "./emails/CustomerReceipt";
 import { PRIMARY_ADMIN_EMAIL, PRIMARY_ADMIN_CLERK_ID } from "./auth";
 
@@ -245,6 +246,71 @@ export const sendTestAdminOrderAlert = action({
       return { success: true, emailId, recipient };
     } catch (err: any) {
       throw new ConvexError(`Failed to send test email via Resend: ${err?.message || String(err)}`);
+    }
+  },
+});
+
+/**
+ * Sends an urgent dispute or chargeback alert to the store administrator.
+ */
+export const sendAdminDisputeAlert = internalAction({
+  args: {
+    orderNumber: v.string(),
+    disputeId: v.string(),
+    amount: v.number(),
+    currency: v.string(),
+    reason: v.optional(v.string()),
+    status: v.string(),
+    evidenceDueBy: v.optional(v.number()),
+    isClosed: v.optional(v.boolean()),
+    outcome: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    try {
+      const recipient = DEFAULT_ADMIN_EMAIL;
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://goodluckcaps.com";
+      const adminDashboardUrl = `${baseUrl}/admin/orders/${args.orderNumber}`;
+      const stripeDisputeUrl = `https://dashboard.stripe.com/disputes/${args.disputeId}`;
+
+      const html = await render(
+        React.createElement(AdminDisputeAlertEmail, {
+          orderNumber: args.orderNumber,
+          total: args.amount,
+          currency: args.currency,
+          disputeId: args.disputeId,
+          reason: args.reason,
+          status: args.status,
+          evidenceDueBy: args.evidenceDueBy,
+          isClosed: args.isClosed,
+          outcome: args.outcome,
+          adminDashboardUrl,
+          stripeDisputeUrl,
+          createdAt: Date.now(),
+        })
+      );
+
+      const subject = args.isClosed
+        ? `ℹ️ [Dispute Closed] Order #${args.orderNumber} — ${args.outcome || args.status.toUpperCase()}`
+        : `🚨 [URGENT DISPUTE] Order #${args.orderNumber} (${args.currency} $${args.amount.toFixed(2)}) Needs Evidence`;
+
+      const emailId = await resend.sendEmail(ctx, {
+        from: DEFAULT_SENDER,
+        to: recipient,
+        subject,
+        html,
+        idempotencyKey: `dispute-${args.disputeId}-${args.status}`,
+      });
+
+      console.log(
+        `[AdminDisputeAlert] Dispatched dispute alert for order ${args.orderNumber} (${args.disputeId}), emailId: ${emailId}`
+      );
+      return { success: true, emailId };
+    } catch (err: any) {
+      console.error(
+        `[AdminDisputeAlert] Failed to send dispute alert for order ${args.orderNumber}:`,
+        err?.message || err
+      );
+      return { success: false, error: err?.message || String(err) };
     }
   },
 });

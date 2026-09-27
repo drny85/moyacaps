@@ -86,7 +86,9 @@ export const createOrder = mutation({
       v.literal("dispatched"),
       v.literal("delivered"),
       v.literal("cancelled"),
-      v.literal("whatsapp_initiated")
+      v.literal("whatsapp_initiated"),
+      v.literal("refunded"),
+      v.literal("partially_refunded")
     ),
     paymentMethod: v.union(v.literal("stripe"), v.literal("whatsapp")),
     stripeSessionId: v.optional(v.string()),
@@ -188,6 +190,143 @@ export const recordWebhookEventIdInternal = internalMutation({
     if (ids.includes(args.webhookEventId)) return { success: true };
     ids.push(args.webhookEventId);
     await ctx.db.patch(args.orderId, { webhookEventIds: ids.slice(-10) });
+    return { success: true };
+  },
+});
+
+/**
+ * INTERNAL: record a Stripe refund on the order. Sets status to "refunded" (if 100% refunded)
+ * or "partially_refunded", updates refundedAmount, and audits the event.
+ * NOTE: Does NOT restock physical inventory automatically (manual inspection required for physical apparel).
+ */
+export const recordStripeRefundInternal = internalMutation({
+  args: {
+    orderId: v.id("orders"),
+    orderNumber: v.string(),
+    refundedAmount: v.number(),
+    isFullRefund: v.boolean(),
+    webhookEventId: v.string(),
+    stripeChargeId: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const order = await ctx.db.get(args.orderId);
+    if (!order) {
+      console.warn(`Order ${args.orderId} not found for Stripe refund event ${args.webhookEventId}`);
+      return { success: false };
+    }
+
+    if (hasProcessedWebhookEvent(order, args.webhookEventId)) {
+      return { success: true, replayed: true };
+    }
+
+    const currentRefunded = order.refundedAmount || 0;
+    const newTotalRefunded = Math.max(currentRefunded, args.refundedAmount);
+    const newStatus = args.isFullRefund ? ("refunded" as const) : ("partially_refunded" as const);
+
+    await ctx.db.patch(args.orderId, {
+      status: newStatus,
+      refundedAmount: newTotalRefunded,
+      webhookEventIds: withWebhookEventId(order, args.webhookEventId),
+      updatedAt: Date.now(),
+    });
+
+    await ctx.runMutation(internal.orders.recordPaymentEvent, {
+      orderId: args.orderId,
+      orderNumber: args.orderNumber,
+      type: args.isFullRefund ? "charge_refunded" : "charge_partially_refunded",
+      stripeEventId: args.webhookEventId,
+      details: `${args.isFullRefund ? "Full" : "Partial"} refund of $${args.refundedAmount.toFixed(
+        2
+      )} processed via Stripe${args.stripeChargeId ? ` (${args.stripeChargeId})` : ""}. Total refunded: $${newTotalRefunded.toFixed(
+        2
+      )}. Physical inventory retained (manual restock required).`,
+      actor: "stripe_webhook",
+    });
+
+    return { success: true, status: newStatus };
+  },
+});
+
+/**
+ * INTERNAL: record a Stripe dispute / chargeback opened or closed on an order.
+ * Flags the order, records audit trail, and prepares for admin response.
+ */
+export const recordStripeDisputeInternal = internalMutation({
+  args: {
+    orderId: v.id("orders"),
+    orderNumber: v.string(),
+    disputeId: v.string(),
+    status: v.string(),
+    amount: v.number(),
+    currency: v.string(),
+    reason: v.optional(v.string()),
+    evidenceDueBy: v.optional(v.number()),
+    webhookEventId: v.string(),
+    action: v.union(v.literal("opened"), v.literal("closed")),
+  },
+  handler: async (ctx, args) => {
+    const order = await ctx.db.get(args.orderId);
+    if (!order) {
+      console.warn(`Order ${args.orderId} not found for Stripe dispute event ${args.webhookEventId}`);
+      return { success: false };
+    }
+
+    if (hasProcessedWebhookEvent(order, args.webhookEventId)) {
+      return { success: true, replayed: true };
+    }
+
+    if (args.action === "opened") {
+      const dueStr = args.evidenceDueBy
+        ? new Date(args.evidenceDueBy).toLocaleDateString()
+        : "deadline unknown";
+      const disputeMsg = `⚠️ CHARGEBACK DISPUTE: $${args.amount.toFixed(2)} ${args.currency} (${args.reason || "general"}). Status: ${args.status}. Due by: ${dueStr}. Respond in Stripe Dashboard.`;
+
+      const adminNotes = order.adminNotes
+        ? `${order.adminNotes}\n${disputeMsg}`
+        : disputeMsg;
+
+      await ctx.db.patch(args.orderId, {
+        disputed: true,
+        disputeDetails: disputeMsg,
+        adminNotes,
+        webhookEventIds: withWebhookEventId(order, args.webhookEventId),
+        updatedAt: Date.now(),
+      });
+
+      await ctx.runMutation(internal.orders.recordPaymentEvent, {
+        orderId: args.orderId,
+        orderNumber: args.orderNumber,
+        type: "dispute_created",
+        stripeEventId: args.webhookEventId,
+        details: `Dispute ${args.disputeId} opened: $${args.amount.toFixed(2)} ${args.currency}, Reason: ${args.reason || "none"}, Status: ${args.status}`,
+        actor: "stripe_webhook",
+      });
+    } else {
+      const isWon = args.status === "won";
+      const closeMsg = `ℹ️ DISPUTE CLOSED: ${isWon ? "WON by merchant" : "LOST by merchant"} (${args.status}).`;
+
+      const adminNotes = order.adminNotes
+        ? `${order.adminNotes}\n${closeMsg}`
+        : closeMsg;
+
+      await ctx.db.patch(args.orderId, {
+        disputed: false,
+        disputeDetails: closeMsg,
+        adminNotes,
+        webhookEventIds: withWebhookEventId(order, args.webhookEventId),
+        updatedAt: Date.now(),
+      });
+
+      await ctx.runMutation(internal.orders.recordPaymentEvent, {
+        orderId: args.orderId,
+        orderNumber: args.orderNumber,
+        type: "dispute_closed",
+        stripeEventId: args.webhookEventId,
+        details: `Dispute ${args.disputeId} closed with status: ${args.status} (${isWon ? "Merchant won" : "Merchant lost"})`,
+        actor: "stripe_webhook",
+      });
+    }
+
     return { success: true };
   },
 });
@@ -1501,6 +1640,8 @@ export const ORDER_STATUSES = [
   "delivered",
   "cancelled",
   "whatsapp_initiated",
+  "refunded",
+  "partially_refunded",
 ] as const;
 
 const orderStatusValidator = v.union(
@@ -1509,7 +1650,9 @@ const orderStatusValidator = v.union(
   v.literal("dispatched"),
   v.literal("delivered"),
   v.literal("cancelled"),
-  v.literal("whatsapp_initiated")
+  v.literal("whatsapp_initiated"),
+  v.literal("refunded"),
+  v.literal("partially_refunded")
 );
 
 /**

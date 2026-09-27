@@ -1,0 +1,322 @@
+import React from "react";
+import {
+  Html,
+  Head,
+  Preview,
+  Body,
+  Container,
+  Section,
+  Heading,
+  Text,
+  Link,
+  Hr,
+  Row,
+  Column,
+} from "@react-email/components";
+
+export interface AdminDisputeAlertProps {
+  orderNumber: string;
+  total: number;
+  currency: string;
+  disputeId: string;
+  reason?: string;
+  status: string;
+  evidenceDueBy?: number;
+  isClosed?: boolean;
+  outcome?: string;
+  adminDashboardUrl: string;
+  stripeDisputeUrl: string;
+  createdAt?: number;
+}
+
+export function AdminDisputeAlertEmail({
+  orderNumber = "GL-TEST1234",
+  total = 85.0,
+  currency = "USD",
+  disputeId = "dp_test123",
+  reason = "fraudulent",
+  status = "needs_response",
+  evidenceDueBy,
+  isClosed = false,
+  outcome,
+  adminDashboardUrl = "https://goodluckcaps.com/admin/orders",
+  stripeDisputeUrl = "https://dashboard.stripe.com/disputes",
+  createdAt = Date.now(),
+}: AdminDisputeAlertProps) {
+  const previewText = isClosed
+    ? `Dispute closed for Order #${orderNumber} (${currency} $${total.toFixed(2)}) — ${outcome || status}`
+    : `🚨 URGENT: Payment dispute opened for Order #${orderNumber} (${currency} $${total.toFixed(2)})`;
+
+  const dueByFormatted = evidenceDueBy
+    ? new Date(evidenceDueBy).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "Review in Stripe Dashboard";
+
+  return (
+    <Html>
+      <Head />
+      <Preview>{previewText}</Preview>
+      <Body style={main}>
+        <Container style={container}>
+          {/* Header */}
+          <Section style={header}>
+            <Row>
+              <Column>
+                <Text style={brandLabel}>GOOD LUCK 0880</Text>
+                <Text style={subHeader}>SECURITY & DISPUTE ALERT</Text>
+              </Column>
+              <Column align="right">
+                <Text style={alertBadge(isClosed)}>
+                  {isClosed ? "DISPUTE RESOLVED" : "ACTION REQUIRED"}
+                </Text>
+              </Column>
+            </Row>
+          </Section>
+
+          <Hr style={divider} />
+
+          {/* Main Title & Urgency */}
+          <Section style={titleSection}>
+            <Heading style={heading}>
+              {isClosed
+                ? `Dispute Closed: Order #${orderNumber}`
+                : `Payment Dispute Opened: Order #${orderNumber}`}
+            </Heading>
+            <Text style={description}>
+              {isClosed
+                ? `The dispute on order #${orderNumber} has been marked as closed by the cardholder's issuing bank.`
+                : `A customer has initiated a chargeback/dispute with their bank for order #${orderNumber}. You must submit evidence before the deadline to contest the claim.`}
+            </Text>
+          </Section>
+
+          {/* Dispute Metrics Box */}
+          <Section style={metricBox(isClosed)}>
+            <Row>
+              <Column style={{ width: "50%", paddingRight: "10px" }}>
+                <Text style={metricLabel}>DISPUTED AMOUNT</Text>
+                <Text style={metricValue}>
+                  {currency.toUpperCase()} ${total.toFixed(2)}
+                </Text>
+              </Column>
+              <Column style={{ width: "50%", paddingLeft: "10px" }}>
+                <Text style={metricLabel}>CURRENT STATUS</Text>
+                <Text style={metricValueHighlight(isClosed)}>
+                  {outcome || status.replace(/_/g, " ").toUpperCase()}
+                </Text>
+              </Column>
+            </Row>
+
+            <Hr style={innerDivider} />
+
+            <Row>
+              <Column style={{ width: "50%", paddingRight: "10px" }}>
+                <Text style={metricLabel}>REASON CODE</Text>
+                <Text style={metricDetail}>{reason ? reason.replace(/_/g, " ").toUpperCase() : "GENERAL / FRAUD"}</Text>
+              </Column>
+              <Column style={{ width: "50%", paddingLeft: "10px" }}>
+                <Text style={metricLabel}>EVIDENCE DEADLINE</Text>
+                <Text style={metricDetail}>{dueByFormatted}</Text>
+              </Column>
+            </Row>
+          </Section>
+
+          {/* Action Buttons */}
+          <Section style={buttonContainer}>
+            <Link href={stripeDisputeUrl} style={primaryButton(isClosed)}>
+              Open Dispute in Stripe Dashboard →
+            </Link>
+            <Text style={{ height: "8px", margin: 0 }} />
+            <Link href={adminDashboardUrl} style={secondaryButton}>
+              View Order in Good Luck Admin
+            </Link>
+          </Section>
+
+          <Hr style={divider} />
+
+          {/* Metadata Footer */}
+          <Section style={footer}>
+            <Text style={footerText}>
+              Dispute ID: <code style={code}>{disputeId}</code>
+            </Text>
+            <Text style={footerText}>
+              Recorded at: {new Date(createdAt).toUTCString()}
+            </Text>
+            <Text style={footerDisclaimer}>
+              This automated alert was generated by Good Luck Caps Order Management & Stripe Webhooks.
+            </Text>
+          </Section>
+        </Container>
+      </Body>
+    </Html>
+  );
+}
+
+// ── Styles ─────────────────────────────────────────────────────────────
+const main = {
+  backgroundColor: "#09090b",
+  fontFamily:
+    "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+  padding: "30px 10px",
+  color: "#f4f4f5",
+};
+
+const container = {
+  backgroundColor: "#18181b",
+  border: "1px solid #27272a",
+  borderRadius: "12px",
+  maxWidth: "580px",
+  margin: "0 auto",
+  padding: "32px",
+};
+
+const header = {
+  paddingBottom: "16px",
+};
+
+const brandLabel = {
+  fontSize: "14px",
+  fontWeight: "800",
+  letterSpacing: "0.15em",
+  color: "#e11d48",
+  margin: "0 0 4px 0",
+};
+
+const subHeader = {
+  fontSize: "10px",
+  letterSpacing: "0.2em",
+  color: "#a1a1aa",
+  margin: "0",
+};
+
+const alertBadge = (isClosed: boolean) => ({
+  display: "inline-block",
+  fontSize: "10px",
+  fontWeight: "700",
+  letterSpacing: "0.08em",
+  textTransform: "uppercase" as const,
+  padding: "4px 8px",
+  borderRadius: "6px",
+  backgroundColor: isClosed ? "#10b98120" : "#f43f5e25",
+  color: isClosed ? "#34d399" : "#fb7185",
+  border: `1px solid ${isClosed ? "#10b98140" : "#f43f5e50"}`,
+});
+
+const divider = {
+  borderColor: "#27272a",
+  margin: "20px 0",
+};
+
+const innerDivider = {
+  borderColor: "#27272a",
+  margin: "12px 0",
+};
+
+const titleSection = {
+  paddingBottom: "16px",
+};
+
+const heading = {
+  fontSize: "20px",
+  fontWeight: "700",
+  color: "#fafafa",
+  margin: "0 0 8px 0",
+};
+
+const description = {
+  fontSize: "14px",
+  lineHeight: "22px",
+  color: "#a1a1aa",
+  margin: "0",
+};
+
+const metricBox = (isClosed: boolean) => ({
+  backgroundColor: "#09090b",
+  border: `1px solid ${isClosed ? "#27272a" : "#f43f5e40"}`,
+  borderRadius: "8px",
+  padding: "16px 20px",
+  margin: "20px 0",
+});
+
+const metricLabel = {
+  fontSize: "10px",
+  fontWeight: "700",
+  letterSpacing: "0.1em",
+  color: "#71717a",
+  margin: "0 0 4px 0",
+};
+
+const metricValue = {
+  fontSize: "18px",
+  fontWeight: "700",
+  color: "#fafafa",
+  margin: "0",
+};
+
+const metricValueHighlight = (isClosed: boolean) => ({
+  fontSize: "16px",
+  fontWeight: "700",
+  color: isClosed ? "#34d399" : "#fb7185",
+  margin: "0",
+});
+
+const metricDetail = {
+  fontSize: "13px",
+  fontWeight: "600",
+  color: "#e4e4e7",
+  margin: "0",
+};
+
+const buttonContainer = {
+  textAlign: "center" as const,
+  padding: "12px 0 20px 0",
+};
+
+const primaryButton = (isClosed: boolean) => ({
+  display: "block",
+  backgroundColor: isClosed ? "#27272a" : "#e11d48",
+  color: "#ffffff",
+  fontWeight: "700",
+  fontSize: "14px",
+  padding: "14px 20px",
+  borderRadius: "8px",
+  textDecoration: "none",
+  textAlign: "center" as const,
+});
+
+const secondaryButton = {
+  display: "block",
+  backgroundColor: "transparent",
+  color: "#a1a1aa",
+  fontWeight: "600",
+  fontSize: "12px",
+  padding: "10px 20px",
+  borderRadius: "8px",
+  textDecoration: "underline",
+  textAlign: "center" as const,
+};
+
+const footer = {
+  paddingTop: "8px",
+};
+
+const footerText = {
+  fontSize: "11px",
+  color: "#71717a",
+  margin: "2px 0",
+};
+
+const code = {
+  color: "#d4d4d8",
+  fontFamily: "monospace",
+};
+
+const footerDisclaimer = {
+  fontSize: "10px",
+  color: "#52525b",
+  marginTop: "12px",
+};

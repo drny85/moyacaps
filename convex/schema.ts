@@ -77,7 +77,9 @@ export default defineSchema({
       v.literal("dispatched"),
       v.literal("delivered"),
       v.literal("cancelled"),
-      v.literal("whatsapp_initiated")
+      v.literal("whatsapp_initiated"),
+      v.literal("refunded"),
+      v.literal("partially_refunded")
     ),
     paymentMethod: v.union(v.literal("stripe"), v.literal("whatsapp")),
     stripeSessionId: v.optional(v.string()),
@@ -87,6 +89,9 @@ export default defineSchema({
     stripeCustomerId: v.optional(v.string()),
     // Stripe event ids already processed for this order (webhook replay/dedupe guard). Bounded.
     webhookEventIds: v.optional(v.array(v.string())),
+    refundedAmount: v.optional(v.number()),
+    disputed: v.optional(v.boolean()),
+    disputeDetails: v.optional(v.string()),
     trackingNumber: v.optional(v.string()),
     carrier: v.optional(v.string()),
     adminNotes: v.optional(v.string()),

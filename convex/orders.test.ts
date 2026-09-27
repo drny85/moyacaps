@@ -543,3 +543,160 @@ describe("Public query PII containment", () => {
     await drain(tt);
   });
 });
+
+describe("Stripe Refund and Dispute Webhook Lifecycle", () => {
+  it("handles full refund: marks status refunded, sets refundedAmount, and retains stock", async () => {
+    const tt = t();
+    await seedVariant(tt, "V1", 5);
+    await tt.mutation(internal.orders.createOrUpdateStripeOrder, {
+      stripeSessionId: "cs_refund_test",
+      orderNumber: "GL-REFUND-1",
+      customerEmail: "refund@test.com",
+      items: [
+        { variantId: "V1", name: "Cap V1", quantity: 2, price: 50, image: "/img.png" },
+      ],
+      currency: "USD",
+      subtotal: 100,
+      total: 100,
+      webhookEventId: "evt_settle_refund",
+      isWhatsAppOrder: false,
+    });
+
+    expect(await getStock(tt, "V1")).toBe(3); // 5 - 2 = 3
+    const orderBefore = await getOrder(tt, "GL-REFUND-1");
+    expect(orderBefore?.status).toBe("paid");
+
+    // Full refund processed via webhook
+    await tt.mutation(internal.orders.recordStripeRefundInternal, {
+      orderId: orderBefore!._id,
+      orderNumber: "GL-REFUND-1",
+      refundedAmount: 100,
+      isFullRefund: true,
+      webhookEventId: "evt_refund_full",
+      stripeChargeId: "ch_test_full",
+    });
+
+    const orderAfter = await getOrder(tt, "GL-REFUND-1");
+    expect(orderAfter?.status).toBe("refunded");
+    expect(orderAfter?.refundedAmount).toBe(100);
+    // Stock remains unchanged (manual restock only, physical goods safety)
+    expect(await getStock(tt, "V1")).toBe(3);
+
+    const events = await getEvents(tt, orderBefore!._id);
+    expect(events.map((e) => e.type)).toContain("charge_refunded");
+
+    // Replay idempotency
+    await tt.mutation(internal.orders.recordStripeRefundInternal, {
+      orderId: orderBefore!._id,
+      orderNumber: "GL-REFUND-1",
+      refundedAmount: 100,
+      isFullRefund: true,
+      webhookEventId: "evt_refund_full",
+    });
+    const eventsAfterReplay = await getEvents(tt, orderBefore!._id);
+    expect(eventsAfterReplay.filter((e) => e.type === "charge_refunded")).toHaveLength(1);
+
+    await drain(tt);
+  });
+
+  it("handles partial refund: marks status partially_refunded with cumulative amount", async () => {
+    const tt = t();
+    await seedVariant(tt, "V1", 5);
+    await tt.mutation(internal.orders.createOrUpdateStripeOrder, {
+      stripeSessionId: "cs_partial_refund_test",
+      orderNumber: "GL-PARTIAL-1",
+      customerEmail: "partial@test.com",
+      items: [
+        { variantId: "V1", name: "Cap V1", quantity: 2, price: 50, image: "/img.png" },
+      ],
+      currency: "USD",
+      subtotal: 100,
+      total: 100,
+      webhookEventId: "evt_settle_partial",
+      isWhatsAppOrder: false,
+    });
+
+    const order = await getOrder(tt, "GL-PARTIAL-1");
+
+    await tt.mutation(internal.orders.recordStripeRefundInternal, {
+      orderId: order!._id,
+      orderNumber: "GL-PARTIAL-1",
+      refundedAmount: 30,
+      isFullRefund: false,
+      webhookEventId: "evt_partial_1",
+    });
+
+    const orderAfter = await getOrder(tt, "GL-PARTIAL-1");
+    expect(orderAfter?.status).toBe("partially_refunded");
+    expect(orderAfter?.refundedAmount).toBe(30);
+
+    const events = await getEvents(tt, order!._id);
+    expect(events.map((e) => e.type)).toContain("charge_partially_refunded");
+
+    await drain(tt);
+  });
+
+  it("handles dispute lifecycle: flags order on opened and unflags on closed", async () => {
+    const tt = t();
+    await seedVariant(tt, "V1", 5);
+    await tt.mutation(internal.orders.createOrUpdateStripeOrder, {
+      stripeSessionId: "cs_dispute_test",
+      orderNumber: "GL-DISPUTE-1",
+      customerEmail: "dispute@test.com",
+      items: [
+        { variantId: "V1", name: "Cap V1", quantity: 1, price: 65, image: "/img.png" },
+      ],
+      currency: "USD",
+      subtotal: 65,
+      total: 65,
+      webhookEventId: "evt_settle_dispute",
+      isWhatsAppOrder: false,
+    });
+
+    const order = await getOrder(tt, "GL-DISPUTE-1");
+    expect(order?.disputed).toBeFalsy();
+
+    // 1. Dispute opened
+    await tt.mutation(internal.orders.recordStripeDisputeInternal, {
+      orderId: order!._id,
+      orderNumber: "GL-DISPUTE-1",
+      disputeId: "dp_test_123",
+      status: "needs_response",
+      amount: 65,
+      currency: "USD",
+      reason: "fraudulent",
+      evidenceDueBy: Date.now() + 7 * 24 * 60 * 60 * 1000,
+      webhookEventId: "evt_dispute_open",
+      action: "opened",
+    });
+
+    const orderDisputed = await getOrder(tt, "GL-DISPUTE-1");
+    expect(orderDisputed?.disputed).toBe(true);
+    expect(orderDisputed?.disputeDetails).toContain("CHARGEBACK DISPUTE");
+    expect(orderDisputed?.adminNotes).toContain("Respond in Stripe Dashboard");
+
+    const events = await getEvents(tt, order!._id);
+    expect(events.map((e) => e.type)).toContain("dispute_created");
+
+    // 2. Dispute closed (won)
+    await tt.mutation(internal.orders.recordStripeDisputeInternal, {
+      orderId: order!._id,
+      orderNumber: "GL-DISPUTE-1",
+      disputeId: "dp_test_123",
+      status: "won",
+      amount: 65,
+      currency: "USD",
+      webhookEventId: "evt_dispute_close",
+      action: "closed",
+    });
+
+    const orderResolved = await getOrder(tt, "GL-DISPUTE-1");
+    expect(orderResolved?.disputed).toBe(false);
+    expect(orderResolved?.disputeDetails).toContain("WON by merchant");
+
+    const eventsAfter = await getEvents(tt, order!._id);
+    expect(eventsAfter.map((e) => e.type)).toContain("dispute_closed");
+
+    await drain(tt);
+  });
+});

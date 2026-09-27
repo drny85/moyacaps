@@ -1192,6 +1192,7 @@ export const fulfillStripeWebhook = internalAction({
 
     if (
       event.type !== "checkout.session.completed" &&
+      event.type !== "checkout.session.async_payment_succeeded" &&
       event.type !== "checkout.session.async_payment_failed" &&
       event.type !== "checkout.session.expired" &&
       event.type !== "charge.refunded" &&
@@ -1203,7 +1204,10 @@ export const fulfillStripeWebhook = internalAction({
     }
 
     // ── Settlement ──────────────────────────────────────────────────────────────
-    if (event.type === "checkout.session.completed") {
+    if (
+      event.type === "checkout.session.completed" ||
+      event.type === "checkout.session.async_payment_succeeded"
+    ) {
       let session = event.data.object as Stripe.Checkout.Session;
 
       if (session.payment_status !== "paid") {
@@ -1272,51 +1276,174 @@ export const fulfillStripeWebhook = internalAction({
     } else if (event.type === "charge.refunded") {
       const charge = event.data.object as Stripe.Charge;
       sessionId = (charge as any).checkout_session || undefined;
+      if (!sessionId && charge.payment_intent) {
+        try {
+          const sessions = await stripe.checkout.sessions.list({
+            payment_intent: charge.payment_intent as string,
+            limit: 1,
+          });
+          if (sessions.data.length > 0) {
+            sessionId = sessions.data[0].id;
+          }
+        } catch {
+          /* fallback */
+        }
+      }
     } else {
       const dispute = event.data.object as Stripe.Dispute;
       if (dispute.payment_intent) {
-        const pi = await stripe.paymentIntents.retrieve(dispute.payment_intent as string, {
-          expand: ["charges.data.checkout_session"],
-        });
-        sessionId = ((pi as any)?.charges?.data?.[0]?.checkout_session as string) || undefined;
+        try {
+          const sessions = await stripe.checkout.sessions.list({
+            payment_intent: dispute.payment_intent as string,
+            limit: 1,
+          });
+          if (sessions.data.length > 0) {
+            sessionId = sessions.data[0].id;
+          }
+        } catch {
+          /* fallback */
+        }
+        if (!sessionId) {
+          try {
+            const pi = await stripe.paymentIntents.retrieve(dispute.payment_intent as string, {
+              expand: ["charges.data.checkout_session"],
+            });
+            sessionId = ((pi as any)?.charges?.data?.[0]?.checkout_session as string) || undefined;
+          } catch {
+            /* fallback */
+          }
+        }
       }
     }
-
-    if (!sessionId) return { received: true };
 
     // Resolve the order: current session id first, then via the session's own metadata
-    // (covers refreshed links whose replaced sessions live only in bounded history).
-    let order: any = await ctx.runQuery(internal.orders.getOrderByStripeSessionIdInternal, {
-      stripeSessionId: sessionId,
-    });
-    if (!order) {
-      try {
-        const sessionObj = await stripe.checkout.sessions.retrieve(sessionId);
-        const orderNumber =
-          sessionObj.metadata?.orderNumber || sessionObj.client_reference_id || undefined;
-        if (orderNumber) {
-          order = await ctx.runQuery(internal.orders.getOrderByNumberInternal, { orderNumber });
+    // or charge metadata (covers refreshed links whose replaced sessions live only in bounded history).
+    let order: any = null;
+    if (sessionId) {
+      order = await ctx.runQuery(internal.orders.getOrderByStripeSessionIdInternal, {
+        stripeSessionId: sessionId,
+      });
+      if (!order) {
+        try {
+          const sessionObj = await stripe.checkout.sessions.retrieve(sessionId);
+          const orderNumber =
+            sessionObj.metadata?.orderNumber || sessionObj.client_reference_id || undefined;
+          if (orderNumber) {
+            order = await ctx.runQuery(internal.orders.getOrderByNumberInternal, { orderNumber });
+          }
+        } catch {
+          /* session not retrievable */
         }
-      } catch {
-        /* session not retrievable */
       }
     }
 
+    if (!order && event.type === "charge.refunded") {
+      const charge = event.data.object as Stripe.Charge;
+      const orderNum = charge.metadata?.orderNumber;
+      if (orderNum) {
+        order = await ctx.runQuery(internal.orders.getOrderByNumberInternal, { orderNumber: orderNum });
+      }
+    }
+
+    if (!order) {
+      console.warn(`Stripe ${event.type} could not be linked to an order (session: ${sessionId || "none"}); ignoring.`);
+      return { received: true };
+    }
+
+    // ── Dedicated Refund Lifecycle Handler ─────────────────────────────────────
+    if (event.type === "charge.refunded") {
+      const charge = event.data.object as Stripe.Charge;
+      const amountRefunded = (charge.amount_refunded ?? 0) / 100;
+      const isFullRefund = Boolean(
+        charge.refunded ||
+        (typeof charge.amount === "number" && (charge.amount_refunded ?? 0) >= charge.amount)
+      );
+
+      await ctx.runMutation(internal.orders.recordStripeRefundInternal, {
+        orderId: order._id,
+        orderNumber: order.orderNumber,
+        refundedAmount: amountRefunded,
+        isFullRefund,
+        webhookEventId: event.id,
+        stripeChargeId: charge.id,
+      });
+
+      return { received: true };
+    }
+
+    // ── Dedicated Dispute Lifecycle Handlers ────────────────────────────────────
+    if (event.type === "charge.dispute.created") {
+      const dispute = event.data.object as Stripe.Dispute;
+      const amount = (dispute.amount ?? 0) / 100;
+      const currency = (dispute.currency || "usd").toUpperCase();
+      const evidenceDueBy = dispute.evidence_details?.due_by
+        ? dispute.evidence_details.due_by * 1000
+        : undefined;
+
+      await ctx.runMutation(internal.orders.recordStripeDisputeInternal, {
+        orderId: order._id,
+        orderNumber: order.orderNumber,
+        disputeId: dispute.id,
+        status: dispute.status,
+        amount,
+        currency,
+        reason: dispute.reason,
+        evidenceDueBy,
+        webhookEventId: event.id,
+        action: "opened",
+      });
+
+      await ctx.scheduler.runAfter(0, internal.emails.sendAdminDisputeAlert, {
+        orderNumber: order.orderNumber,
+        disputeId: dispute.id,
+        amount,
+        currency,
+        reason: dispute.reason,
+        status: dispute.status,
+        evidenceDueBy,
+        isClosed: false,
+      });
+
+      return { received: true };
+    }
+
+    if (event.type === "charge.dispute.closed") {
+      const dispute = event.data.object as Stripe.Dispute;
+      const amount = (dispute.amount ?? 0) / 100;
+      const currency = (dispute.currency || "usd").toUpperCase();
+      const outcome = dispute.status === "won" ? "WON (Merchant Won)" : "LOST (Funds Withdrawn)";
+
+      await ctx.runMutation(internal.orders.recordStripeDisputeInternal, {
+        orderId: order._id,
+        orderNumber: order.orderNumber,
+        disputeId: dispute.id,
+        status: dispute.status,
+        amount,
+        currency,
+        reason: dispute.reason,
+        webhookEventId: event.id,
+        action: "closed",
+      });
+
+      await ctx.scheduler.runAfter(0, internal.emails.sendAdminDisputeAlert, {
+        orderNumber: order.orderNumber,
+        disputeId: dispute.id,
+        amount,
+        currency,
+        reason: dispute.reason,
+        status: dispute.status,
+        isClosed: true,
+        outcome,
+      });
+
+      return { received: true };
+    }
+
+    // ── Generic Non-settlement Handlers (expired sessions & async payment failures) ──
     const auditType =
       event.type === "checkout.session.expired"
         ? "session_expired"
-        : event.type === "charge.refunded"
-          ? "charge_refunded"
-          : event.type === "charge.dispute.created"
-            ? "dispute_created"
-            : event.type === "charge.dispute.closed"
-              ? "dispute_closed"
-              : "async_payment_failed";
-
-    if (!order) {
-      console.warn(`Stripe ${event.type} for unknown session ${sessionId}; ignoring.`);
-      return { received: true };
-    }
+        : "async_payment_failed";
 
     // Replay guard: skip if this exact event was already applied to the order.
     if (order.webhookEventIds?.includes(event.id)) {
@@ -1333,12 +1460,7 @@ export const fulfillStripeWebhook = internalAction({
       type: auditType,
       stripeEventId: event.id,
       stripeSessionId: sessionId,
-      details:
-        event.type === "charge.dispute.created"
-          ? `⚠️ Dispute opened on $${(
-            ((event.data.object as Stripe.Dispute).amount ?? 0) / 100
-          ).toFixed(2)} — respond in Stripe Dashboard.`
-          : `Stripe ${event.type}`,
+      details: `Stripe ${event.type}`,
     });
 
     // Payment link expired at Stripe: if the reservation window also elapsed, release stock
