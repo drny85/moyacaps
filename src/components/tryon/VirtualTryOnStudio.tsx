@@ -30,9 +30,9 @@ import { CAP_VARIANTS, type CapVariant } from "@/data/caps";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 
 const SAMPLE_AVATARS = [
-  { id: "model-1", name: "Marcus", image: "/avatars/model-1.jpg" },
-  { id: "model-2", name: "Elena", image: "/avatars/model-2.jpg" },
-  { id: "model-3", name: "Jaden", image: "/avatars/model-3.jpg" },
+  { id: "model-1", name: "Marcus", image: "/avatars/model-marcus-buzz.jpg" },
+  { id: "model-2", name: "Elena", image: "/avatars/model-elena-crop.jpg" },
+  { id: "model-3", name: "Jaden", image: "/avatars/model-jaden-shaved.jpg" },
 ];
 
 const FIT_PRESETS = [
@@ -72,9 +72,22 @@ export function VirtualTryOnStudio({
   const [isCompareMode, setIsCompareMode] = useState(false);
 
   // Active portrait image: uploaded image, or default sample avatar
-  const [activePortrait, setActivePortrait] = useState<string>(
-    tryOnImage || SAMPLE_AVATARS[0].image
-  );
+  const resolvedInitialPortrait = (() => {
+    if (tryOnImage && tryOnImage.startsWith("data:")) return tryOnImage;
+    const match = SAMPLE_AVATARS.find((a) => a.image === tryOnImage);
+    if (match) return match.image;
+    return SAMPLE_AVATARS[0].image;
+  })();
+
+  const [activePortrait, setActivePortrait] = useState<string>(resolvedInitialPortrait);
+
+  // Auto-migrate legacy cached avatar paths in localStorage to the new low-hair model
+  useEffect(() => {
+    if (tryOnImage && !tryOnImage.startsWith("data:") && !SAMPLE_AVATARS.some((a) => a.image === tryOnImage)) {
+      setActivePortrait(SAMPLE_AVATARS[0].image);
+      setTryOnImage(SAMPLE_AVATARS[0].image);
+    }
+  }, [tryOnImage, setTryOnImage]);
 
   // Camera State
   const [isCameraActive, setIsCameraActive] = useState(false);
@@ -704,6 +717,7 @@ export function VirtualTryOnStudio({
                         playClick();
                         stopCamera();
                         setActivePortrait(avatar.image);
+                        setTryOnImage(avatar.image);
                       }}
                       className={`relative w-9 h-9 rounded-full overflow-hidden border-2 transition-all ${
                         activePortrait === avatar.image
