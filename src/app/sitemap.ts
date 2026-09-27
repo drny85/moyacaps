@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next";
 import { CAP_VARIANTS } from "@/data/caps";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://moyacaps.vercel.app").replace(/\/$/, "");
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://goodluckcaps.com").replace(/\/$/, "");
   const locales = ["en", "es"];
   const now = new Date();
 

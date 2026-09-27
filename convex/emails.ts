@@ -61,7 +61,7 @@ export const sendAdminOrderAlert = internalAction({
   handler: async (ctx, args) => {
     try {
       const recipient = DEFAULT_ADMIN_EMAIL;
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://moyacaps.com";
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://goodluckcaps.com";
       const adminDashboardUrl = `${baseUrl}/admin/orders/${args.orderNumber}`;
 
       const html = await render(
@@ -128,7 +128,7 @@ export const sendCustomerReceipt = internalAction({
         return { success: false, reason: "invalid_email" };
       }
 
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://moyacaps.com";
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://goodluckcaps.com";
       const trackingUrl = `${baseUrl}/track?order=${encodeURIComponent(args.orderNumber)}`;
 
       const html = await render(
@@ -143,7 +143,7 @@ export const sendCustomerReceipt = internalAction({
           shippingFee: args.shippingFee,
           tax: args.tax,
           trackingUrl,
-          supportEmail: "orders@moyacaps.com",
+          supportEmail: "orders@goodluckcaps.com",
         })
       );
 
@@ -193,7 +193,7 @@ export const sendTestAdminOrderAlert = action({
 
     const recipient = args.targetEmail || DEFAULT_ADMIN_EMAIL;
     const testOrderNum = `TEST-${Math.floor(1000 + Math.random() * 9000)}`;
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://moyacaps.com";
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://goodluckcaps.com";
     const adminDashboardUrl = `${baseUrl}/admin/orders/${testOrderNum}`;
 
     const html = await render(

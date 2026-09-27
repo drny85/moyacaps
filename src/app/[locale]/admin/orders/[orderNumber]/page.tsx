@@ -1131,7 +1131,7 @@ export default function DedicatedOrderDetailPage({
           </div>
           <div className="text-right">
             <p>Thank you for shopping with Good Luck!</p>
-            <p className="font-mono">support@moyacaps.com • moyacaps.com</p>
+            <p className="font-mono">support@goodluckcaps.com • goodluckcaps.com</p>
           </div>
         </div>
       </div>

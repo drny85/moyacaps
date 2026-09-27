@@ -58,8 +58,8 @@ export function CustomerReceiptEmail({
   subtotal = 85.0,
   shippingFee = 0.0,
   tax = 0.0,
-  trackingUrl = "https://moyacaps.com/track",
-  supportEmail = "orders@moyacaps.com",
+  trackingUrl = "https://goodluckcaps.com/track",
+  supportEmail = "orders@goodluckcaps.com",
 }: CustomerReceiptProps) {
   return (
     <Html>

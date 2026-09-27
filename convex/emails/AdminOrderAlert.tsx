@@ -73,7 +73,7 @@ export function AdminOrderAlertEmail({
   subtotal = 85.0,
   shippingFee = 0.0,
   tax = 0.0,
-  adminDashboardUrl = "https://moyacaps.com/admin/orders",
+  adminDashboardUrl = "https://goodluckcaps.com/admin/orders",
   createdAt = Date.now(),
 }: AdminOrderAlertProps) {
   const isWhatsApp = paymentMethod === "whatsapp" || isWhatsAppPending;

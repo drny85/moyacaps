@@ -21,7 +21,7 @@ export function useProductShare() {
       const origin =
         window.location.origin ||
         process.env.NEXT_PUBLIC_SITE_URL ||
-        "https://moyacaps.vercel.app";
+        "https://goodluckcaps.com";
 
       const shareUrl = `${origin}/${locale}/caps/${cap.id}`;
 

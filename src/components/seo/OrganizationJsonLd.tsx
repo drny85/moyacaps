@@ -1,7 +1,7 @@
 import React from "react";
 
 export function OrganizationJsonLd() {
-  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://moyacaps.vercel.app").replace(/\/$/, "");
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://goodluckcaps.com").replace(/\/$/, "");
 
   const organizationSchema = {
     "@context": "https://schema.org",

@@ -16,3 +16,7 @@ This transition involves user-facing marketing touchpoints, navigation headers, 
 3. **Internal Styling and State Continuity**:
    - Existing Tailwind color tokens and CSS variables (e.g. `var(--moya-red)`, `bg-moya-red`, `text-moya-green`) and client-side storage keys (`moyacaps-storage`) are preserved as internal implementation aliases.
    - This prevents CSS class mismatches, preserves active customer shopping carts across deployments, and avoids unnecessary refactoring friction in purely styling-layer code.
+4. **Canonical Production Web Domain**:
+   - The official production domain is **`https://goodluckcaps.com`**.
+   - Storefront metadata, OpenGraph links, XML sitemaps, robots.txt directives, order tracking links, and administrative notification webhooks resolve to `https://goodluckcaps.com` as the canonical base URL.
+

@@ -80,3 +80,16 @@ _Avoid_: Payment link, cart checkout, gateway intent
 Convex binary storage (`_storage`) managing high-resolution product photography for Cap Variants, referenced by immutable `storageId` and resolved to signed CDN URLs during catalog queries.
 _Avoid_: Asset bucket, static image directory, media folder
 
+## Production Environment & Domain Configuration
+
+- **Production Web URL / Canonical Domain**: `https://goodluckcaps.com`
+- **Environment Variables**:
+  - `NEXT_PUBLIC_SITE_URL=https://goodluckcaps.com` (Frontend metadataBase, sitemap, robots, OpenGraph, JSON-LD)
+  - `NEXT_PUBLIC_APP_URL=https://goodluckcaps.com` (Convex emails, tracking links, admin alerts)
+- **Support & Transactional Email Host**: `goodluckcaps.com` (`orders@goodluckcaps.com`, `support@goodluckcaps.com`)
+- **Key Routing Endpoints**:
+  - Storefront: `https://goodluckcaps.com`
+  - Public Tracking Portal: `https://goodluckcaps.com/track`
+  - Admin Operations Suite: `https://goodluckcaps.com/admin/orders`
+
+

@@ -11,7 +11,7 @@ export async function generateMetadata({
   params: Promise<{ locale: string }>;
 }): Promise<Metadata> {
   const { locale } = await params;
-  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://moyacaps.vercel.app").replace(/\/$/, "");
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://goodluckcaps.com").replace(/\/$/, "");
   const canonicalUrl = `${siteUrl}/${locale}`;
 
   const title =

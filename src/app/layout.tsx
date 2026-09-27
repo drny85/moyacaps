@@ -14,7 +14,7 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://moyacaps.vercel.app"),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://goodluckcaps.com"),
   title: "Good Luck | 0880 Signature Streetwear Caps",
   description: "Official store for Good Luck. Heavyweight 3D puff embroidery, iconic horseshoe-clover emblem, and devil pitchfork flanks in 16 exclusive colorways.",
   icons: {

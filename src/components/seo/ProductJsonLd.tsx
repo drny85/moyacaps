@@ -7,7 +7,7 @@ interface ProductJsonLdProps {
 }
 
 export function ProductJsonLd({ cap, locale }: ProductJsonLdProps) {
-  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://moyacaps.vercel.app").replace(/\/$/, "");
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://goodluckcaps.com").replace(/\/$/, "");
   const canonicalUrl = `${siteUrl}/${locale}/caps/${cap.id}`;
   const imageUrl = cap.image.startsWith("http")
     ? cap.image

@@ -7,7 +7,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { locale } = await params;
   const isEs = locale === "es";
-  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://moyacaps.vercel.app").replace(/\/$/, "");
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://goodluckcaps.com").replace(/\/$/, "");
 
   return {
     title: isEs ? "Rastrear Pedido | Good Luck" : "Track Order | Good Luck",

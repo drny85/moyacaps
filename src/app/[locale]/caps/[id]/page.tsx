@@ -76,7 +76,7 @@ export async function generateMetadata({
       ? `Gorra oficial Good Luck — Edición 0880 — ${name}. Bordado 3D de alta densidad, diablos laterales y silueta ${cap.silhouette}.`
       : `Official Good Luck Cap — 0880 Edition — ${name}. High-density 3D puff embroidery, twin pitchfork devil flanks, and ${cap.silhouette} profile.`;
 
-  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://moyacaps.vercel.app").replace(/\/$/, "");
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://goodluckcaps.com").replace(/\/$/, "");
   const canonicalUrl = `${siteUrl}/${locale}/caps/${id}`;
   const imageUrl = cap.image.startsWith("http")
     ? cap.image
