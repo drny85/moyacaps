@@ -118,6 +118,41 @@ export function VirtualTryOnStudio({
     setTryOnSettings({ offsetX, offsetY, scale, tilt, tiltX });
   }, [offsetX, offsetY, scale, tilt, tiltX, setTryOnSettings]);
 
+  // Interactive Direct Drag on Cap Overlay
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStartRef = useRef({ x: 0, y: 0, initX: 0, initY: 0 });
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    setIsDragging(true);
+    dragStartRef.current = {
+      x: e.clientX,
+      y: e.clientY,
+      initX: offsetX,
+      initY: offsetY,
+    };
+    setActivePreset("custom");
+  };
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDragging) return;
+    const dx = e.clientX - dragStartRef.current.x;
+    const dy = e.clientY - dragStartRef.current.y;
+    const nextX = Math.round(dragStartRef.current.initX + dx / 2.8);
+    const nextY = Math.round(dragStartRef.current.initY + dy / 2.8);
+    setOffsetX(Math.max(-30, Math.min(30, nextX)));
+    setOffsetY(Math.max(-40, Math.min(40, nextY)));
+  };
+
+  const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (isDragging) {
+      setIsDragging(false);
+      try {
+        (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+      } catch {}
+    }
+  };
+
   // Handle Photo Upload
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -424,6 +459,13 @@ export function VirtualTryOnStudio({
                 style={{ zIndex: 20 }}
               >
                 <div
+                  onPointerDown={handlePointerDown}
+                  onPointerMove={handlePointerMove}
+                  onPointerUp={handlePointerUp}
+                  onPointerCancel={handlePointerUp}
+                  className={`pointer-events-auto touch-none select-none group/cap ${
+                    isDragging ? "cursor-grabbing" : "cursor-grab"
+                  }`}
                   style={{
                     position: "absolute",
                     top: `${-2 + offsetY * 0.28}%`,
@@ -432,18 +474,27 @@ export function VirtualTryOnStudio({
                     width: "46%",
                     maxWidth: "250px",
                     aspectRatio: "1/0.80",
-                    pointerEvents: "none",
-                    transition: "transform 0.12s ease-out, top 0.12s ease-out, left 0.12s ease-out",
-                    filter: "drop-shadow(0 10px 18px rgba(0,0,0,0.5))",
+                    transition: isDragging
+                      ? "none"
+                      : "transform 0.12s ease-out, top 0.12s ease-out, left 0.12s ease-out",
+                    filter: isDragging
+                      ? "drop-shadow(0 14px 28px rgba(225,29,72,0.45))"
+                      : "drop-shadow(0 10px 18px rgba(0,0,0,0.5))",
                   }}
+                  title={isEs ? "Arrastra para ajustar posición" : "Drag to adjust position"}
                 >
                   <Image
                     src={selectedCap.image}
                     alt={selectedCap.nameEn}
                     fill
                     priority
-                    className="object-contain"
+                    draggable={false}
+                    className="object-contain pointer-events-none select-none"
                   />
+                  {/* Subtle drag hint tooltip on hover */}
+                  <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full bg-black/80 backdrop-blur-sm border border-white/10 text-[9px] font-mono text-white/90 whitespace-nowrap opacity-0 group-hover/cap:opacity-100 transition-opacity pointer-events-none shadow-md">
+                    {isEs ? "↔ ↕ Arrastra la gorra" : "↔ ↕ Drag cap to move"}
+                  </div>
                 </div>
               </motion.div>
             )}
