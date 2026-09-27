@@ -55,6 +55,17 @@ interface StoreState {
   openDropAlert: (cap: CapVariant) => void;
   closeDropAlert: () => void;
 
+  // Sound Effects (Web Audio)
+  soundEnabled: boolean;
+  toggleSound: () => void;
+  setSoundEnabled: (enabled: boolean) => void;
+
+  // Sneaker & Fit Matcher Modal
+  isSneakerMatcherOpen: boolean;
+  sneakerMatcherTargetCap: CapVariant | null;
+  openSneakerMatcher: (cap?: CapVariant | null) => void;
+  closeSneakerMatcher: () => void;
+
   // Share Notification Toast
   shareToast: {
     isOpen: boolean;
@@ -223,6 +234,20 @@ export const useStore = create<StoreState>()(
       openDropAlert: (cap) => set({ dropAlertCap: cap }),
       closeDropAlert: () => set({ dropAlertCap: null }),
 
+      soundEnabled: true,
+      toggleSound: () => {
+        const next = !get().soundEnabled;
+        set({ soundEnabled: next });
+      },
+      setSoundEnabled: (enabled) => set({ soundEnabled: enabled }),
+
+      isSneakerMatcherOpen: false,
+      sneakerMatcherTargetCap: null,
+      openSneakerMatcher: (cap = null) =>
+        set({ isSneakerMatcherOpen: true, sneakerMatcherTargetCap: cap }),
+      closeSneakerMatcher: () =>
+        set({ isSneakerMatcherOpen: false, sneakerMatcherTargetCap: null }),
+
       shareToast: null,
       showShareToast: (data) =>
         set({
@@ -239,6 +264,7 @@ export const useStore = create<StoreState>()(
         cart: state.cart,
         currency: state.currency,
         theme: state.theme,
+        soundEnabled: state.soundEnabled,
       }),
     }
   )

@@ -24,11 +24,14 @@ import {
   Bell,
   Clock,
   Share2,
+  Scan,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
 import { useProductShare } from "@/lib/useProductShare";
 import { getWhatsAppInquiryUrl } from "@/lib/whatsapp";
+import { EmbroideryLoupe } from "@/components/product/EmbroideryLoupe";
+import { useSoundEffects } from "@/hooks/useSoundEffects";
 
 interface ProductDetailViewProps {
   cap: CapVariant;
@@ -42,13 +45,15 @@ export function ProductDetailView({ cap, allCaps }: ProductDetailViewProps) {
   const tQuick = useTranslations("quickView");
   const tShare = useTranslations("share");
   const locale = useLocale();
-  const { addToCart, openDropAlert, currency, cart } = useStore();
+  const { addToCart, openDropAlert, currency, cart, openSneakerMatcher } = useStore();
   const { shareProduct } = useProductShare();
+  const { playClick, playSuccessChime, playToggle } = useSoundEffects();
 
   const [activeAngle, setActiveAngle] = useState<AngleKey>("hero");
   const [quantity, setQuantity] = useState(1);
   const [addedSuccess, setAddedSuccess] = useState(false);
   const [isZoomed, setIsZoomed] = useState(false);
+  const [isLoupeMode, setIsLoupeMode] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
 
   const convexVariants = useQuery(api.products.getVariants, {});
@@ -145,6 +150,7 @@ export function ProductDetailView({ cap, allCaps }: ProductDetailViewProps) {
     if (isDropUpcoming || isOutOfStock || maxAvailableToAdd <= 0) return;
     const addQty = Math.min(maxAvailableToAdd, Math.max(1, quantity));
     addToCart(currentLiveCap, addQty, currentStock);
+    playSuccessChime();
     setAddedSuccess(true);
     confetti({
       particleCount: 50,
@@ -220,8 +226,24 @@ export function ProductDetailView({ cap, allCaps }: ProductDetailViewProps) {
               )}
             </div>
 
-            {/* Action Tools: Share & Zoom */}
+            {/* Action Tools: Loupe, Share & Zoom */}
             <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  const next = !isLoupeMode;
+                  setIsLoupeMode(next);
+                  playToggle(next);
+                }}
+                className={`p-2 rounded-xl transition-all border ${
+                  isLoupeMode
+                    ? "bg-moya-red text-white border-moya-red shadow-lg shadow-moya-red/30"
+                    : "glass-dark text-zinc-500 hover:text-zinc-900 dark:hover:text-white border-black/[0.06] dark:border-white/[0.08]"
+                }`}
+                title={isLoupeMode ? "Exit 3D Macro Loupe" : "3D Embroidery Macro Loupe"}
+              >
+                <Scan className="w-4 h-4" />
+              </button>
               <button
                 onClick={handleShare}
                 className="p-2 rounded-xl glass-dark text-zinc-500 hover:text-moya-red dark:hover:text-white transition-colors border border-black/[0.06] dark:border-white/[0.08]"
@@ -230,7 +252,10 @@ export function ProductDetailView({ cap, allCaps }: ProductDetailViewProps) {
                 <Share2 className="w-4 h-4" />
               </button>
               <button
-                onClick={() => setIsZoomed(!isZoomed)}
+                onClick={() => {
+                  playClick();
+                  setIsZoomed(!isZoomed);
+                }}
                 className="p-2 rounded-xl glass-dark text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors border border-black/[0.06] dark:border-white/[0.08]"
                 title="Toggle Zoom"
               >
@@ -238,38 +263,54 @@ export function ProductDetailView({ cap, allCaps }: ProductDetailViewProps) {
               </button>
             </div>
 
-            {/* Active Image Render */}
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={currentMedia.key + cap.id}
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: isZoomed ? 1.25 : 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ duration: 0.3 }}
-                className="relative w-full h-full flex items-center justify-center cursor-zoom-in"
-                onClick={() => setIsZoomed(!isZoomed)}
-              >
-                <Image
-                  src={currentMedia.src}
+            {/* Active Image Render / Loupe Mode */}
+            {isLoupeMode ? (
+              <div className="w-full h-full p-2 flex items-center justify-center">
+                <EmbroideryLoupe
+                  imageSrc={currentMedia.src}
                   alt={`${name} - ${currentMedia.label}`}
-                  fill
-                  priority
-                  className="object-contain drop-shadow-[0_25px_45px_rgba(0,0,0,0.22)] dark:drop-shadow-[0_25px_50px_rgba(0,0,0,0.85)] transition-transform duration-500"
-                  sizes="(max-width: 1024px) 90vw, 55vw"
+                  activeAngle={activeAngle}
+                  capName={name}
                 />
-              </motion.div>
-            </AnimatePresence>
+              </div>
+            ) : (
+              <>
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={currentMedia.key + cap.id}
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: isZoomed ? 1.25 : 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    transition={{ duration: 0.3 }}
+                    className="relative w-full h-full flex items-center justify-center cursor-zoom-in"
+                    onClick={() => {
+                      playClick();
+                      setIsZoomed(!isZoomed);
+                    }}
+                  >
+                    <Image
+                      src={currentMedia.src}
+                      alt={`${name} - ${currentMedia.label}`}
+                      fill
+                      priority
+                      className="object-contain drop-shadow-[0_25px_45px_rgba(0,0,0,0.22)] dark:drop-shadow-[0_25px_50px_rgba(0,0,0,0.85)] transition-transform duration-500"
+                      sizes="(max-width: 1024px) 90vw, 55vw"
+                    />
+                  </motion.div>
+                </AnimatePresence>
 
-            {/* Active Angle Descriptor Pill */}
-            <div className="absolute bottom-4 inset-x-4 sm:inset-x-8 z-10 flex items-center justify-between glass-dark px-3.5 py-2 rounded-xl border border-black/[0.06] dark:border-white/[0.06] text-xs">
-              <span className="font-display font-semibold text-zinc-900 dark:text-white flex items-center gap-1.5">
-                <Layers className="w-3.5 h-3.5 text-moya-red" />
-                {currentMedia.label}
-              </span>
-              <span className="text-[11px] text-zinc-500 truncate max-w-[240px] sm:max-w-sm font-sans">
-                {currentMedia.desc}
-              </span>
-            </div>
+                {/* Active Angle Descriptor Pill */}
+                <div className="absolute bottom-4 inset-x-4 sm:inset-x-8 z-10 flex items-center justify-between glass-dark px-3.5 py-2 rounded-xl border border-black/[0.06] dark:border-white/[0.06] text-xs">
+                  <span className="font-display font-semibold text-zinc-900 dark:text-white flex items-center gap-1.5">
+                    <Layers className="w-3.5 h-3.5 text-moya-red" />
+                    {currentMedia.label}
+                  </span>
+                  <span className="text-[11px] text-zinc-500 truncate max-w-[240px] sm:max-w-sm font-sans">
+                    {currentMedia.desc}
+                  </span>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Angle Thumbnails Switcher */}
@@ -507,6 +548,23 @@ export function ProductDetailView({ cap, allCaps }: ProductDetailViewProps) {
                 </button>
               </>
             )}
+
+            {/* Sneaker & Fit Matcher Trigger */}
+            <button
+              type="button"
+              onClick={() => {
+                playClick();
+                openSneakerMatcher(cap);
+              }}
+              className="w-full py-3 rounded-2xl font-display font-semibold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 bg-gradient-to-r from-zinc-900 to-zinc-800 dark:from-white/10 dark:to-white/5 text-white border border-black/10 dark:border-white/10 hover:border-moya-gold/50 hover:shadow-lg hover:shadow-moya-gold/10 active:scale-[0.98]"
+            >
+              <Sparkles className="w-4 h-4 text-moya-gold" />
+              <span>
+                {locale === "es"
+                  ? "Combinar Con Tus Tenis (Sneaker Match)"
+                  : "Pair With Your Kicks (Sneaker Match)"}
+              </span>
+            </button>
 
             {/* Share Cap Action */}
             <button

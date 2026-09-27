@@ -7,6 +7,7 @@ import { ShoppingBag, Globe, Menu, X, Sparkles, User, Package, Shield, Truck } f
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { SoundToggle } from "@/components/ui/SoundToggle";
 import { SafeUserButton, useSafeUser } from "@/lib/useSafeUser";
 import { checkIsAdmin } from "@/lib/adminAuth";
 
@@ -111,6 +112,9 @@ export function Navbar() {
 
           {/* ── Controls ── */}
           <div className="flex items-center gap-2 sm:gap-2.5">
+            {/* Sound FX Toggle */}
+            <SoundToggle compact={true} />
+
             {/* Theme Toggle */}
             <ThemeToggle compact={true} />
 

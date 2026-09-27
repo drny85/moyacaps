@@ -18,8 +18,10 @@ import {
   CheckCircle,
   ExternalLink,
   ShoppingBag,
+  Zap,
 } from "lucide-react";
 import { useStore } from "@/store/useStore";
+import { useSoundEffects } from "@/hooks/useSoundEffects";
 import type { CapVariant } from "@/data/caps";
 
 interface TimeRemaining {
@@ -49,6 +51,7 @@ export function DropRadar() {
   const t = useTranslations("dropRadar");
   const locale = useLocale();
   const { openDropAlert, addToCart } = useStore();
+  const { playRadarPing, playClick, playSuccessChime } = useSoundEffects();
 
   const drops = useQuery(api.products.getUpcomingDrops);
   const [activeDropIndex, setActiveDropIndex] = useState(0);
@@ -147,7 +150,10 @@ export function DropRadar() {
               {drops.map((d, i) => (
                 <button
                   key={d.variantId}
-                  onClick={() => setActiveDropIndex(i)}
+                  onClick={() => {
+                    playRadarPing();
+                    setActiveDropIndex(i);
+                  }}
                   className={`px-3 py-1.5 rounded-lg text-xs font-display font-semibold whitespace-nowrap transition-all ${
                     activeDropIndex === i
                       ? "bg-moya-red text-white shadow-md shadow-moya-red/30"
@@ -298,7 +304,10 @@ export function DropRadar() {
               <div className="flex items-center gap-2.5 flex-1 justify-end">
                 {isDropLive ? (
                   <button
-                    onClick={() => addToCart(capForStore, 1, activeDrop.stock)}
+                    onClick={() => {
+                      playSuccessChime();
+                      addToCart(capForStore, 1, activeDrop.stock);
+                    }}
                     className="flex-1 sm:flex-initial py-3 px-6 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-display font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/20 dark:shadow-emerald-950/50 transition-all active:scale-95"
                   >
                     <ShoppingBag className="w-4 h-4" />
@@ -306,7 +315,10 @@ export function DropRadar() {
                   </button>
                 ) : (
                   <button
-                    onClick={() => openDropAlert(capForStore)}
+                    onClick={() => {
+                      playClick();
+                      openDropAlert(capForStore);
+                    }}
                     className="flex-1 sm:flex-initial py-3 px-6 rounded-xl bg-moya-red hover:bg-rose-500 active:bg-moya-red-deep text-white font-display font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-xl shadow-moya-red-deep/30 dark:shadow-moya-red-deep/40 transition-all active:scale-95"
                   >
                     <Bell className="w-4 h-4" />
@@ -316,12 +328,71 @@ export function DropRadar() {
 
                 <Link
                   href={`/caps/${activeDrop.variantId}`}
+                  onClick={() => playClick()}
                   className="py-3 px-4 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-white/[0.05] dark:hover:bg-white/[0.1] border border-zinc-200 dark:border-white/[0.08] text-zinc-700 hover:text-zinc-950 dark:text-zinc-300 dark:hover:text-white font-display font-semibold text-xs flex items-center justify-center gap-1.5 transition-all shadow-xs"
                 >
                   <span>{t("viewDrop")}</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </Link>
               </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── VIP War Room Live Allocation Telemetry ── */}
+        <div className="mt-8 pt-6 border-t border-zinc-200/90 dark:border-white/[0.08] grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+          <div className="p-3.5 rounded-2xl glass-dark border border-black/5 dark:border-white/5 space-y-1.5">
+            <div className="flex items-center justify-between text-[10px] font-mono text-zinc-500 font-bold uppercase">
+              <span>{locale === "es" ? "LOTE ASIGNADO EN ALMACÉN" : "WAREHOUSE ALLOCATION"}</span>
+              <span className="text-moya-green">● LIVE RADAR</span>
+            </div>
+            <div className="flex items-baseline justify-between">
+              <span className="font-display font-black text-sm sm:text-base text-zinc-900 dark:text-white">
+                86% RESERVADO
+              </span>
+              <span className="font-mono text-[11px] text-zinc-500">
+                #0880-SERIES
+              </span>
+            </div>
+            <div className="w-full h-1.5 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden">
+              <div className="w-[86%] h-full bg-gradient-to-r from-moya-red via-moya-gold to-moya-green rounded-full" />
+            </div>
+          </div>
+
+          <div className="p-3.5 rounded-2xl glass-dark border border-black/5 dark:border-white/5 space-y-1.5">
+            <div className="flex items-center justify-between text-[10px] font-mono text-zinc-500 font-bold uppercase">
+              <span>{locale === "es" ? "BLOQUEO DE STOCK" : "TRANSACTION MUTEX"}</span>
+              <span className="text-zinc-400">ATOMIC</span>
+            </div>
+            <div className="flex items-baseline justify-between">
+              <span className="font-display font-black text-sm sm:text-base text-zinc-900 dark:text-white">
+                HOLD DE 24 HORAS
+              </span>
+              <span className="font-mono text-[11px] text-moya-gold font-bold">
+                WHATSAPP & STRIPE
+              </span>
+            </div>
+            <p className="text-[10px] text-zinc-500 dark:text-zinc-400 font-mono">
+              {locale === "es" ? "Inventario garantizado sin sobreventa." : "Idempotent reserve locks stock instantly."}
+            </p>
+          </div>
+
+          <div className="p-3.5 rounded-2xl glass-dark border border-black/5 dark:border-white/5 space-y-1.5 flex flex-col justify-between">
+            <div className="flex items-center justify-between text-[10px] font-mono text-zinc-500 font-bold uppercase">
+              <span>{locale === "es" ? "SONIDO HÁPTICO" : "HAPTIC SOUNDSCAPES"}</span>
+              <span className="text-moya-green font-bold">WEB AUDIO</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => playRadarPing()}
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-moya-red/10 border border-moya-red/30 text-moya-red hover:bg-moya-red/20 transition-colors font-mono text-[11px] font-bold"
+              >
+                <span>✦ Sonar Ping Test</span>
+              </button>
+              <span className="text-[10px] font-mono text-zinc-400">
+                0-Latency
+              </span>
             </div>
           </div>
         </div>

@@ -9,9 +9,14 @@ import { CapCard } from "./CapCard";
 import { Sparkles, Search } from "lucide-react";
 import { motion } from "framer-motion";
 
+import { useStore } from "@/store/useStore";
+import { useSoundEffects } from "@/hooks/useSoundEffects";
+
 export function CapGrid() {
   const t = useTranslations("catalog");
   const locale = useLocale();
+  const { openSneakerMatcher } = useStore();
+  const { playClick } = useSoundEffects();
 
   const [activeFilter, setActiveFilter] = useState<"all" | "snapback" | "trucker">("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -118,20 +123,38 @@ export function CapGrid() {
       </div>
 
       {/* ── Filter Tabs (chunky tactile toggles) ── */}
-      <div className="flex items-center gap-2 sm:gap-3 mb-6 sm:mb-10 overflow-x-auto pb-2 scrollbar-none w-full">
-        {filters.map((f) => (
-          <button
-            key={f.key}
-            onClick={() => setActiveFilter(f.key)}
-            className={`px-4 sm:px-5 py-2.5 rounded-xl text-xs sm:text-sm font-display font-semibold transition-all whitespace-nowrap ${
-              activeFilter === f.key
-                ? "bg-moya-red text-white shadow-lg shadow-moya-red-deep/40 scale-105"
-                : "glass-dark text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 border border-black/[0.06] dark:border-white/[0.06]"
-            }`}
-          >
-            {f.label}
-          </button>
-        ))}
+      <div className="flex items-center justify-between gap-2 sm:gap-3 mb-6 sm:mb-10 overflow-x-auto pb-2 scrollbar-none w-full">
+        <div className="flex items-center gap-2 sm:gap-3">
+          {filters.map((f) => (
+            <button
+              key={f.key}
+              onClick={() => {
+                playClick();
+                setActiveFilter(f.key);
+              }}
+              className={`px-4 sm:px-5 py-2.5 rounded-xl text-xs sm:text-sm font-display font-semibold transition-all whitespace-nowrap ${
+                activeFilter === f.key
+                  ? "bg-moya-red text-white shadow-lg shadow-moya-red-deep/40 scale-105"
+                  : "glass-dark text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 border border-black/[0.06] dark:border-white/[0.06]"
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Sneaker & Fit Matcher Trigger */}
+        <button
+          type="button"
+          onClick={() => {
+            playClick();
+            openSneakerMatcher(null);
+          }}
+          className="ml-auto inline-flex items-center gap-2 px-4 py-2.5 rounded-xl glass-dark hover:bg-black/5 dark:hover:bg-white/10 text-xs sm:text-sm font-display font-semibold border border-moya-gold/30 hover:border-moya-gold/60 text-moya-gold shadow-xs shrink-0 transition-all active:scale-95"
+        >
+          <Sparkles className="w-3.5 h-3.5" />
+          <span>{locale === "es" ? "Emparejador de Tenis" : "Sneaker Matcher"}</span>
+        </button>
       </div>
 
       {/* ── Grid ── */}
