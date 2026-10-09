@@ -895,10 +895,19 @@ export default function AdminOrdersPage() {
                             <div className="flex items-center gap-1.5">
                               <button
                                 onClick={() => setShippingLabelModalOrder(order)}
-                                className="px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-500 hover:bg-amber-400 text-zinc-950 shadow-xs transition-colors flex items-center gap-1"
-                                title="Buy Postage & Print Shipping Label"
+                                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors flex items-center gap-1 shadow-xs ${
+                                  !order.shippingAddress?.line1
+                                    ? "bg-amber-500/20 text-amber-500 dark:text-amber-400 border border-amber-500/30 hover:bg-amber-500/30"
+                                    : "bg-amber-500 hover:bg-amber-400 text-zinc-950"
+                                }`}
+                                title={
+                                  !order.shippingAddress?.line1
+                                    ? "Destination address missing - click to enter address & buy postage"
+                                    : "Buy Postage & Print Shipping Label"
+                                }
                               >
-                                <Printer className="w-3.5 h-3.5" /> Buy Label
+                                <Printer className="w-3.5 h-3.5" />
+                                {!order.shippingAddress?.line1 ? "Address & Label" : "Buy Label"}
                               </button>
                               <button
                                 onClick={() => {
@@ -1259,6 +1268,8 @@ export default function AdminOrdersPage() {
                     <Printer className="w-3.5 h-3.5" />
                     {selectedOrder.shippingLabelUrl
                       ? "Print Shipping Label (PDF)"
+                      : !selectedOrder.shippingAddress?.line1
+                      ? "Enter Address & Buy Label (Shippo)"
                       : "Buy & Print Shipping Label (Shippo)"}
                   </button>
 

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import { useAction } from "convex/react";
+import { useAction, useMutation } from "convex/react";
 import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
 import {
@@ -21,6 +21,9 @@ import {
   Clock,
   Shield,
   FileText,
+  MapPin,
+  Edit3,
+  Save,
 } from "lucide-react";
 import { getCarrierTrackingUrl } from "@/lib/tracking";
 
@@ -69,6 +72,22 @@ export function ShippingLabelModal({
 }: ShippingLabelModalProps) {
   const getRates = useAction(api.shipping.getShippingRates);
   const buyLabel = useAction(api.shipping.buyShippingLabel);
+  const updateAddress = useMutation(api.orders.updateShippingAddressAdmin);
+
+  // Address edit state
+  const [isEditingAddress, setIsEditingAddress] = useState(false);
+  const [isSavingAddress, setIsSavingAddress] = useState(false);
+  const [addressError, setAddressError] = useState<string | null>(null);
+  const [addressForm, setAddressForm] = useState({
+    name: "",
+    phone: "",
+    line1: "",
+    line2: "",
+    city: "",
+    state: "",
+    postalCode: "",
+    country: "US",
+  });
 
   // Box preset & custom dimensions state
   const totalCaps = useMemo(() => {
@@ -95,6 +114,7 @@ export function ShippingLabelModal({
   const [isLoadingRates, setIsLoadingRates] = useState(false);
   const [rateError, setRateError] = useState<string | null>(null);
   const [isSandboxMode, setIsSandboxMode] = useState(false);
+  const [isPoBox, setIsPoBox] = useState(false);
 
   // Purchasing state
   const [isPurchasing, setIsPurchasing] = useState(false);
@@ -131,8 +151,33 @@ export function ShippingLabelModal({
       setRateError(null);
       setPurchasedLabel(null);
       setPurchaseError(null);
+      setIsPoBox(false);
+      setIsEditingAddress(false);
+      setAddressError(null);
       return;
     }
+
+    // Populate initial address form
+    setAddressForm({
+      name: order.customerName || "",
+      phone: order.customerPhone || "",
+      line1: order.shippingAddress?.line1 || "",
+      line2: order.shippingAddress?.line2 || "",
+      city: order.shippingAddress?.city || "",
+      state: order.shippingAddress?.state || "",
+      postalCode: order.shippingAddress?.postalCode || "",
+      country: order.shippingAddress?.country || "US",
+    });
+
+    // Check if valid destination address exists
+    const hasValidAddress = Boolean(
+      order.shippingAddress?.line1 &&
+        order.shippingAddress?.city &&
+        order.shippingAddress?.state &&
+        order.shippingAddress?.postalCode
+    );
+
+    setIsEditingAddress(!hasValidAddress);
 
     // If order already has a shipping label, populate it
     if (order.shippingLabelUrl && order.trackingNumber) {
@@ -154,9 +199,70 @@ export function ShippingLabelModal({
         unit: "in",
       };
       setDimensions(initialDims);
-      fetchRatesForOrder(order._id, initialDims);
+
+      if (hasValidAddress) {
+        fetchRatesForOrder(order._id, initialDims);
+      } else {
+        setRateError("Please save a destination shipping address below to retrieve postage rates.");
+        setRates([]);
+      }
     }
   }, [isOpen, order?._id]);
+
+  const handleSaveAddress = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!order?._id) return;
+
+    if (
+      !addressForm.line1.trim() ||
+      !addressForm.city.trim() ||
+      !addressForm.state.trim() ||
+      !addressForm.postalCode.trim()
+    ) {
+      setAddressError("Please enter Street Address, City, State, and ZIP Code.");
+      return;
+    }
+
+    const cleanState = addressForm.state.trim().toUpperCase();
+    if (cleanState.length !== 2) {
+      setAddressError("State must be a 2-letter US state abbreviation (e.g. NY, CA, FL, TX).");
+      return;
+    }
+
+    // Excluded territory safeguard (Puerto Rico)
+    if (cleanState === "PR" || ["006", "007", "009"].includes(addressForm.postalCode.trim().slice(0, 3))) {
+      setAddressError("Good Luck currently ships exclusively to the 50 US States (excluding Puerto Rico).");
+      return;
+    }
+
+    setIsSavingAddress(true);
+    setAddressError(null);
+
+    try {
+      await updateAddress({
+        orderId: order._id,
+        shippingAddress: {
+          line1: addressForm.line1.trim(),
+          line2: addressForm.line2.trim() || undefined,
+          city: addressForm.city.trim(),
+          state: cleanState,
+          postalCode: addressForm.postalCode.trim(),
+          country: "US",
+        },
+        customerName: addressForm.name.trim() || undefined,
+        customerPhone: addressForm.phone.trim() || undefined,
+      });
+
+      setIsEditingAddress(false);
+      // Immediately calculate live rates with newly saved address!
+      await fetchRatesForOrder(order._id, dimensions);
+    } catch (err: any) {
+      console.error("Failed to save address:", err);
+      setAddressError(err?.message || "Failed to update address.");
+    } finally {
+      setIsSavingAddress(false);
+    }
+  };
 
   const fetchRatesForOrder = async (orderId: Id<"orders">, dims: typeof dimensions) => {
     setIsLoadingRates(true);
@@ -170,12 +276,15 @@ export function ShippingLabelModal({
       if (res.success && res.rates.length > 0) {
         setRates(res.rates);
         setIsSandboxMode(res.isSandbox);
-        // Default to cheapest rate or first rate
-        const cheapest = res.rates.find((r) => r.isCheapest) || res.rates[0];
-        setSelectedRateId(cheapest.objectId);
+        setIsPoBox(Boolean(res.isPoBox));
+
+        // Default to cheapest compatible rate
+        const compatibleRates = res.rates.filter((r) => !r.isPoBoxIncompatible);
+        const cheapest = compatibleRates.find((r) => r.isCheapest) || compatibleRates[0] || res.rates[0];
+        setSelectedRateId(cheapest?.objectId || null);
       } else {
         setRates([]);
-        setRateError("No carrier rates available for this destination.");
+        setRateError(res.error || "No carrier rates available for this destination.");
       }
     } catch (err: any) {
       console.error("Failed to fetch shipping rates:", err);
@@ -195,6 +304,11 @@ export function ShippingLabelModal({
 
     const chosenRate = rates.find((r) => r.objectId === selectedRateId);
     if (!chosenRate) return;
+
+    if (chosenRate.isPoBoxIncompatible) {
+      setPurchaseError("Cannot purchase UPS for a P.O. Box address. Please select USPS Ground Advantage or Priority Mail.");
+      return;
+    }
 
     setIsPurchasing(true);
     setPurchaseError(null);
@@ -286,7 +400,7 @@ export function ShippingLabelModal({
 
         {/* Order & Recipient Context Bar */}
         <div className="mt-4 p-3.5 rounded-xl bg-zinc-900/60 border border-zinc-800/70 flex flex-wrap items-center justify-between gap-3 text-xs">
-          <div>
+          <div className="flex-1 min-w-[240px]">
             <div className="flex items-center gap-2">
               <span className="font-mono font-bold text-white text-sm">
                 #{order.orderNumber}
@@ -295,14 +409,31 @@ export function ShippingLabelModal({
                 {order.items?.length || 1} {order.items?.length === 1 ? "Item" : "Items"} ({totalCaps} {totalCaps === 1 ? "Cap" : "Caps"})
               </span>
             </div>
-            <div className="text-zinc-400 text-xs mt-1">
-              Recipient: <strong className="text-zinc-200">{order.customerName || "Customer"}</strong> •{" "}
-              {order.shippingAddress ? (
-                <span>
-                  {order.shippingAddress.line1}, {order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.postalCode}, {order.shippingAddress.country}
+            <div className="text-zinc-400 text-xs mt-1.5 flex items-center gap-1.5 flex-wrap">
+              <span>
+                Recipient: <strong className="text-zinc-200">{order.customerName || "Customer"}</strong>
+              </span>
+              <span>•</span>
+              {order.shippingAddress?.line1 ? (
+                <span className="text-zinc-300 font-mono text-[11px]">
+                  {order.shippingAddress.line1}, {order.shippingAddress.city}, {order.shippingAddress.state}{" "}
+                  {order.shippingAddress.postalCode}
                 </span>
               ) : (
-                <span className="text-red-400">No destination address specified</span>
+                <span className="text-amber-400 font-semibold flex items-center gap-1">
+                  <AlertCircle className="w-3.5 h-3.5" /> Destination address required
+                </span>
+              )}
+
+              {!purchasedLabel && (
+                <button
+                  type="button"
+                  onClick={() => setIsEditingAddress(!isEditingAddress)}
+                  className="ml-1 text-[11px] font-semibold text-amber-400 hover:text-amber-300 underline flex items-center gap-1 transition-colors"
+                >
+                  <Edit3 className="w-3 h-3" />
+                  {isEditingAddress ? "Cancel" : order.shippingAddress?.line1 ? "Edit Address" : "Enter Address"}
+                </button>
               )}
             </div>
           </div>
@@ -313,6 +444,133 @@ export function ShippingLabelModal({
             </span>
           </div>
         </div>
+
+        {/* Inline Destination Address Form */}
+        {isEditingAddress && !purchasedLabel && (
+          <form
+            onSubmit={handleSaveAddress}
+            className="mt-3 p-4 rounded-xl bg-zinc-900/90 border border-amber-500/30 space-y-3"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                <MapPin className="w-4 h-4 text-amber-400" />
+                Destination Shipping Address
+              </span>
+              <span className="text-[10px] text-zinc-400">Domestic 50 US States only</span>
+            </div>
+
+            {addressError && (
+              <div className="p-2.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-xs flex items-center gap-2">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                <span>{addressError}</span>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+              <div>
+                <label className="text-[10px] text-zinc-400 block mb-1">Recipient Full Name</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Robert Melendez"
+                  value={addressForm.name}
+                  onChange={(e) => setAddressForm({ ...addressForm, name: e.target.value })}
+                  className="w-full py-1.5 px-2.5 rounded-lg bg-zinc-950 border border-zinc-700 text-white text-xs"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] text-zinc-400 block mb-1">Phone Number (Carrier Contact)</label>
+                <input
+                  type="tel"
+                  placeholder="e.g. 6462251912"
+                  value={addressForm.phone}
+                  onChange={(e) => setAddressForm({ ...addressForm, phone: e.target.value })}
+                  className="w-full py-1.5 px-2.5 rounded-lg bg-zinc-950 border border-zinc-700 text-white text-xs"
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="text-[10px] text-zinc-400 block mb-1">Street Address (Line 1)</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. 1450 Clay Avenue"
+                  value={addressForm.line1}
+                  onChange={(e) => setAddressForm({ ...addressForm, line1: e.target.value })}
+                  className="w-full py-1.5 px-2.5 rounded-lg bg-zinc-950 border border-zinc-700 text-white text-xs"
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="text-[10px] text-zinc-400 block mb-1">
+                  Apartment, Suite, Unit (Line 2 - Optional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Apt 4B"
+                  value={addressForm.line2}
+                  onChange={(e) => setAddressForm({ ...addressForm, line2: e.target.value })}
+                  className="w-full py-1.5 px-2.5 rounded-lg bg-zinc-950 border border-zinc-700 text-white text-xs"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] text-zinc-400 block mb-1">City</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. The Bronx"
+                  value={addressForm.city}
+                  onChange={(e) => setAddressForm({ ...addressForm, city: e.target.value })}
+                  className="w-full py-1.5 px-2.5 rounded-lg bg-zinc-950 border border-zinc-700 text-white text-xs"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[10px] text-zinc-400 block mb-1">State (2-Letter)</label>
+                  <input
+                    type="text"
+                    required
+                    maxLength={2}
+                    placeholder="NY"
+                    value={addressForm.state}
+                    onChange={(e) => setAddressForm({ ...addressForm, state: e.target.value.toUpperCase() })}
+                    className="w-full py-1.5 px-2.5 rounded-lg bg-zinc-950 border border-zinc-700 text-white text-xs uppercase font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-zinc-400 block mb-1">ZIP Code</label>
+                  <input
+                    type="text"
+                    required
+                    maxLength={10}
+                    placeholder="10456"
+                    value={addressForm.postalCode}
+                    onChange={(e) => setAddressForm({ ...addressForm, postalCode: e.target.value })}
+                    className="w-full py-1.5 px-2.5 rounded-lg bg-zinc-950 border border-zinc-700 text-white text-xs font-mono"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-1">
+              {order.shippingAddress?.line1 && (
+                <button
+                  type="button"
+                  onClick={() => setIsEditingAddress(false)}
+                  className="py-1.5 px-3 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-medium transition-colors"
+                >
+                  Cancel
+                </button>
+              )}
+              <button
+                type="submit"
+                disabled={isSavingAddress}
+                className="py-1.5 px-4 rounded-lg bg-amber-500 hover:bg-amber-400 text-zinc-950 text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm disabled:opacity-50"
+              >
+                {isSavingAddress ? <RotateCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                Save Address & Fetch Rates
+              </button>
+            </div>
+          </form>
+        )}
 
         {/* CASE A: Label Already Purchased */}
         {purchasedLabel ? (
@@ -505,6 +763,15 @@ export function ShippingLabelModal({
                 </button>
               </div>
 
+              {isPoBox && (
+                <div className="p-3 mb-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-center gap-2">
+                  <MapPin className="w-4 h-4 shrink-0 text-amber-400" />
+                  <span>
+                    <strong>P.O. Box Address:</strong> USPS Ground Advantage or Priority Mail is required. Commercial couriers (UPS) cannot deliver to P.O. Boxes.
+                  </span>
+                </div>
+              )}
+
               {isLoadingRates ? (
                 <div className="p-8 rounded-xl bg-zinc-900/40 border border-zinc-800 text-center space-y-2">
                   <RotateCw className="w-6 h-6 animate-spin text-amber-400 mx-auto" />
@@ -519,44 +786,66 @@ export function ShippingLabelModal({
                 <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
                   {rates.map((rate) => {
                     const isSelected = selectedRateId === rate.objectId;
+                    const isDisabled = Boolean(rate.isPoBoxIncompatible);
+
                     return (
                       <div
                         key={rate.objectId}
-                        onClick={() => setSelectedRateId(rate.objectId)}
-                        className={`p-3 rounded-xl border cursor-pointer transition-all flex items-center justify-between gap-3 ${
-                          isSelected
-                            ? "bg-amber-500/10 border-amber-500/60 shadow-md shadow-amber-500/5"
-                            : "bg-zinc-900/60 border-zinc-800/80 hover:bg-zinc-900"
+                        onClick={() => {
+                          if (!isDisabled) {
+                            setSelectedRateId(rate.objectId);
+                          }
+                        }}
+                        className={`p-3 rounded-xl border transition-all flex items-center justify-between gap-3 ${
+                          isDisabled
+                            ? "bg-zinc-950/40 border-zinc-800/40 opacity-50 cursor-not-allowed"
+                            : isSelected
+                            ? "bg-amber-500/10 border-amber-500/60 shadow-md shadow-amber-500/5 cursor-pointer"
+                            : "bg-zinc-900/60 border-zinc-800/80 hover:bg-zinc-900 cursor-pointer"
                         }`}
                       >
                         <div className="flex items-center gap-3">
                           <div
                             className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${
-                              isSelected
+                              isDisabled
+                                ? "border-zinc-800 bg-zinc-900"
+                                : isSelected
                                 ? "border-amber-400 bg-amber-400"
                                 : "border-zinc-600 bg-transparent"
                             }`}
                           >
-                            {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-zinc-950" />}
+                            {isSelected && !isDisabled && <div className="w-1.5 h-1.5 rounded-full bg-zinc-950" />}
                           </div>
 
                           <div>
-                            <div className="flex items-center gap-2">
-                              <span className="font-bold text-xs text-white">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className={`font-bold text-xs ${isDisabled ? "text-zinc-500" : "text-white"}`}>
                                 {rate.serviceName}
                               </span>
 
-                              {rate.isCheapest && (
+                              {rate.isPoBoxIncompatible && (
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/20">
+                                  P.O. Box Incompatible
+                                </span>
+                              )}
+
+                              {rate.recommendedTag && !rate.isPoBoxIncompatible && (
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center gap-1">
+                                  <Sparkles className="w-2.5 h-2.5" /> {rate.recommendedTag}
+                                </span>
+                              )}
+
+                              {rate.isCheapest && !rate.isPoBoxIncompatible && (
                                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
                                   <DollarSign className="w-2.5 h-2.5" /> Cheapest
                                 </span>
                               )}
-                              {rate.isFastest && (
+                              {rate.isFastest && !rate.isPoBoxIncompatible && (
                                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 flex items-center gap-1">
                                   <Zap className="w-2.5 h-2.5" /> Fastest
                                 </span>
                               )}
-                              {rate.attributes?.includes("BESTVALUE") && (
+                              {rate.attributes?.includes("BESTVALUE") && !rate.isPoBoxIncompatible && !rate.recommendedTag && (
                                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center gap-1">
                                   <Sparkles className="w-2.5 h-2.5" /> Best Value
                                 </span>
@@ -579,7 +868,7 @@ export function ShippingLabelModal({
                         </div>
 
                         <div className="text-right">
-                          <span className="font-mono font-bold text-sm text-emerald-400">
+                          <span className={`font-mono font-bold text-sm ${isDisabled ? "text-zinc-600" : "text-emerald-400"}`}>
                             ${rate.amount?.toFixed(2)}
                           </span>
                           <span className="text-[10px] text-zinc-500 block">USD</span>

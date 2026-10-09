@@ -61,4 +61,43 @@ describe("Shipping & Packaging Presets", () => {
     const trk = "9400111899223344556677";
     expect(getCarrierTrackingUrl("USPS", trk)).toBe(buildCarrierTrackingUrl("USPS", trk));
   });
+
+  it("accurately detects P.O. Box addresses across common formatting variants", async () => {
+    const { isPoBoxAddress } = await import("../../convex/shipping");
+
+    expect(isPoBoxAddress("PO Box 1234")).toBe(true);
+    expect(isPoBoxAddress("P.O. Box 567")).toBe(true);
+    expect(isPoBoxAddress("p.o. box 890")).toBe(true);
+    expect(isPoBoxAddress("Post Office Box 42")).toBe(true);
+    expect(isPoBoxAddress("Box 101")).toBe(true);
+    expect(isPoBoxAddress("123 Main St", "PO Box 99")).toBe(true);
+
+    // Standard residential and commercial addresses should not trigger PO Box detection
+    expect(isPoBoxAddress("1 Broadway, Suite 400")).toBe(false);
+    expect(isPoBoxAddress("742 Evergreen Terrace")).toBe(false);
+    expect(isPoBoxAddress("500 Boxwood Lane")).toBe(false);
+  });
+
+  it("strictly validates domestic US 50-state territory and flags Puerto Rico / territories / international", async () => {
+    const { isExcludedTerritory } = await import("../../convex/shipping");
+
+    // Valid 50-state domestic US
+    expect(isExcludedTerritory("NY", "10004", "US").isExcluded).toBe(false);
+    expect(isExcludedTerritory("CA", "90210", "US").isExcluded).toBe(false);
+    expect(isExcludedTerritory("FL", "33101", "US").isExcluded).toBe(false);
+
+    // Puerto Rico state & ZIP codes
+    expect(isExcludedTerritory("PR", "00901", "US").isExcluded).toBe(true);
+    expect(isExcludedTerritory("Puerto Rico", "00901", "US").isExcluded).toBe(true);
+    expect(isExcludedTerritory("", "00601", "US").isExcluded).toBe(true);
+    expect(isExcludedTerritory("", "00725", "US").isExcluded).toBe(true);
+
+    // US Territories (Guam, USVI, etc.)
+    expect(isExcludedTerritory("GU", "96910", "US").isExcluded).toBe(true);
+    expect(isExcludedTerritory("VI", "00802", "US").isExcluded).toBe(true);
+
+    // International
+    expect(isExcludedTerritory("ON", "M5V 2T6", "CA").isExcluded).toBe(true);
+    expect(isExcludedTerritory("London", "SW1A 1AA", "GB").isExcluded).toBe(true);
+  });
 });

@@ -67,6 +67,57 @@ export function getDefaultBoxPreset(itemsCount: number) {
   return CAP_BOX_PRESETS[2];
 }
 
+/**
+ * Detects whether an address is a Post Office Box.
+ * Major commercial couriers (UPS, FedEx) cannot deliver to PO Boxes.
+ */
+export function isPoBoxAddress(line1?: string, line2?: string): boolean {
+  const poBoxRegex = /\b(p\.?\s*o\.?\s*box|post\s*office\s*box|box\b\s*\d+)\b/i;
+  return poBoxRegex.test(line1 || "") || poBoxRegex.test(line2 || "");
+}
+
+/**
+ * Validates domestic fulfillment territory (50 US States, strictly excluding Puerto Rico and international territories).
+ */
+export function isExcludedTerritory(state?: string, zip?: string, country?: string): {
+  isExcluded: boolean;
+  reason?: string;
+} {
+  const normCountry = (country || "US").toUpperCase().trim();
+  if (normCountry !== "US" && normCountry !== "USA" && normCountry !== "UNITED STATES") {
+    return {
+      isExcluded: true,
+      reason: `Good Luck ships exclusively within the 50 US States. International shipping to (${normCountry}) is not supported.`,
+    };
+  }
+
+  const normState = (state || "").toUpperCase().trim();
+  if (normState === "PR" || normState === "PUERTO RICO") {
+    return {
+      isExcluded: true,
+      reason: "Good Luck does not currently ship to Puerto Rico. Shipping is limited to the 50 US States.",
+    };
+  }
+
+  const cleanZip = (zip || "").trim().slice(0, 3);
+  if (["006", "007", "009"].includes(cleanZip)) {
+    return {
+      isExcluded: true,
+      reason: "Good Luck does not currently ship to Puerto Rico (ZIP 006xx/007xx/009xx). Shipping is limited to the 50 US States.",
+    };
+  }
+
+  // Other US Territories (Guam GU, US Virgin Islands VI, Northern Mariana MP, American Samoa AS)
+  if (["GU", "VI", "MP", "AS"].includes(normState)) {
+    return {
+      isExcluded: true,
+      reason: `Good Luck does not currently ship to US territories (${normState}). Shipping is limited to the 50 US States.`,
+    };
+  }
+
+  return { isExcluded: false };
+}
+
 export function buildCarrierTrackingUrl(carrier?: string, trackingNumber?: string): string | null {
   if (!trackingNumber || trackingNumber.trim() === "") return null;
   const cleanTrk = trackingNumber.trim();
@@ -131,6 +182,8 @@ export interface FormattedRate {
   attributes: string[];
   isCheapest?: boolean;
   isFastest?: boolean;
+  isPoBoxIncompatible?: boolean;
+  recommendedTag?: string;
 }
 
 const parcelValidator = v.optional(
@@ -158,6 +211,7 @@ export const getShippingRates = action({
     parcel: { length: number; width: number; height: number; weight: number; unit: string };
     destination: { name?: string; address: string; city: string; state: string; postalCode: string; country: string };
     isSandbox: boolean;
+    isPoBox: boolean;
     error?: string;
   }> => {
     await verifyAdminInAction(ctx);
@@ -170,11 +224,20 @@ export const getShippingRates = action({
       throw new ConvexError(`Order not found: ${args.orderId}`);
     }
 
-    if (!order.shippingAddress) {
-      throw new ConvexError("This order does not have a destination shipping address.");
+    if (!order.shippingAddress || !order.shippingAddress.line1) {
+      return {
+        success: false,
+        rates: [],
+        parcel: { length: 8, width: 8, height: 6, weight: 8, unit: "in" },
+        destination: { name: order.customerName, address: "", city: "", state: "", postalCode: "", country: "US" },
+        isSandbox: false,
+        isPoBox: false,
+        error: "This order does not have a destination shipping address. Please enter the delivery address below.",
+      };
     }
 
     const { line1, line2, city, state, postalCode, country } = order.shippingAddress;
+
     const destSummary = {
       name: order.customerName,
       address: line2 ? `${line1}, ${line2}` : line1,
@@ -183,6 +246,23 @@ export const getShippingRates = action({
       postalCode,
       country: country || "US",
     };
+
+    // 1. Strict Fulfillment Territory Boundary Check (50 US States only, excluding PR & international)
+    const territoryCheck = isExcludedTerritory(state, postalCode, country);
+    if (territoryCheck.isExcluded) {
+      return {
+        success: false,
+        rates: [],
+        parcel: { length: 8, width: 8, height: 6, weight: 8, unit: "in" },
+        destination: destSummary,
+        isSandbox: false,
+        isPoBox: false,
+        error: territoryCheck.reason || "Address is outside the supported fulfillment territory.",
+      };
+    }
+
+    // 2. PO Box Address Check
+    const isPoBox = isPoBoxAddress(line1, line2);
 
     // Calculate or take parcel dimensions
     const totalCaps = (order.items || []).reduce((acc: number, it: any) => acc + (it.quantity || 1), 0);
@@ -233,6 +313,17 @@ export const getShippingRates = action({
           const formattedRates: FormattedRate[] = rawRates.map((r: any) => {
             const amountNum = parseFloat(r.amount || "0");
             const attrs = r.attributes || [];
+            const providerUpper = (r.provider || "").toUpperCase();
+            const isCarrierUpsOrFedex = providerUpper.includes("UPS") || providerUpper.includes("FEDEX");
+            const isPoBoxIncompatible = isPoBox && isCarrierUpsOrFedex;
+
+            let recommendedTag: string | undefined = undefined;
+            if (totalCaps <= 2 && providerUpper.includes("USPS") && attrs.includes("CHEAPEST")) {
+              recommendedTag = "Standard (Free Daily Pickup)";
+            } else if (totalCaps >= 3 && providerUpper.includes("UPS") && !isPoBox) {
+              recommendedTag = "Rigid Box Protection (Guaranteed Ground)";
+            }
+
             return {
               objectId: r.objectId,
               provider: r.provider || "Carrier",
@@ -245,6 +336,8 @@ export const getShippingRates = action({
               attributes: attrs,
               isCheapest: attrs.includes("CHEAPEST"),
               isFastest: attrs.includes("FASTEST"),
+              isPoBoxIncompatible,
+              recommendedTag,
             };
           });
 
@@ -257,6 +350,7 @@ export const getShippingRates = action({
             parcel,
             destination: destSummary,
             isSandbox: false,
+            isPoBox,
           };
         }
       } catch (err: any) {
@@ -281,6 +375,8 @@ export const getShippingRates = action({
         durationTerms: "2-5 business days",
         attributes: ["CHEAPEST"],
         isCheapest: true,
+        isPoBoxIncompatible: false,
+        recommendedTag: !isHeavy ? "Standard (Free Daily Pickup)" : undefined,
       },
       {
         objectId: `sim_ups_ground_${order._id}`,
@@ -292,6 +388,8 @@ export const getShippingRates = action({
         estimatedDays: 3,
         durationTerms: "1-4 business days",
         attributes: ["BESTVALUE"],
+        isPoBoxIncompatible: isPoBox,
+        recommendedTag: isHeavy && !isPoBox ? "Rigid Box Protection (Guaranteed Ground)" : undefined,
       },
       {
         objectId: `sim_usps_priority_${order._id}`,
@@ -304,6 +402,8 @@ export const getShippingRates = action({
         durationTerms: "1-3 business days",
         attributes: ["FASTEST"],
         isFastest: true,
+        isPoBoxIncompatible: false,
+        recommendedTag: isHeavy ? "USPS Postal Priority" : undefined,
       },
       {
         objectId: `sim_ups_2day_${order._id}`,
@@ -315,6 +415,7 @@ export const getShippingRates = action({
         estimatedDays: 2,
         durationTerms: "2 business days guaranteed",
         attributes: [],
+        isPoBoxIncompatible: isPoBox,
       },
     ];
 
@@ -324,6 +425,7 @@ export const getShippingRates = action({
       parcel,
       destination: destSummary,
       isSandbox: true,
+      isPoBox,
     };
   },
 });
@@ -359,6 +461,25 @@ export const buyShippingLabel = action({
 
     if (!order) {
       throw new ConvexError(`Order not found: ${args.orderId}`);
+    }
+
+    if (order.shippingAddress) {
+      // 1. Territory boundary validation
+      const territoryCheck = isExcludedTerritory(
+        order.shippingAddress.state,
+        order.shippingAddress.postalCode,
+        order.shippingAddress.country
+      );
+      if (territoryCheck.isExcluded) {
+        throw new ConvexError(territoryCheck.reason || "Destination address is outside supported fulfillment territory.");
+      }
+
+      // 2. PO Box courier restriction
+      const isPoBox = isPoBoxAddress(order.shippingAddress.line1, order.shippingAddress.line2);
+      const chosenCarrierUpper = (args.carrier || "").toUpperCase();
+      if (isPoBox && (chosenCarrierUpper.includes("UPS") || chosenCarrierUpper.includes("FEDEX"))) {
+        throw new ConvexError("Cannot purchase UPS/FedEx label for a P.O. Box address. Please select USPS Ground Advantage or Priority Mail.");
+      }
     }
 
     const shippo = getShippoClient();

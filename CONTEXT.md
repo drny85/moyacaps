@@ -32,6 +32,22 @@ _Avoid_: Superuser, mod, backend user, manager
 The operational lifecycle of packing, carrier assigning, dispatching, and recording delivery status for customer orders.
 _Avoid_: Shipping process, handling
 
+**Fulfillment Territory**:
+The geographical boundary supported for customer order delivery: strictly domestic United States (50 US States), explicitly excluding Puerto Rico (PR), US Virgin Islands, Guam, other unincorporated territories, and international destinations.
+_Avoid_: Global shipping, domestic + territories, international orders
+
+**Domestic Hybrid Fulfillment Matrix**:
+The tiered carrier dispatch policy deploying USPS Ground Advantage for standard sub-1lb single/double cap shipments (free doorstep pickup, lowest commercial cost) and commercial couriers (UPS Ground, UPS 2nd Day Air) for multi-cap master cartons and expedited VIP drops.
+_Avoid_: Single-carrier setup, unmanaged multi-carrier
+
+**PO Box Routing Safeguard**:
+The automated address inspection mechanism detecting Post Office Box destinations and strictly restricting carrier rate selection to USPS, preventing invalid commercial courier (UPS/FedEx) label purchases.
+_Avoid_: Manual address verification, unrestricted courier assignment
+
+**Crown-Safe Packaging Presets**:
+Calibrated rigid corrugated box specifications (`8"×8"×6"` single-cap, `10"×8"×6"` double-cap, `12"×10"×8"` collector master box) engineered with crown clearance to prevent visor bending or structured embroidery crushing during bulk transit.
+_Avoid_: Bubble mailers, poly mailers, soft envelopes
+
 **WhatsApp Concierge Order**:
 An order initiated via the Loot Bag for domestic US delivery, reserving inventory for 24 hours in Convex. The customer provides their name and email for tracking and receipt dispatch; physical US shipping address entry, phone collection, and real-time state sales taxes are delegated to the official Stripe checkout payment link (or entered manually by an Administrator for offline Zelle settlements). The order begins in review (`whatsapp_initiated`) and is not marked as paid until the customer completes checkout via the payment link or verified bank transfer.
 _Avoid_: Manual order, cash order, off-platform order, instant WhatsApp checkout
@@ -49,7 +65,7 @@ A synchronized customer or administrator identity record mirrored into Convex fr
 _Avoid_: Auth row, login entity
 
 **Carrier Dispatch Deep Link**:
-A direct external tracking URI generated for supported logistics couriers (DHL Express, FedEx, Estafeta, Correos de México, UPS) providing real-time package transit milestones for customers and staff.
+A direct external tracking URI generated for supported logistics couriers (USPS, UPS) providing real-time package transit milestones for customers and staff.
 _Avoid_: Tracking URL, tracking web link
 
 **Public Tracking Portal**:
