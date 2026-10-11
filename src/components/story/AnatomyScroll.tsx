@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import Image from "next/image";
+import dynamic from "next/dynamic";
 import { useRef, useState } from "react";
 import {
   AnimatePresence,
@@ -9,14 +10,19 @@ import {
   useMotionValueEvent,
   useReducedMotion,
   useScroll,
-  useSpring,
   useTransform,
   type MotionValue,
 } from "framer-motion";
+import { CAP_VARIANTS } from "@/data/caps";
+import { use3DStage } from "@/hooks/use3DStage";
 import { Reveal } from "@/components/motion/Reveal";
-import { DURATION, EASE, SPRING, STAGGER } from "@/lib/motion";
+import { DURATION, EASE, STAGGER } from "@/lib/motion";
 
-/** One entry per craft detail, each shown with the real photo of that angle */
+const AnatomyCapView = dynamic(() => import("@/components/three/AnatomyCapView"), { ssr: false });
+
+const FLAGSHIP = CAP_VARIANTS[0];
+
+/** One entry per craft detail; order matches ANATOMY_KEYFRAMES stops */
 const STEPS = [
   { key: "front", title: "layer1Title", desc: "layer1Desc", image: "/caps/angles/front.png" },
   { key: "flanks", title: "layer2Title", desc: "layer2Desc", image: "/caps/angles/left.png" },
@@ -24,24 +30,8 @@ const STEPS = [
   { key: "structure", title: "layer4Title", desc: "layer4Desc", image: "/caps/negro-rojo.png" },
 ] as const;
 
+/** Keyframe stops in the 3D path (the final "reassembled" stop reuses the last step's copy) */
 const STOPS = STEPS.length;
-/** Scroll span over which one photo hands off to the next */
-const FADE = 0.03;
-
-/** Close-up framing per photo: where the zoom lands (the embroidery) and how far */
-const ZOOMS = [
-  { src: "/caps/angles/front.png", origin: "50% 40%", zoom: 1.55 }, // horseshoe + clover
-  { src: "/caps/angles/left.png", origin: "36% 48%", zoom: 1.5 }, // devil with pitchfork
-  { src: "/caps/angles/back.png", origin: "50% 42%", zoom: 1.35 }, // 0880 arch + snap
-];
-
-/** Final step: all four real angles fan out around the stage */
-const FAN = [
-  { src: "/caps/angles/front.png", x: "-26%", y: "-20%", rotate: -5 },
-  { src: "/caps/angles/left.png", x: "26%", y: "-20%", rotate: 5 },
-  { src: "/caps/angles/back.png", x: "-26%", y: "22%", rotate: 4 },
-  { src: "/caps/angles/right.png", x: "26%", y: "22%", rotate: -4 },
-];
 
 function SectionHeader() {
   const t = useTranslations("anatomy");
@@ -73,85 +63,7 @@ function RailSegment({ progress, index }: { progress: MotionValue<number>; index
   );
 }
 
-/** One real photo: fades/turns in at its step, then pushes in on the embroidery */
-function ZoomLayer({ progress, index }: { progress: MotionValue<number>; index: number }) {
-  const { src, origin, zoom } = ZOOMS[index];
-  const start = index / STOPS;
-  const end = (index + 1) / STOPS;
-  const first = index === 0;
-
-  const opacity = useTransform(
-    progress,
-    first ? [end - FADE, end + FADE] : [start - FADE, start + FADE, end - FADE, end + FADE],
-    first ? [1, 0] : [0, 1, 1, 0]
-  );
-  // Swing in from the side like the cap turning, then swing out the other way.
-  const rotateY = useTransform(
-    progress,
-    first ? [end - FADE, end + FADE] : [start - FADE, start + FADE, end - FADE, end + FADE],
-    first ? [0, -35] : [35, 0, 0, -35]
-  );
-  const scale = useTransform(progress, [start + FADE, end - FADE], [1, zoom]);
-
-  return (
-    <motion.div
-      style={{ opacity, rotateY, scale, transformOrigin: origin }}
-      className="absolute inset-0"
-    >
-      <Image
-        src={src}
-        alt=""
-        fill
-        sizes="(max-width: 1024px) 90vw, 60vw"
-        className="object-contain"
-      />
-    </motion.div>
-  );
-}
-
-function FanCard({ progress, index }: { progress: MotionValue<number>; index: number }) {
-  const card = FAN[index];
-  const from = 0.75 + index * 0.015;
-  const to = 0.88 + index * 0.015;
-  const x = useTransform(progress, [from, to], ["0%", card.x]);
-  const y = useTransform(progress, [from, to], ["0%", card.y]);
-  const rotate = useTransform(progress, [from, to], [0, card.rotate]);
-  const scale = useTransform(progress, [from, to], [0.9, 0.5]);
-  const opacity = useTransform(progress, [0.75 - FADE, 0.75 + FADE], [0, 1]);
-
-  return (
-    <motion.div
-      style={{ x, y, rotate, scale, opacity }}
-      className="absolute inset-0"
-    >
-      <Image
-        src={card.src}
-        alt=""
-        fill
-        sizes="(max-width: 1024px) 50vw, 30vw"
-        className="object-contain"
-      />
-    </motion.div>
-  );
-}
-
-/** The real product photos, choreographed by scroll progress */
-function PhotoStage({ progress, className }: { progress: MotionValue<number>; className?: string }) {
-  const smooth = useSpring(progress, SPRING.scroll);
-  return (
-    <div aria-hidden className={`relative [perspective:1200px] ${className ?? ""}`}>
-      <div className="pointer-events-none absolute inset-x-[15%] bottom-[6%] h-[18%] rounded-full bg-moya-red/25 blur-[70px]" />
-      {ZOOMS.map((_, i) => (
-        <ZoomLayer key={i} progress={smooth} index={i} />
-      ))}
-      {FAN.map((_, i) => (
-        <FanCard key={i} progress={smooth} index={i} />
-      ))}
-    </div>
-  );
-}
-
-/** Pinned scroll walkthrough: real photos turn and zoom to each craft detail */
+/** Pinned scroll walkthrough: the 3D cap turns to each craft detail */
 function AnatomyScene() {
   const t = useTranslations("anatomy");
   const sectionRef = useRef<HTMLElement>(null);
@@ -159,20 +71,22 @@ function AnatomyScene() {
   const [step, setStep] = useState(0);
 
   useMotionValueEvent(scrollYProgress, "change", (p) => {
-    const next = Math.min(STEPS.length - 1, Math.floor(p * STOPS));
+    const next = Math.min(STEPS.length - 1, Math.round(p * STOPS));
     setStep((prev) => (prev === next ? prev : next));
   });
 
   return (
-    <section id="anatomy" ref={sectionRef} className="relative h-[400vh] border-y border-black/[0.06] dark:border-white/[0.06]">
+    <section id="anatomy" ref={sectionRef} className="relative h-[420vh] border-y border-black/[0.06] dark:border-white/[0.06]">
       <div className="sticky top-0 flex h-[100svh] flex-col overflow-hidden px-4 pb-6 pt-20 sm:px-6 sm:pt-24 lg:px-8">
         <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col">
           <SectionHeader />
 
           <div className="grid flex-1 grid-cols-1 items-center gap-4 lg:grid-cols-12 lg:gap-10">
-            <PhotoStage
+            <AnatomyCapView
               className="order-1 h-[42svh] w-full lg:order-2 lg:col-span-7 lg:h-[62svh]"
               progress={scrollYProgress}
+              primaryHex={FLAGSHIP.primaryHex}
+              secondaryHex={FLAGSHIP.secondaryHex}
             />
 
             <div className="order-2 min-h-[150px] lg:order-1 lg:col-span-5" aria-live="polite">
@@ -207,7 +121,7 @@ function AnatomyScene() {
   );
 }
 
-/** Static version for reduced motion */
+/** Static version: no WebGL, no model yet, or reduced motion */
 function AnatomyPanels() {
   const t = useTranslations("anatomy");
   return (
@@ -218,13 +132,13 @@ function AnatomyPanels() {
           {STEPS.map((s, i) => (
             <Reveal key={s.key} delay={i * STAGGER}>
               <article className="h-full rounded-2xl border border-black/[0.08] p-4 dark:border-white/[0.08]">
-                <div className="relative mb-4 aspect-square drop-shadow-[0_20px_30px_rgba(0,0,0,0.35)]">
+                <div className="relative mb-4 aspect-square">
                   <Image
                     src={s.image}
                     alt={t(s.title)}
                     fill
                     sizes="(max-width: 640px) 90vw, (max-width: 1024px) 45vw, 22vw"
-                    className="object-contain"
+                    className="object-contain drop-shadow-[0_20px_30px_rgba(0,0,0,0.35)]"
                   />
                 </div>
                 <StepLabel index={i} />
@@ -240,6 +154,7 @@ function AnatomyPanels() {
 }
 
 export function AnatomyScroll() {
+  const show3D = use3DStage();
   const reduceMotion = useReducedMotion();
-  return reduceMotion ? <AnatomyPanels /> : <AnatomyScene />;
+  return show3D && !reduceMotion ? <AnatomyScene /> : <AnatomyPanels />;
 }

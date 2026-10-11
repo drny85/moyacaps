@@ -5,6 +5,7 @@ import { CapGrid } from "@/components/catalog/CapGrid";
 import { AnatomyScroll } from "@/components/story/AnatomyScroll";
 import { BrandStory } from "@/components/story/BrandStory";
 import { ColorwayMarquee } from "@/components/catalog/ColorwayMarquee";
+import { CapStageMount } from "@/components/three/CapStageMount";
 
 export async function generateMetadata({
   params,
@@ -66,6 +67,8 @@ export async function generateMetadata({
 export default function HomePage() {
   return (
     <div className="flex flex-col gap-0 overflow-x-clip">
+      {/* Shared WebGL canvas for the hero + anatomy cap views */}
+      <CapStageMount />
       <HeroInteractive />
       <AnatomyScroll />
       <DropRadar />

@@ -3,20 +3,26 @@
 import { useTranslations, useLocale } from "next-intl";
 import { motion, useReducedMotion } from "framer-motion";
 import { ArrowRight, Check, Bell, Rotate3d } from "lucide-react";
-import { useState, useEffect, useMemo } from "react";
+import Image from "next/image";
+import dynamic from "next/dynamic";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
 import { useStore } from "@/store/useStore";
 import type { CapVariant } from "@/data/caps";
 import { useCapVariants } from "@/hooks/useCapVariants";
 import { useCapPurchaseState } from "@/hooks/useCapPurchaseState";
-import { CapTurntable, type TurntableFrame } from "@/components/viewer/CapTurntable";
+import { use3DStage } from "@/hooks/use3DStage";
+import { useStageStore } from "@/components/three/stageStore";
+import type { HeroDragState } from "@/components/three/HeroCapView";
 import { DURATION, EASE, STAGGER } from "@/lib/motion";
 
-const FLAGSHIP_ID = "negro-rojo";
+const HeroCapView = dynamic(() => import("@/components/three/HeroCapView"), { ssr: false });
 
-/** Turntable order: dragging right reveals the left flank first */
-const FLAGSHIP_ANGLES = ["front", "left", "back", "right"] as const;
+/** Radians of cap rotation per pixel dragged */
+const DRAG_SENSITIVITY = 0.012;
+
+const FLAGSHIP_ID = "negro-rojo";
 
 /** Up to five swatches: the flagship first, then featured / low-stock colorways */
 function pickQuickSwap(caps: CapVariant[]) {
@@ -25,6 +31,11 @@ function pickQuickSwap(caps: CapVariant[]) {
   const flagship = caps.find((c) => c.id === FLAGSHIP_ID);
   const rest = pool.filter((c) => c.id !== FLAGSHIP_ID);
   return (flagship ? [flagship, ...rest] : rest).slice(0, 5);
+}
+
+/** Flagship photo for the poster; other colorways use their catalog shot */
+function posterFor(cap: CapVariant) {
+  return cap.id === FLAGSHIP_ID ? "/caps/angles/front.png" : cap.image;
 }
 
 export function HeroInteractive() {
@@ -51,16 +62,29 @@ export function HeroInteractive() {
   const { stock, inCartQty, isInCart, isOutOfStock, isMaxInCart, isDropUpcoming } = useCapPurchaseState(activeCap);
   const name = locale === "es" ? activeCap.nameEs : activeCap.nameEn;
 
-  // ── Real-photo turntable: every angle shot for the flagship, the catalog shot otherwise ──
-  const tAngles = useTranslations("pdp.angles");
-  const frames: TurntableFrame[] = useMemo(
-    () =>
-      activeCap.id === FLAGSHIP_ID
-        ? FLAGSHIP_ANGLES.map((angle) => ({ src: `/caps/angles/${angle}.png`, label: tAngles(angle) }))
-        : [{ src: activeCap.image, label: tAngles("hero") }],
-    [activeCap.id, activeCap.image, tAngles]
-  );
-  const [hasTurned, setHasTurned] = useState(false);
+  // ── 3D stage ──
+  const show3D = use3DStage();
+  const heroReady = useStageStore((s) => s.heroReady);
+  const drag = useRef<HeroDragState>({ rotation: 0, dragging: false });
+  const lastPointerX = useRef(0);
+  const [hasDragged, setHasDragged] = useState(false);
+
+  const onPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    drag.current.dragging = true;
+    lastPointerX.current = e.clientX;
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }, []);
+
+  const onPointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (!drag.current.dragging) return;
+    drag.current.rotation += (e.clientX - lastPointerX.current) * DRAG_SENSITIVITY;
+    lastPointerX.current = e.clientX;
+    setHasDragged(true);
+  }, []);
+
+  const onPointerUp = useCallback(() => {
+    drag.current.dragging = false;
+  }, []);
 
   const lineReveal = (i: number) => ({
     initial: { y: reduceMotion ? 0 : "105%", opacity: reduceMotion ? 0 : 1 },
@@ -83,23 +107,51 @@ export function HeroInteractive() {
       <div className="relative z-10 mx-auto grid w-full max-w-7xl grid-cols-1 items-center gap-4 lg:grid-cols-12 lg:gap-10">
         {/* ── Cap stage ── */}
         <div className="order-1 lg:order-2 lg:col-span-7">
-          <div className="relative mx-auto aspect-square w-full max-w-[min(100%,36svh)] sm:max-w-[min(560px,46svh)] lg:max-w-none">
-            <CapTurntable
-              key={activeCap.id}
-              frames={frames}
-              alt={`Good Luck 0880 — ${name}`}
-              glowHex={`${activeCap.secondaryHex}66`}
-              priority
-              className="h-full w-full"
-              onInteract={() => setHasTurned(true)}
-            />
+          <motion.div
+            initial={{ opacity: 0, scale: reduceMotion ? 1 : 0.94 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: DURATION.slow, ease: EASE.out }}
+            onPointerDown={show3D ? onPointerDown : undefined}
+            onPointerMove={show3D ? onPointerMove : undefined}
+            onPointerUp={show3D ? onPointerUp : undefined}
+            onPointerCancel={show3D ? onPointerUp : undefined}
+            className={`relative mx-auto aspect-square w-full max-w-[min(100%,36svh)] sm:max-w-[min(560px,46svh)] lg:max-w-none ${
+              show3D ? "cursor-grab touch-pan-y active:cursor-grabbing" : ""
+            }`}
+          >
+            {/* Poster: the LCP element, and the permanent fallback without WebGL */}
+            <div
+              className={`absolute inset-[6%] transition-opacity duration-700 ${
+                show3D && heroReady ? "opacity-0" : "opacity-100"
+              }`}
+            >
+              <Image
+                key={activeCap.id}
+                src={posterFor(activeCap)}
+                alt={`Good Luck 0880 — ${name}`}
+                fill
+                priority
+                sizes="(max-width: 1024px) 90vw, 640px"
+                className="select-none object-contain drop-shadow-[0_30px_50px_rgba(0,0,0,0.45)]"
+              />
+            </div>
 
-            {frames.length > 1 && (
+            {show3D && (
+              <HeroCapView
+                className="absolute inset-0"
+                primaryHex={activeCap.primaryHex}
+                secondaryHex={activeCap.secondaryHex}
+                drag={drag}
+                reduceMotion={reduceMotion}
+              />
+            )}
+
+            {show3D && heroReady && (
               <motion.div
                 initial={{ opacity: 0 }}
-                animate={{ opacity: hasTurned ? 0 : 1 }}
-                transition={{ duration: DURATION.base, delay: hasTurned ? 0 : 1.4 }}
-                className="pointer-events-none absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-1.5 whitespace-nowrap rounded-full border border-black/10 bg-white/70 px-3 py-1.5 text-[11px] font-display font-semibold text-zinc-700 backdrop-blur-md dark:border-white/10 dark:bg-black/40 dark:text-zinc-300"
+                animate={{ opacity: hasDragged ? 0 : 1 }}
+                transition={{ duration: DURATION.base, delay: hasDragged ? 0 : 1.4 }}
+                className="pointer-events-none absolute bottom-[4%] left-1/2 -translate-x-1/2 flex items-center gap-1.5 rounded-full border border-black/10 bg-white/70 px-3 py-1.5 text-[11px] font-display font-semibold text-zinc-700 backdrop-blur-md dark:border-white/10 dark:bg-black/40 dark:text-zinc-300"
               >
                 <Rotate3d className="h-3.5 w-3.5" />
                 <span>{t("dragHint")}</span>
@@ -114,7 +166,7 @@ export function HeroInteractive() {
                 </span>
               </div>
             )}
-          </div>
+          </motion.div>
         </div>
 
         {/* ── Copy + purchase ── */}
