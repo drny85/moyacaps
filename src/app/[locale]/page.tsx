@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import { HeroInteractive } from "@/components/hero/HeroInteractive";
 import { DropRadar } from "@/components/drops/DropRadar";
 import { CapGrid } from "@/components/catalog/CapGrid";
-import { AnatomyParallax } from "@/components/story/AnatomyParallax";
+import { AnatomyScroll } from "@/components/story/AnatomyScroll";
 import { BrandStory } from "@/components/story/BrandStory";
+import { ColorwayMarquee } from "@/components/catalog/ColorwayMarquee";
 
 export async function generateMetadata({
   params,
@@ -64,10 +65,11 @@ export async function generateMetadata({
 
 export default function HomePage() {
   return (
-    <div className="flex flex-col gap-0 overflow-hidden">
-      <AnatomyParallax />
+    <div className="flex flex-col gap-0 overflow-x-clip">
       <HeroInteractive />
+      <AnatomyScroll />
       <DropRadar />
+      <ColorwayMarquee />
       <CapGrid />
       <BrandStory />
     </div>

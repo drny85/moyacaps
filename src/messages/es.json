@@ -49,7 +49,8 @@
     "inCart": "En Tu Carrito",
     "inCartCta": "En Carrito ({count}) • Agregar Otra",
     "ctaClaim": "Apartar Esta Gorra",
-    "colorway": "Combinación"
+    "colorway": "Combinación",
+    "dragHint": "Arrastra para girar"
   },
   "catalog": {
     "eyebrow": "CATÁLOGO COMPLETO",
@@ -179,7 +180,13 @@
     "layer3Desc": "Bordado de arco posterior 0880 sobre broche ajustable de 7 posiciones.",
     "layer4Title": "Corona Pro Estructurada",
     "layer4Desc": "Entretela interna reforzada que mantiene la horma alta impecable.",
-    "nextSection": "Estudio y Colección"
+    "nextSection": "Estudio y Colección",
+    "steps": {
+      "front": "Frente",
+      "flanks": "Laterales",
+      "back": "Trasera",
+      "structure": "Estructura"
+    }
   },
   "footer": {
     "tagline": "Gorras con carácter sin pedir disculpas.",

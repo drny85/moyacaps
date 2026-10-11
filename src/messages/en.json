@@ -49,7 +49,8 @@
     "inCart": "In Your Bag",
     "inCartCta": "In Bag ({count}) • Claim Another",
     "ctaClaim": "Claim This Cap",
-    "colorway": "Colorway"
+    "colorway": "Colorway",
+    "dragHint": "Drag to rotate"
   },
   "catalog": {
     "eyebrow": "FULL ROSTER",
@@ -179,7 +180,13 @@
     "layer3Desc": "Rear custom 0880 arch embroidery over a 7-hole adjustable snapback.",
     "layer4Title": "Reinforced Pro Crown",
     "layer4Desc": "Internal buckram structuring guarantees an uncrushable high profile.",
-    "nextSection": "Studio & Collection"
+    "nextSection": "Studio & Collection",
+    "steps": {
+      "front": "Front",
+      "flanks": "Temples",
+      "back": "Rear",
+      "structure": "Structure"
+    }
   },
   "footer": {
     "tagline": "Unapologetic headwear crafted for the bold.",

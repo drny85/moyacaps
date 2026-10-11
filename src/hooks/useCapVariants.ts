@@ -1,0 +1,42 @@
+"use client";
+
+import { useMemo } from "react";
+import { useQuery } from "convex/react";
+import { api } from "@convex/_generated/api";
+import { CAP_VARIANTS, type CapVariant } from "@/data/caps";
+
+/**
+ * Live catalog variants from Convex, mapped to the client `CapVariant` shape.
+ * Falls back to the static catalog until Convex responds (or when it is empty).
+ */
+export function useCapVariants(): { caps: CapVariant[]; isLive: boolean } {
+  const convexVariants = useQuery(api.products.getVariants, {});
+
+  return useMemo(() => {
+    if (convexVariants && convexVariants.length > 0) {
+      return {
+        isLive: true,
+        caps: convexVariants.map((v) => ({
+          id: v.variantId,
+          nameEn: v.nameEn,
+          nameEs: v.nameEs,
+          silhouette: (v.silhouette as "snapback" | "trucker") || "snapback",
+          primaryHex: v.primaryHex,
+          secondaryHex: v.secondaryHex,
+          image: v.image,
+          stock: v.stock,
+          priceUsd: v.priceUsd,
+          isFeatured: v.isFeatured,
+          tagEn: v.isFeatured ? "Signature Edition" : undefined,
+          tagEs: v.isFeatured ? "Edición Insignia" : undefined,
+          isDrop: v.isDrop,
+          dropDate: v.dropDate,
+          dropBadgeTextEn: v.dropBadgeTextEn,
+          dropBadgeTextEs: v.dropBadgeTextEs,
+          dropStatus: v.dropStatus,
+        })),
+      };
+    }
+    return { isLive: false, caps: CAP_VARIANTS };
+  }, [convexVariants]);
+}

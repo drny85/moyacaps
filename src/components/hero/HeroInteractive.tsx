@@ -1,443 +1,260 @@
 "use client";
 
 import { useTranslations, useLocale } from "next-intl";
-import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
-import { Sparkles, ArrowRight, ShieldCheck, CheckCircle2, RotateCw, Pause, Play, ChevronDown, Check, Bell } from "lucide-react";
-import Image from "next/image";
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import { useStore } from "@/store/useStore";
-import { CAP_VARIANTS, type CapVariant } from "@/data/caps";
-
-const ANGLES = [
-  { key: "front", label: "Front" },
-  { key: "left", label: "Left Devil" },
-  { key: "back", label: "0880 Back" },
-  { key: "right", label: "Right Devil" },
-] as const;
-
-/** Featured colorways for quick-swap in hero */
-const HERO_COLORWAYS = CAP_VARIANTS.filter((c) => c.isFeatured || c.stock <= 8).slice(0, 5);
-// Fallback: if not enough, take first 5
-const QUICK_SWAP_CAPS = HERO_COLORWAYS.length >= 3 ? HERO_COLORWAYS : CAP_VARIANTS.slice(0, 5);
-
+import { motion, useReducedMotion } from "framer-motion";
+import { ArrowRight, Check, Bell, Rotate3d } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
+import { useStore } from "@/store/useStore";
+import type { CapVariant } from "@/data/caps";
+import { useCapVariants } from "@/hooks/useCapVariants";
+import { useCapPurchaseState } from "@/hooks/useCapPurchaseState";
+import { CapTurntable, type TurntableFrame } from "@/components/viewer/CapTurntable";
+import { DURATION, EASE, STAGGER } from "@/lib/motion";
+
+const FLAGSHIP_ID = "negro-rojo";
+
+/** Turntable order: dragging right reveals the left flank first */
+const FLAGSHIP_ANGLES = ["front", "left", "back", "right"] as const;
+
+/** Up to five swatches: the flagship first, then featured / low-stock colorways */
+function pickQuickSwap(caps: CapVariant[]) {
+  const featured = caps.filter((c) => c.isFeatured || c.stock <= 8);
+  const pool = featured.length >= 3 ? featured : caps;
+  const flagship = caps.find((c) => c.id === FLAGSHIP_ID);
+  const rest = pool.filter((c) => c.id !== FLAGSHIP_ID);
+  return (flagship ? [flagship, ...rest] : rest).slice(0, 5);
+}
 
 export function HeroInteractive() {
   const t = useTranslations("hero");
   const tCatalog = useTranslations("catalog");
   const locale = useLocale();
-  const { addToCart, openDropAlert, currency, cart } = useStore();
-  const convexVariants = useQuery(api.products.getVariants, {});
+  const reduceMotion = useReducedMotion() ?? false;
+  const { addToCart, openDropAlert } = useStore();
+  const { caps, isLive } = useCapVariants();
   const upcomingDrops = useQuery(api.products.getUpcomingDrops);
   const activeUpcomingDrop = upcomingDrops && upcomingDrops.length > 0 ? upcomingDrops[0] : null;
-  const [activeAngle, setActiveAngle] = useState<number>(0);
-  const [isSpinning, setIsSpinning] = useState(true);
-  const [isPaused, setIsPaused] = useState(false);
-  const [activeCap, setActiveCap] = useState(CAP_VARIANTS[0]);
 
-  const quickSwapCaps: CapVariant[] = useMemo(() => {
-    if (convexVariants && convexVariants.length > 0) {
-      const mapped = convexVariants.map((v) => ({
-        id: v.variantId,
-        nameEn: v.nameEn,
-        nameEs: v.nameEs,
-        silhouette: (v.silhouette as "snapback" | "trucker") || "snapback",
-        primaryHex: v.primaryHex,
-        secondaryHex: v.secondaryHex,
-        image: v.image,
-        stock: v.stock,
-        priceUsd: v.priceUsd,
-        isFeatured: v.isFeatured,
-        isDrop: v.isDrop,
-        dropDate: v.dropDate,
-        dropBadgeTextEn: v.dropBadgeTextEn,
-        dropBadgeTextEs: v.dropBadgeTextEs,
-        dropStatus: v.dropStatus,
-      }));
-      const featured = mapped.filter((c) => c.isFeatured || c.stock <= 8).slice(0, 5);
-      return featured.length >= 3 ? featured : mapped.slice(0, 5);
+  const quickSwapCaps = useMemo(() => pickQuickSwap(caps), [caps]);
+  const [activeCapId, setActiveCapId] = useState(FLAGSHIP_ID);
+  const activeCap = caps.find((c) => c.id === activeCapId) ?? quickSwapCaps[0];
+
+  // If the active cap disappears from the live catalog, fall back to the first quick-swap cap.
+  useEffect(() => {
+    if (isLive && !caps.some((c) => c.id === activeCapId) && quickSwapCaps.length > 0) {
+      setActiveCapId(quickSwapCaps[0].id);
     }
-    return QUICK_SWAP_CAPS;
-  }, [convexVariants]);
+  }, [isLive, caps, activeCapId, quickSwapCaps]);
 
-  const liveVariant = convexVariants?.find((v) => v.variantId === activeCap.id);
-  const isDropUpcoming = Boolean(
-    (liveVariant?.isDrop ?? activeCap.isDrop) &&
-    (liveVariant?.dropStatus ?? activeCap.dropStatus) !== "live" &&
-    ((typeof (liveVariant?.dropDate ?? activeCap.dropDate) === "number" &&
-      Date.now() < (liveVariant?.dropDate ?? activeCap.dropDate ?? 0)) ||
-      (liveVariant?.dropStatus ?? activeCap.dropStatus) === "scheduled")
+  const { stock, inCartQty, isInCart, isOutOfStock, isMaxInCart, isDropUpcoming } = useCapPurchaseState(activeCap);
+  const name = locale === "es" ? activeCap.nameEs : activeCap.nameEn;
+
+  // ── Real-photo turntable: every angle shot for the flagship, the catalog shot otherwise ──
+  const tAngles = useTranslations("pdp.angles");
+  const frames: TurntableFrame[] = useMemo(
+    () =>
+      activeCap.id === FLAGSHIP_ID
+        ? FLAGSHIP_ANGLES.map((angle) => ({ src: `/caps/angles/${angle}.png`, label: tAngles(angle) }))
+        : [{ src: activeCap.image, label: tAngles("hero") }],
+    [activeCap.id, activeCap.image, tAngles]
   );
+  const [hasTurned, setHasTurned] = useState(false);
 
-  // If activeCap is no longer in live available variants, swap to first available
-  useEffect(() => {
-    if (convexVariants && convexVariants.length > 0) {
-      const isAvailable = convexVariants.some((v) => v.variantId === activeCap.id);
-      if (!isAvailable && quickSwapCaps.length > 0) {
-        setActiveCap(quickSwapCaps[0]);
-      }
-    }
-  }, [convexVariants, activeCap.id, quickSwapCaps]);
-  const [imageLoaded, setImageLoaded] = useState(false);
-  const [isMounted, setIsMounted] = useState(false);
-  const sectionRef = useRef<HTMLElement>(null);
-
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  const stock = liveVariant ? (typeof liveVariant.stock === "number" ? liveVariant.stock : 0) : (activeCap.stock ?? 0);
-  const isOutOfStock = stock <= 0;
-
-  const inCartItem = isMounted ? cart.find((i) => i.id === activeCap.id) : undefined;
-  const inCartQty = inCartItem?.quantity || 0;
-  const isInCart = inCartQty > 0;
-  const isMaxInCart = inCartQty >= stock;
-
-  const currentAngle = ANGLES[activeAngle];
-
-  // Parallax scroll transforms
-  const { scrollYProgress } = useScroll({
-    target: sectionRef,
-    offset: ["start start", "end start"],
+  const lineReveal = (i: number) => ({
+    initial: { y: reduceMotion ? 0 : "105%", opacity: reduceMotion ? 0 : 1 },
+    animate: { y: 0, opacity: 1 },
+    transition: { duration: DURATION.slow, delay: 0.15 + i * 0.12, ease: EASE.out },
   });
-  const orbY1 = useTransform(scrollYProgress, [0, 1], [0, -120]);
-  const orbY2 = useTransform(scrollYProgress, [0, 1], [0, -80]);
-  const orbY3 = useTransform(scrollYProgress, [0, 1], [0, -200]);
-
-  // Auto-spin timer (merged from TurntableStudio)
-  useEffect(() => {
-    if (!isSpinning || isPaused) return;
-    const interval = setInterval(() => {
-      setActiveAngle((prev) => (prev + 1) % ANGLES.length);
-    }, 2500);
-    return () => clearInterval(interval);
-  }, [isSpinning, isPaused]);
-
-  // Reset image loaded state on cap/angle change
-  useEffect(() => {
-    setImageLoaded(false);
-  }, [activeCap.id, activeAngle]);
-
-  const handleAngleClick = useCallback((idx: number) => {
-    setActiveAngle(idx);
-    setIsSpinning(false);
-  }, []);
-
-  const toggleSpin = useCallback(() => {
-    if (!isSpinning) {
-      setIsSpinning(true);
-      setIsPaused(false);
-    } else {
-      setIsPaused((p) => !p);
-    }
-  }, [isSpinning]);
-
-  const handleColorwaySwap = useCallback((cap: typeof CAP_VARIANTS[0]) => {
-    setActiveCap(cap);
-    setActiveAngle(0);
-    setIsSpinning(true);
-    setIsPaused(false);
-  }, []);
-
-  // For the hero, use cap-specific angle images if flagship, otherwise cap main image
-  const capImageSrc = activeCap.id === "negro-rojo"
-    ? `/caps/angles/${currentAngle.key}.png`
-    : activeCap.image;
 
   return (
-    <section id="interactive-studio" ref={sectionRef} className="relative overflow-hidden px-4 sm:px-6 lg:px-8 pt-4 sm:pt-8 pb-16 sm:pb-24">
-      {/* ── Parallax Ambient Background ── */}
-      <motion.div style={isMounted ? { y: orbY1 } : undefined} className="ambient-orb top-[10%] left-1/2 -translate-x-1/2 w-[700px] h-[700px] bg-moya-red/20 animate-glow-pulse" />
-      <motion.div style={isMounted ? { y: orbY2 } : undefined} className="ambient-orb top-[30%] left-[15%] w-[400px] h-[400px] bg-moya-violet/10 animate-glow-pulse" />
-      <motion.div style={isMounted ? { y: orbY3 } : undefined} className="ambient-orb bottom-[10%] right-[10%] w-[350px] h-[350px] bg-moya-green/10 animate-glow-pulse" />
+    <section
+      id="interactive-studio"
+      className="relative overflow-clip px-4 sm:px-6 lg:px-8 pt-4 sm:pt-10 pb-14 sm:pb-24"
+    >
+      {/* Single soft colorway-tinted glow behind the cap */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute right-[-10%] top-[5%] h-[70%] w-[70%] rounded-full blur-[140px] opacity-40 transition-colors duration-700 lg:right-0"
+        style={{ backgroundColor: `${activeCap.secondaryHex}55` }}
+      />
 
-      {/* ── Texture Overlay ── */}
-      <div className="absolute inset-0 texture-lines pointer-events-none" />
+      <div className="relative z-10 mx-auto grid w-full max-w-7xl grid-cols-1 items-center gap-4 lg:grid-cols-12 lg:gap-10">
+        {/* ── Cap stage ── */}
+        <div className="order-1 lg:order-2 lg:col-span-7">
+          <div className="relative mx-auto aspect-square w-full max-w-[min(100%,36svh)] sm:max-w-[min(560px,46svh)] lg:max-w-none">
+            <CapTurntable
+              key={activeCap.id}
+              frames={frames}
+              alt={`Good Luck 0880 — ${name}`}
+              glowHex={`${activeCap.secondaryHex}66`}
+              priority
+              className="h-full w-full"
+              onInteract={() => setHasTurned(true)}
+            />
 
-      <div className="relative max-w-7xl mx-auto w-full flex flex-col items-center text-center z-10">
-        {/* ── Badges Row ── */}
-        <div className="flex flex-wrap items-center justify-center gap-2.5 mb-3 sm:mb-4">
-          <motion.div
-            initial={{ opacity: 0, y: 20, rotate: -5 }}
-            animate={{ opacity: 1, y: 0, rotate: -2 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            className="sticker-badge sticker-badge--red animate-float-badge"
-          >
-            <Sparkles className="w-3 h-3" />
-            <span>{t("badge")}</span>
-          </motion.div>
+            {frames.length > 1 && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: hasTurned ? 0 : 1 }}
+                transition={{ duration: DURATION.base, delay: hasTurned ? 0 : 1.4 }}
+                className="pointer-events-none absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-1.5 whitespace-nowrap rounded-full border border-black/10 bg-white/70 px-3 py-1.5 text-[11px] font-display font-semibold text-zinc-700 backdrop-blur-md dark:border-white/10 dark:bg-black/40 dark:text-zinc-300"
+              >
+                <Rotate3d className="h-3.5 w-3.5" />
+                <span>{t("dragHint")}</span>
+              </motion.div>
+            )}
 
-          {activeUpcomingDrop && (
-            <motion.a
-              href="#drop-radar"
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.4, delay: 0.2 }}
-              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] sm:text-xs font-mono font-bold bg-moya-red/15 hover:bg-moya-red/25 text-moya-red border border-moya-red/40 transition-all shadow-xs cursor-pointer group"
-            >
-              <span className="w-2 h-2 rounded-full bg-moya-red animate-ping shrink-0" />
-              <span className="uppercase tracking-wider">
-                {locale === "es" ? "Radar VIP Activo" : "VIP Drop Radar Active"}
-              </span>
-              <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform shrink-0" />
-            </motion.a>
-          )}
+            {isInCart && (
+              <div className="absolute left-2 top-2 z-20 flex items-center gap-1.5 rounded-full border border-emerald-500/40 bg-white/80 px-2.5 py-1.5 text-[11px] font-display font-semibold text-emerald-600 backdrop-blur-md dark:bg-black/50 dark:text-emerald-400">
+                <Check className="h-3 w-3" />
+                <span>
+                  {t("inCart")} ({inCartQty})
+                </span>
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* ── Oversized Headline ── */}
-        <motion.h1
-          initial={{ opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.2 }}
-          className="font-display text-5xl sm:text-7xl lg:text-[5.5rem] xl:text-[6.5rem] font-bold tracking-tight leading-[0.95] mb-4 sm:mb-6 text-zinc-900 dark:text-white"
-        >
-          {t("titlePrefix")}{" "}
-          <span className="text-gradient-moya inline-block">
-            {t("titleHighlight")}
-          </span>
-        </motion.h1>
+        {/* ── Copy + purchase ── */}
+        <div className="order-2 flex flex-col items-center text-center lg:order-1 lg:col-span-5 lg:items-start lg:text-left">
+          <div className="mb-3 flex flex-wrap items-center justify-center gap-2 lg:justify-start">
+            <motion.span
+              initial={{ opacity: 0, y: reduceMotion ? 0 : 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: DURATION.base, ease: EASE.out }}
+              className="font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-moya-red"
+            >
+              {t("badge")}
+            </motion.span>
 
-        {/* ── Subtitle ── */}
-        <motion.p
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.4 }}
-          className="text-sm sm:text-lg text-zinc-600 dark:text-zinc-400 max-w-2xl mx-auto mb-8 sm:mb-10 leading-relaxed"
-        >
-          {t("subtitle")}
-        </motion.p>
+            {activeUpcomingDrop && (
+              <motion.a
+                href="#drop-radar"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: DURATION.base, delay: 0.3 }}
+                className="group inline-flex items-center gap-1.5 rounded-full border border-moya-red/40 bg-moya-red/10 px-2.5 py-0.5 font-mono text-[11px] font-bold uppercase tracking-wider text-moya-red transition-colors hover:bg-moya-red/20"
+              >
+                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-moya-red animate-pulse" />
+                <span>{locale === "es" ? "Drop VIP activo" : "VIP drop live"}</span>
+                <ArrowRight className="h-3 w-3 shrink-0 transition-transform group-hover:translate-x-0.5" />
+              </motion.a>
+            )}
+          </div>
 
-        {/* ── Cap Showcase (Full-bleed centerpiece) ── */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.85 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.8, delay: 0.3, ease: "easeOut" }}
-          className="relative w-full max-w-[540px] aspect-square mx-auto mb-6"
-          onMouseEnter={() => setIsPaused(true)}
-          onMouseLeave={() => setIsPaused(false)}
-        >
-          {/* Pedestal glow — uses cap's primary color */}
-          <div
-            className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[80%] h-20 rounded-full blur-[60px] pointer-events-none transition-colors duration-700"
-            style={{ backgroundColor: `${activeCap.primaryHex}33` }}
-          />
+          <h1 className="font-poster uppercase leading-[0.9] tracking-tight text-zinc-950 dark:text-white text-[clamp(2.75rem,12vw,4.5rem)] sm:text-7xl xl:text-8xl">
+            <span className="block overflow-hidden pb-[0.04em]">
+              <motion.span className="block" {...lineReveal(0)}>
+                {t("titlePrefix")}
+              </motion.span>
+            </span>
+            <span className="block overflow-hidden pb-[0.04em]">
+              <motion.span className="block text-moya-red" {...lineReveal(1)}>
+                {t("titleHighlight")}
+              </motion.span>
+            </span>
+          </h1>
 
-          {/* Floating spec badges */}
-          <motion.div
-            initial={{ opacity: 0, x: -30 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5, delay: 0.8 }}
-            className="absolute top-[15%] -left-2 sm:left-0 lg:-left-8 z-20 glass-dark border border-black/[0.08] dark:border-white/[0.08] px-3 py-2 rounded-xl text-[10px] sm:text-xs font-semibold text-zinc-800 dark:text-zinc-200 flex items-center gap-2 shadow-xl max-w-[140px] sm:max-w-none"
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: DURATION.base, delay: 0.45 }}
+            className="mt-4 hidden max-w-md text-base leading-relaxed text-zinc-600 dark:text-zinc-400 sm:block"
           >
-            <CheckCircle2 className="w-3.5 h-3.5 text-moya-green shrink-0" />
-            <span>{t("specs.embroidery")}</span>
-          </motion.div>
+            {t("subtitle")}
+          </motion.p>
 
-          <motion.div
-            initial={{ opacity: 0, x: 30 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5, delay: 1.0 }}
-            className="absolute top-[25%] -right-2 sm:right-0 lg:-right-8 z-20 glass-dark border border-black/[0.08] dark:border-white/[0.08] px-3 py-2 rounded-xl text-[10px] sm:text-xs font-semibold text-zinc-800 dark:text-zinc-200 flex items-center gap-2 shadow-xl max-w-[140px] sm:max-w-none"
-          >
-            <ShieldCheck className="w-3.5 h-3.5 text-moya-red shrink-0" />
-            <span>{t("specs.edition")}</span>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 1.2 }}
-            className="absolute bottom-[12%] -left-2 sm:left-4 lg:-left-4 z-20 glass-dark border border-black/[0.08] dark:border-white/[0.08] px-3 py-2 rounded-xl text-[10px] sm:text-xs font-semibold text-zinc-800 dark:text-zinc-200 flex items-center gap-2 shadow-xl max-w-[140px] sm:max-w-none"
-          >
-            <CheckCircle2 className="w-3.5 h-3.5 text-moya-violet shrink-0" />
-            <span>{t("specs.closure")}</span>
-          </motion.div>
-
-          {/* In Bag Indicator */}
-          {isInCart && (
-            <div className="absolute top-3 left-3 z-20 flex items-center gap-1.5 glass-dark border border-emerald-500/40 px-2.5 py-1.5 rounded-full text-[10px] font-display font-semibold text-emerald-500 dark:text-emerald-400 shadow-lg shadow-emerald-950/20 dark:shadow-emerald-950/40 animate-pulse">
-              <Check className="w-3 h-3 text-emerald-500 dark:text-emerald-400" />
-              <span>{t("inCart")} ({inCartQty})</span>
+          {/* ── Colorway swatches ── */}
+          <div className="mt-4 flex flex-col items-center gap-2 sm:mt-6 lg:items-start">
+            <div className="flex items-center gap-2.5" role="radiogroup" aria-label={t("colorway")}>
+              {quickSwapCaps.map((cap, i) => (
+                <motion.button
+                  key={cap.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={activeCap.id === cap.id}
+                  aria-label={locale === "es" ? cap.nameEs : cap.nameEn}
+                  title={locale === "es" ? cap.nameEs : cap.nameEn}
+                  onClick={() => setActiveCapId(cap.id)}
+                  initial={{ opacity: 0, scale: reduceMotion ? 1 : 0.6 }}
+                  animate={{ opacity: 1, scale: activeCap.id === cap.id ? 1.12 : 1 }}
+                  transition={{ duration: DURATION.fast, delay: 0.5 + i * STAGGER, ease: EASE.pop }}
+                  className={`relative h-8 w-8 rounded-full transition-shadow ${
+                    activeCap.id === cap.id
+                      ? "ring-2 ring-moya-red ring-offset-2 ring-offset-background"
+                      : "hover:ring-1 hover:ring-zinc-400 hover:ring-offset-1 hover:ring-offset-background dark:hover:ring-white/30"
+                  }`}
+                >
+                  <span
+                    className="block h-full w-full rounded-full border border-black/10 shadow-sm dark:border-white/20"
+                    style={{ background: `linear-gradient(135deg, ${cap.primaryHex} 50%, ${cap.secondaryHex} 50%)` }}
+                  />
+                </motion.button>
+              ))}
             </div>
-          )}
-
-          {/* Active angle indicator */}
-          <div className="absolute top-3 right-3 z-20 flex items-center gap-1.5 glass-dark border border-black/[0.08] dark:border-white/[0.08] px-2.5 py-1.5 rounded-full text-[10px] font-display font-semibold text-zinc-700 dark:text-zinc-300">
-            <RotateCw className="w-3 h-3 text-moya-red animate-spin-slow" />
-            <span className="capitalize">{currentAngle.label}</span>
+            <p className="text-xs font-display font-semibold text-zinc-600 dark:text-zinc-400">
+              {name} · <span className="font-mono text-zinc-900 dark:text-white">${activeCap.priceUsd} USD</span>
+            </p>
           </div>
 
-          {/* Cap image with crossfade + skeleton */}
-          <div className="relative w-full h-full flex items-center justify-center">
-            {/* Skeleton shimmer (shows while loading) */}
-            {!imageLoaded && (
-              <div className="absolute inset-[15%] skeleton rounded-3xl" />
-            )}
-
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={`${activeCap.id}-${currentAngle.key}`}
-                initial={{ opacity: 0, scale: 0.92, rotateY: 15 }}
-                animate={{ opacity: 1, scale: 1, rotateY: 0 }}
-                exit={{ opacity: 0, scale: 1.05, rotateY: -15 }}
-                transition={{ duration: 0.4, ease: "easeInOut" }}
-                className="relative w-full h-full"
-              >
-                <Image
-                  src={capImageSrc}
-                  alt={`Good Luck 0880 - ${activeCap.nameEn} - ${currentAngle.label}`}
-                  fill
-                  sizes="(max-width: 640px) 100vw, 540px"
-                  className="object-contain drop-shadow-[0_30px_60px_rgba(0,0,0,0.9)] select-none"
-                  priority
-                  onLoad={() => setImageLoaded(true)}
-                />
-              </motion.div>
-            </AnimatePresence>
-          </div>
-        </motion.div>
-
-        {/* ── Colorway Quick-Swap ── */}
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.5 }}
-          className="flex items-center gap-2 mb-4"
-        >
-          <span className="text-[10px] font-display font-semibold text-zinc-600 uppercase tracking-wider mr-1">
-            {t("colorway")}
-          </span>
-          {quickSwapCaps.map((cap) => {
-            const capInCart = isMounted && cart.some((i) => i.id === cap.id);
-            return (
+          {/* ── CTAs ── */}
+          <motion.div
+            initial={{ opacity: 0, y: reduceMotion ? 0 : 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: DURATION.base, delay: 0.6, ease: EASE.out }}
+            className="mt-4 flex w-full flex-col items-stretch gap-2.5 sm:mt-6 sm:w-auto sm:flex-row sm:items-center"
+          >
+            {isDropUpcoming ? (
               <button
-                key={cap.id}
-                onClick={() => handleColorwaySwap(cap)}
-                className={`group relative w-7 h-7 sm:w-8 sm:h-8 rounded-full transition-all duration-300 ${
-                  activeCap.id === cap.id
-                    ? "ring-2 ring-moya-red ring-offset-2 ring-offset-background scale-110"
-                    : "hover:scale-110 hover:ring-1 hover:ring-zinc-400 dark:hover:ring-white/30 hover:ring-offset-1 hover:ring-offset-background"
-                }`}
-                title={cap.nameEn}
+                onClick={() => openDropAlert(activeCap)}
+                className="flex items-center justify-center gap-2 rounded-2xl bg-moya-red px-7 py-4 font-display text-sm font-bold text-white shadow-lg shadow-moya-red-deep/30 transition-all hover:bg-rose-500 active:scale-95 sm:text-base"
               >
-                <span
-                  className="block w-full h-full rounded-full border-2 border-white/40 dark:border-white/20 shadow-md"
-                  style={{
-                    background: `linear-gradient(135deg, ${cap.primaryHex} 50%, ${cap.secondaryHex} 50%)`,
-                  }}
-                />
-                {capInCart && (
-                  <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-500 border border-background flex items-center justify-center text-[8px] font-bold text-white shadow-sm">
-                    ✓
-                  </span>
-                )}
+                <Bell className="h-4 w-4" />
+                <span>{locale === "es" ? "Solicitar Alerta VIP" : "Claim VIP Drop Alert"}</span>
               </button>
-            );
-          })}
-        </motion.div>
-
-        {/* ── Angle Controls ── */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.6 }}
-          className="flex items-center gap-2 sm:gap-3 mb-8 sm:mb-10"
-        >
-          {ANGLES.map((ang, idx) => (
-            <button
-              key={ang.key}
-              onClick={() => handleAngleClick(idx)}
-              className={`px-3 sm:px-4 py-2 rounded-xl text-[11px] sm:text-xs font-display font-semibold transition-all ${
-                activeAngle === idx
-                  ? "bg-moya-red text-white shadow-lg shadow-moya-red-deep/40 scale-105"
-                  : "glass-pill text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10"
-              }`}
-            >
-              {ang.label}
-            </button>
-          ))}
-
-          <button
-            onClick={toggleSpin}
-            className="p-2 rounded-xl glass-pill text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 transition-colors ml-1"
-            title={isSpinning && !isPaused ? "Pause auto-spin" : "Play auto-spin"}
-          >
-            {isSpinning && !isPaused ? (
-              <Pause className="w-3.5 h-3.5 text-moya-green" />
+            ) : isOutOfStock ? (
+              <button
+                disabled
+                className="cursor-not-allowed rounded-2xl bg-zinc-200 px-7 py-4 font-display text-sm font-semibold text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500 sm:text-base"
+              >
+                {tCatalog("soldOut")}
+              </button>
+            ) : isMaxInCart ? (
+              <button
+                disabled
+                className="flex cursor-not-allowed items-center justify-center gap-2 rounded-2xl border border-emerald-500/30 bg-emerald-600/10 px-7 py-4 font-display text-sm font-semibold text-emerald-700 dark:text-emerald-400/80 sm:text-base"
+              >
+                <Check className="h-4 w-4" />
+                <span>
+                  {tCatalog("maxStockReached")} ({inCartQty})
+                </span>
+              </button>
             ) : (
-              <Play className="w-3.5 h-3.5" />
+              <button
+                onClick={() => addToCart(activeCap, 1, stock)}
+                className={`group flex items-center justify-center gap-2.5 rounded-2xl px-7 py-4 font-display text-sm font-bold transition-all active:scale-95 sm:text-base ${
+                  isInCart
+                    ? "border border-emerald-500/40 bg-emerald-600/15 text-emerald-700 hover:bg-emerald-600/25 dark:text-emerald-300"
+                    : "bg-moya-red text-white shadow-lg shadow-moya-red-deep/30 hover:bg-rose-500"
+                }`}
+              >
+                {isInCart && <Check className="h-4 w-4" />}
+                <span>{isInCart ? t("inCartCta", { count: inCartQty }) : t("ctaClaim")}</span>
+                <span className="font-mono opacity-80">${activeCap.priceUsd}</span>
+              </button>
             )}
-          </button>
-        </motion.div>
 
-        {/* ── CTAs ── */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.7 }}
-          className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 w-full sm:w-auto"
-        >
-          <a
-            href="#catalog"
-            className="px-8 py-4 rounded-2xl bg-moya-red hover:bg-rose-500 text-white font-display font-bold text-sm sm:text-base shadow-xl shadow-moya-red-deep/40 transition-all hover:scale-[1.03] hover:shadow-2xl active:scale-95 flex items-center justify-center gap-2.5 group"
-          >
-            <span>{t("ctaShop")}</span>
-            <ArrowRight className="w-4 h-4 group-hover:translate-x-1.5 transition-transform" />
-          </a>
-
-          {isDropUpcoming ? (
-            <button
-              onClick={() => openDropAlert(activeCap)}
-              className="px-6 py-4 rounded-2xl bg-gradient-to-r from-moya-red via-rose-600 to-amber-600 hover:brightness-110 active:scale-95 text-white font-display font-bold text-sm sm:text-base transition-all flex items-center justify-center gap-2.5 shadow-xl shadow-moya-red-deep/40"
+            <a
+              href="#catalog"
+              className="group flex items-center justify-center gap-2 rounded-2xl border border-black/10 px-6 py-4 font-display text-sm font-semibold text-zinc-900 transition-colors hover:border-black/25 hover:bg-black/[0.03] dark:border-white/15 dark:text-white dark:hover:border-white/30 dark:hover:bg-white/[0.05] sm:text-base"
             >
-              <Bell className="w-4 h-4 animate-pulse" />
-              <span>{locale === "es" ? "Solicitar Alerta VIP" : "Claim VIP Drop Alert"}</span>
-            </button>
-          ) : isOutOfStock ? (
-            <button
-              disabled
-              className="px-6 py-4 rounded-2xl bg-zinc-200 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 font-display font-semibold text-sm sm:text-base cursor-not-allowed border border-transparent"
-            >
-              <span>{tCatalog("soldOut")}</span>
-            </button>
-          ) : isMaxInCart ? (
-            <button
-              disabled
-              className="px-6 py-4 rounded-2xl bg-emerald-600/10 dark:bg-emerald-600/15 text-emerald-700 dark:text-emerald-400/80 font-display font-semibold text-sm sm:text-base cursor-not-allowed border border-emerald-500/30 flex items-center justify-center gap-2.5"
-            >
-              <Check className="w-4 h-4 text-emerald-500" />
-              <span>{tCatalog("maxStockReached")} ({inCartQty})</span>
-            </button>
-          ) : isInCart ? (
-            <button
-              onClick={() => addToCart(activeCap, 1, stock)}
-              className="px-6 py-4 rounded-2xl bg-emerald-600/15 dark:bg-emerald-600/20 hover:bg-emerald-600/25 dark:hover:bg-emerald-600/30 active:bg-emerald-600/40 text-emerald-600 dark:text-emerald-300 font-display font-semibold text-sm sm:text-base transition-all hover:scale-[1.03] active:scale-95 flex items-center justify-center gap-2.5 border border-emerald-500/40 shadow-lg shadow-emerald-950/10 dark:shadow-emerald-950/40"
-            >
-              <Check className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
-              <span>{t("inCartCta", { count: inCartQty })}</span>
-              <span className="text-emerald-600 dark:text-emerald-400 font-mono font-bold">
-                ${activeCap.priceUsd} USD
-              </span>
-            </button>
-          ) : (
-            <button
-              onClick={() => addToCart(activeCap, 1, stock)}
-              className="px-6 py-4 rounded-2xl glass-dark hover:bg-black/5 dark:hover:bg-white/10 text-zinc-900 dark:text-white font-display font-semibold text-sm sm:text-base transition-all hover:scale-[1.03] active:scale-95 flex items-center justify-center gap-2.5 border border-black/10 dark:border-white/10 hover:border-black/20 dark:hover:border-white/20"
-            >
-              <span>{t("ctaClaim")}</span>
-              <span className="text-emerald-600 dark:text-moya-green-light font-mono font-bold">
-                ${activeCap.priceUsd} USD
-              </span>
-            </button>
-          )}
-        </motion.div>
-      </div>
-
-      {/* ── Scroll Down Indicator ── */}
-      <div className="scroll-indicator text-zinc-500">
-        <ChevronDown className="w-6 h-6" />
+              <span>{t("ctaShop")}</span>
+              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+            </a>
+          </motion.div>
+        </div>
       </div>
     </section>
   );

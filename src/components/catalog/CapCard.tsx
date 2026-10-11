@@ -6,36 +6,21 @@ import { Link } from "@/i18n/routing";
 import { useStore } from "@/store/useStore";
 import type { CapVariant } from "@/data/caps";
 import { ShoppingBag, Eye, Sparkles, Check, Bell, Clock, Share2 } from "lucide-react";
-import { motion } from "framer-motion";
-import { useRef, useCallback, useState, useEffect } from "react";
+import { motion, useMotionTemplate, useMotionValue, useReducedMotion, useSpring, useTransform } from "framer-motion";
+import { useCallback, useState } from "react";
 import { useProductShare } from "@/lib/useProductShare";
+import { useCapPurchaseState } from "@/hooks/useCapPurchaseState";
+import { DURATION, EASE, SPRING } from "@/lib/motion";
 
 export function CapCard({ cap, index = 0 }: { cap: CapVariant; index?: number }) {
   const t = useTranslations("catalog");
   const tShare = useTranslations("share");
   const locale = useLocale();
-  const { addToCart, openQuickView, openDropAlert, currency, cart } = useStore();
+  const { addToCart, openQuickView, openDropAlert } = useStore();
   const { shareProduct } = useProductShare();
-  const cardRef = useRef<HTMLDivElement>(null);
   const [imageLoaded, setImageLoaded] = useState(false);
-  const [isMounted, setIsMounted] = useState(false);
-
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  const inCartItem = isMounted ? cart.find((i) => i.id === cap.id) : undefined;
-  const inCartQty = inCartItem?.quantity || 0;
-  const isInCart = inCartQty > 0;
-  const stock = typeof cap.stock === "number" ? cap.stock : 0;
-  const isOutOfStock = stock <= 0;
-  const isMaxInCart = inCartQty >= stock;
-
-  const isDropUpcoming = Boolean(
-    cap.isDrop &&
-    cap.dropStatus !== "live" &&
-    ((cap.dropDate && Date.now() < cap.dropDate) || cap.dropStatus === "scheduled")
-  );
+  const reduceMotion = useReducedMotion();
+  const { stock, inCartQty, isInCart, isOutOfStock, isMaxInCart, isDropUpcoming } = useCapPurchaseState(cap);
   const dropBadge = locale === "es" ? cap.dropBadgeTextEs || cap.dropBadgeTextEn : cap.dropBadgeTextEn;
 
   const name = locale === "es" ? cap.nameEs : cap.nameEn;
@@ -55,44 +40,58 @@ export function CapCard({ cap, index = 0 }: { cap: CapVariant; index?: number })
     [cap.id, cap.image, name, shareProduct]
   );
 
-  // 3D tilt effect on mouse move (desktop hover only)
-  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    if (typeof window !== "undefined" && window.matchMedia("(hover: none)").matches) {
-      return;
-    }
-    const el = cardRef.current;
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / rect.width - 0.5;
-    const y = (e.clientY - rect.top) / rect.height - 0.5;
-    el.style.transform = `perspective(800px) rotateY(${x * 8}deg) rotateX(${-y * 8}deg) scale(1.02)`;
-  }, []);
+  // Pointer-tracked tilt + colorway glow (fine pointers only, no re-renders)
+  const pointerX = useMotionValue(0.5);
+  const pointerY = useMotionValue(0.5);
+  const hover = useSpring(0, SPRING.tilt);
+  const rotateY = useSpring(useTransform(pointerX, [0, 1], [-7, 7]), SPRING.tilt);
+  const rotateX = useSpring(useTransform(pointerY, [0, 1], [7, -7]), SPRING.tilt);
+  const glowX = useTransform(pointerX, (v) => `${v * 100}%`);
+  const glowY = useTransform(pointerY, (v) => `${v * 100}%`);
+  const glow = useMotionTemplate`radial-gradient(420px circle at ${glowX} ${glowY}, ${cap.primaryHex}40, transparent 65%)`;
 
-  const handleMouseLeave = useCallback(() => {
-    const el = cardRef.current;
-    if (!el) return;
-    el.style.transform = "perspective(800px) rotateY(0deg) rotateX(0deg) scale(1)";
-  }, []);
+  const handlePointerMove = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if (reduceMotion || e.pointerType !== "mouse") return;
+      const rect = e.currentTarget.getBoundingClientRect();
+      pointerX.set((e.clientX - rect.left) / rect.width);
+      pointerY.set((e.clientY - rect.top) / rect.height);
+      hover.set(1);
+    },
+    [reduceMotion, pointerX, pointerY, hover]
+  );
+
+  const handlePointerLeave = useCallback(() => {
+    pointerX.set(0.5);
+    pointerY.set(0.5);
+    hover.set(0);
+  }, [pointerX, pointerY, hover]);
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 30 }}
+      initial={{ opacity: 0, y: reduceMotion ? 0 : 36 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-50px" }}
-      transition={{ duration: 0.4, delay: index * 0.05 }}
-      className="w-full min-w-0"
+      transition={{ duration: DURATION.base, delay: (index % 4) * 0.07, ease: EASE.out }}
+      className="w-full min-w-0 [perspective:900px]"
     >
-      <div
-        ref={cardRef}
-        onMouseMove={handleMouseMove}
-        onMouseLeave={handleMouseLeave}
-        className={`group relative glass-card rounded-xl sm:rounded-2xl p-2 sm:p-3 flex flex-col border transition-all duration-500 ease-out cursor-pointer shadow-lg hover:shadow-2xl w-full min-w-0 overflow-hidden ${
+      <motion.div
+        onPointerMove={handlePointerMove}
+        onPointerLeave={handlePointerLeave}
+        style={{ rotateX, rotateY }}
+        className={`group relative isolate glass-card rounded-xl sm:rounded-2xl p-2 sm:p-3 flex flex-col border transition-[border-color,box-shadow] duration-300 ease-out cursor-pointer shadow-lg hover:shadow-2xl w-full min-w-0 overflow-hidden ${
           isInCart
             ? "border-emerald-500/40 shadow-emerald-950/10 dark:shadow-emerald-950/20 bg-emerald-950/[0.03] dark:bg-emerald-950/[0.05] hover:border-emerald-400/60 hover:shadow-emerald-950/30"
             : "border-black/[0.06] dark:border-white/[0.06] hover:border-moya-red/30 hover:shadow-moya-red-deep/10 dark:hover:shadow-moya-red-deep/20"
         }`}
-        style={{ transformStyle: "preserve-3d", transition: "transform 0.4s cubic-bezier(0.23, 1, 0.32, 1), border-color 0.3s, box-shadow 0.3s" }}
       >
+        {/* Colorway glow that follows the pointer */}
+        <motion.div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 -z-10"
+          style={{ background: glow, opacity: hover }}
+        />
+
         {/* ── Tags Row ── */}
         <div className="flex items-center justify-between mb-1.5 sm:mb-2 z-10 w-full min-w-0">
           <div className="flex items-center gap-1 sm:gap-1.5 overflow-hidden min-w-0 flex-1">
@@ -267,7 +266,7 @@ export function CapCard({ cap, index = 0 }: { cap: CapVariant; index?: number })
             </button>
           )}
         </div>
-      </div>
+      </motion.div>
     </motion.div>
   );
 }
