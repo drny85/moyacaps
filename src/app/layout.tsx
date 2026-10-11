@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, Space_Grotesk } from "next/font/google";
+import { Anton, Inter, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 
 const inter = Inter({
@@ -11,6 +11,13 @@ const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
   variable: "--font-display",
   weight: ["400", "500", "600", "700"],
+});
+
+// Condensed poster face — homepage headlines only
+const anton = Anton({
+  subsets: ["latin"],
+  variable: "--font-poster",
+  weight: "400",
 });
 
 export const metadata: Metadata = {
@@ -54,7 +61,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className={`${inter.variable} ${spaceGrotesk.variable} font-sans bg-background text-foreground antialiased min-h-screen selection:bg-moya-red selection:text-white transition-colors duration-300`}>
+      <body className={`${inter.variable} ${spaceGrotesk.variable} ${anton.variable} font-sans bg-background text-foreground antialiased min-h-screen selection:bg-moya-red selection:text-white transition-colors duration-300`}>
         {children}
       </body>
     </html>

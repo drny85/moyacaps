@@ -6,7 +6,7 @@ import { useTranslations, useLocale } from "next-intl";
 import { Link } from "@/i18n/routing";
 import { useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
   Radio,
   Bell,
@@ -26,6 +26,7 @@ import {
 import { useStore } from "@/store/useStore";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 import type { CapVariant } from "@/data/caps";
+import { EASE } from "@/lib/motion";
 
 interface TimeRemaining {
   days: number;
@@ -48,6 +49,38 @@ function calculateTimeRemaining(targetTimestamp: number): TimeRemaining {
   const seconds = Math.floor((diff / 1000) % 60);
 
   return { days, hours, minutes, seconds, totalMs: diff, isLive: false };
+}
+
+/** Odometer digit: the new value rolls in from below as the old one rolls out */
+function RollingDigit({ digit }: { digit: string }) {
+  const reduceMotion = useReducedMotion();
+  return (
+    <span className="relative inline-block h-[1.1em] w-[0.62em] overflow-hidden align-bottom">
+      <AnimatePresence initial={false} mode="popLayout">
+        <motion.span
+          key={digit}
+          initial={{ y: reduceMotion ? 0 : "100%", opacity: reduceMotion ? 0 : 1 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: reduceMotion ? 0 : "-100%", opacity: reduceMotion ? 0 : 1 }}
+          transition={{ duration: 0.35, ease: EASE.out }}
+          className="absolute inset-0 flex items-center justify-center"
+        >
+          {digit}
+        </motion.span>
+      </AnimatePresence>
+    </span>
+  );
+}
+
+function RollingNumber({ value }: { value: number }) {
+  const digits = String(value).padStart(2, "0").split("");
+  return (
+    <span className="inline-flex" aria-label={String(value)}>
+      {digits.map((d, i) => (
+        <RollingDigit key={digits.length - i} digit={d} />
+      ))}
+    </span>
+  );
 }
 
 export function DropRadar() {
@@ -120,9 +153,6 @@ export function DropRadar() {
 
   return (
     <section id="drop-radar" className="relative w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 overflow-hidden scroll-mt-24">
-      {/* Background Ambient Glow */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3/4 h-80 bg-gradient-to-r from-moya-red/10 via-amber-500/10 to-moya-gold/10 blur-3xl pointer-events-none rounded-full" />
-
       {/* Main Radar Container */}
       <div className="relative glass-card rounded-3xl p-6 sm:p-10 border border-zinc-200/90 dark:border-white/[0.08] shadow-2xl overflow-hidden bg-white/95 dark:bg-gradient-to-br dark:from-zinc-950/80 dark:via-zinc-900/90 dark:to-zinc-950/95 text-zinc-900 dark:text-white transition-colors duration-300">
         {/* Radar Telemetry Header */}
@@ -250,7 +280,7 @@ export function DropRadar() {
             ) : (
               <div className="mb-6">
                 <div className="flex items-center gap-2 text-xs font-mono text-zinc-600 dark:text-zinc-400 mb-2 font-medium">
-                  <Clock className="w-3.5 h-3.5 text-amber-600 dark:text-moya-gold" />
+                  <Clock className="w-3.5 h-3.5 text-moya-red" />
                   <span>{t("dropStartsIn")}: <strong className="text-zinc-950 dark:text-white font-semibold">{formattedTargetDate}</strong></span>
                 </div>
 
@@ -266,8 +296,8 @@ export function DropRadar() {
                       key={idx}
                       className="flex flex-col items-center justify-center p-3 sm:p-4 rounded-2xl bg-zinc-100/90 dark:bg-white/[0.04] border border-zinc-200/90 dark:border-white/[0.08] shadow-xs backdrop-blur-md relative overflow-hidden group hover:border-moya-red/50 dark:hover:border-moya-red/40 transition-all"
                     >
-                      <span className="font-mono font-black text-2xl sm:text-4xl text-zinc-950 dark:text-white tracking-tight">
-                        {String(unit.value).padStart(2, "0")}
+                      <span className="font-mono font-black text-2xl sm:text-4xl text-zinc-950 dark:text-white tracking-tight tabular-nums">
+                        <RollingNumber value={unit.value} />
                       </span>
                       <span className="text-[9px] sm:text-[10px] font-mono uppercase tracking-widest text-zinc-500 dark:text-zinc-400 mt-0.5 font-bold">
                         {unit.label}
@@ -343,7 +373,7 @@ export function DropRadar() {
         <div className="mt-8 pt-6 border-t border-zinc-200/90 dark:border-white/[0.08] grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
           <div className="p-4 rounded-2xl glass-dark border border-black/5 dark:border-white/5 space-y-1">
             <div className="flex items-center gap-2 text-[10px] font-mono text-zinc-500 font-bold uppercase">
-              <Truck className="w-3.5 h-3.5 text-moya-gold" />
+              <Truck className="w-3.5 h-3.5 text-moya-red" />
               <span>{locale === "es" ? "ENVÍO EXPRESS EE. UU." : "US DOMESTIC EXPRESS"}</span>
             </div>
             <div className="font-display font-bold text-sm text-zinc-900 dark:text-white">

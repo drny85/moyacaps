@@ -2,12 +2,11 @@
 
 import { useTranslations, useLocale } from "next-intl";
 import { useState, useMemo } from "react";
-import { useQuery } from "convex/react";
-import { api } from "@convex/_generated/api";
-import { CAP_VARIANTS, type CapVariant } from "@/data/caps";
 import { CapCard } from "./CapCard";
 import { Sparkles, Search } from "lucide-react";
 import { motion } from "framer-motion";
+import { useCapVariants } from "@/hooks/useCapVariants";
+import { Reveal } from "@/components/motion/Reveal";
 
 import { useStore } from "@/store/useStore";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
@@ -21,32 +20,7 @@ export function CapGrid() {
   const [activeFilter, setActiveFilter] = useState<"all" | "snapback" | "trucker">("all");
   const [searchQuery, setSearchQuery] = useState("");
 
-  const convexVariants = useQuery(api.products.getVariants, {});
-
-  const caps: CapVariant[] = useMemo(() => {
-    if (convexVariants && convexVariants.length > 0) {
-      return convexVariants.map((v) => ({
-        id: v.variantId,
-        nameEn: v.nameEn,
-        nameEs: v.nameEs,
-        silhouette: (v.silhouette as "snapback" | "trucker") || "snapback",
-        primaryHex: v.primaryHex,
-        secondaryHex: v.secondaryHex,
-        image: v.image,
-        stock: v.stock,
-        priceUsd: v.priceUsd,
-        isFeatured: v.isFeatured,
-        tagEn: v.isFeatured ? "Signature Edition" : undefined,
-        tagEs: v.isFeatured ? "Edición Insignia" : undefined,
-        isDrop: v.isDrop,
-        dropDate: v.dropDate,
-        dropBadgeTextEn: v.dropBadgeTextEn,
-        dropBadgeTextEs: v.dropBadgeTextEs,
-        dropStatus: v.dropStatus,
-      }));
-    }
-    return CAP_VARIANTS;
-  }, [convexVariants]);
+  const { caps } = useCapVariants();
 
   const snapbackCount = caps.filter((c) => c.silhouette === "snapback").length;
   const truckerCount = caps.filter((c) => c.silhouette === "trucker").length;
@@ -77,36 +51,23 @@ export function CapGrid() {
       {/* ── Section Header ── */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8 sm:mb-14">
         <div>
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.4 }}
-            className="sticker-badge sticker-badge--green mb-4"
-          >
-            <Sparkles className="w-3 h-3" />
-            <span>{t("eyebrow")}</span>
-          </motion.div>
+          <Reveal y={12}>
+            <p className="font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-moya-red mb-3">
+              {t("eyebrow")}
+            </p>
+          </Reveal>
 
-          <motion.h2
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            className="font-display text-3xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-zinc-900 dark:text-white"
-          >
-            {t("title")}
-          </motion.h2>
+          <Reveal delay={0.05}>
+            <h2 className="font-poster uppercase text-4xl sm:text-6xl lg:text-7xl leading-[0.95] tracking-tight text-zinc-950 dark:text-white">
+              {t("title")}
+            </h2>
+          </Reveal>
 
-          <motion.p
-            initial={{ opacity: 0, y: 15 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.4, delay: 0.2 }}
-            className="text-zinc-600 dark:text-zinc-400 text-sm sm:text-lg mt-2 max-w-xl"
-          >
-            {t("subtitle")}
-          </motion.p>
+          <Reveal delay={0.1}>
+            <p className="text-zinc-600 dark:text-zinc-400 text-sm sm:text-lg mt-3 max-w-xl">
+              {t("subtitle")}
+            </p>
+          </Reveal>
         </div>
 
         {/* Search */}
@@ -150,7 +111,7 @@ export function CapGrid() {
             playClick();
             openSneakerMatcher(null);
           }}
-          className="ml-auto inline-flex items-center gap-2 px-4 py-2.5 rounded-xl glass-dark hover:bg-black/5 dark:hover:bg-white/10 text-xs sm:text-sm font-display font-semibold border border-moya-gold/30 hover:border-moya-gold/60 text-moya-gold shadow-xs shrink-0 transition-all active:scale-95"
+          className="ml-auto inline-flex items-center gap-2 px-4 py-2.5 rounded-xl glass-dark hover:bg-black/5 dark:hover:bg-white/10 text-xs sm:text-sm font-display font-semibold border border-black/10 dark:border-white/15 hover:border-black/25 dark:hover:border-white/30 text-zinc-800 dark:text-zinc-200 shadow-xs shrink-0 transition-all active:scale-95"
         >
           <Sparkles className="w-3.5 h-3.5" />
           <span>{locale === "es" ? "Emparejador de Tenis" : "Sneaker Matcher"}</span>

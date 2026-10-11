@@ -30,6 +30,7 @@ const config: Config = {
       fontFamily: {
         sans: ["var(--font-sans)", "system-ui", "sans-serif"],
         display: ["var(--font-display)", "system-ui", "sans-serif"],
+        poster: ["var(--font-poster)", "Impact", "system-ui", "sans-serif"],
       },
       animation: {
         "float-badge": "float-badge 4s ease-in-out infinite",
