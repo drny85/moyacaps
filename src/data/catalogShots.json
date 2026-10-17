@@ -1,0 +1,149 @@
+{
+  "backdrop": "#ECEAE6",
+  "caps": {
+    "azul-marino-rojo": {
+      "catalog": "/catalog/caps/azul-marino-rojo.webp",
+      "angles": {
+        "front": "/catalog/caps/azul-marino-rojo/front.webp",
+        "left": "/catalog/caps/azul-marino-rojo/left.webp",
+        "back": "/catalog/caps/azul-marino-rojo/back.webp",
+        "right": "/catalog/caps/azul-marino-rojo/right.webp"
+      }
+    },
+    "azul-rey-blanco": {
+      "catalog": "/catalog/caps/azul-rey-blanco.webp",
+      "angles": {
+        "front": "/catalog/caps/azul-rey-blanco/front.webp",
+        "left": "/catalog/caps/azul-rey-blanco/left.webp",
+        "back": "/catalog/caps/azul-rey-blanco/back.webp",
+        "right": "/catalog/caps/azul-rey-blanco/right.webp"
+      }
+    },
+    "beige-rojo": {
+      "catalog": "/catalog/caps/beige-rojo.webp",
+      "angles": {
+        "front": "/catalog/caps/beige-rojo/front.webp",
+        "left": "/catalog/caps/beige-rojo/left.webp",
+        "back": "/catalog/caps/beige-rojo/back.webp",
+        "right": "/catalog/caps/beige-rojo/right.webp"
+      }
+    },
+    "blanco-negro-trucker": {
+      "catalog": "/catalog/caps/blanco-negro-trucker.webp",
+      "angles": {
+        "front": "/catalog/caps/blanco-negro-trucker/front.webp",
+        "left": "/catalog/caps/blanco-negro-trucker/left.webp",
+        "back": "/catalog/caps/blanco-negro-trucker/back.webp",
+        "right": "/catalog/caps/blanco-negro-trucker/right.webp"
+      }
+    },
+    "blanco-rojo": {
+      "catalog": "/catalog/caps/blanco-rojo.webp",
+      "angles": {
+        "front": "/catalog/caps/blanco-rojo/front.webp",
+        "left": "/catalog/caps/blanco-rojo/left.webp",
+        "back": "/catalog/caps/blanco-rojo/back.webp",
+        "right": "/catalog/caps/blanco-rojo/right.webp"
+      }
+    },
+    "camuflaje-gris-negro": {
+      "catalog": "/catalog/caps/camuflaje-gris-negro.webp",
+      "angles": {
+        "front": "/catalog/caps/camuflaje-gris-negro/front.webp",
+        "left": "/catalog/caps/camuflaje-gris-negro/left.webp",
+        "back": "/catalog/caps/camuflaje-gris-negro/back.webp",
+        "right": "/catalog/caps/camuflaje-gris-negro/right.webp"
+      }
+    },
+    "camuflaje-negro": {
+      "catalog": "/catalog/caps/camuflaje-negro.webp",
+      "angles": {
+        "front": "/catalog/caps/camuflaje-negro/front.webp",
+        "left": "/catalog/caps/camuflaje-negro/left.webp",
+        "back": "/catalog/caps/camuflaje-negro/back.webp",
+        "right": "/catalog/caps/camuflaje-negro/right.webp"
+      }
+    },
+    "gris-negro-trucker": {
+      "catalog": "/catalog/caps/gris-negro-trucker.webp",
+      "angles": {
+        "front": "/catalog/caps/gris-negro-trucker/front.webp",
+        "left": "/catalog/caps/gris-negro-trucker/left.webp",
+        "back": "/catalog/caps/gris-negro-trucker/back.webp",
+        "right": "/catalog/caps/gris-negro-trucker/right.webp"
+      }
+    },
+    "gris-rojo": {
+      "catalog": "/catalog/caps/gris-rojo.webp",
+      "angles": {
+        "front": "/catalog/caps/gris-rojo/front.webp",
+        "left": "/catalog/caps/gris-rojo/left.webp",
+        "back": "/catalog/caps/gris-rojo/back.webp",
+        "right": "/catalog/caps/gris-rojo/right.webp"
+      }
+    },
+    "marron-rojo": {
+      "catalog": "/catalog/caps/marron-rojo.webp",
+      "angles": {
+        "front": "/catalog/caps/marron-rojo/front.webp",
+        "left": "/catalog/caps/marron-rojo/left.webp",
+        "back": "/catalog/caps/marron-rojo/back.webp",
+        "right": "/catalog/caps/marron-rojo/right.webp"
+      }
+    },
+    "morado-blanco": {
+      "catalog": "/catalog/caps/morado-blanco.webp",
+      "angles": {
+        "front": "/catalog/caps/morado-blanco/front.webp",
+        "left": "/catalog/caps/morado-blanco/left.webp",
+        "back": "/catalog/caps/morado-blanco/back.webp",
+        "right": "/catalog/caps/morado-blanco/right.webp"
+      }
+    },
+    "negro-rojo": {
+      "catalog": "/catalog/caps/negro-rojo.webp",
+      "angles": {
+        "front": "/catalog/caps/negro-rojo/front.webp",
+        "left": "/catalog/caps/negro-rojo/left.webp",
+        "back": "/catalog/caps/negro-rojo/back.webp",
+        "right": "/catalog/caps/negro-rojo/right.webp"
+      }
+    },
+    "rojo-negro": {
+      "catalog": "/catalog/caps/rojo-negro.webp",
+      "angles": {
+        "front": "/catalog/caps/rojo-negro/front.webp",
+        "left": "/catalog/caps/rojo-negro/left.webp",
+        "back": "/catalog/caps/rojo-negro/back.webp",
+        "right": "/catalog/caps/rojo-negro/right.webp"
+      }
+    },
+    "rosa-blanco": {
+      "catalog": "/catalog/caps/rosa-blanco.webp",
+      "angles": {
+        "front": "/catalog/caps/rosa-blanco/front.webp",
+        "left": "/catalog/caps/rosa-blanco/left.webp",
+        "back": "/catalog/caps/rosa-blanco/back.webp",
+        "right": "/catalog/caps/rosa-blanco/right.webp"
+      }
+    },
+    "turquesa-blanco": {
+      "catalog": "/catalog/caps/turquesa-blanco.webp",
+      "angles": {
+        "front": "/catalog/caps/turquesa-blanco/front.webp",
+        "left": "/catalog/caps/turquesa-blanco/left.webp",
+        "back": "/catalog/caps/turquesa-blanco/back.webp",
+        "right": "/catalog/caps/turquesa-blanco/right.webp"
+      }
+    },
+    "verde-rojo": {
+      "catalog": "/catalog/caps/verde-rojo.webp",
+      "angles": {
+        "front": "/catalog/caps/verde-rojo/front.webp",
+        "left": "/catalog/caps/verde-rojo/left.webp",
+        "back": "/catalog/caps/verde-rojo/back.webp",
+        "right": "/catalog/caps/verde-rojo/right.webp"
+      }
+    }
+  }
+}
