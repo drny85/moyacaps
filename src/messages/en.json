@@ -12,7 +12,11 @@
     "freeShippingBanner": "⚡ LIMITED DROP — FREE US EXPRESS SHIPPING ON 2+ CAPS",
     "shop": "Shop",
     "caps": "Caps",
-    "tees": "Tees"
+    "tees": "Tees",
+    "tryOn": "Try-On",
+    "menu": "Open menu",
+    "closeMenu": "Close menu",
+    "primary": "Main"
   },
   "checkout": {
     "title": "Securing Your Order",

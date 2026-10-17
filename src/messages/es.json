@@ -12,7 +12,11 @@
     "freeShippingBanner": "⚡ DROP EXCLUSIVO — ENVÍO EXPRESS GRATIS A EE. UU. EN 2+ GORRAS",
     "shop": "Tienda",
     "caps": "Gorras",
-    "tees": "Playeras"
+    "tees": "Playeras",
+    "tryOn": "Probador",
+    "menu": "Abrir menú",
+    "closeMenu": "Cerrar menú",
+    "primary": "Principal"
   },
   "checkout": {
     "title": "Asegurando tu Pedido",

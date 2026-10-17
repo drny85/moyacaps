@@ -263,16 +263,6 @@
   100% { transform: scale(1); opacity: 1; }
 }
 
-@keyframes banner-scroll {
-  0% { background-position: 0% 50%; }
-  100% { background-position: 200% 50%; }
-}
-
-@keyframes marquee {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
-}
-
 @keyframes bounce-down {
   0%, 100% { transform: translateY(0) translateX(-50%); opacity: 0.6; }
   50% { transform: translateY(8px) translateX(-50%); opacity: 1; }
@@ -294,19 +284,6 @@
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
   background-repeat: repeat;
   background-size: 128px 128px;
-}
-
-/* ── Scrolling Marquee ── */
-.marquee-container {
-  overflow: hidden;
-  white-space: nowrap;
-}
-.marquee-track {
-  display: inline-flex;
-  animation: marquee 25s linear infinite;
-}
-.marquee-track:hover {
-  animation-play-state: paused;
 }
 
 /* ── Skeleton Shimmer Loading ── */
@@ -431,7 +408,7 @@ html.light .ghost-type {
 }
 
 /* Motion budget (ADR 0016): visitors who ask for less motion get none from CSS loops
-   (banner marquee, shimmer, pulses). Framer Motion follows MotionProvider + useReducedMotionSafe. */
+   (shimmer, pulses). Framer Motion follows MotionProvider + useReducedMotionSafe. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
