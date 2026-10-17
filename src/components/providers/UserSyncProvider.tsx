@@ -7,7 +7,7 @@ import { useSafeUser } from "@/lib/useSafeUser";
 
 function UserSyncInternal({ children }: { children: React.ReactNode }) {
   const { isSignedIn, user } = useSafeUser();
-  const syncCurrentUser = useMutation(api.users.syncCurrentUser);
+  const syncCurrentUser = useMutation(api.users.functions.syncCurrentUser);
   const syncedUserRef = useRef<string | null>(null);
 
   useEffect(() => {

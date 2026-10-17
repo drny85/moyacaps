@@ -96,7 +96,7 @@ export default function TrackOrderPage() {
 
   // Convex Query for guest / public order tracking
   const orderResult = useQuery(
-    api.orders.getOrderByOrderNumberAndEmail,
+    api.orders.functions.getOrderByOrderNumberAndEmail,
     activeQuery
       ? { orderNumber: activeQuery.orderNumber, email: activeQuery.email }
       : "skip"

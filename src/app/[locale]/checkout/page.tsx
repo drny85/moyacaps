@@ -25,8 +25,8 @@ export default function CheckoutPage() {
   const locale = useLocale();
   const { user, isLoaded, isSignedIn } = useSafeUser();
   const { cart, currency } = useStore();
-  const createCheckoutSession = useAction(api.stripeCheckout.createCheckoutSession);
-  const convexVariants = useQuery(api.catalog.getVariants, { includeUnavailable: true });
+  const createCheckoutSession = useAction(api.payments.checkout.createCheckoutSession);
+  const convexVariants = useQuery(api.catalog.queries.getVariants, { includeUnavailable: true });
 
   const [status, setStatus] = useState<"idle" | "connecting" | "redirecting" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);

@@ -3,7 +3,7 @@ import {
   CAP_BOX_PRESETS,
   getDefaultBoxPreset,
   buildCarrierTrackingUrl,
-} from "../../convex/shipping";
+} from "../../convex/shipping/functions";
 import { getCarrierTrackingUrl } from "../lib/tracking";
 
 describe("Shipping & Packaging Presets", () => {
@@ -63,7 +63,7 @@ describe("Shipping & Packaging Presets", () => {
   });
 
   it("accurately detects P.O. Box addresses across common formatting variants", async () => {
-    const { isPoBoxAddress } = await import("../../convex/shipping");
+    const { isPoBoxAddress } = await import("../../convex/shipping/functions");
 
     expect(isPoBoxAddress("PO Box 1234")).toBe(true);
     expect(isPoBoxAddress("P.O. Box 567")).toBe(true);
@@ -79,7 +79,7 @@ describe("Shipping & Packaging Presets", () => {
   });
 
   it("strictly validates domestic US 50-state territory and flags Puerto Rico / territories / international", async () => {
-    const { isExcludedTerritory } = await import("../../convex/shipping");
+    const { isExcludedTerritory } = await import("../../convex/shipping/functions");
 
     // Valid 50-state domestic US
     expect(isExcludedTerritory("NY", "10004", "US").isExcluded).toBe(false);

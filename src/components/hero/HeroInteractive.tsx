@@ -49,7 +49,7 @@ export function HeroInteractive() {
   const { caps: catalog, isLive } = useCapVariants();
   const caps = useMemo(() => catalog.filter((p) => !isTee(p)), [catalog]);
   const clientTime = useMinuteClock();
-  const upcomingDrops = useQuery(api.drops.getUpcomingDrops, { clientTime });
+  const upcomingDrops = useQuery(api.catalog.drops.getUpcomingDrops, { clientTime });
   const hasLiveDrop = Boolean(upcomingDrops && upcomingDrops.length > 0);
 
   const quickSwapCaps = useMemo(() => pickQuickSwap(caps), [caps]);

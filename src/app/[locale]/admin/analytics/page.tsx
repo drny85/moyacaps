@@ -30,8 +30,8 @@ export default function AdminAnalyticsPage() {
   // Queries must not read the server wall clock (stale reactive caches), so the client
   // supplies a minute-granularity timestamp for the 7-day daily buckets.
   const statsClock = useMinuteClock();
-  const analytics = useQuery(api.analytics.getAnalyticsAdmin, { clientTime: statsClock });
-  const adjustStock = useMutation(api.catalogAdmin.adjustVariantStock);
+  const analytics = useQuery(api.analytics.functions.getAnalyticsAdmin, { clientTime: statsClock });
+  const adjustStock = useMutation(api.catalog.admin.adjustVariantStock);
 
   const [restockingId, setRestockingId] = useState<string | null>(null);
   const [restockSuccess, setRestockSuccess] = useState<string | null>(null);

@@ -48,12 +48,12 @@ export default function AccountOrdersPage() {
   const { user, isLoaded, isSignedIn } = useSafeUser();
 
   // Convex mutations & actions
-  const updateAddressMutation = useMutation(api.orders.updateShippingAddress);
-  const cancelAndRefund = useAction(api.stripeRefunds.cancelAndRefundOrder);
+  const updateAddressMutation = useMutation(api.orders.functions.updateShippingAddress);
+  const cancelAndRefund = useAction(api.payments.refunds.cancelAndRefundOrder);
 
   // Orders for authenticated Clerk user
   const userOrders = useQuery(
-    api.orders.getOrdersByClerkId,
+    api.orders.functions.getOrdersByClerkId,
     user?.id ? { clerkUserId: user.id } : "skip"
   );
 

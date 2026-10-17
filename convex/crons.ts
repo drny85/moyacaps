@@ -16,7 +16,7 @@ export const reconcileReservations = internalAction({
     const now = Date.now();
     const BATCH = 500;
 
-    const stale = await ctx.runQuery(internal.whatsappOrders.getExpiredWhatsAppReservationsInternal, {
+    const stale = await ctx.runQuery(internal.orders.whatsapp.getExpiredWhatsAppReservationsInternal, {
       now,
       limit: BATCH,
     });
@@ -25,7 +25,7 @@ export const reconcileReservations = internalAction({
     for (const order of stale) {
       // expireWhatsAppOrderLead self-vetoes when the hold was extended and still valid,
       // and only acts on orders still awaiting payment — safe to call unconditionally.
-      await ctx.runMutation(internal.whatsappOrders.expireWhatsAppOrderLead, {
+      await ctx.runMutation(internal.orders.whatsapp.expireWhatsAppOrderLead, {
         orderId: order._id,
       });
       expired += 1;
@@ -39,8 +39,8 @@ export const reconcileReservations = internalAction({
 });
 
 /**
- * INTERNAL query for reservation reconciliation now lives in orders.ts
- * (internal.whatsappOrders.getExpiredWhatsAppReservationsInternal).
+ * INTERNAL query for reservation reconciliation now lives in orders/whatsapp.ts
+ * (internal.orders.whatsapp.getExpiredWhatsAppReservationsInternal).
  */
 
 const crons = cronJobs();

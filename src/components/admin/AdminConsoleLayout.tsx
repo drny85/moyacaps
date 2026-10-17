@@ -106,7 +106,7 @@ export function AdminConsoleLayout({
 
   // Real-time attention telemetry from Convex (only query when authenticated & authorized)
   const attentionStats = useQuery(
-    api.orderDesk.getOrdersAttentionStats,
+    api.orders.desk.getOrdersAttentionStats,
     isAuthorized ? { clientTime: statsClock } : "skip"
   );
 
