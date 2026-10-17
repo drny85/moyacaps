@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
+import { setRequestLocale } from "next-intl/server";
 import { HeroInteractive } from "@/components/hero/HeroInteractive";
 import { DropRadar } from "@/components/drops/DropRadar";
-import { CapGrid } from "@/components/catalog/CapGrid";
 import { AnatomyScroll } from "@/components/story/AnatomyScroll";
 import { BrandStory } from "@/components/story/BrandStory";
-import { ColorwayMarquee } from "@/components/catalog/ColorwayMarquee";
+import { CategoryTiles } from "@/components/hero/CategoryTiles";
+import { FeaturedProducts } from "@/components/catalog/FeaturedProducts";
+import { NycLookbook } from "@/components/story/NycLookbook";
 
 export async function generateMetadata({
   params,
@@ -17,15 +19,15 @@ export async function generateMetadata({
 
   const title =
     locale === "es"
-      ? "Good Luck | Gorras Urbanas Exclusivas — Serie 0880"
-      : "Good Luck | 0880 Signature Streetwear Caps";
+      ? "Good Luck | Gorras Urbanas Exclusivas & Playeras Heavyweight — Serie 0880"
+      : "Good Luck | 0880 Signature Streetwear Caps & Heavyweight Tees";
 
   const description =
     locale === "es"
-      ? "Tienda oficial Good Luck. Bordado 3D de alta densidad, emblemática herradura de la suerte y diablos con tridente en 16 combinaciones de color exclusivas."
-      : "Official store for Good Luck. Heavyweight 3D puff embroidery, iconic horseshoe-clover emblem, and devil pitchfork flanks in 16 exclusive colorways.";
+      ? "Tienda oficial Good Luck. Gorras snapback con bordado 3D de alta densidad y playeras heavyweight 280-300 GSM en 11 diseños con probador virtual en modelo."
+      : "Official store for Good Luck. Signature 3D puff embroidery caps and heavyweight 280-300 GSM graphic tees across 11 designs with interactive model lookbook studio.";
 
-  const imageUrl = `${siteUrl}/caps/negro-rojo.png`;
+  const imageUrl = `${siteUrl}/og/home.jpg`;
 
   return {
     title,
@@ -63,14 +65,17 @@ export async function generateMetadata({
   };
 }
 
-export default function HomePage() {
+/** Homepage order (ADR 0016): product first, story after. */
+export default async function HomePage({ params }: { params: Promise<{ locale: string }> }) {
+  setRequestLocale((await params).locale);
   return (
     <div className="flex flex-col gap-0 overflow-x-clip">
       <HeroInteractive />
+      <CategoryTiles />
+      <FeaturedProducts />
       <AnatomyScroll />
       <DropRadar />
-      <ColorwayMarquee />
-      <CapGrid />
+      <NycLookbook />
       <BrandStory />
     </div>
   );

@@ -31,7 +31,7 @@ export default function CheckoutSuccessPage() {
   const locale = useLocale();
   const searchParams = useSearchParams();
   const { clearCart } = useStore();
-  const syncSession = useAction(api.stripe.syncCheckoutSession);
+  const syncSession = useAction(api.payments.webhook.syncCheckoutSession);
 
   const sessionId = searchParams.get("session_id") || "";
   const orderNumberParam = searchParams.get("order_number") || "";
@@ -72,7 +72,7 @@ export default function CheckoutSuccessPage() {
   // Query order from Convex
   const lookupKey = sessionId || orderNumberParam;
   const order = useQuery(
-    api.orders.getOrderBySessionOrNumber,
+    api.orders.functions.getOrderBySessionOrNumber,
     lookupKey ? { identifier: lookupKey } : "skip"
   );
 

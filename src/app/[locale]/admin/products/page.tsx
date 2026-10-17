@@ -34,6 +34,7 @@ import {
   Flame,
 } from "lucide-react";
 import StockConfirmDialog, { StockConfirmTarget } from "@/components/admin/StockConfirmDialog";
+import { TeeSkuStockDialog } from "@/components/admin/TeeSkuStockDialog";
 import AvailabilityConfirmDialog, { AvailabilityConfirmTarget } from "@/components/admin/AvailabilityConfirmDialog";
 import { DropScheduleDialog, DropScheduleTarget } from "@/components/admin/DropScheduleDialog";
 import { DateTimePicker } from "@/components/admin/DateTimePicker";
@@ -57,6 +58,7 @@ export default function AdminProductsPage() {
 
   // Stock Confirmation Safeguard State
   const [stockConfirmTarget, setStockConfirmTarget] = useState<StockConfirmTarget | null>(null);
+  const [skuEditorVariantId, setSkuEditorVariantId] = useState<string | null>(null);
   const [isAdjustingStock, setIsAdjustingStock] = useState(false);
 
   // Availability Confirmation Safeguard State
@@ -72,15 +74,15 @@ export default function AdminProductsPage() {
   const [feedbackStockId, setFeedbackStockId] = useState<string | null>(null);
 
   // Convex data & mutations
-  const data = useQuery(api.products.getAllProductsAdmin);
-  const adjustStock = useMutation(api.products.adjustVariantStock);
-  const updatePrice = useMutation(api.products.updateVariantPrice);
-  const toggleFeatured = useMutation(api.products.toggleVariantFeatured);
-  const toggleAvailable = useMutation(api.products.toggleVariantAvailable);
-  const saveVariant = useMutation(api.products.saveVariant);
-  const deleteVariant = useMutation(api.products.deleteVariant);
-  const generateUploadUrl = useMutation(api.products.generateUploadUrl);
-  const updateVariantDropStatus = useMutation(api.products.updateVariantDropStatus);
+  const data = useQuery(api.catalog.admin.getAllProductsAdmin);
+  const adjustStock = useMutation(api.catalog.admin.adjustVariantStock);
+  const updatePrice = useMutation(api.catalog.admin.updateVariantPrice);
+  const toggleFeatured = useMutation(api.catalog.admin.toggleVariantFeatured);
+  const toggleAvailable = useMutation(api.catalog.admin.toggleVariantAvailable);
+  const saveVariant = useMutation(api.catalog.admin.saveVariant);
+  const deleteVariant = useMutation(api.catalog.admin.deleteVariant);
+  const generateUploadUrl = useMutation(api.catalog.admin.generateUploadUrl);
+  const updateVariantDropStatus = useMutation(api.catalog.drops.updateVariantDropStatus);
 
   // Form state for Modal
   const [formVariantId, setFormVariantId] = useState("");
@@ -353,7 +355,7 @@ export default function AdminProductsPage() {
     if (!formVariantId.trim()) return;
 
     // High-Friction Safeguard: If stock is changing in the edit modal, prompt confirmation first
-    if (!isNewVariant && editingVariant && editingVariant.stock !== Number(formStock)) {
+    if (!isNewVariant && editingVariant && !editingVariant.colorways?.length && editingVariant.stock !== Number(formStock)) {
       const delta = Number(formStock) - editingVariant.stock;
       setStockConfirmTarget({
         variantId: editingVariant.variantId,
@@ -672,40 +674,51 @@ export default function AdminProductsPage() {
                             {variant.stock} left
                           </span>
 
-                          <div className="flex items-center gap-1">
+                          {variant.colorways?.length ? (
                             <button
-                              onClick={() => requestQuickAdjust(variant, -1)}
-                              disabled={isUpdating || variant.stock <= 0}
-                              className="w-6 h-6 rounded-md bg-zinc-100 dark:bg-white/[0.06] hover:bg-zinc-200 dark:hover:bg-white/10 text-zinc-700 dark:text-zinc-300 font-mono text-xs flex items-center justify-center disabled:opacity-30 transition-colors"
-                              title="Deduct 1"
+                              type="button"
+                              onClick={() => setSkuEditorVariantId(variant.variantId)}
+                              className="px-2 h-6 rounded-md bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-mono text-xs font-bold hover:opacity-90 transition-opacity"
+                              title="Edit stock per colorway and size"
                             >
-                              -1
+                              SKUs
                             </button>
-                            <button
-                              onClick={() => requestQuickAdjust(variant, 1)}
-                              disabled={isUpdating}
-                              className="w-6 h-6 rounded-md bg-zinc-100 dark:bg-white/[0.06] hover:bg-zinc-200 dark:hover:bg-white/10 text-zinc-700 dark:text-zinc-300 font-mono text-xs flex items-center justify-center disabled:opacity-30 transition-colors"
-                              title="Add 1"
-                            >
-                              +1
-                            </button>
-                            <button
-                              onClick={() => requestQuickAdjust(variant, 5)}
-                              disabled={isUpdating}
-                              className="px-1.5 h-6 rounded-md bg-zinc-100 dark:bg-white/[0.06] hover:bg-zinc-200 dark:hover:bg-white/10 text-zinc-700 dark:text-zinc-300 font-mono text-xs flex items-center justify-center disabled:opacity-30 transition-colors"
-                              title="Add 5"
-                            >
-                              +5
-                            </button>
-                            <button
-                              onClick={() => requestQuickAdjust(variant, 10)}
-                              disabled={isUpdating}
-                              className="px-1.5 h-6 rounded-md bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-mono text-xs flex items-center justify-center font-bold hover:opacity-90 transition-opacity"
-                              title="Replenish +10"
-                            >
-                              {isSuccess ? <Check className="w-3 h-3 text-emerald-500" /> : "+10"}
-                            </button>
-                          </div>
+                          ) : (
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => requestQuickAdjust(variant, -1)}
+                                disabled={isUpdating || variant.stock <= 0}
+                                className="w-6 h-6 rounded-md bg-zinc-100 dark:bg-white/[0.06] hover:bg-zinc-200 dark:hover:bg-white/10 text-zinc-700 dark:text-zinc-300 font-mono text-xs flex items-center justify-center disabled:opacity-30 transition-colors"
+                                title="Deduct 1"
+                              >
+                                -1
+                              </button>
+                              <button
+                                onClick={() => requestQuickAdjust(variant, 1)}
+                                disabled={isUpdating}
+                                className="w-6 h-6 rounded-md bg-zinc-100 dark:bg-white/[0.06] hover:bg-zinc-200 dark:hover:bg-white/10 text-zinc-700 dark:text-zinc-300 font-mono text-xs flex items-center justify-center disabled:opacity-30 transition-colors"
+                                title="Add 1"
+                              >
+                                +1
+                              </button>
+                              <button
+                                onClick={() => requestQuickAdjust(variant, 5)}
+                                disabled={isUpdating}
+                                className="px-1.5 h-6 rounded-md bg-zinc-100 dark:bg-white/[0.06] hover:bg-zinc-200 dark:hover:bg-white/10 text-zinc-700 dark:text-zinc-300 font-mono text-xs flex items-center justify-center disabled:opacity-30 transition-colors"
+                                title="Add 5"
+                              >
+                                +5
+                              </button>
+                              <button
+                                onClick={() => requestQuickAdjust(variant, 10)}
+                                disabled={isUpdating}
+                                className="px-1.5 h-6 rounded-md bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-mono text-xs flex items-center justify-center font-bold hover:opacity-90 transition-opacity"
+                                title="Replenish +10"
+                              >
+                                {isSuccess ? <Check className="w-3 h-3 text-emerald-500" /> : "+10"}
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </td>
 
@@ -799,7 +812,7 @@ export default function AdminProductsPage() {
                           </button>
 
                           <Link
-                            href={`/caps/${variant.variantId}`}
+                            href={`/products/${variant.variantId}`}
                             target="_blank"
                             className="p-1.5 rounded-lg text-zinc-600 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/[0.06] transition-colors"
                             title="Preview on live store"
@@ -1155,7 +1168,9 @@ export default function AdminProductsPage() {
                     required
                     value={formStock}
                     onChange={(e) => setFormStock(Number(e.target.value))}
-                    className="w-full py-2 px-3 rounded-xl bg-zinc-50 dark:bg-white/[0.03] border border-zinc-200 dark:border-white/10 text-zinc-900 dark:text-white font-mono focus:outline-none focus:ring-1 focus:ring-moya-red"
+                    disabled={Boolean(editingVariant?.colorways?.length)}
+                    title={editingVariant?.colorways?.length ? "Tee stock is edited per colorway and size (SKUs button)" : undefined}
+                    className="w-full py-2 px-3 rounded-xl bg-zinc-50 dark:bg-white/[0.03] border border-zinc-200 dark:border-white/10 text-zinc-900 dark:text-white font-mono focus:outline-none focus:ring-1 focus:ring-moya-red disabled:opacity-50"
                   />
                 </div>
               </div>
@@ -1296,6 +1311,9 @@ export default function AdminProductsPage() {
           </div>
         </div>
       )}
+
+      {/* ── Modal: Tee stock per colorway × size (ADR 0015) ── */}
+      <TeeSkuStockDialog variantId={skuEditorVariantId} onClose={() => setSkuEditorVariantId(null)} />
 
       {/* ── Modal: Stock & Quick Restock Confirmation Safeguard ── */}
       <StockConfirmDialog

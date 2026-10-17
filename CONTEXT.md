@@ -1,6 +1,6 @@
 # Good Luck
 
-An e-commerce platform for high-end streetwear caps (gorras) featuring signature collections, bilingual shopping (English/Spanish), interactive 3D/parallax showcase, and streamlined checkout.
+An e-commerce platform for high-end streetwear caps (gorras) and heavyweight apparel tees featuring signature collections, bilingual shopping (English/Spanish), interactive 3D/parallax showcase, model lookbook studio, and streamlined checkout.
 
 ## Language
 
@@ -8,13 +8,57 @@ An e-commerce platform for high-end streetwear caps (gorras) featuring signature
 A structured, premium headwear piece featuring high-density 3D embroidery and adjustable closure.
 _Avoid_: Hat, sombrero, beanie
 
+**Heavyweight Tee**:
+A boxy, drop-shoulder luxury streetwear t-shirt crafted in 280–300 GSM combed cotton with high-density screen print graphics (front chest or back print) and signature Good Luck branding.
+_Avoid_: Shirt, regular t-shirt, top, undershirt
+
 **Colorway**:
 A specific combination of crown, visor, underbill, and embroidery thread colors for a Cap model.
 _Avoid_: Color theme, flavor
 
+**Apparel Colorway**:
+The specific textile fabric wash/dye of a Heavyweight Tee (Vintage Washed Black, Crisp White, Heather Grey, Butter Cream, Acid Wash Lime). Most Graphic Designs come in the first four; a photographed printed tee such as the Crash Scene Tee may come in only its own colorway.
+_Avoid_: Shirt color, shade
+
+**Graphic Design**:
+The authentic artwork motif printed on a Heavyweight Tee (e.g., "Boxing Gloves", "Gothic Skull", "Street 8-Ball", "Eagle & Clover").
+_Avoid_: Logo, print, picture
+
+**Model Lookbook Studio**:
+An interactive shopping interface enabling customers to preview any Graphic Design across different Apparel Colorways on realistic streetwear model photography before selecting a size and adding to cart.
+_Avoid_: Mockup tool, customizer, shirt maker
+
+**Try-On**:
+Previewing a Cap on a photo of the Customer's own head (a selfie or a camera snapshot), placed automatically on the face and fine-tuned by hand, before adding it to the bag. Caps only; a Heavyweight Tee is never tried on.
+_Avoid_: Virtual mirror, AR, fitting room, try-on studio
+
+**Try-On Photo**:
+The Customer's photo used for a Try-On. It stays on the device and in memory only: it is never uploaded or saved, and is gone when the page closes.
+_Avoid_: Selfie (when meaning the stored image), avatar, portrait
+
 **Collection**:
-A themed design release encompassing multiple colorways and silhouettes (e.g., the "0880 Series").
+A themed design release encompassing multiple colorways and silhouettes (e.g., the "0880 Series" for Headwear and "0880 Heavyweight Apparel").
 _Avoid_: Category, department, bundle
+
+**Product**:
+Any sellable item in the storefront, either a Cap or a Heavyweight Tee, browsed, filtered and displayed through one shared card and one product page.
+_Avoid_: Item, cap (when meaning tees too), listing
+
+**Catalog Shot**:
+The canonical 4:5 product image and the only image role allowed in grids and cards: a Cap alone on the shared studio backdrop, or (until flat-lay photos exist) a Heavyweight Tee cropped from its on-model photo.
+_Avoid_: Thumbnail, packshot, mockup, product photo
+
+**Lifestyle Shot**:
+An image of a Product worn by a model or placed in a scene. Shown on product pages and in editorial sections, never as the grid image.
+_Avoid_: Model photo, lookbook image, hero shot
+
+**Shop**:
+The single browsable listing of every Product, filterable by category, Colorway, Silhouette and Graphic Design.
+_Avoid_: Catalog page, store page, collection page (Collection means a themed release)
+
+**SKU**:
+One purchasable combination of a Heavyweight Tee: Graphic Design × Apparel Colorway × size, holding its own Available Inventory.
+_Avoid_: Option, sub-variant, size row
 
 **Silhouette**:
 The structural profile and construction of the Cap (e.g., Classic 6-Panel Snapback vs 5-Panel Trucker Mesh).

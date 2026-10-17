@@ -1,31 +1,45 @@
 "use client";
 
+import { useEffect, useRef } from "react";
+import { m } from "framer-motion";
 import { useStore } from "@/store/useStore";
-import { VirtualTryOnStudio } from "./VirtualTryOnStudio";
-import { motion, AnimatePresence } from "framer-motion";
 import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
+import { useFocusTrap } from "@/hooks/useFocusTrap";
+import { TryOnStudio } from "./TryOnStudio";
 
+/** The Try-On over the product page: a full-height sheet on phones, a centred panel on desktop */
 export function VirtualTryOnModal() {
-  const { isTryOnOpen, closeTryOn, tryOnTargetCap } = useStore();
-  useLockBodyScroll(isTryOnOpen);
+  const isOpen = useStore((s) => s.isTryOnOpen);
+  const close = useStore((s) => s.closeTryOn);
+  const target = useStore((s) => s.tryOnTargetCap);
+  const panelRef = useRef<HTMLDivElement>(null);
+  useLockBodyScroll(isOpen);
+  useFocusTrap(panelRef, isOpen);
 
-  if (!isTryOnOpen) return null;
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => e.key === "Escape" && close();
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [isOpen, close]);
+
+  if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md overflow-y-auto">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.94, y: 15 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.94, y: 15 }}
-        transition={{ type: "spring", stiffness: 350, damping: 30 }}
-        className="w-full max-w-5xl my-auto"
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/70 backdrop-blur-sm sm:p-6" data-lenis-prevent onClick={close}>
+      <m.div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="try-on-title"
+        onClick={(e) => e.stopPropagation()}
+        initial={{ opacity: 0, y: 24 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+        className="mx-auto min-h-full w-full max-w-6xl bg-white px-4 pb-6 pt-5 dark:bg-zinc-950 sm:min-h-0 sm:rounded-[24px] sm:p-8"
       >
-        <VirtualTryOnStudio
-          initialCap={tryOnTargetCap}
-          onClose={closeTryOn}
-          isModal={true}
-        />
-      </motion.div>
+        <TryOnStudio initialCapId={target?.id ?? null} onClose={close} headingId="try-on-title" as="h2" />
+      </m.div>
     </div>
   );
 }

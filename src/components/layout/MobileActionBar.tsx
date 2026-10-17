@@ -4,19 +4,19 @@ import { useStore } from "@/store/useStore";
 import { useTranslations, useLocale } from "next-intl";
 import { Link, usePathname } from "@/i18n/routing";
 import { ShoppingBag, Compass, MessageCircle, Package, Shield } from "lucide-react";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { useState, useEffect } from "react";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { useSafeUser } from "@/lib/useSafeUser";
-import { checkIsAdmin } from "@/lib/adminAuth";
+import { useIsAdmin } from "@/lib/useIsAdmin";
 import { getWhatsAppConciergeUrl } from "@/lib/whatsapp";
 
 export function MobileActionBar() {
   const { cart, toggleCart } = useStore();
   const t = useTranslations("nav");
   const locale = useLocale();
-  const { user, isSignedIn } = useSafeUser();
-  const isAdmin = checkIsAdmin(user);
+  const { isSignedIn } = useSafeUser();
+  const { isAdmin } = useIsAdmin();
   const pathname = usePathname();
   const [isMounted, setIsMounted] = useState(false);
 
@@ -24,7 +24,8 @@ export function MobileActionBar() {
     setIsMounted(true);
   }, []);
 
-  if (pathname.startsWith("/admin")) {
+  // Product pages and the Try-On carry their own sticky add-to-bag bar.
+  if (pathname.startsWith("/admin") || pathname === "/try-on" || /^\/products\/[^/]+$/.test(pathname)) {
     return null;
   }
 
@@ -42,16 +43,16 @@ export function MobileActionBar() {
   return (
     <div className="md:hidden fixed bottom-0 inset-x-0 z-40 p-3 pointer-events-none">
       <div className="max-w-md mx-auto glass-dark bg-white/90 dark:bg-[#0a0a10]/90 border border-black/[0.08] dark:border-white/[0.08] rounded-2xl p-1.5 sm:p-2 flex items-center justify-between shadow-2xl shadow-black/10 dark:shadow-black/80 pointer-events-auto">
-        {/* Catalog shortcut */}
-        <a
-          href="/#catalog"
+        {/* Shop shortcut */}
+        <Link
+          href="/products"
           className="flex-1 py-1.5 px-2 rounded-xl flex flex-col items-center justify-center text-zinc-600 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors active:scale-95"
         >
           <Compass className="w-5 h-5 text-moya-red" />
           <span className="text-[9px] font-display font-semibold mt-0.5 tracking-tight">
-            {t("catalog")}
+            {t("shop")}
           </span>
-        </a>
+        </Link>
 
         {/* Orders shortcut for signed-in collectors */}
         {isSignedIn && (
@@ -105,14 +106,14 @@ export function MobileActionBar() {
           <div className="relative">
             <ShoppingBag className="w-4 h-4" />
             {totalItems > 0 && (
-              <motion.span
+              <m.span
                 key={totalItems}
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 className="absolute -top-2 -right-2.5 w-4 h-4 rounded-full bg-moya-green text-black text-[9px] font-display font-black flex items-center justify-center shadow"
               >
                 {totalItems}
-              </motion.span>
+              </m.span>
             )}
           </div>
           <span className="font-mono text-[10px]">

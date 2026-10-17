@@ -38,7 +38,6 @@ const config: Config = {
         "spin-slow": "spin-slow 12s linear infinite",
         "slide-up": "slide-up 0.6s ease-out forwards",
         "count-bounce": "count-up-bounce 0.6s ease-out forwards",
-        "banner-scroll": "banner-scroll 4s linear infinite",
       },
       keyframes: {
         "float-badge": {
@@ -61,10 +60,6 @@ const config: Config = {
           "0%": { transform: "scale(0.8)", opacity: "0" },
           "60%": { transform: "scale(1.1)" },
           "100%": { transform: "scale(1)", opacity: "1" },
-        },
-        "banner-scroll": {
-          "0%": { backgroundPosition: "0% 50%" },
-          "100%": { backgroundPosition: "200% 50%" },
         },
       },
     },

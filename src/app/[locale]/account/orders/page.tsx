@@ -5,7 +5,7 @@ import Image from "next/image";
 import { Link } from "@/i18n/routing";
 import { useTranslations, useLocale } from "next-intl";
 import { useSafeUser, SafeSignInButton } from "@/lib/useSafeUser";
-import { checkIsAdmin } from "@/lib/adminAuth";
+import { useIsAdmin } from "@/lib/useIsAdmin";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { getCarrierTrackingUrl } from "@/lib/tracking";
@@ -46,14 +46,15 @@ export default function AccountOrdersPage() {
   const t = useTranslations("account");
   const locale = useLocale();
   const { user, isLoaded, isSignedIn } = useSafeUser();
+  const { isAdmin } = useIsAdmin();
 
   // Convex mutations & actions
-  const updateAddressMutation = useMutation(api.orders.updateShippingAddress);
-  const cancelAndRefund = useAction(api.stripe.cancelAndRefundOrder);
+  const updateAddressMutation = useMutation(api.orders.functions.updateShippingAddress);
+  const cancelAndRefund = useAction(api.payments.refunds.cancelAndRefundOrder);
 
   // Orders for authenticated Clerk user
   const userOrders = useQuery(
-    api.orders.getOrdersByClerkId,
+    api.orders.functions.getOrdersByClerkId,
     user?.id ? { clerkUserId: user.id } : "skip"
   );
 
@@ -170,7 +171,7 @@ export default function AccountOrdersPage() {
       )}
 
       {/* ── Administrator Banner ── */}
-      {isSignedIn && checkIsAdmin(user) && (
+      {isSignedIn && isAdmin && (
         <div className="mb-6 p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-red-950/40 via-red-900/20 to-zinc-900/40 border border-moya-red/40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xl">
           <div className="flex items-center gap-3.5">
             <div className="w-10 h-10 rounded-xl bg-moya-red text-white flex items-center justify-center shadow-lg shadow-moya-red/30 shrink-0">

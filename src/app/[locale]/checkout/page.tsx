@@ -18,15 +18,15 @@ import {
   AlertCircle,
   Sparkles,
 } from "lucide-react";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 
 export default function CheckoutPage() {
   const t = useTranslations("checkout");
   const locale = useLocale();
   const { user, isLoaded, isSignedIn } = useSafeUser();
   const { cart, currency } = useStore();
-  const createCheckoutSession = useAction(api.stripe.createCheckoutSession);
-  const convexVariants = useQuery(api.products.getVariants, { includeUnavailable: true });
+  const createCheckoutSession = useAction(api.payments.checkout.createCheckoutSession);
+  const convexVariants = useQuery(api.catalog.queries.getVariants, { includeUnavailable: true });
 
   const [status, setStatus] = useState<"idle" | "connecting" | "redirecting" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -77,8 +77,10 @@ export default function CheckoutPage() {
 
       const result = await createCheckoutSession({
         items: cart.map((item) => ({
-          variantId: item.id,
+          variantId: item.variantId ?? item.id,
           quantity: item.quantity,
+          ...(item.size ? { size: item.size } : {}),
+          ...(item.colorway ? { colorway: item.colorway } : {}),
         })),
         currency,
         locale,
@@ -173,7 +175,7 @@ export default function CheckoutPage() {
             </div>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5 pt-2">
               <Link
-                href="/#catalog"
+                href="/products"
                 className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-moya-red hover:bg-rose-500 text-white font-display font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg shadow-moya-red/30"
               >
                 <span>{t("exploreCta")}</span>
@@ -190,7 +192,7 @@ export default function CheckoutPage() {
           </div>
         ) : (
           /* Active Checkout Dispatch Screen */
-          <motion.div
+          <m.div
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
             className="p-6 sm:p-8 rounded-3xl glass-card border border-black/[0.08] dark:border-white/[0.08] shadow-2xl space-y-6"
@@ -211,7 +213,7 @@ export default function CheckoutPage() {
 
             {/* Visual Progress Bar */}
             <div className="w-full bg-black/10 dark:bg-white/10 h-1.5 rounded-full overflow-hidden">
-              <motion.div
+              <m.div
                 className="bg-gradient-to-r from-moya-red via-moya-violet to-moya-green h-full rounded-full"
                 animate={{
                   x: ["-100%", "100%"],
@@ -334,7 +336,7 @@ export default function CheckoutPage() {
               <ShieldCheck className="w-3.5 h-3.5 text-moya-green" />
               <span>{t("secureNotice")}</span>
             </div>
-          </motion.div>
+          </m.div>
         )}
       </div>
     </div>

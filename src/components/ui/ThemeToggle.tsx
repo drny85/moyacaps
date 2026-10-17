@@ -3,7 +3,7 @@
 import { useStore } from "@/store/useStore";
 import { Sun, Moon } from "lucide-react";
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 
 export function ThemeToggle({ className = "", compact = false }: { className?: string; compact?: boolean }) {
   const { theme, toggleTheme } = useStore();
@@ -25,7 +25,7 @@ export function ThemeToggle({ className = "", compact = false }: { className?: s
       aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
       title={isDark ? "Light Mode" : "Dark Mode"}
     >
-      <motion.div
+      <m.div
         initial={false}
         animate={{
           rotate: isDark ? 0 : 180,
@@ -39,7 +39,7 @@ export function ThemeToggle({ className = "", compact = false }: { className?: s
         ) : (
           <Sun className="w-4 h-4 text-amber-500 group-hover:text-amber-600 transition-colors" />
         )}
-      </motion.div>
+      </m.div>
 
       {!compact && (
         <span className="text-[11px] font-display font-semibold uppercase tracking-wider hidden md:inline">

@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useTranslations, useLocale } from "next-intl";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@convex/_generated/api";
+import { useMinuteClock } from "@/hooks/useMinuteClock";
 import {
   Flame,
   Radio,
@@ -103,16 +104,17 @@ export default function AdminDropsPage() {
   const locale = useLocale();
 
   // Queries
-  const dropsData = useQuery(api.products.getAllDropsAdmin);
-  const productsData = useQuery(api.products.getAllProductsAdmin);
-  const subscribersData = useQuery(api.products.getDropSubscribersList, {});
+  const clientTime = useMinuteClock();
+  const dropsData = useQuery(api.catalog.drops.getAllDropsAdmin, { clientTime });
+  const productsData = useQuery(api.catalog.admin.getAllProductsAdmin);
+  const subscribersData = useQuery(api.catalog.drops.getDropSubscribersList, {});
 
   // Mutations
-  const scheduleDropMutation = useMutation(api.products.scheduleDrop);
-  const releaseDropNowMutation = useMutation(api.products.releaseDropNow);
-  const postponeDropMutation = useMutation(api.products.postponeDrop);
-  const cancelDropMutation = useMutation(api.products.cancelDrop);
-  const deleteDropMutation = useMutation(api.products.deleteDrop);
+  const scheduleDropMutation = useMutation(api.catalog.drops.scheduleDrop);
+  const releaseDropNowMutation = useMutation(api.catalog.drops.releaseDropNow);
+  const postponeDropMutation = useMutation(api.catalog.drops.postponeDrop);
+  const cancelDropMutation = useMutation(api.catalog.drops.cancelDrop);
+  const deleteDropMutation = useMutation(api.catalog.drops.deleteDrop);
 
   // Local state
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
@@ -599,7 +601,7 @@ export default function AdminDropsPage() {
 
                     <div className="flex items-center gap-1">
                       <Link
-                        href={`/caps/${drop.variantId}`}
+                        href={`/products/${drop.variantId}`}
                         target="_blank"
                         className="p-1.5 rounded-lg hover:bg-zinc-200/60 dark:hover:bg-white/[0.06] text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-all"
                         title="Inspect on Storefront"

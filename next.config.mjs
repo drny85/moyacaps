@@ -1,9 +1,17 @@
 import createNextIntlPlugin from "next-intl/plugin";
 
-const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
+const withNextIntl = createNextIntlPlugin({
+  requestConfig: "./src/i18n/request.ts",
+  experimental: {
+    // Compile ICU messages at build time so the client ships no message parser (ADR 0018)
+    messages: { path: "./src/messages", format: "json", locales: "infer", precompile: true },
+  },
+});
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // `ANALYZE_SOURCEMAPS=1 bun run build` emits browser source maps to attribute chunk bytes to modules
+  productionBrowserSourceMaps: process.env.ANALYZE_SOURCEMAPS === "1",
   images: {
     formats: ["image/avif", "image/webp"],
     remotePatterns: [

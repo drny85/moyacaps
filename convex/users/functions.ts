@@ -1,0 +1,286 @@
+import { mutation, query, internalMutation, internalQuery, MutationCtx } from "../_generated/server";
+import { ConvexError, v } from "convex/values";
+import type { UserUpsert } from "./clerk";
+import { getAdminIdentity, isAdminRow, isAllowlistedAdmin, requireAdmin } from "../lib/auth";
+import { roleFor } from "./clerk";
+import schema from "../schema";
+
+/**
+ * Just-In-Time (JIT) sync called by client upon authentication.
+ * Mirrors the current Clerk user into the Convex users table immediately.
+ */
+export const syncCurrentUser = mutation({
+  args: {},
+  returns: v.union(v.id("users"), v.null()),
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return null;
+    }
+
+    const clerkId = identity.subject;
+    const email = identity.email?.toLowerCase() || "";
+    const name = identity.name || (identity.givenName ? `${identity.givenName} ${identity.familyName ?? ""}`.trim() : undefined);
+    const imageUrl = identity.pictureUrl || (identity as any).imageUrl || undefined;
+    const phone = identity.phoneNumber || undefined;
+
+    // Allowlist only; never from token claims or publicMetadata (lib/auth.ts). An existing
+    // admin row is never demoted here: revoking is a deliberate setUserRole call.
+    const existing = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", clerkId))
+      .first();
+
+    const finalRole =
+      existing?.role === "admin" ? "admin" : roleFor(email, clerkId);
+
+    const now = Date.now();
+
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        email: email || existing.email,
+        name: name ?? existing.name,
+        imageUrl: imageUrl ?? existing.imageUrl,
+        phone: phone ?? existing.phone,
+        role: finalRole,
+        deletedAt: undefined, // restore if previously deleted
+        updatedAt: now,
+      });
+      return existing._id;
+    }
+
+    const id = await ctx.db.insert("users", {
+      clerkId,
+      email,
+      name,
+      role: finalRole,
+      imageUrl,
+      phone,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    return id;
+  },
+});
+
+const userUpsertArgs = {
+  clerkId: v.string(),
+  email: v.string(),
+  name: v.optional(v.string()),
+  role: v.union(v.literal("admin"), v.literal("customer")),
+  imageUrl: v.optional(v.string()),
+  phone: v.optional(v.string()),
+};
+
+const upsertResult = v.object({
+  id: v.id("users"),
+  action: v.union(v.literal("updated"), v.literal("created")),
+});
+
+async function upsertUserRow(ctx: MutationCtx, args: UserUpsert) {
+  const existing = await ctx.db
+    .query("users")
+    .withIndex("by_clerkId", (q) => q.eq("clerkId", args.clerkId))
+    .first();
+
+  const now = Date.now();
+  const email = args.email.toLowerCase();
+
+  // Never demote an established admin through routine webhook chatter; role changes are a
+  // deliberate admin-management action, not a side effect of user.updated events.
+  const role =
+    args.role === "customer" && existing?.role === "admin" ? "admin" : args.role;
+
+  if (existing) {
+    await ctx.db.patch(existing._id, {
+      // Phone-only Clerk accounts report no email; keep the one we already have.
+      email: email || existing.email,
+      name: args.name ?? existing.name,
+      role,
+      imageUrl: args.imageUrl ?? existing.imageUrl,
+      phone: args.phone ?? existing.phone,
+      deletedAt: undefined,
+      updatedAt: now,
+    });
+    return { id: existing._id, action: "updated" as const };
+  }
+
+  const id = await ctx.db.insert("users", {
+    clerkId: args.clerkId,
+    email,
+    name: args.name,
+    role,
+    imageUrl: args.imageUrl,
+    phone: args.phone,
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  return { id, action: "created" as const };
+}
+
+/**
+ * Upsert user called by the Clerk webhook handler.
+ */
+export const upsertUser = internalMutation({
+  args: userUpsertArgs,
+  returns: upsertResult,
+  handler: upsertUserRow,
+});
+
+/** Users per backfill call; matches the Clerk Backend API page size used by scripts/sync-users.ts. */
+export const MAX_USERS_PER_UPSERT = 100;
+
+/**
+ * Batch upsert for backfills (`scripts/sync-users.ts`). Runs one Clerk page per transaction.
+ */
+export const upsertUsers = internalMutation({
+  args: { users: v.array(v.object(userUpsertArgs)) },
+  returns: v.object({ created: v.number(), updated: v.number() }),
+  handler: async (ctx, { users }) => {
+    if (users.length > MAX_USERS_PER_UPSERT) {
+      throw new ConvexError(`upsertUsers accepts at most ${MAX_USERS_PER_UPSERT} users per call.`);
+    }
+    let created = 0;
+    let updated = 0;
+    for (const user of users) {
+      const { action } = await upsertUserRow(ctx, user);
+      if (action === "created") created++;
+      else updated++;
+    }
+    return { created, updated };
+  },
+});
+
+/**
+ * Soft delete user called by webhook handler when user is deleted in Clerk.
+ */
+export const softDeleteUser = internalMutation({
+  args: {
+    clerkId: v.string(),
+  },
+  returns: v.object({ success: v.boolean(), reason: v.optional(v.string()) }),
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", args.clerkId))
+      .first();
+
+    if (user) {
+      await ctx.db.patch(user._id, {
+        deletedAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+      return { success: true };
+    }
+
+    return { success: false, reason: "User not found" };
+  },
+});
+
+/**
+ * Query user document by Clerk ID (caller must own the ID or be admin).
+ */
+export const getUserByClerkId = query({
+  args: {
+    clerkId: v.string(),
+  },
+  returns: v.union(schema.doc("users"), v.null()),
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return null;
+    }
+
+    const isSelf = identity.subject === args.clerkId;
+    if (!isSelf) {
+      await requireAdmin(ctx);
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", args.clerkId))
+      .first();
+
+    if (!user || user.deletedAt) {
+      return null;
+    }
+
+    return user;
+  },
+});
+
+/** Most recent users the admin list returns; paginate before the user base approaches it. */
+const MAX_USERS_LISTED = 1000;
+
+/**
+ * Admin query to inspect the most recent registered users and collectors.
+ */
+export const getAllUsersAdmin = query({
+  args: {},
+  returns: v.array(schema.doc("users")),
+  handler: async (ctx) => {
+    await requireAdmin(ctx);
+    return await ctx.db.query("users").order("desc").take(MAX_USERS_LISTED);
+  },
+});
+
+
+/**
+ * Whether the signed-in caller is an Administrator. The UI's only admin signal
+ * (src/lib/useIsAdmin.ts), so client and server always agree.
+ */
+export const amIAdmin = query({
+  args: {},
+  returns: v.boolean(),
+  handler: async (ctx) => (await getAdminIdentity(ctx)) !== null,
+});
+
+/** Row half of the admin check, for actions (lib/auth.ts isAdminInAction). */
+export const isAdminInternal = internalQuery({
+  args: { clerkId: v.string() },
+  returns: v.boolean(),
+  handler: async (ctx, { clerkId }) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", clerkId))
+      .first();
+    return isAdminRow(user);
+  },
+});
+
+/**
+ * Grant or revoke admin on a users row, by Clerk ID or email. Run from the CLI
+ * (`bun run set-admin`); internal, so no client can call it.
+ */
+export const setUserRole = internalMutation({
+  args: {
+    clerkId: v.optional(v.string()),
+    email: v.optional(v.string()),
+    role: v.union(v.literal("admin"), v.literal("customer")),
+  },
+  returns: v.object({ id: v.id("users"), clerkId: v.string(), email: v.string(), role: v.string() }),
+  handler: async (ctx, args) => {
+    if (!args.clerkId === !args.email) {
+      throw new ConvexError("Pass exactly one of clerkId or email.");
+    }
+    const user = args.clerkId
+      ? await ctx.db
+          .query("users")
+          .withIndex("by_clerkId", (q) => q.eq("clerkId", args.clerkId!))
+          .first()
+      : await ctx.db
+          .query("users")
+          .withIndex("by_email", (q) => q.eq("email", args.email!.trim().toLowerCase()))
+          .first();
+    if (!user || user.deletedAt) {
+      throw new ConvexError("No active user found. They must sign in once before a role can be set.");
+    }
+    if (args.role === "customer" && isAllowlistedAdmin({ subject: user.clerkId, email: user.email })) {
+      throw new ConvexError("The allowlisted admin cannot be demoted; edit convex/lib/auth.ts instead.");
+    }
+    await ctx.db.patch(user._id, { role: args.role, updatedAt: Date.now() });
+    return { id: user._id, clerkId: user.clerkId, email: user.email, role: args.role };
+  },
+});

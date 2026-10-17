@@ -52,17 +52,33 @@ export default function sitemap(): MetadataRoute.Sitemap {
       },
     });
 
-    // 3. Cap detail pages
+    // 3. Shop: all products, plus the caps and tees views
+    for (const query of ["", "?category=caps", "?category=tees"]) {
+      entries.push({
+        url: `${siteUrl}/${locale}/products${query}`,
+        lastModified: now,
+        changeFrequency: "daily",
+        priority: query ? 0.8 : 0.9,
+        alternates: {
+          languages: {
+            en: `${siteUrl}/en/products${query}`,
+            es: `${siteUrl}/es/products${query}`,
+          },
+        },
+      });
+    }
+
+    // 4. Product detail pages
     for (const cap of CAP_VARIANTS) {
       entries.push({
-        url: `${siteUrl}/${locale}/caps/${cap.id}`,
+        url: `${siteUrl}/${locale}/products/${cap.id}`,
         lastModified: now,
         changeFrequency: "daily",
         priority: 0.8,
         alternates: {
           languages: {
-            en: `${siteUrl}/en/caps/${cap.id}`,
-            es: `${siteUrl}/es/caps/${cap.id}`,
+            en: `${siteUrl}/en/products/${cap.id}`,
+            es: `${siteUrl}/es/products/${cap.id}`,
           },
         },
       });

@@ -1,16 +1,24 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { CapVariant } from "@/data/caps";
+import { migratePersisted } from "@/lib/cartMigration";
 
 export interface CartItem {
   id: string;
+  variantId?: string;
   name: string;
   priceUsd: number;
   image: string;
   silhouette: string;
   quantity: number;
   maxStock?: number;
+  size?: string;
+  colorway?: string;
+  colorwayName?: string;
 }
+
+/** The slice of the store saved to localStorage (see `partialize`). */
+type PersistedState = Pick<StoreState, "cart" | "currency" | "theme" | "soundEnabled">;
 
 interface StoreState {
   // Cart
@@ -19,7 +27,15 @@ interface StoreState {
   openCart: () => void;
   closeCart: () => void;
   toggleCart: () => void;
-  addToCart: (cap: CapVariant, quantity?: number, maxStock?: number) => void;
+  addToCart: (
+    cap: CapVariant,
+    quantity?: number,
+    maxStock?: number,
+    size?: string,
+    colorway?: string,
+    colorwayName?: string,
+    customImage?: string
+  ) => void;
   removeFromCart: (id: string) => void;
   updateQuantity: (id: string, delta: number, maxStock?: number) => void;
   clampCartToStock: (variants: {
@@ -45,11 +61,6 @@ interface StoreState {
   setTheme: (theme: "dark" | "light") => void;
   toggleTheme: () => void;
 
-  // Quick View Modal
-  quickViewCap: CapVariant | null;
-  openQuickView: (cap: CapVariant) => void;
-  closeQuickView: () => void;
-
   // Drop Alert Modal
   dropAlertCap: CapVariant | null;
   openDropAlert: (cap: CapVariant) => void;
@@ -60,21 +71,11 @@ interface StoreState {
   toggleSound: () => void;
   setSoundEnabled: (enabled: boolean) => void;
 
-  // Sneaker & Fit Matcher Modal
-  isSneakerMatcherOpen: boolean;
-  sneakerMatcherTargetCap: CapVariant | null;
-  openSneakerMatcher: (cap?: CapVariant | null) => void;
-  closeSneakerMatcher: () => void;
-
   // Virtual Try-On Fitting Room
   isTryOnOpen: boolean;
   tryOnTargetCap: CapVariant | null;
-  tryOnImage: string | null;
-  tryOnSettings: { offsetX: number; offsetY: number; scale: number; tilt: number; tiltX: number };
   openTryOn: (cap?: CapVariant | null) => void;
   closeTryOn: () => void;
-  setTryOnImage: (img: string | null) => void;
-  setTryOnSettings: (settings: { offsetX: number; offsetY: number; scale: number; tilt: number; tiltX: number }) => void;
 
   // Share Notification Toast
   shareToast: {
@@ -96,7 +97,7 @@ export const useStore = create<StoreState>()(
       closeCart: () => set({ isCartOpen: false }),
       toggleCart: () => set((state) => ({ isCartOpen: !state.isCartOpen })),
 
-      addToCart: (cap, quantity = 1, maxStock?: number) => {
+      addToCart: (cap, quantity = 1, maxStock?: number, size?: string, colorway?: string, colorwayName?: string, customImage?: string) => {
         // Enforce strict drop lock: cannot add drops to cart if not released yet
         const isUpcomingDrop = Boolean(
           cap.isDrop &&
@@ -108,7 +109,8 @@ export const useStore = create<StoreState>()(
         }
 
         const { cart } = get();
-        const existing = cart.find((item) => item.id === cap.id);
+        const cartItemId = `${cap.id}${colorway ? `-${colorway}` : ""}${size ? `-${size}` : ""}`;
+        const existing = cart.find((item) => item.id === cartItemId || (!colorway && !size && item.id === cap.id));
         const limit = maxStock !== undefined ? maxStock : (cap.stock ?? 99);
 
         if (limit <= 0) {
@@ -116,14 +118,26 @@ export const useStore = create<StoreState>()(
           return;
         }
 
+        const displayName = colorwayName
+          ? `${cap.nameEn} (${colorwayName})`
+          : cap.nameEn;
+
         if (existing) {
           const targetQty = existing.quantity + quantity;
           const newQty = Math.min(limit, targetQty);
 
           set({
             cart: cart.map((item) =>
-              item.id === cap.id
-                ? { ...item, quantity: newQty, maxStock: limit }
+              item.id === existing.id
+                ? {
+                    ...item,
+                    quantity: newQty,
+                    maxStock: limit,
+                    ...(size ? { size } : {}),
+                    ...(colorway ? { colorway } : {}),
+                    ...(colorwayName ? { colorwayName } : {}),
+                    ...(customImage ? { image: customImage } : {}),
+                  }
                 : item
             ),
             isCartOpen: true,
@@ -134,13 +148,17 @@ export const useStore = create<StoreState>()(
             cart: [
               ...cart,
               {
-                id: cap.id,
-                name: cap.nameEn,
+                id: cartItemId,
+                variantId: cap.id,
+                name: displayName,
                 priceUsd: cap.priceUsd,
-                image: cap.image,
+                image: customImage || cap.image,
                 silhouette: cap.silhouette,
                 quantity: initialQty,
                 maxStock: limit,
+                ...(size ? { size } : {}),
+                ...(colorway ? { colorway } : {}),
+                ...(colorwayName ? { colorwayName } : {}),
               },
             ],
             isCartOpen: true,
@@ -179,7 +197,7 @@ export const useStore = create<StoreState>()(
 
         const updatedCart = cart
           .map((item) => {
-            const variant = variants.find((v) => v.variantId === item.id);
+            const variant = variants.find((v) => v.variantId === (item.variantId || item.id));
             if (!variant) return item;
 
             const isAvailable = variant.isAvailable !== false;
@@ -236,9 +254,6 @@ export const useStore = create<StoreState>()(
         get().setTheme(nextTheme);
       },
 
-      quickViewCap: null,
-      openQuickView: (cap) => set({ quickViewCap: cap }),
-      closeQuickView: () => set({ quickViewCap: null }),
 
       dropAlertCap: null,
       openDropAlert: (cap) => set({ dropAlertCap: cap }),
@@ -251,24 +266,14 @@ export const useStore = create<StoreState>()(
       },
       setSoundEnabled: (enabled) => set({ soundEnabled: enabled }),
 
-      isSneakerMatcherOpen: false,
-      sneakerMatcherTargetCap: null,
-      openSneakerMatcher: (cap = null) =>
-        set({ isSneakerMatcherOpen: true, sneakerMatcherTargetCap: cap }),
-      closeSneakerMatcher: () =>
-        set({ isSneakerMatcherOpen: false, sneakerMatcherTargetCap: null }),
 
       // Virtual Try-On
       isTryOnOpen: false,
       tryOnTargetCap: null,
-      tryOnImage: null,
-      tryOnSettings: { offsetX: 0, offsetY: 0, scale: 1, tilt: 0, tiltX: 0 },
       openTryOn: (cap = null) =>
         set({ isTryOnOpen: true, tryOnTargetCap: cap }),
       closeTryOn: () =>
         set({ isTryOnOpen: false, tryOnTargetCap: null }),
-      setTryOnImage: (img) => set({ tryOnImage: img }),
-      setTryOnSettings: (settings) => set({ tryOnSettings: settings }),
 
       shareToast: null,
       showShareToast: (data) =>
@@ -282,13 +287,15 @@ export const useStore = create<StoreState>()(
     }),
     {
       name: "moyacaps-storage",
+      // v1: tee lines need a colorway for per-SKU checkout (ADR 0015)
+      // v2: the Try-On Photo is never stored (ADR 0019); drop any saved copy
+      version: 2,
+      migrate: (persisted, version) => migratePersisted(persisted, version) as PersistedState,
       partialize: (state) => ({
         cart: state.cart,
         currency: state.currency,
         theme: state.theme,
         soundEnabled: state.soundEnabled,
-        tryOnImage: state.tryOnImage,
-        tryOnSettings: state.tryOnSettings,
       }),
     }
   )

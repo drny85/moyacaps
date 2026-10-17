@@ -4,13 +4,13 @@ import { useTranslations, useLocale } from "next-intl";
 import { Flame, Clover } from "lucide-react";
 import {
   animate,
-  motion,
+  m,
   useInView,
-  useReducedMotion,
   useScroll,
   useTransform,
   type MotionValue,
 } from "framer-motion";
+import { useReducedMotionSafe } from "@/hooks/useMotionPrefs";
 import { useRef, useEffect, useState } from "react";
 import { Reveal } from "@/components/motion/Reveal";
 import { DURATION, EASE } from "@/lib/motion";
@@ -33,7 +33,7 @@ function AnimatedStat({ value, label, description, delay = 0 }: {
   const locale = useLocale();
   const ref = useRef<HTMLDivElement>(null);
   const isInView = useInView(ref, { once: true, margin: "-80px" });
-  const reduceMotion = useReducedMotion();
+  const reduceMotion = useReducedMotionSafe();
   const parsed = parseStat(value);
   const [count, setCount] = useState(0);
 
@@ -53,7 +53,7 @@ function AnimatedStat({ value, label, description, delay = 0 }: {
   }, [isInView, parsed?.number, delay, reduceMotion]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <motion.div
+    <m.div
       ref={ref}
       initial={{ opacity: 0, y: reduceMotion ? 0 : 20 }}
       animate={isInView ? { opacity: 1, y: 0 } : {}}
@@ -69,23 +69,23 @@ function AnimatedStat({ value, label, description, delay = 0 }: {
       <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1 leading-relaxed">
         {description}
       </p>
-    </motion.div>
+    </m.div>
   );
 }
 
 function ScrollWord({ word, progress, range }: { word: string; progress: MotionValue<number>; range: [number, number] }) {
   const opacity = useTransform(progress, range, [0.15, 1]);
   return (
-    <motion.span style={{ opacity }} className="inline-block mr-[0.25em]">
+    <m.span style={{ opacity }} className="inline-block mr-[0.25em]">
       {word}
-    </motion.span>
+    </m.span>
   );
 }
 
 /** Headline whose words light up one by one as it scrolls through the viewport */
 function ScrollHeadline({ text }: { text: string }) {
   const ref = useRef<HTMLHeadingElement>(null);
-  const reduceMotion = useReducedMotion();
+  const reduceMotion = useReducedMotionSafe();
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start 0.9", "start 0.35"] });
   const words = text.split(" ");
 

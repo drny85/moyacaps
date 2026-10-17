@@ -1,3 +1,4 @@
+import { FullMessagesProvider } from "@/components/providers/FullMessagesProvider";
 import type { Metadata } from "next";
 
 export async function generateMetadata({
@@ -30,5 +31,5 @@ export default function TrackLayout({
   children: React.ReactNode;
   params: Promise<{ locale: string }>;
 }) {
-  return <>{children}</>;
+  return <FullMessagesProvider>{children}</FullMessagesProvider>;
 }

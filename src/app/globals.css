@@ -263,16 +263,6 @@
   100% { transform: scale(1); opacity: 1; }
 }
 
-@keyframes banner-scroll {
-  0% { background-position: 0% 50%; }
-  100% { background-position: 200% 50%; }
-}
-
-@keyframes marquee {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
-}
-
 @keyframes bounce-down {
   0%, 100% { transform: translateY(0) translateX(-50%); opacity: 0.6; }
   50% { transform: translateY(8px) translateX(-50%); opacity: 1; }
@@ -294,19 +284,6 @@
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
   background-repeat: repeat;
   background-size: 128px 128px;
-}
-
-/* ── Scrolling Marquee ── */
-.marquee-container {
-  overflow: hidden;
-  white-space: nowrap;
-}
-.marquee-track {
-  display: inline-flex;
-  animation: marquee 25s linear infinite;
-}
-.marquee-track:hover {
-  animation-play-state: paused;
 }
 
 /* ── Skeleton Shimmer Loading ── */
@@ -398,3 +375,54 @@ html.light .skeleton {
   }
 }
 
+/* Hero intro (ADR 0016): CSS so it plays from the first paint, before JavaScript loads,
+   and never hides the LCP image. Delay per element via --intro-delay. */
+@keyframes intro-rise {
+  from { transform: translateY(105%); }
+  to { transform: none; }
+}
+@keyframes intro-fade {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes intro-pop {
+  from { opacity: 0; transform: scale(0.6); }
+  to { opacity: 1; }
+}
+@keyframes intro-drop {
+  from { transform: translateY(-70px) scale(0.92); }
+  to { transform: none; }
+}
+/* Transform only: an element that starts at opacity 0 only counts for LCP once the main
+   thread repaints it (after hydration), so large decorative layers must not fade in (ADR 0020). */
+@keyframes intro-settle {
+  from { transform: translateY(14px) scale(0.97); }
+  to { transform: none; }
+}
+.intro-rise { animation: intro-rise 0.8s cubic-bezier(0.16, 1, 0.3, 1) var(--intro-delay, 0s) both; }
+.intro-fade { animation: intro-fade 0.5s cubic-bezier(0.16, 1, 0.3, 1) var(--intro-delay, 0s) both; }
+.intro-pop { animation: intro-pop 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) var(--intro-delay, 0s) backwards; }
+.intro-drop { animation: intro-drop 0.9s cubic-bezier(0.34, 1.4, 0.64, 1) both; }
+.intro-settle { animation: intro-settle 0.7s cubic-bezier(0.16, 1, 0.3, 1) var(--intro-delay, 0s) both; }
+
+/* Hero ghost type: the outlined series number behind the cap (HeroInteractive) */
+.ghost-type {
+  color: transparent;
+  -webkit-text-stroke: 1.5px rgba(255, 255, 255, 0.16);
+}
+html.light .ghost-type {
+  -webkit-text-stroke: 1.5px rgba(9, 9, 11, 0.14);
+}
+
+/* Motion budget (ADR 0016): visitors who ask for less motion get none from CSS loops
+   (shimmer, pulses). Framer Motion follows MotionProvider + useReducedMotionSafe. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

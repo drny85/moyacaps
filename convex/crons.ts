@@ -1,4 +1,5 @@
 import { cronJobs } from "convex/server";
+import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { internalAction } from "./_generated/server";
 
@@ -10,11 +11,12 @@ import { internalAction } from "./_generated/server";
  */
 export const reconcileReservations = internalAction({
   args: {},
+  returns: v.object({ checked: v.number(), expired: v.number() }),
   handler: async (ctx): Promise<{ checked: number; expired: number }> => {
     const now = Date.now();
     const BATCH = 500;
 
-    const stale = await ctx.runQuery(internal.orders.getExpiredWhatsAppReservationsInternal, {
+    const stale = await ctx.runQuery(internal.orders.whatsapp.getExpiredWhatsAppReservationsInternal, {
       now,
       limit: BATCH,
     });
@@ -23,7 +25,7 @@ export const reconcileReservations = internalAction({
     for (const order of stale) {
       // expireWhatsAppOrderLead self-vetoes when the hold was extended and still valid,
       // and only acts on orders still awaiting payment — safe to call unconditionally.
-      await ctx.runMutation(internal.orders.expireWhatsAppOrderLead, {
+      await ctx.runMutation(internal.orders.whatsapp.expireWhatsAppOrderLead, {
         orderId: order._id,
       });
       expired += 1;
@@ -37,8 +39,8 @@ export const reconcileReservations = internalAction({
 });
 
 /**
- * INTERNAL query for reservation reconciliation now lives in orders.ts
- * (internal.orders.getExpiredWhatsAppReservationsInternal).
+ * INTERNAL query for reservation reconciliation now lives in orders/whatsapp.ts
+ * (internal.orders.whatsapp.getExpiredWhatsAppReservationsInternal).
  */
 
 const crons = cronJobs();

@@ -1,11 +1,88 @@
+export type ProductSilhouette = "snapback" | "trucker" | "tee" | string;
+export type ProductCategory = "headwear" | "apparel" | string;
+
+export interface ApparelColorwayOption {
+  id: ApparelColorwayId;
+  nameEn: string;
+  nameEs: string;
+  hex: string;
+  borderHex: string;
+  /** Lifestyle Shot of this colorway */
+  modelImage: string;
+  /** 4:5 Catalog Shot of this colorway (ADR 0016) */
+  catalogShot?: string;
+  /**
+   * Cut-out photo of the printed garment (transparent PNG from scripts/prep-tee-photo.ts).
+   * When set, build-catalog-shots builds the Catalog Shot from it instead of printing the
+   * Graphic Design on a blank.
+   */
+  flatLayPhoto?: string;
+}
+
+export const APPAREL_COLORWAYS = [
+  {
+    id: "washed-black",
+    nameEn: "Vintage Washed Black",
+    nameEs: "Negro Lavado Vintage",
+    hex: "#18181b",
+    borderHex: "#3f3f46",
+    descriptionEn: "280–300 GSM Heavy Combed Cotton • Mineral Wash",
+    descriptionEs: "Algodón 280–300 GSM • Lavado Mineral",
+  },
+  {
+    id: "crisp-white",
+    nameEn: "Crisp Optical White",
+    nameEs: "Blanco Óptico Puro",
+    hex: "#fafafa",
+    borderHex: "#e4e4e7",
+    descriptionEn: "280 GSM Ringspun Heavy Cotton • Optical Bright",
+    descriptionEs: "Algodón 280 GSM Ringspun • Blanco Puro",
+  },
+  {
+    id: "heather-grey",
+    nameEn: "Athletic Heather Grey",
+    nameEs: "Gris Jaspe Deportivo",
+    hex: "#9ca3af",
+    borderHex: "#6b7280",
+    descriptionEn: "280 GSM 90/10 Sport Streetwear Heather",
+    descriptionEs: "Mezcla 90/10 Gris Jaspe Deportivo 280 GSM",
+  },
+  {
+    id: "butter-cream",
+    nameEn: "Butter Cream Vintage",
+    nameEs: "Crema Mantequilla Vintage",
+    hex: "#fefce8",
+    borderHex: "#fef08a",
+    descriptionEn: "280 GSM Combed Cotton • Retro Butter Cream Dye",
+    descriptionEs: "Algodón Peinado 280 GSM • Tono Crema Vintage",
+  },
+  {
+    id: "acid-wash-lime",
+    nameEn: "Acid Wash Lime",
+    nameEs: "Lima Acid Wash",
+    hex: "#a4b85c",
+    borderHex: "#7d8f3a",
+    descriptionEn: "280 GSM Combed Cotton • Lime Acid Wash",
+    descriptionEs: "Algodón Peinado 280 GSM • Lavado Ácido Lima",
+  },
+] as const;
+
+export type ApparelColorwayId = (typeof APPAREL_COLORWAYS)[number]["id"];
+
 export interface CapVariant {
   id: string;
   nameEn: string;
   nameEs: string;
-  silhouette: "snapback" | "trucker";
+  silhouette: ProductSilhouette;
+  category?: ProductCategory;
   primaryHex: string;
   secondaryHex: string;
   image: string;
+  images?: string[];
+  /** 4:5 Catalog Shot for grids and cards (ADR 0016) */
+  catalogShot?: string;
+  graphicImage?: string;
+  printPosition?: "front" | "back";
   stock: number;
   priceUsd: number;
   isFeatured?: boolean;
@@ -17,9 +94,443 @@ export interface CapVariant {
   dropBadgeTextEn?: string;
   dropBadgeTextEs?: string;
   dropStatus?: string;
+  /** Epoch ms the product was added (Convex _creationTime); drives "Newest" sorting */
+  createdAt?: number;
+  fabricEn?: string;
+  fabricEs?: string;
+  fitEn?: string;
+  fitEs?: string;
+  defaultColorway?: ApparelColorwayId;
+  colorways?: ApparelColorwayOption[];
+  /** Tee sizes offered (ADR 0015) */
+  sizes?: string[];
 }
 
-export const CAP_VARIANTS: CapVariant[] = [
+export const SHIRT_VARIANTS: CapVariant[] = [
+  {
+    id: "boxing-gloves-tee",
+    nameEn: "Good Luck Knockout Boxing Gloves Tee",
+    nameEs: "Playera Knockout Boxing Gloves Good Luck",
+    silhouette: "tee",
+    category: "apparel",
+    primaryHex: "#18181b",
+    secondaryHex: "#ef4444",
+    image: "/shirts/boxing-gloves-black.jpg",
+    images: [
+      "/shirts/boxing-gloves-black.jpg",
+      "/shirts/boxing-gloves-white.jpg",
+      "/shirts/boxing-gloves-grey.jpg",
+      "/shirts/boxing-gloves-cream.jpg",
+      "/shirts/graphics/boxing-gloves.jpg",
+    ],
+    graphicImage: "/shirts/graphics/boxing-gloves.jpg",
+    printPosition: "front",
+    stock: 18,
+    priceUsd: 80,
+    isFeatured: true,
+    tagEn: "Heavyweight Drop",
+    tagEs: "Drop Heavyweight",
+    fabricEn: "Heavyweight 280 GSM 100% Combed Cotton • Vintage Stone Wash",
+    fabricEs: "Algodón Peinado Heavyweight 280 GSM • Lavado Vintage",
+    fitEn: "Boxy Drop-Shoulder Oversized Streetwear Fit",
+    fitEs: "Corte Boxy Drop-Shoulder Oversized",
+    defaultColorway: "washed-black",
+    colorways: [
+      { id: "washed-black", nameEn: "Vintage Washed Black", nameEs: "Negro Lavado", hex: "#18181b", borderHex: "#3f3f46", modelImage: "/shirts/boxing-gloves-black.jpg" },
+      { id: "crisp-white", nameEn: "Crisp Optical White", nameEs: "Blanco Puro", hex: "#fafafa", borderHex: "#e4e4e7", modelImage: "/shirts/boxing-gloves-white.jpg" },
+      { id: "heather-grey", nameEn: "Athletic Heather Grey", nameEs: "Gris Jaspe", hex: "#9ca3af", borderHex: "#6b7280", modelImage: "/shirts/boxing-gloves-grey.jpg" },
+      { id: "butter-cream", nameEn: "Butter Cream Vintage", nameEs: "Crema Vintage", hex: "#fefce8", borderHex: "#fef08a", modelImage: "/shirts/boxing-gloves-cream.jpg" },
+    ],
+  },
+  {
+    id: "butterfly-grunge-tee",
+    nameEn: "Good Luck Pink Grunge Butterfly Tee",
+    nameEs: "Playera Pink Grunge Butterfly Good Luck",
+    silhouette: "tee",
+    category: "apparel",
+    primaryHex: "#fefce8",
+    secondaryHex: "#ec4899",
+    image: "/shirts/butterfly-cream.jpg",
+    images: [
+      "/shirts/butterfly-cream.jpg",
+      "/shirts/butterfly-black.jpg",
+      "/shirts/butterfly-white.jpg",
+      "/shirts/butterfly-grey.jpg",
+      "/shirts/graphics/butterfly.jpg",
+    ],
+    graphicImage: "/shirts/graphics/butterfly.jpg",
+    printPosition: "front",
+    stock: 15,
+    priceUsd: 80,
+    isFeatured: true,
+    tagEn: "High Demand",
+    tagEs: "Alta Demanda",
+    fabricEn: "Heavyweight 280 GSM 100% Combed Cotton • Off-White Vintage Tint",
+    fabricEs: "Algodón Peinado Heavyweight 280 GSM • Tono Blanco Hueso Vintage",
+    fitEn: "Boxy Drop-Shoulder Oversized Streetwear Fit",
+    fitEs: "Corte Boxy Drop-Shoulder Oversized",
+    defaultColorway: "butter-cream",
+    colorways: [
+      { id: "butter-cream", nameEn: "Butter Cream Vintage", nameEs: "Crema Vintage", hex: "#fefce8", borderHex: "#fef08a", modelImage: "/shirts/butterfly-cream.jpg" },
+      { id: "washed-black", nameEn: "Vintage Washed Black", nameEs: "Negro Lavado", hex: "#18181b", borderHex: "#3f3f46", modelImage: "/shirts/butterfly-black.jpg" },
+      { id: "crisp-white", nameEn: "Crisp Optical White", nameEs: "Blanco Puro", hex: "#fafafa", borderHex: "#e4e4e7", modelImage: "/shirts/butterfly-white.jpg" },
+      { id: "heather-grey", nameEn: "Athletic Heather Grey", nameEs: "Gris Jaspe", hex: "#9ca3af", borderHex: "#6b7280", modelImage: "/shirts/butterfly-grey.jpg" },
+    ],
+  },
+  {
+    id: "eagle-clover-tee",
+    nameEn: "Good Luck Gothic Eagle & Clover Back-Print Tee",
+    nameEs: "Playera Gothic Eagle & Clover Espalda Good Luck",
+    silhouette: "tee",
+    category: "apparel",
+    primaryHex: "#27272a",
+    secondaryHex: "#f97316",
+    image: "/shirts/eagle-clover-black.jpg",
+    images: [
+      "/shirts/eagle-clover-black.jpg",
+      "/shirts/eagle-clover-grey.jpg",
+      "/shirts/eagle-clover-white.jpg",
+      "/shirts/eagle-clover-cream.jpg",
+      "/shirts/graphics/eagle-clover.jpg",
+    ],
+    graphicImage: "/shirts/graphics/eagle-clover.jpg",
+    printPosition: "front",
+    stock: 22,
+    priceUsd: 80,
+    isFeatured: true,
+    tagEn: "Back-Print Signature",
+    tagEs: "Insignia Espalda",
+    fabricEn: "Heavyweight 300 GSM Heavy Combed Cotton • Acid Stone Wash",
+    fabricEs: "Algodón Peinado Heavyweight 300 GSM • Lavado Stone Wash",
+    fitEn: "Boxy Drop-Shoulder Oversized Streetwear Fit",
+    fitEs: "Corte Boxy Drop-Shoulder Oversized",
+    defaultColorway: "washed-black",
+    colorways: [
+      { id: "washed-black", nameEn: "Vintage Washed Black", nameEs: "Negro Lavado", hex: "#18181b", borderHex: "#3f3f46", modelImage: "/shirts/eagle-clover-black.jpg" },
+      { id: "heather-grey", nameEn: "Athletic Heather Grey", nameEs: "Gris Jaspe", hex: "#9ca3af", borderHex: "#6b7280", modelImage: "/shirts/eagle-clover-grey.jpg" },
+      { id: "crisp-white", nameEn: "Crisp Optical White", nameEs: "Blanco Puro", hex: "#fafafa", borderHex: "#e4e4e7", modelImage: "/shirts/eagle-clover-white.jpg" },
+      { id: "butter-cream", nameEn: "Butter Cream Vintage", nameEs: "Crema Vintage", hex: "#fefce8", borderHex: "#fef08a", modelImage: "/shirts/eagle-clover-cream.jpg" },
+    ],
+  },
+  {
+    id: "gothic-skull-tee",
+    nameEn: "Good Luck Halftone Gothic Skull Tee",
+    nameEs: "Playera Halftone Gothic Skull Good Luck",
+    silhouette: "tee",
+    category: "apparel",
+    primaryHex: "#1c1917",
+    secondaryHex: "#a855f7",
+    image: "/shirts/gothic-skull-black.jpg",
+    images: [
+      "/shirts/gothic-skull-black.jpg",
+      "/shirts/gothic-skull-white.jpg",
+      "/shirts/gothic-skull-grey.jpg",
+      "/shirts/gothic-skull-cream.jpg",
+      "/shirts/graphics/gothic-skull.jpg",
+    ],
+    graphicImage: "/shirts/graphics/gothic-skull.jpg",
+    printPosition: "front",
+    stock: 14,
+    priceUsd: 80,
+    isFeatured: false,
+    tagEn: "Gothic Streetwear",
+    tagEs: "Streetwear Gótico",
+    fabricEn: "Heavyweight 280 GSM 100% Combed Cotton • Pigment Charcoal Dye",
+    fabricEs: "Algodón Peinado Heavyweight 280 GSM • Tinte Carbón Pigmentado",
+    fitEn: "Boxy Drop-Shoulder Oversized Streetwear Fit",
+    fitEs: "Corte Boxy Drop-Shoulder Oversized",
+    defaultColorway: "washed-black",
+    colorways: [
+      { id: "washed-black", nameEn: "Vintage Washed Black", nameEs: "Negro Lavado", hex: "#18181b", borderHex: "#3f3f46", modelImage: "/shirts/gothic-skull-black.jpg" },
+      { id: "crisp-white", nameEn: "Crisp Optical White", nameEs: "Blanco Puro", hex: "#fafafa", borderHex: "#e4e4e7", modelImage: "/shirts/gothic-skull-white.jpg" },
+      { id: "heather-grey", nameEn: "Athletic Heather Grey", nameEs: "Gris Jaspe", hex: "#9ca3af", borderHex: "#6b7280", modelImage: "/shirts/gothic-skull-grey.jpg" },
+      { id: "butter-cream", nameEn: "Butter Cream Vintage", nameEs: "Crema Vintage", hex: "#fefce8", borderHex: "#fef08a", modelImage: "/shirts/gothic-skull-cream.jpg" },
+    ],
+  },
+  {
+    id: "eight-ball-tee",
+    nameEn: "Good Luck Street 8-Ball Graffiti Tee",
+    nameEs: "Playera Street 8-Ball Graffiti Good Luck",
+    silhouette: "tee",
+    category: "apparel",
+    primaryHex: "#fafafa",
+    secondaryHex: "#3b82f6",
+    image: "/shirts/eight-ball-white.jpg",
+    images: [
+      "/shirts/eight-ball-white.jpg",
+      "/shirts/eight-ball-black.jpg",
+      "/shirts/eight-ball-grey.jpg",
+      "/shirts/eight-ball-cream.jpg",
+      "/shirts/graphics/eight-ball.jpg",
+    ],
+    graphicImage: "/shirts/graphics/eight-ball.jpg",
+    printPosition: "front",
+    stock: 16,
+    priceUsd: 80,
+    isFeatured: true,
+    tagEn: "Graffiti Series",
+    tagEs: "Serie Graffiti",
+    fabricEn: "Heavyweight 280 GSM 100% Ringspun Cotton • Optical White",
+    fabricEs: "Algodón Ringspun Heavyweight 280 GSM • Blanco Puro",
+    fitEn: "Boxy Drop-Shoulder Oversized Streetwear Fit",
+    fitEs: "Corte Boxy Drop-Shoulder Oversized",
+    defaultColorway: "crisp-white",
+    colorways: [
+      { id: "crisp-white", nameEn: "Crisp Optical White", nameEs: "Blanco Puro", hex: "#fafafa", borderHex: "#e4e4e7", modelImage: "/shirts/eight-ball-white.jpg" },
+      { id: "washed-black", nameEn: "Vintage Washed Black", nameEs: "Negro Lavado", hex: "#18181b", borderHex: "#3f3f46", modelImage: "/shirts/eight-ball-black.jpg" },
+      { id: "heather-grey", nameEn: "Athletic Heather Grey", nameEs: "Gris Jaspe", hex: "#9ca3af", borderHex: "#6b7280", modelImage: "/shirts/eight-ball-grey.jpg" },
+      { id: "butter-cream", nameEn: "Butter Cream Vintage", nameEs: "Crema Vintage", hex: "#fefce8", borderHex: "#fef08a", modelImage: "/shirts/eight-ball-cream.jpg" },
+    ],
+  },
+  {
+    id: "snake-horseshoe-tee",
+    nameEn: "Good Luck Serpent & Horseshoe Back-Print Tee",
+    nameEs: "Playera Serpiente & Herradura Espalda Good Luck",
+    silhouette: "tee",
+    category: "apparel",
+    primaryHex: "#18181b",
+    secondaryHex: "#991b1b",
+    image: "/shirts/snake-horseshoe-black.jpg",
+    images: [
+      "/shirts/snake-horseshoe-black.jpg",
+      "/shirts/snake-horseshoe-white.jpg",
+      "/shirts/snake-horseshoe-grey.jpg",
+      "/shirts/snake-horseshoe-cream.jpg",
+      "/shirts/graphics/snake-horseshoe.jpg",
+    ],
+    graphicImage: "/shirts/graphics/snake-horseshoe.jpg",
+    printPosition: "front",
+    stock: 20,
+    priceUsd: 80,
+    isFeatured: false,
+    tagEn: "Back-Print Series",
+    tagEs: "Serie Espalda",
+    fabricEn: "Heavyweight 300 GSM Heavy Cotton • Vintage Black Wash",
+    fabricEs: "Algodón Pesado 300 GSM • Lavado Negro Vintage",
+    fitEn: "Boxy Drop-Shoulder Oversized Streetwear Fit",
+    fitEs: "Corte Boxy Drop-Shoulder Oversized",
+    defaultColorway: "washed-black",
+    colorways: [
+      { id: "washed-black", nameEn: "Vintage Washed Black", nameEs: "Negro Lavado", hex: "#18181b", borderHex: "#3f3f46", modelImage: "/shirts/snake-horseshoe-black.jpg" },
+      { id: "crisp-white", nameEn: "Crisp Optical White", nameEs: "Blanco Puro", hex: "#fafafa", borderHex: "#e4e4e7", modelImage: "/shirts/snake-horseshoe-white.jpg" },
+      { id: "heather-grey", nameEn: "Athletic Heather Grey", nameEs: "Gris Jaspe", hex: "#9ca3af", borderHex: "#6b7280", modelImage: "/shirts/snake-horseshoe-grey.jpg" },
+      { id: "butter-cream", nameEn: "Butter Cream Vintage", nameEs: "Crema Vintage", hex: "#fefce8", borderHex: "#fef08a", modelImage: "/shirts/snake-horseshoe-cream.jpg" },
+    ],
+  },
+  {
+    id: "vintage-f1-tee",
+    nameEn: "Good Luck Grand Prix Vintage F1 Racer Tee",
+    nameEs: "Playera Grand Prix Vintage F1 Racer Good Luck",
+    silhouette: "tee",
+    category: "apparel",
+    primaryHex: "#fefce8",
+    secondaryHex: "#dc2626",
+    image: "/shirts/vintage-f1-cream.jpg",
+    images: [
+      "/shirts/vintage-f1-cream.jpg",
+      "/shirts/vintage-f1-black.jpg",
+      "/shirts/vintage-f1-white.jpg",
+      "/shirts/vintage-f1-grey.jpg",
+      "/shirts/graphics/vintage-f1.jpg",
+    ],
+    graphicImage: "/shirts/graphics/vintage-f1.jpg",
+    printPosition: "front",
+    stock: 12,
+    priceUsd: 80,
+    isFeatured: true,
+    tagEn: "Vintage Grand Prix",
+    tagEs: "Grand Prix Vintage",
+    fabricEn: "Heavyweight 280 GSM 100% Combed Cotton • Butter Cream Dye",
+    fabricEs: "Algodón Peinado Heavyweight 280 GSM • Crema Vintage",
+    fitEn: "Boxy Drop-Shoulder Oversized Streetwear Fit",
+    fitEs: "Corte Boxy Drop-Shoulder Oversized",
+    defaultColorway: "butter-cream",
+    colorways: [
+      { id: "butter-cream", nameEn: "Butter Cream Vintage", nameEs: "Crema Vintage", hex: "#fefce8", borderHex: "#fef08a", modelImage: "/shirts/vintage-f1-cream.jpg" },
+      { id: "washed-black", nameEn: "Vintage Washed Black", nameEs: "Negro Lavado", hex: "#18181b", borderHex: "#3f3f46", modelImage: "/shirts/vintage-f1-black.jpg" },
+      { id: "crisp-white", nameEn: "Crisp Optical White", nameEs: "Blanco Puro", hex: "#fafafa", borderHex: "#e4e4e7", modelImage: "/shirts/vintage-f1-white.jpg" },
+      { id: "heather-grey", nameEn: "Athletic Heather Grey", nameEs: "Gris Jaspe", hex: "#9ca3af", borderHex: "#6b7280", modelImage: "/shirts/vintage-f1-grey.jpg" },
+    ],
+  },
+  {
+    id: "retro-soul-tee",
+    nameEn: "Good Luck 70s Soul Diva Vintage Tee",
+    nameEs: "Playera 70s Soul Diva Vintage Good Luck",
+    silhouette: "tee",
+    category: "apparel",
+    primaryHex: "#18181b",
+    secondaryHex: "#eab308",
+    image: "/shirts/retro-soul-black.jpg",
+    images: [
+      "/shirts/retro-soul-black.jpg",
+      "/shirts/retro-soul-white.jpg",
+      "/shirts/retro-soul-grey.jpg",
+      "/shirts/retro-soul-cream.jpg",
+      "/shirts/graphics/retro-soul.jpg",
+    ],
+    graphicImage: "/shirts/graphics/retro-soul.jpg",
+    printPosition: "front",
+    stock: 15,
+    priceUsd: 80,
+    isFeatured: false,
+    tagEn: "Soul Series",
+    tagEs: "Serie Soul",
+    fabricEn: "Heavyweight 280 GSM 100% Combed Cotton • Stone Washed Black",
+    fabricEs: "Algodón Peinado 280 GSM • Negro Deslavado a la Piedra",
+    fitEn: "Boxy Drop-Shoulder Oversized Streetwear Fit",
+    fitEs: "Corte Boxy Drop-Shoulder Oversized",
+    defaultColorway: "washed-black",
+    colorways: [
+      { id: "washed-black", nameEn: "Vintage Washed Black", nameEs: "Negro Lavado", hex: "#18181b", borderHex: "#3f3f46", modelImage: "/shirts/retro-soul-black.jpg" },
+      { id: "crisp-white", nameEn: "Crisp Optical White", nameEs: "Blanco Puro", hex: "#fafafa", borderHex: "#e4e4e7", modelImage: "/shirts/retro-soul-white.jpg" },
+      { id: "heather-grey", nameEn: "Athletic Heather Grey", nameEs: "Gris Jaspe", hex: "#9ca3af", borderHex: "#6b7280", modelImage: "/shirts/retro-soul-grey.jpg" },
+      { id: "butter-cream", nameEn: "Butter Cream Vintage", nameEs: "Crema Vintage", hex: "#fefce8", borderHex: "#fef08a", modelImage: "/shirts/retro-soul-cream.jpg" },
+    ],
+  },
+  {
+    id: "lightning-star-tee",
+    nameEn: "Good Luck Lightning Star Electric Tee",
+    nameEs: "Playera Lightning Star Electric Good Luck",
+    silhouette: "tee",
+    category: "apparel",
+    primaryHex: "#9ca3af",
+    secondaryHex: "#22c55e",
+    image: "/shirts/lightning-star-grey.jpg",
+    images: [
+      "/shirts/lightning-star-grey.jpg",
+      "/shirts/lightning-star-black.jpg",
+      "/shirts/lightning-star-white.jpg",
+      "/shirts/lightning-star-cream.jpg",
+      "/shirts/graphics/lightning-star.jpg",
+    ],
+    graphicImage: "/shirts/graphics/lightning-star.jpg",
+    printPosition: "front",
+    stock: 16,
+    priceUsd: 80,
+    isFeatured: false,
+    tagEn: "Electric Series",
+    tagEs: "Serie Eléctrica",
+    fabricEn: "Heavyweight 280 GSM 90/10 Combed Cotton/Poly Heather Grey",
+    fabricEs: "Algodón Gris Jaspe Heavyweight 280 GSM",
+    fitEn: "Boxy Drop-Shoulder Oversized Streetwear Fit",
+    fitEs: "Corte Boxy Drop-Shoulder Oversized",
+    defaultColorway: "heather-grey",
+    colorways: [
+      { id: "heather-grey", nameEn: "Athletic Heather Grey", nameEs: "Gris Jaspe", hex: "#9ca3af", borderHex: "#6b7280", modelImage: "/shirts/lightning-star-grey.jpg" },
+      { id: "washed-black", nameEn: "Vintage Washed Black", nameEs: "Negro Lavado", hex: "#18181b", borderHex: "#3f3f46", modelImage: "/shirts/lightning-star-black.jpg" },
+      { id: "crisp-white", nameEn: "Crisp Optical White", nameEs: "Blanco Puro", hex: "#fafafa", borderHex: "#e4e4e7", modelImage: "/shirts/lightning-star-white.jpg" },
+      { id: "butter-cream", nameEn: "Butter Cream Vintage", nameEs: "Crema Vintage", hex: "#fefce8", borderHex: "#fef08a", modelImage: "/shirts/lightning-star-cream.jpg" },
+    ],
+  },
+  {
+    id: "gothic-angel-tee",
+    nameEn: "Good Luck Marble Angel Statue Tee",
+    nameEs: "Playera Estatua Ángel de Mármol Good Luck",
+    silhouette: "tee",
+    category: "apparel",
+    primaryHex: "#ffffff",
+    secondaryHex: "#881337",
+    image: "/shirts/angel-clover-white.jpg",
+    images: [
+      "/shirts/angel-clover-white.jpg",
+      "/shirts/angel-clover-black.jpg",
+      "/shirts/angel-clover-grey.jpg",
+      "/shirts/angel-clover-cream.jpg",
+      "/shirts/graphics/angel-clover.jpg",
+    ],
+    graphicImage: "/shirts/graphics/angel-clover.jpg",
+    printPosition: "front",
+    stock: 14,
+    priceUsd: 80,
+    isFeatured: true,
+    tagEn: "Statue Series",
+    tagEs: "Serie Escultura",
+    fabricEn: "Heavyweight 280 GSM 100% Ringspun Cotton • Crisp White",
+    fabricEs: "Algodón Ringspun Heavyweight 280 GSM • Blanco Nítido",
+    fitEn: "Boxy Drop-Shoulder Oversized Streetwear Fit",
+    fitEs: "Corte Boxy Drop-Shoulder Oversized",
+    defaultColorway: "crisp-white",
+    colorways: [
+      { id: "crisp-white", nameEn: "Crisp Optical White", nameEs: "Blanco Puro", hex: "#fafafa", borderHex: "#e4e4e7", modelImage: "/shirts/angel-clover-white.jpg" },
+      { id: "washed-black", nameEn: "Vintage Washed Black", nameEs: "Negro Lavado", hex: "#18181b", borderHex: "#3f3f46", modelImage: "/shirts/angel-clover-black.jpg" },
+      { id: "heather-grey", nameEn: "Athletic Heather Grey", nameEs: "Gris Jaspe", hex: "#9ca3af", borderHex: "#6b7280", modelImage: "/shirts/angel-clover-grey.jpg" },
+      { id: "butter-cream", nameEn: "Butter Cream Vintage", nameEs: "Crema Vintage", hex: "#fefce8", borderHex: "#fef08a", modelImage: "/shirts/angel-clover-cream.jpg" },
+    ],
+  },
+  {
+    id: "muscle-car-tee",
+    nameEn: "Good Luck Midnight Muscle Car & Roses Tee",
+    nameEs: "Playera Midnight Muscle Car & Rosas Good Luck",
+    silhouette: "tee",
+    category: "apparel",
+    primaryHex: "#18181b",
+    secondaryHex: "#dc2626",
+    image: "/shirts/muscle-car-black.jpg",
+    images: [
+      "/shirts/muscle-car-black.jpg",
+      "/shirts/muscle-car-white.jpg",
+      "/shirts/muscle-car-grey.jpg",
+      "/shirts/muscle-car-cream.jpg",
+      "/shirts/graphics/muscle-car.jpg",
+    ],
+    graphicImage: "/shirts/graphics/muscle-car.jpg",
+    printPosition: "front",
+    stock: 15,
+    priceUsd: 80,
+    isFeatured: false,
+    tagEn: "Midnight Series",
+    tagEs: "Serie Medianoche",
+    fabricEn: "Heavyweight 300 GSM 100% Combed Cotton • Midnight Mineral Wash",
+    fabricEs: "Algodón Peinado 300 GSM • Lavado Mineral Midnight",
+    fitEn: "Boxy Drop-Shoulder Oversized Streetwear Fit",
+    fitEs: "Corte Boxy Drop-Shoulder Oversized",
+    defaultColorway: "washed-black",
+    colorways: [
+      { id: "washed-black", nameEn: "Vintage Washed Black", nameEs: "Negro Lavado", hex: "#18181b", borderHex: "#3f3f46", modelImage: "/shirts/muscle-car-black.jpg" },
+      { id: "crisp-white", nameEn: "Crisp Optical White", nameEs: "Blanco Puro", hex: "#fafafa", borderHex: "#e4e4e7", modelImage: "/shirts/muscle-car-white.jpg" },
+      { id: "heather-grey", nameEn: "Athletic Heather Grey", nameEs: "Gris Jaspe", hex: "#9ca3af", borderHex: "#6b7280", modelImage: "/shirts/muscle-car-grey.jpg" },
+      { id: "butter-cream", nameEn: "Butter Cream Vintage", nameEs: "Crema Vintage", hex: "#fefce8", borderHex: "#fef08a", modelImage: "/shirts/muscle-car-cream.jpg" },
+    ],
+  },
+  {
+    // A photographed printed garment sold in one colorway: its Catalog Shot comes from the
+    // flat-lay photo (flatLayPhoto), and the artwork file is shown on the product page only
+    id: "crash-scene-tee",
+    nameEn: "Good Luck Crash Scene Acid-Wash Tee",
+    nameEs: "Playera Crash Scene Acid-Wash Good Luck",
+    silhouette: "tee",
+    category: "apparel",
+    primaryHex: "#a4b85c",
+    secondaryHex: "#dc2626",
+    image: "/shirts/crash-scene-acid-wash-lime.jpg",
+    images: ["/shirts/crash-scene-acid-wash-lime.jpg", "/shirts/graphics/crash-scene.jpg"],
+    graphicImage: "/shirts/graphics/crash-scene.jpg",
+    printPosition: "front",
+    stock: 25,
+    priceUsd: 80,
+    isFeatured: false,
+    tagEn: "Acid Wash Drop",
+    tagEs: "Drop Acid Wash",
+    fabricEn: "Heavyweight 280 GSM 100% Combed Cotton • Lime Acid Wash",
+    fabricEs: "Algodón Peinado Heavyweight 280 GSM • Lavado Ácido Lima",
+    fitEn: "Boxy Drop-Shoulder Oversized Streetwear Fit",
+    fitEs: "Corte Boxy Drop-Shoulder Oversized",
+    defaultColorway: "acid-wash-lime",
+    colorways: [
+      {
+        id: "acid-wash-lime",
+        nameEn: "Acid Wash Lime",
+        nameEs: "Lima Acid Wash",
+        hex: "#a4b85c",
+        borderHex: "#7d8f3a",
+        modelImage: "/shirts/crash-scene-acid-wash-lime.jpg",
+        flatLayPhoto: "/shirts/flatlay/crash-scene-acid-wash-lime.png",
+      },
+    ],
+  },
+];
+
+export const CAP_ONLY_VARIANTS: CapVariant[] = [
   {
     id: "negro-rojo",
     nameEn: "Black / Red Signature",
@@ -215,4 +726,9 @@ export const CAP_VARIANTS: CapVariant[] = [
     tagEn: "Tactical Series",
     tagEs: "Serie Táctica",
   },
+];
+
+export const CAP_VARIANTS: CapVariant[] = [
+  ...CAP_ONLY_VARIANTS,
+  ...SHIRT_VARIANTS,
 ];

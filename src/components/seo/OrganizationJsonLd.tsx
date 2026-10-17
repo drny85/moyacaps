@@ -9,7 +9,7 @@ export function OrganizationJsonLd() {
     name: "Good Luck",
     alternateName: "Good Luck Co.",
     url: siteUrl,
-    logo: `${siteUrl}/caps/negro-rojo.png`,
+    logo: `${siteUrl}/brand/logo-512.png`,
     description: "Signature streetwear headwear crafted with high-density 3D puff embroidery and 0880 mythology.",
     contactPoint: {
       "@type": "ContactPoint",
@@ -26,7 +26,7 @@ export function OrganizationJsonLd() {
     inLanguage: ["en", "es"],
     potentialAction: {
       "@type": "SearchAction",
-      target: `${siteUrl}/en/caps/{search_term_string}`,
+      target: `${siteUrl}/en/products/{search_term_string}`,
       "query-input": "required name=search_term_string",
     },
   };

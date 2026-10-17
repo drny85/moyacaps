@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useTranslations, useLocale } from "next-intl";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "@convex/_generated/api";
+import { useMinuteClock } from "@/hooks/useMinuteClock";
 import { Id } from "@convex/_generated/dataModel";
 import { getCarrierTrackingUrl } from "@/lib/tracking";
 import {
@@ -114,7 +115,9 @@ export default function AdminOrdersPage() {
   };
 
   // Convex queries, mutations & actions
-  const orders = useQuery(api.orders.getAllOrdersAdmin, {
+  const statsClock = useMinuteClock();
+  const orders = useQuery(api.orders.desk.getAllOrdersAdmin, {
+    clientTime: statsClock,
     status: statusFilter,
     paymentMethod: paymentFilter,
     search: searchQuery,
@@ -147,22 +150,17 @@ export default function AdminOrdersPage() {
     }
   }, [orders, selectedOrder]);
 
-  const updateOrderStatus = useMutation(api.orders.updateOrderStatusAdmin);
-  const markWhatsAppOrderPaidAdmin = useMutation(api.orders.markWhatsAppOrderPaidAdmin);
-  const dispatchWhatsAppPaymentLinkAdmin = useMutation(api.orders.dispatchWhatsAppPaymentLinkAdmin);
-  const generateOrRefreshPaymentLink = useAction(api.stripe.generateOrRefreshWhatsAppPaymentLink);
-  const updateOrderFulfillment = useMutation(api.orders.updateOrderFulfillmentAdmin);
-  const updateShippingAddressAdmin = useMutation(api.orders.updateShippingAddressAdmin);
-  const cancelAndRefundAdmin = useAction(api.stripe.cancelAndRefundOrderAdmin);
+  const updateOrderStatus = useMutation(api.orders.desk.updateOrderStatusAdmin);
+  const markWhatsAppOrderPaidAdmin = useMutation(api.orders.whatsapp.markWhatsAppOrderPaidAdmin);
+  const dispatchWhatsAppPaymentLinkAdmin = useMutation(api.orders.whatsapp.dispatchWhatsAppPaymentLinkAdmin);
+  const generateOrRefreshPaymentLink = useAction(api.payments.checkout.generateOrRefreshWhatsAppPaymentLink);
+  const updateOrderFulfillment = useMutation(api.orders.desk.updateOrderFulfillmentAdmin);
+  const updateShippingAddressAdmin = useMutation(api.orders.desk.updateShippingAddressAdmin);
+  const cancelAndRefundAdmin = useAction(api.payments.refunds.cancelAndRefundOrderAdmin);
 
   // Attention stats & Resend test alert action
-  const [statsClock, setStatsClock] = useState<number>(() => Date.now());
-  useEffect(() => {
-    const id = setInterval(() => setStatsClock(Date.now()), 60 * 1000);
-    return () => clearInterval(id);
-  }, []);
-  const attentionStats = useQuery(api.orders.getOrdersAttentionStats, { clientTime: statsClock });
-  const sendTestAlert = useAction(api.emails.sendTestAdminOrderAlert);
+  const attentionStats = useQuery(api.orders.desk.getOrdersAttentionStats, { clientTime: statsClock });
+  const sendTestAlert = useAction(api.notifications.emails.sendTestAdminOrderAlert);
   const [isSendingTestAlert, setIsSendingTestAlert] = useState(false);
 
   const handleSendTestAlert = async () => {

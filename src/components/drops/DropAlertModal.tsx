@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useStore } from "@/store/useStore";
 import { useTranslations, useLocale } from "next-intl";
 import Image from "next/image";
-import { motion, AnimatePresence } from "framer-motion";
+import { m, AnimatePresence } from "framer-motion";
 import { X, Bell, MessageSquare, Mail, CheckCircle2, Sparkles, Loader2, Send } from "lucide-react";
 import { useMutation } from "convex/react";
 import { api } from "@convex/_generated/api";
@@ -28,7 +28,7 @@ export function DropAlertModal() {
   const [alreadySubscribed, setAlreadySubscribed] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const subscribeMutation = useMutation(api.products.subscribeToDropAlert);
+  const subscribeMutation = useMutation(api.catalog.drops.subscribeToDropAlert);
 
   // Auto-fill user info if available
   useEffect(() => {
@@ -115,7 +115,7 @@ export function DropAlertModal() {
         className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md overflow-y-auto overscroll-contain"
         style={{ overscrollBehavior: "contain" }}
       >
-        <motion.div
+        <m.div
           initial={{ opacity: 0, scale: 0.95, y: 15 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 15 }}
@@ -164,7 +164,7 @@ export function DropAlertModal() {
 
           {/* Body Content */}
           {submittedSuccess || alreadySubscribed ? (
-            <motion.div
+            <m.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               className="flex flex-col items-center text-center py-4 sm:py-6"
@@ -196,7 +196,7 @@ export function DropAlertModal() {
                   {t("close")}
                 </button>
               </div>
-            </motion.div>
+            </m.div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
@@ -299,7 +299,7 @@ export function DropAlertModal() {
               </button>
             </form>
           )}
-        </motion.div>
+        </m.div>
       </div>
     </AnimatePresence>
   );

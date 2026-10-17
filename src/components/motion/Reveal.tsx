@@ -1,6 +1,7 @@
 "use client";
 
-import { motion, useReducedMotion } from "framer-motion";
+import { m } from "framer-motion";
+import { useReducedMotionSafe } from "@/hooks/useMotionPrefs";
 import type { ReactNode } from "react";
 import { DURATION, EASE } from "@/lib/motion";
 
@@ -19,10 +20,10 @@ export function Reveal({
   y?: number;
   className?: string;
 }) {
-  const reduceMotion = useReducedMotion();
+  const reduceMotion = useReducedMotionSafe();
 
   return (
-    <motion.div
+    <m.div
       initial={{ opacity: 0, y: reduceMotion ? 0 : y }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-60px" }}
@@ -30,6 +31,6 @@ export function Reveal({
       className={className}
     >
       {children}
-    </motion.div>
+    </m.div>
   );
 }

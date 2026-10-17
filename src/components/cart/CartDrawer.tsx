@@ -5,7 +5,7 @@ import { useTranslations, useLocale } from "next-intl";
 import { useRouter } from "@/i18n/routing";
 import { X, Trash2, Plus, Minus, ShoppingBag, ArrowRight, ArrowLeft, MessageCircle, ShieldCheck, Check, AlertCircle, Loader2, MapPin, Clock, ChevronDown, CreditCard, Edit3 } from "lucide-react";
 import Image from "next/image";
-import { motion, AnimatePresence } from "framer-motion";
+import { m, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
 import confetti from "canvas-confetti";
 import { useSafeUser, SafeSignInButton } from "@/lib/useSafeUser";
@@ -22,9 +22,9 @@ export function CartDrawer() {
   const locale = useLocale();
   const router = useRouter();
   const { user, isSignedIn } = useSafeUser();
-  const createCheckoutSession = useAction(api.stripe.createCheckoutSession);
-  const createWhatsAppCheckoutSession = useAction(api.stripe.createWhatsAppCheckoutSession);
-  const convexVariants = useQuery(api.products.getVariants, {
+  const createCheckoutSession = useAction(api.payments.checkout.createCheckoutSession);
+  const createWhatsAppCheckoutSession = useAction(api.payments.checkout.createWhatsAppCheckoutSession);
+  const convexVariants = useQuery(api.catalog.queries.getVariants, {
     includeUnavailable: true,
   });
 
@@ -77,14 +77,14 @@ export function CartDrawer() {
 
   // Check if any cart item exceeds live stock or is unavailable
   const hasOutOfStockItem = cart.some((item) => {
-    const variant = convexVariants?.find((v) => v.variantId === item.id);
+    const variant = convexVariants?.find((v) => v.variantId === (item.variantId || item.id));
     if (!variant) return false;
     return variant.isAvailable === false || variant.stock <= 0 || item.quantity > variant.stock;
   });
 
   // Check if any cart item is an unreleased upcoming drop
   const hasUnreleasedDropItem = cart.some((item) => {
-    const variant = convexVariants?.find((v) => v.variantId === item.id);
+    const variant = convexVariants?.find((v) => v.variantId === (item.variantId || item.id));
     if (!variant) return false;
     return Boolean(
       variant.isDrop &&
@@ -179,8 +179,10 @@ export function CartDrawer() {
     try {
       const result = await createWhatsAppCheckoutSession({
         items: cart.map((i) => ({
-          variantId: i.id,
+          variantId: i.variantId || i.id,
           quantity: i.quantity,
+          size: i.size,
+          colorway: i.colorway,
         })),
         currency: "USD",
         locale,
@@ -232,7 +234,12 @@ export function CartDrawer() {
       setCheckoutStep("processing");
       setCheckoutError(null);
       const result = await createCheckoutSession({
-        items: cart.map((i) => ({ variantId: i.id, quantity: i.quantity })),
+        items: cart.map((i) => ({
+          variantId: i.variantId || i.id,
+          quantity: i.quantity,
+          size: i.size,
+          colorway: i.colorway,
+        })),
         currency,
         locale,
         origin: window.location.origin,
@@ -257,7 +264,7 @@ export function CartDrawer() {
       {isCartOpen && (
         <>
           {/* Backdrop */}
-          <motion.div
+          <m.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -266,7 +273,7 @@ export function CartDrawer() {
           />
 
           {/* Drawer Panel */}
-          <motion.aside
+          <m.aside
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
@@ -489,13 +496,20 @@ export function CartDrawer() {
                       {cart.map((item) => (
                         <div key={item.id} className="flex items-center gap-2.5 text-xs">
                           <div className="relative w-8 h-8 rounded-lg overflow-hidden bg-black/5 dark:bg-white/5 shrink-0 border border-black/[0.04] dark:border-white/[0.04]">
-                            <Image src={item.image} alt={item.name} fill className="object-contain" />
+                            <Image
+                              src={item.image}
+                              alt={item.name}
+                              fill
+                              className={item.silhouette === "tee" ? "object-cover" : "object-contain"}
+                            />
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="font-display font-bold text-zinc-900 dark:text-white truncate text-[11px]">
                               {item.name}
                             </p>
-                            <p className="font-mono text-[10px] text-zinc-500">Qty: {item.quantity}</p>
+                            <p className="font-mono text-[10px] text-zinc-500">
+                              Qty: {item.quantity}{item.size ? ` • ${item.size}` : ""}{item.colorwayName ? ` • ${item.colorwayName}` : ""}
+                            </p>
                           </div>
                           <span className="font-mono font-bold text-[11px] text-zinc-900 dark:text-white shrink-0">
                             {formatUsd(item.priceUsd * item.quantity)}
@@ -623,7 +637,7 @@ export function CartDrawer() {
                     </div>
                   ) : (
                     cart.map((item) => {
-                      const variant = convexVariants?.find((v) => v.variantId === item.id);
+                      const variant = convexVariants?.find((v) => v.variantId === (item.variantId || item.id));
                       const stock = variant ? (typeof variant.stock === "number" ? variant.stock : 0) : (item.maxStock ?? 99);
                       const isOutOfStock = stock <= 0;
                       const isAtMaxStock = item.quantity >= stock;
@@ -637,12 +651,12 @@ export function CartDrawer() {
                               : "border-black/[0.06] dark:border-white/[0.06]"
                           }`}
                         >
-                          <div className="relative w-16 h-16 rounded-xl bg-black/5 dark:bg-white/5 shrink-0 overflow-hidden p-1">
+                          <div className={`relative w-16 h-16 rounded-xl bg-black/5 dark:bg-white/5 shrink-0 overflow-hidden ${item.silhouette === "tee" ? "p-0" : "p-1"}`}>
                             <Image
                               src={item.image}
                               alt={item.name}
                               fill
-                              className="object-contain"
+                              className={item.silhouette === "tee" ? "object-cover" : "object-contain"}
                             />
                           </div>
 
@@ -659,8 +673,18 @@ export function CartDrawer() {
                             </div>
                             <div className="flex items-center gap-2 mt-0.5">
                               <span className="text-xs font-mono font-bold text-emerald-600 dark:text-moya-green-light">
-                          {formatUsd(item.priceUsd)} USD
+                                {formatUsd(item.priceUsd)} USD
                               </span>
+                              {item.size && (
+                                <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-black/[0.06] dark:border-white/[0.06]">
+                                  {item.size}
+                                </span>
+                              )}
+                              {item.colorwayName && (
+                                <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-black/[0.06] dark:border-white/[0.06]">
+                                  {item.colorwayName}
+                                </span>
+                              )}
                               {!isOutOfStock && isAtMaxStock && (
                                 <span className="text-[10px] font-mono text-amber-600 dark:text-amber-400 font-medium">
                                   ({t("onlyXAvailable", { count: stock })})
@@ -843,7 +867,7 @@ export function CartDrawer() {
                 )}
               </>
             )}
-          </motion.aside>
+          </m.aside>
         </>
       )}
     </AnimatePresence>
