@@ -129,24 +129,40 @@
     "pillarAudacityDesc": "Twin pitchfork devil embroidery for those who dare to stand out."
   },
   "anatomy": {
-    "eyebrow": "DECONSTRUCTED CRAFT",
     "title": "The Anatomy of 0880",
-    "subtitle": "Scroll to deconstruct the architecture behind every Good Luck cap.",
-    "scrollPrompt": "Scroll to inspect layers",
+    "subtitle": "Four angles of the signature cap, every detail accounted for.",
     "layer1Title": "High-Density 3D Puff",
     "layer1Desc": "Over 38,000 stitches creating tactile, razor-sharp front embroidery.",
+    "layer1Spec": "38k stitches",
     "layer2Title": "Twin Pitchfork Flanks",
     "layer2Desc": "Symmetrical red devil embroidery on both temples.",
+    "layer2Spec": "×2",
     "layer3Title": "0880 Arc Snapback",
     "layer3Desc": "Rear custom 0880 arch embroidery over a 7-hole adjustable snapback.",
+    "layer3Spec": "7-hole",
     "layer4Title": "Reinforced Pro Crown",
     "layer4Desc": "Internal buckram structuring guarantees an uncrushable high profile.",
-    "nextSection": "Studio & Collection",
+    "layer4Spec": "Pro high",
+    "angles": "Angles",
     "steps": {
       "front": "Front",
       "flanks": "Temples",
       "back": "Rear",
       "structure": "Structure"
+    },
+    "callouts": {
+      "puff": "3D puff horseshoe & clover",
+      "banner": "Good Luck banner",
+      "visor": "Red sandwich visor",
+      "devil": "Devil, mirrored both sides",
+      "pitchfork": "Pitchfork",
+      "eyelet": "Stitched eyelet",
+      "script": "0880 script",
+      "snap": "Adjustable snap",
+      "button": "Top button",
+      "seam": "Centre-seam crown",
+      "buckram": "Buckram-backed front",
+      "curve": "Pre-curved visor"
     }
   },
   "footer": {

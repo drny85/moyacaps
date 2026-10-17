@@ -129,24 +129,40 @@
     "pillarAudacityDesc": "Bordado de diablos gemelos con tridente para quienes se atreven a destacar."
   },
   "anatomy": {
-    "eyebrow": "CONFECCIÓN DECONSTRUIDA",
     "title": "La Anatomía de la 0880",
-    "subtitle": "Desliza para descomponer la arquitectura detrás de cada gorra Good Luck.",
-    "scrollPrompt": "Desplaza para inspeccionar las capas",
+    "subtitle": "Cuatro ángulos de la gorra insignia, con cada detalle a la vista.",
     "layer1Title": "Bordado 3D de Alto Relieve",
     "layer1Desc": "Más de 38,000 puntadas para un bordado frontal táctil y definido.",
+    "layer1Spec": "38k puntadas",
     "layer2Title": "Diablos Laterales Simétricos",
     "layer2Desc": "Bordado de diablo con tridente en ambos flancos laterales.",
+    "layer2Spec": "×2",
     "layer3Title": "Snapback con Arco 0880",
     "layer3Desc": "Bordado de arco posterior 0880 sobre broche ajustable de 7 posiciones.",
+    "layer3Spec": "7 posiciones",
     "layer4Title": "Corona Pro Estructurada",
     "layer4Desc": "Entretela interna reforzada que mantiene la horma alta impecable.",
-    "nextSection": "Estudio y Colección",
+    "layer4Spec": "Horma alta",
+    "angles": "Ángulos",
     "steps": {
       "front": "Frente",
       "flanks": "Laterales",
       "back": "Trasera",
       "structure": "Estructura"
+    },
+    "callouts": {
+      "puff": "Herradura y trébol en 3D",
+      "banner": "Cinta Good Luck",
+      "visor": "Visera con filo rojo",
+      "devil": "Diablo, en ambos lados",
+      "pitchfork": "Tridente",
+      "eyelet": "Ojal bordado",
+      "script": "Caligrafía 0880",
+      "snap": "Broche ajustable",
+      "button": "Botón superior",
+      "seam": "Corona con costura central",
+      "buckram": "Frente con entretela",
+      "curve": "Visera precurvada"
     }
   },
   "footer": {
