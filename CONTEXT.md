@@ -32,6 +32,26 @@ _Avoid_: Mockup tool, customizer, shirt maker
 A themed design release encompassing multiple colorways and silhouettes (e.g., the "0880 Series" for Headwear and "0880 Heavyweight Apparel").
 _Avoid_: Category, department, bundle
 
+**Product**:
+Any sellable item in the storefront, either a Cap or a Heavyweight Tee, browsed, filtered and displayed through one shared card and one product page.
+_Avoid_: Item, cap (when meaning tees too), listing
+
+**Catalog Shot**:
+The canonical product image: the Product alone on the shared studio backdrop, at a fixed 4:5 aspect ratio, consistent scale and centering. The only image role allowed in grids and cards.
+_Avoid_: Thumbnail, packshot, mockup, product photo
+
+**Lifestyle Shot**:
+An image of a Product worn by a model or placed in a scene. Shown on product pages and in editorial sections, never as the grid image.
+_Avoid_: Model photo, lookbook image, hero shot
+
+**Shop**:
+The single browsable listing of every Product, filterable by category, Colorway, Silhouette and Graphic Design.
+_Avoid_: Catalog page, store page, collection page (Collection means a themed release)
+
+**SKU**:
+One purchasable combination of a Heavyweight Tee: Graphic Design × Apparel Colorway × size, holding its own Available Inventory.
+_Avoid_: Option, sub-variant, size row
+
 **Silhouette**:
 The structural profile and construction of the Cap (e.g., Classic 6-Panel Snapback vs 5-Panel Trucker Mesh).
 _Avoid_: Shape, cut, form factor

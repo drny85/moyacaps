@@ -7,6 +7,7 @@ This directory houses technical design documents, architectural blueprints, and 
 | Plan ID | Title | Status | Target Branch | Document |
 | :--- | :--- | :--- | :--- | :--- |
 | **0001** | **Undervisor & Side-Patch Customizer Studio ("Moya Studio")** | Ready for Implementation | `feat/customizer-studio` | [`0001-customizer-studio.md`](./0001-customizer-studio.md) |
+| **0002** | **Mobile-First Storefront Redesign** | Ready for Implementation | 5 phase branches | [`0002-mobile-first-storefront-redesign.md`](./0002-mobile-first-storefront-redesign.md) |
 
 ---
 
