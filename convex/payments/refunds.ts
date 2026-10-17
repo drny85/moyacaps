@@ -7,7 +7,8 @@
 import { action } from "../_generated/server";
 import { v, ConvexError } from "convex/values";
 import { api, internal } from "../_generated/api";
-import { getStripe, refundCheckoutSession, requireAdminIdentity } from "./stripeClient";
+import { getStripe, refundCheckoutSession } from "./stripeClient";
+import { isAdminInAction, requireAdminInAction } from "../lib/auth";
 
 export const cancelAndRefundOrder = action({
   args: {
@@ -31,10 +32,7 @@ export const cancelAndRefundOrder = action({
       throw new ConvexError("Unauthorized: Authentication required to cancel order.");
     }
     if (identity.subject !== args.clerkUserId) {
-      const user = await ctx.runQuery(api.users.functions.getUserByClerkId, {
-        clerkId: identity.subject,
-      });
-      if (user?.role !== "admin") {
+      if (!(await isAdminInAction(ctx))) {
         throw new ConvexError("Forbidden: Cannot cancel another customer's order.");
       }
     }
@@ -101,10 +99,7 @@ export const cancelAndRefundOrderAdmin = action({
     message: string;
   }> => {
     // 1. Strictly verify caller has authenticated admin identity
-    const identity = await requireAdminIdentity(ctx, {
-      unauthenticated: "Unauthorized: Staff authentication required to cancel orders.",
-      forbidden: "Unauthorized: Administrative privileges required to cancel orders.",
-    });
+    const identity = await requireAdminInAction(ctx);
 
     // 2. Cancel order in Convex and restore inventory
     const result: {

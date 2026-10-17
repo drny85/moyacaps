@@ -3,7 +3,7 @@
 import { action } from "../_generated/server";
 import { v, ConvexError } from "convex/values";
 import { api, internal } from "../_generated/api";
-import { PRIMARY_ADMIN_EMAIL, PRIMARY_ADMIN_CLERK_ID } from "../lib/auth";
+import { requireAdminInAction } from "../lib/auth";
 import { Shippo } from "shippo";
 
 /**
@@ -138,29 +138,6 @@ export function buildCarrierTrackingUrl(carrier?: string, trackingNumber?: strin
   return null;
 }
 
-async function verifyAdminInAction(ctx: any) {
-  const identity = await ctx.auth.getUserIdentity();
-  if (!identity) {
-    throw new ConvexError("Unauthorized: Staff authentication required to access shipping operations.");
-  }
-  const email = identity.email?.toLowerCase() || "";
-  const tokenIdentifier = identity.tokenIdentifier || "";
-  const clerkId = identity.subject;
-
-  if (
-    email === PRIMARY_ADMIN_EMAIL ||
-    tokenIdentifier.includes(PRIMARY_ADMIN_CLERK_ID) ||
-    clerkId === PRIMARY_ADMIN_CLERK_ID
-  ) {
-    return identity;
-  }
-
-  const adminUser = await ctx.runQuery(api.users.functions.getUserByClerkId, { clerkId });
-  if (adminUser?.role !== "admin") {
-    throw new ConvexError("Unauthorized: Administrator privileges required for shipping operations.");
-  }
-  return identity;
-}
 
 function getShippoClient(): Shippo | null {
   const apiKey = process.env.SHIPPO_API_KEY;
@@ -247,7 +224,7 @@ export const getShippingRates = action({
     isPoBox: boolean;
     error?: string;
   }> => {
-    await verifyAdminInAction(ctx);
+    await requireAdminInAction(ctx);
 
     const order = await ctx.runQuery(internal.orders.functions.getOrderByIdInternal, {
       orderId: args.orderId,
@@ -494,7 +471,7 @@ export const buyShippingLabel = action({
     serviceLevel?: string;
     isSandbox: boolean;
   }> => {
-    const adminIdentity = await verifyAdminInAction(ctx);
+    const adminIdentity = await requireAdminInAction(ctx);
 
     const order = await ctx.runQuery(internal.orders.functions.getOrderByIdInternal, {
       orderId: args.orderId,

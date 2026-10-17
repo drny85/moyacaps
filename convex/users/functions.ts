@@ -1,7 +1,8 @@
-import { mutation, query, internalMutation, MutationCtx } from "../_generated/server";
+import { mutation, query, internalMutation, internalQuery, MutationCtx } from "../_generated/server";
 import { ConvexError, v } from "convex/values";
 import type { UserUpsert } from "./clerk";
-import { requireAdmin, PRIMARY_ADMIN_EMAIL, PRIMARY_ADMIN_CLERK_ID } from "../lib/auth";
+import { getAdminIdentity, isAdminRow, isAllowlistedAdmin, requireAdmin } from "../lib/auth";
+import { roleFor } from "./clerk";
 import schema from "../schema";
 
 /**
@@ -23,25 +24,15 @@ export const syncCurrentUser = mutation({
     const imageUrl = identity.pictureUrl || (identity as any).imageUrl || undefined;
     const phone = identity.phoneNumber || undefined;
 
-    // Determine role: allowlist only. NEVER derive admin from client-writable
-    // publicMetadata / token role claims (privilege escalation vector).
-    const isAdmin =
-      email === PRIMARY_ADMIN_EMAIL ||
-      clerkId === PRIMARY_ADMIN_CLERK_ID;
-
-    // Preserve existing admin grants made through trusted paths; only ever assign admin
-    // upward for allowlisted identities, and never demote an existing admin here.
-    const role = isAdmin ? "admin" : "customer";
-
+    // Allowlist only; never from token claims or publicMetadata (lib/auth.ts). An existing
+    // admin row is never demoted here: revoking is a deliberate setUserRole call.
     const existing = await ctx.db
       .query("users")
       .withIndex("by_clerkId", (q) => q.eq("clerkId", clerkId))
       .first();
 
     const finalRole =
-      role === "customer" && existing?.role === "admin" && !isAdmin
-        ? "admin"
-        : role;
+      existing?.role === "admin" ? "admin" : roleFor(email, clerkId);
 
     const now = Date.now();
 
@@ -235,3 +226,61 @@ export const getAllUsersAdmin = query({
   },
 });
 
+
+/**
+ * Whether the signed-in caller is an Administrator. The UI's only admin signal
+ * (src/lib/useIsAdmin.ts), so client and server always agree.
+ */
+export const amIAdmin = query({
+  args: {},
+  returns: v.boolean(),
+  handler: async (ctx) => (await getAdminIdentity(ctx)) !== null,
+});
+
+/** Row half of the admin check, for actions (lib/auth.ts isAdminInAction). */
+export const isAdminInternal = internalQuery({
+  args: { clerkId: v.string() },
+  returns: v.boolean(),
+  handler: async (ctx, { clerkId }) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", clerkId))
+      .first();
+    return isAdminRow(user);
+  },
+});
+
+/**
+ * Grant or revoke admin on a users row, by Clerk ID or email. Run from the CLI
+ * (`bun run set-admin`); internal, so no client can call it.
+ */
+export const setUserRole = internalMutation({
+  args: {
+    clerkId: v.optional(v.string()),
+    email: v.optional(v.string()),
+    role: v.union(v.literal("admin"), v.literal("customer")),
+  },
+  returns: v.object({ id: v.id("users"), clerkId: v.string(), email: v.string(), role: v.string() }),
+  handler: async (ctx, args) => {
+    if (!args.clerkId === !args.email) {
+      throw new ConvexError("Pass exactly one of clerkId or email.");
+    }
+    const user = args.clerkId
+      ? await ctx.db
+          .query("users")
+          .withIndex("by_clerkId", (q) => q.eq("clerkId", args.clerkId!))
+          .first()
+      : await ctx.db
+          .query("users")
+          .withIndex("by_email", (q) => q.eq("email", args.email!.trim().toLowerCase()))
+          .first();
+    if (!user || user.deletedAt) {
+      throw new ConvexError("No active user found. They must sign in once before a role can be set.");
+    }
+    if (args.role === "customer" && isAllowlistedAdmin({ subject: user.clerkId, email: user.email })) {
+      throw new ConvexError("The allowlisted admin cannot be demoted; edit convex/lib/auth.ts instead.");
+    }
+    await ctx.db.patch(user._id, { role: args.role, updatedAt: Date.now() });
+    return { id: user._id, clerkId: user.clerkId, email: user.email, role: args.role };
+  },
+});

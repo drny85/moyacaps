@@ -6,7 +6,7 @@
 import { mutation, query, internalMutation, internalQuery } from "../_generated/server";
 import { v, ConvexError } from "convex/values";
 import { internal } from "../_generated/api";
-import { requireAdmin } from "../lib/auth";
+import { isAdminRow, isAllowlistedAdmin, requireAdmin } from "../lib/auth";
 import { confirmationView, guestTrackingView, holdsStock, ownerTrackingView } from "./model";
 import {
   deductStock,
@@ -333,10 +333,10 @@ export const getOrderByOrderNumberAndEmail = query({
           .query("users")
           .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
           .first();
-        if (user) {
-          if (user.role === "admin") {
-            isOwnerOrAdmin = true;
-          } else if (user.email && orderEmail && user.email.toLowerCase() === orderEmail) {
+        if (isAdminRow(user) || isAllowlistedAdmin(identity)) {
+          isOwnerOrAdmin = true;
+        } else if (user) {
+          if (user.email && orderEmail && user.email.toLowerCase() === orderEmail) {
             isOwnerOrAdmin = true;
           }
         }

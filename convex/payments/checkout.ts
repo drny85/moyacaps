@@ -29,7 +29,8 @@ import {
   validateCartLines,
 } from "./checkoutModel";
 import { computeShipping, orderSessionIds } from "../orders/model";
-import { expireSessionsForIds, getStripe, requireAdminIdentity, upsertStripeCustomer } from "./stripeClient";
+import { expireSessionsForIds, getStripe, upsertStripeCustomer } from "./stripeClient";
+import { requireAdminInAction } from "../lib/auth";
 import type { ActionCtx } from "../_generated/server";
 
 const cartLineValidator = v.object({
@@ -425,10 +426,7 @@ export const generateOrRefreshWhatsAppPaymentLink = action({
     }
 
     // STRICT ADMIN GATE: this action returns a live, chargeable payment URL.
-    await requireAdminIdentity(ctx, {
-      unauthenticated: "Unauthorized: Staff authentication required.",
-      forbidden: "Unauthorized: Administrative privileges required.",
-    });
+    await requireAdminInAction(ctx);
 
     // Authorization happens in the caller (admin panel); defense in depth: only unsettled
     // WhatsApp reservations may receive a payment link, and settled orders must never

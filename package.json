@@ -16,7 +16,8 @@
     "migrate:storage": "bun run scripts/migrate-storage.ts",
     "test": "vitest run",
     "perf-budget": "bun run scripts/perf-budget.ts",
-    "sync-users": "bun run scripts/sync-users.ts"
+    "sync-users": "bun run scripts/sync-users.ts",
+    "set-admin": "bun run scripts/set-admin.ts"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.9.4",

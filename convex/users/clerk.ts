@@ -1,4 +1,4 @@
-import { PRIMARY_ADMIN_EMAIL, PRIMARY_ADMIN_CLERK_ID } from "../lib/auth";
+import { isAllowlistedAdmin } from "../lib/auth";
 
 /**
  * The subset of Clerk's UserJSON we mirror. Webhook `data` and the Backend API
@@ -27,9 +27,7 @@ export type UserUpsert = {
 // SECURITY: admin is granted ONLY by the allowlist. Clerk publicMetadata is
 // client-writable, so it must NEVER confer admin rights.
 export function roleFor(email: string, clerkId: string): UserUpsert["role"] {
-  return email === PRIMARY_ADMIN_EMAIL.toLowerCase() || clerkId === PRIMARY_ADMIN_CLERK_ID
-    ? "admin"
-    : "customer";
+  return isAllowlistedAdmin({ subject: clerkId, email }) ? "admin" : "customer";
 }
 
 function primaryOf<T extends { id: string }>(items: T[] | undefined, primaryId?: string | null) {

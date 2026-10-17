@@ -10,7 +10,7 @@ import { m, AnimatePresence } from "framer-motion";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { SoundToggle } from "@/components/ui/SoundToggle";
 import { SafeUserButton, useSafeUser } from "@/lib/useSafeUser";
-import { checkIsAdmin } from "@/lib/adminAuth";
+import { useIsAdmin } from "@/lib/useIsAdmin";
 import { PRIMARY_NAV, activeNavKey, type NavKey } from "@/lib/navigation";
 
 const DRAWER_ID = "mobile-nav";
@@ -18,8 +18,8 @@ const DRAWER_ID = "mobile-nav";
 export function Navbar() {
   const t = useTranslations("nav");
   const pathname = usePathname();
-  const { user, isSignedIn } = useSafeUser();
-  const isAdmin = checkIsAdmin(user);
+  const { isSignedIn } = useSafeUser();
+  const { isAdmin } = useIsAdmin();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const headerRef = useRef<HTMLElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);

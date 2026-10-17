@@ -2,17 +2,18 @@
 
 import React, { useState } from "react";
 import { useSafeUser } from "@/lib/useSafeUser";
-import { checkIsAdmin } from "@/lib/adminAuth";
+import { useIsAdmin } from "@/lib/useIsAdmin";
 import { Link, usePathname } from "@/i18n/routing";
 import { Shield, ArrowRight, X, ChevronUp } from "lucide-react";
 
 export function AdminQuickBar() {
   const { user, isSignedIn } = useSafeUser();
+  const { isAdmin } = useIsAdmin();
   const pathname = usePathname();
   const [minimized, setMinimized] = useState(false);
 
   // Do not render on admin console pages or if not authenticated admin
-  if (pathname.startsWith("/admin") || !isSignedIn || !checkIsAdmin(user)) {
+  if (pathname.startsWith("/admin") || !isSignedIn || !isAdmin) {
     return null;
   }
 

@@ -2,19 +2,20 @@
 
 import React, { useState, useEffect } from "react";
 import { useSafeUser, SafeSignInButton } from "@/lib/useSafeUser";
-import { checkIsAdmin, PRIMARY_ADMIN_EMAIL } from "@/lib/adminAuth";
+import { useIsAdmin } from "@/lib/useIsAdmin";
 import { ShieldAlert, Lock, ArrowLeft } from "lucide-react";
 import { Link } from "@/i18n/routing";
 
 export function AdminGuard({ children }: { children: React.ReactNode }) {
   const { user, isLoaded, isSignedIn } = useSafeUser();
+  const admin = useIsAdmin();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  if (!mounted || !isLoaded) {
+  if (!mounted || !isLoaded || (isSignedIn && admin.isLoading)) {
     return (
       <div className="min-h-[70vh] flex flex-col items-center justify-center p-6 text-center">
         <div className="w-10 h-10 border-2 border-moya-red border-t-transparent rounded-full animate-spin mb-4" />
@@ -40,7 +41,7 @@ export function AdminGuard({ children }: { children: React.ReactNode }) {
             Administrator Access Required
           </h1>
           <p className="text-xs text-zinc-600 dark:text-zinc-400 mb-8 leading-relaxed">
-            This workspace governs live drops, fulfillment dispatches, and inventory velocity. Please authenticate with your authorized staff account (<code className="font-mono text-zinc-800 dark:text-zinc-200">{PRIMARY_ADMIN_EMAIL}</code>).
+            This workspace governs live drops, fulfillment dispatches, and inventory velocity. Please authenticate with your authorized staff account.
           </p>
 
           <div className="space-y-3">
@@ -62,8 +63,8 @@ export function AdminGuard({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Signed in, check admin authorization strictly
-  const isAuthorized = checkIsAdmin(user);
+  // Signed in: Convex decides (convex/lib/auth.ts)
+  const isAuthorized = admin.isAdmin;
 
   if (!isAuthorized) {
     const email = user?.primaryEmailAddress?.emailAddress || "Current Account";
@@ -84,7 +85,7 @@ export function AdminGuard({ children }: { children: React.ReactNode }) {
           </h2>
 
           <p className="text-xs text-zinc-600 dark:text-zinc-400 mb-6 leading-relaxed">
-            Signed in as <span className="font-mono text-zinc-900 dark:text-zinc-200 font-semibold">{email}</span>. Only designated staff (<code className="text-zinc-800 dark:text-zinc-200">{PRIMARY_ADMIN_EMAIL}</code>) with <code className="bg-zinc-100 dark:bg-zinc-800 px-1 py-0.5 rounded text-moya-red">role: admin</code> can access the operations suite.
+            Signed in as <span className="font-mono text-zinc-900 dark:text-zinc-200 font-semibold">{email}</span>. Only Administrators can access the operations suite.
           </p>
 
           <Link

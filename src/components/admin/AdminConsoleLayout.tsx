@@ -6,7 +6,7 @@ import { Link, usePathname, useRouter } from "@/i18n/routing";
 import { AdminGuard } from "@/components/admin/AdminGuard";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { SafeUserButton, useSafeUser } from "@/lib/useSafeUser";
-import { checkIsAdmin } from "@/lib/adminAuth";
+import { useIsAdmin } from "@/lib/useIsAdmin";
 import { useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
 import { useMinuteClock } from "@/hooks/useMinuteClock";
@@ -97,8 +97,9 @@ export function AdminConsoleLayout({
     });
   };
 
-  const { user, isLoaded, isSignedIn } = useSafeUser();
-  const isAuthorized = isLoaded && isSignedIn && checkIsAdmin(user);
+  const { isLoaded, isSignedIn } = useSafeUser();
+  const { isAdmin } = useIsAdmin();
+  const isAuthorized = isLoaded && isSignedIn && isAdmin;
 
   // Attention telemetry refresh clock (queries must not read wall clock server-side,
   // so the client supplies a minute-granularity timestamp).

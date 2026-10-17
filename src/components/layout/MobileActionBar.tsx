@@ -8,15 +8,15 @@ import { m } from "framer-motion";
 import { useState, useEffect } from "react";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { useSafeUser } from "@/lib/useSafeUser";
-import { checkIsAdmin } from "@/lib/adminAuth";
+import { useIsAdmin } from "@/lib/useIsAdmin";
 import { getWhatsAppConciergeUrl } from "@/lib/whatsapp";
 
 export function MobileActionBar() {
   const { cart, toggleCart } = useStore();
   const t = useTranslations("nav");
   const locale = useLocale();
-  const { user, isSignedIn } = useSafeUser();
-  const isAdmin = checkIsAdmin(user);
+  const { isSignedIn } = useSafeUser();
+  const { isAdmin } = useIsAdmin();
   const pathname = usePathname();
   const [isMounted, setIsMounted] = useState(false);
 

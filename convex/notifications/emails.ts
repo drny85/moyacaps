@@ -11,7 +11,7 @@ import { AdminDisputeAlertEmail } from "./templates/AdminDisputeAlert";
 import { CustomerReceiptEmail } from "./templates/CustomerReceipt";
 import { OrderDispatchedEmail } from "./templates/OrderDispatchedEmail";
 import { OrderDeliveredEmail } from "./templates/OrderDeliveredEmail";
-import { PRIMARY_ADMIN_EMAIL, PRIMARY_ADMIN_CLERK_ID } from "../lib/auth";
+import { PRIMARY_ADMIN_EMAIL, requireAdminInAction } from "../lib/auth";
 
 export const resend = new Resend(components.resend, {
   testMode: false,
@@ -186,24 +186,7 @@ export const sendTestAdminOrderAlert = action({
   },
   returns: v.object({ success: v.boolean(), emailId: v.string(), recipient: v.string() }),
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new ConvexError("Unauthorized: Staff authentication required.");
-    }
-    const email = identity.email?.toLowerCase() || "";
-    const isPrimary = email === PRIMARY_ADMIN_EMAIL || identity.subject === PRIMARY_ADMIN_CLERK_ID;
-    // SECURITY: never trust a token "role" claim (it can originate from client-writable
-    // publicMetadata). Non-allowlisted callers must be verified against the users table.
-    let hasAdminRole = false;
-    if (!isPrimary) {
-      const staffUser = await ctx.runQuery(api.users.functions.getUserByClerkId, {
-        clerkId: identity.subject,
-      });
-      hasAdminRole = staffUser?.role === "admin";
-    }
-    if (!isPrimary && !hasAdminRole) {
-      throw new ConvexError("Forbidden: Administrator privileges required.");
-    }
+    const identity = await requireAdminInAction(ctx);
 
     const recipient = args.targetEmail || DEFAULT_ADMIN_EMAIL;
     const testOrderNum = `TEST-${Math.floor(1000 + Math.random() * 9000)}`;

@@ -19,21 +19,6 @@ export function getStripe(): Stripe {
   });
 }
 
-/** Throws unless the caller is a signed-in Administrator; returns their identity. */
-export async function requireAdminIdentity(ctx: ActionCtx, messages: { unauthenticated: string; forbidden: string }) {
-  const identity = await ctx.auth.getUserIdentity();
-  if (!identity) {
-    throw new ConvexError(messages.unauthenticated);
-  }
-  const adminUser = await ctx.runQuery(api.users.functions.getUserByClerkId, {
-    clerkId: identity.subject,
-  });
-  if (adminUser?.role !== "admin") {
-    throw new ConvexError(messages.forbidden);
-  }
-  return identity;
-}
-
 /**
  * Idempotent Stripe Customer resolution: reuse an existing customer by email so repeated
  * leads/refreshes don't bloat the customer directory with duplicate objects.
