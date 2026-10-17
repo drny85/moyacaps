@@ -682,6 +682,14 @@
     "cardBrand": "GOOD LUCK 0880 · PROBADA",
     "stageLabel": "{cap} en tu foto",
     "silhouetteLabel": "{cap} en una silueta",
-    "capHandle": "{cap}. Arrastra para moverla. Usa las flechas para moverla y más o menos para cambiar el tamaño."
+    "capHandle": "{cap}. Arrastra para moverla. Usa las flechas para moverla y más o menos para cambiar el tamaño.",
+    "modelsLabel": "O pruébala en un modelo",
+    "modelLabel": "{cap} en {name}",
+    "modelWearing": "{name} lleva la",
+    "fineTune": "Ajuste fino",
+    "size": "Tamaño",
+    "tilt": "Inclinación",
+    "moveX": "Izquierda / derecha",
+    "moveY": "Arriba / abajo"
   }
 }

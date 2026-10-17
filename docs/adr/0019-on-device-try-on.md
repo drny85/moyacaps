@@ -9,7 +9,8 @@ The Try-On (CONTEXT.md) used to drop a flat cap image at a fixed spot over a pho
 3. **The detector loads only on intent.** `@mediapipe/tasks-vision` (pinned) is imported dynamically when a photo is added. Its WASM comes from jsdelivr at the same pinned version, about 2.3 MB brotli. The 230 KB model is self-hosted in `public/models/`. Nothing related to detection loads with the page.
 4. **The Try-On Photo stays in memory.** On import it is centre-cropped to a square and downscaled to 1080 px on a canvas. It lives in component state as an object URL, is never written to storage and is revoked when replaced or unmounted. The store no longer persists `tryOnImage` or `tryOnSettings`; persisted state moves to version 2 and drops both.
 5. **One geometry for screen and card.** Placement is expressed in fractions of the square photo. The stage renders it as percentages and the share card draws it in pixels, so the saved card matches the screen. The card is shared with the Web Share API where files are supported, with a download as fallback.
-6. **No sample models.** The AI-generated sample portraits are removed. Before a photo is added, the stage shows the cap on a neutral head silhouette.
+6. **Sample models, fitted in advance.** The Customer can try a cap on one of six sample models instead of their own photo. The first model shows by default, and the head silhouette is only a fallback. The models live in `src/data/tryOnModels.ts` with their detector keypoints stored, so picking one never loads the detector. Each links to the tee the model wears. The current portraits are interim, to be replaced by real shoot portraits.
+7. **Fine-tune sliders as well as gestures.** A collapsible Fine-tune panel offers size, tilt, left/right and up/down sliders for Customers who find pinching awkward. The sliders and gestures share one clamp (`clampAdjust`).
 
 ## Consequences
 

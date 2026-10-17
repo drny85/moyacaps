@@ -139,3 +139,14 @@ export const SILHOUETTE_FACE: FaceKeypoints = {
 
 /** Placement on the head silhouette */
 export const DEFAULT_ANCHOR: CapAnchor = anchorFromFace(SILHOUETTE_FACE);
+
+/** Any adjustment brought inside the limits (the fine-tune sliders set fields directly) */
+export function clampAdjust(adjust: FitAdjust, anchor: CapAnchor): FitAdjust {
+  const [lo, hi] = LIMITS.centre;
+  return {
+    dx: clamp(adjust.dx, [lo - anchor.x, hi - anchor.x]),
+    dy: clamp(adjust.dy, [lo - anchor.y, hi - anchor.y]),
+    scale: clamp(adjust.scale, LIMITS.scale),
+    rotation: clamp(adjust.rotation, LIMITS.rotation),
+  };
+}

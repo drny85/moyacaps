@@ -2,13 +2,16 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { Camera, Check, Download, RotateCcw, Share2, Upload, X } from "lucide-react";
+import { Camera, Check, Download, RotateCcw, Share2, SlidersHorizontal, Upload, X } from "lucide-react";
+import Image from "next/image";
+import { Link } from "@/i18n/routing";
+import { TRY_ON_MODELS, type TryOnModel } from "@/data/tryOnModels";
 import { useStore } from "@/store/useStore";
 import { useCapVariants } from "@/hooks/useCapVariants";
 import { useMinuteClock } from "@/hooks/useMinuteClock";
 import { getCapFrontOverlay } from "@/lib/capAngles";
 import { initialTryOnCap, tryOnCaps, type TryOnCap } from "@/lib/tryOn/catalog";
-import { DEFAULT_ANCHOR, NO_ADJUST, anchorFromFace, placeCap, type CapAnchor, type FitAdjust } from "@/lib/tryOn/fit";
+import { DEFAULT_ANCHOR, NO_ADJUST, anchorFromFace, clampAdjust, placeCap, type CapAnchor, type FitAdjust } from "@/lib/tryOn/fit";
 import { CapPicker } from "./CapPicker";
 import { CameraSheet, type CameraError } from "./CameraSheet";
 import { TryOnStage } from "./TryOnStage";
@@ -60,8 +63,12 @@ export function TryOnStudio({
   const [selectedId, setSelectedId] = useState<string | null>(initialCapId ?? null);
   const selected: TryOnCap | null = caps.find((c) => c.product.id === selectedId) ?? initialTryOnCap(caps, initialCapId);
 
+  // The Customer's own photo, or else a sample model (the first one to start)
   const [photo, setPhoto] = useState<TryOnPhoto | null>(null);
-  const [anchor, setAnchor] = useState<CapAnchor>(DEFAULT_ANCHOR);
+  const [modelId, setModelId] = useState<string | null>(TRY_ON_MODELS[0]?.id ?? null);
+  const model = photo ? null : TRY_ON_MODELS.find((m) => m.id === modelId) ?? null;
+  const [anchor, setAnchor] = useState<CapAnchor>(() => modelAnchor(TRY_ON_MODELS[0]));
+  const [fineTune, setFineTune] = useState(false);
   const [adjust, setAdjust] = useState<FitAdjust>(NO_ADJUST);
   const [status, setStatus] = useState<Status>("empty");
   const [cameraOpen, setCameraOpen] = useState(false);
@@ -93,6 +100,31 @@ export function TryOnStudio({
     const id = setTimeout(() => setAdded(false), 1800);
     return () => clearTimeout(id);
   }, [added]);
+
+  // A model without stored face points is detected once, like a photo
+  useEffect(() => {
+    if (!model || model.face) return;
+    const run = ++runRef.current;
+    const img = new window.Image();
+    img.src = model.image;
+    img
+      .decode()
+      .then(() => detectFace(img))
+      .then((face) => {
+        if (run === runRef.current && face) setAnchor(anchorFromFace(face));
+      })
+      .catch(() => {});
+  }, [model]);
+
+  const chooseModel = (next: TryOnModel) => {
+    runRef.current++;
+    setPhoto(null);
+    setModelId(next.id);
+    setAnchor(modelAnchor(next));
+    setAdjust(NO_ADJUST);
+    setCameraOpen(false);
+    setStatus("empty");
+  };
 
   const fitPhoto = async (next: TryOnPhoto) => {
     const run = ++runRef.current;
@@ -142,13 +174,14 @@ export function TryOnStudio({
   };
 
   const onShare = async () => {
-    if (!photo || !selected || sharing) return;
+    const photoUrl = photo?.url ?? model?.image;
+    if (!photoUrl || !selected || sharing) return;
     setSharing(true);
     try {
       const { renderCard, shareOrSave } = await import("./shareCard");
       const name = locale === "es" ? selected.product.nameEs : selected.product.nameEn;
       const blob = await renderCard({
-        photoUrl: photo.url,
+        photoUrl,
         overlayUrl: selected.overlay,
         placement,
         capId: selected.product.id,
@@ -167,6 +200,9 @@ export function TryOnStudio({
   const busy = BUSY.includes(status);
   const adjusted = adjust !== NO_ADJUST;
   const reach = { onPointerEnter: preloadFaceDetector, onFocus: preloadFaceDetector };
+  const stagePhoto = photo?.url ?? model?.image ?? null;
+  const modelTee = model ? catalog.find((p) => p.id === model.teeId) : undefined;
+  const setField = (field: keyof FitAdjust, value: number) => setAdjust((prev) => clampAdjust({ ...prev, [field]: value }, anchor));
 
   return (
     // Bottom padding keeps the last content clear of the fixed add-to-bag bar on phones
@@ -196,9 +232,15 @@ export function TryOnStudio({
           <div className="mx-auto w-full lg:max-w-[min(100%,calc(100svh-9rem))]">
             {selected && (
               <TryOnStage
-                photoUrl={photo?.url ?? null}
+                photoUrl={stagePhoto}
                 overlay={selected.overlay}
-                label={t(photo ? "stageLabel" : "silhouetteLabel", { cap: capName })}
+                label={
+                  photo
+                    ? t("stageLabel", { cap: capName })
+                    : model
+                      ? t("modelLabel", { cap: capName, name: model.name })
+                      : t("silhouetteLabel", { cap: capName })
+                }
                 handleLabel={t("capHandle", { cap: capName })}
                 anchor={anchor}
                 placement={placement}
@@ -218,7 +260,16 @@ export function TryOnStudio({
           </div>
 
           <p aria-live="polite" className="mt-3 min-h-5 text-sm text-zinc-600 dark:text-zinc-400">
-            {busy ? "" : t(status === "empty" ? "emptyHint" : status)}
+            {busy ? "" : status === "empty" && model && modelTee ? (
+              <>
+                {t("modelWearing", { name: model.name })}{" "}
+                <Link href={`/products/${modelTee.id}`} className="font-medium text-zinc-950 underline underline-offset-2 dark:text-white">
+                  {(locale === "es" ? modelTee.nameEs : modelTee.nameEn).replace(/^Good Luck /, "")}
+                </Link>
+              </>
+            ) : (
+              t(status === "empty" ? "emptyHint" : status)
+            )}
           </p>
 
           <div className="mt-3 flex flex-wrap gap-2">
@@ -229,12 +280,50 @@ export function TryOnStudio({
             <PhotoButton onClick={() => setCameraOpen(true)} icon={<Camera className="h-4 w-4" />} disabled={cameraOpen} {...reach}>
               {t("camera")}
             </PhotoButton>
+            <PhotoButton onClick={() => setFineTune((v) => !v)} icon={<SlidersHorizontal className="h-4 w-4" />} pressed={fineTune}>
+              {t("fineTune")}
+            </PhotoButton>
             {adjusted && (
               <PhotoButton onClick={() => setAdjust(NO_ADJUST)} icon={<RotateCcw className="h-4 w-4" />}>
                 {t("reset")}
               </PhotoButton>
             )}
           </div>
+
+          {fineTune && (
+            <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 rounded-2xl border border-black/[0.08] p-4 dark:border-white/[0.1]">
+              <FineTuneSlider label={t("size")} value={adjust.scale} min={0.6} max={1.6} step={0.01} display={`${Math.round(adjust.scale * 100)}%`} onChange={(v) => setField("scale", v)} />
+              <FineTuneSlider label={t("tilt")} value={adjust.rotation} min={-35} max={35} step={1} display={`${Math.round(adjust.rotation)}°`} onChange={(v) => setField("rotation", v)} />
+              <FineTuneSlider label={t("moveX")} value={adjust.dx} min={-0.3} max={0.3} step={0.005} display={`${Math.round(adjust.dx * 100)}`} onChange={(v) => setField("dx", v)} />
+              <FineTuneSlider label={t("moveY")} value={adjust.dy} min={-0.3} max={0.3} step={0.005} display={`${Math.round(adjust.dy * 100)}`} onChange={(v) => setField("dy", v)} />
+            </div>
+          )}
+
+          {TRY_ON_MODELS.length > 0 && (
+            <div className="mt-5">
+              <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">{t("modelsLabel")}</p>
+              <div className="mt-2 flex flex-wrap gap-2" role="radiogroup" aria-label={t("modelsLabel")}>
+                {TRY_ON_MODELS.map((m) => {
+                  const checked = !photo && m.id === modelId;
+                  return (
+                    <button
+                      key={m.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={checked}
+                      aria-label={m.name}
+                      onClick={() => chooseModel(m)}
+                      className={`relative h-12 w-12 overflow-hidden rounded-full ring-2 ring-offset-2 transition-shadow focus-visible:outline-none focus-visible:ring-moya-red dark:ring-offset-zinc-950 ${
+                        checked ? "ring-zinc-950 dark:ring-white" : "ring-transparent hover:ring-zinc-300 dark:hover:ring-white/30"
+                      }`}
+                    >
+                      <Image src={m.image} alt="" fill sizes="48px" className="object-cover" />
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="flex flex-col lg:col-span-5">
@@ -281,7 +370,7 @@ export function TryOnStudio({
                   t("notAvailable")
                 )}
               </button>
-              {photo && (
+              {stagePhoto && (
                 <button
                   type="button"
                   onClick={onShare}
@@ -303,12 +392,54 @@ export function TryOnStudio({
   );
 }
 
+/** Starting placement for a model: from its stored face points, else the default */
+function modelAnchor(model: TryOnModel | undefined): CapAnchor {
+  return model?.face ? anchorFromFace(model.face) : DEFAULT_ANCHOR;
+}
+
+function FineTuneSlider({
+  label,
+  value,
+  min,
+  max,
+  step,
+  display,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  display: string;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <label className="block">
+      <span className="flex items-baseline justify-between text-sm text-zinc-700 dark:text-zinc-300">
+        {label}
+        <span className="tabular-nums text-zinc-500">{display}</span>
+      </span>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="mt-2 w-full accent-moya-red"
+      />
+    </label>
+  );
+}
+
 function PhotoButton({
   onClick,
   icon,
   children,
   primary = false,
   disabled = false,
+  pressed,
   ...rest
 }: {
   onClick: () => void;
@@ -316,6 +447,7 @@ function PhotoButton({
   children: React.ReactNode;
   primary?: boolean;
   disabled?: boolean;
+  pressed?: boolean;
   onPointerEnter?: () => void;
   onFocus?: () => void;
 }) {
@@ -324,11 +456,14 @@ function PhotoButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
+      aria-pressed={pressed}
       {...rest}
       className={`inline-flex h-11 items-center gap-2 rounded-full px-4 text-sm font-semibold transition-colors disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-moya-red ${
         primary
           ? "bg-zinc-950 text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-950"
-          : "border border-zinc-300 text-zinc-800 hover:border-zinc-900 dark:border-white/15 dark:text-zinc-200 dark:hover:border-white"
+          : pressed
+            ? "border border-zinc-950 bg-zinc-100 text-zinc-950 dark:border-white dark:bg-white/10 dark:text-white"
+            : "border border-zinc-300 text-zinc-800 hover:border-zinc-900 dark:border-white/15 dark:text-zinc-200 dark:hover:border-white"
       }`}
     >
       {icon}

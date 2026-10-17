@@ -682,6 +682,14 @@
     "cardBrand": "GOOD LUCK 0880 · TRIED ON",
     "stageLabel": "{cap} on your photo",
     "silhouetteLabel": "{cap} on a head silhouette",
-    "capHandle": "{cap}. Drag to move. Use arrow keys to move, plus and minus to resize."
+    "capHandle": "{cap}. Drag to move. Use arrow keys to move, plus and minus to resize.",
+    "modelsLabel": "Or try it on a model",
+    "modelLabel": "{cap} on {name}",
+    "modelWearing": "{name} is wearing the",
+    "fineTune": "Fine-tune",
+    "size": "Size",
+    "tilt": "Tilt",
+    "moveX": "Left / right",
+    "moveY": "Up / down"
   }
 }

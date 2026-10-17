@@ -13,6 +13,7 @@ import {
   NO_ADJUST,
   anchorFromFace,
   applyDrag,
+  clampAdjust,
   applyPinch,
   pinchDelta,
   placeCap,
@@ -176,6 +177,16 @@ describe("gestures", () => {
   });
 });
 
+describe("clampAdjust", () => {
+  it("keeps slider values inside the limits and the cap on the photo", () => {
+    const out = clampAdjust({ dx: 5, dy: -5, scale: 9, rotation: -90 }, DEFAULT_ANCHOR);
+    expect(DEFAULT_ANCHOR.x + out.dx).toBeCloseTo(LIMITS.centre[1]);
+    expect(DEFAULT_ANCHOR.y + out.dy).toBeCloseTo(LIMITS.centre[0]);
+    expect(out).toMatchObject({ scale: LIMITS.scale[1], rotation: LIMITS.rotation[0] });
+    expect(clampAdjust(NO_ADJUST, DEFAULT_ANCHOR)).toEqual(NO_ADJUST);
+  });
+});
+
 describe("photo import and card", () => {
   it("keeps the upper part of portrait photos and the centre of landscape ones", () => {
     expect(squareCrop(1000, 2000)).toEqual({ x: 0, y: 250, width: 1000, height: 1000 });
@@ -223,5 +234,24 @@ describe("face detector", () => {
   it("pins the WASM to the installed package version", () => {
     const pkg = JSON.parse(readFileSync(join(__dirname, "../../package.json"), "utf8"));
     expect(pkg.dependencies["@mediapipe/tasks-vision"]).toBe(MEDIAPIPE_VERSION);
+  });
+});
+
+describe("TRY_ON_MODELS", () => {
+  it("each model wears a real tee and has a unique id", async () => {
+    const { TRY_ON_MODELS } = await import("../data/tryOnModels");
+    const { SHIRT_VARIANTS } = await import("../data/caps");
+    expect(new Set(TRY_ON_MODELS.map((m) => m.id)).size).toBe(TRY_ON_MODELS.length);
+    for (const m of TRY_ON_MODELS) expect(SHIRT_VARIANTS.some((t) => t.id === m.teeId), m.id).toBe(true);
+  });
+
+  it("stores face points for every model, so picking one never loads the detector", async () => {
+    const { TRY_ON_MODELS } = await import("../data/tryOnModels");
+    for (const m of TRY_ON_MODELS) {
+      expect(m.face, m.id).toBeDefined();
+      const a = anchorFromFace(m.face!);
+      expect(a.width, m.id).toBeGreaterThan(0.2);
+      expect(a.y, m.id).toBeGreaterThan(0);
+    }
   });
 });

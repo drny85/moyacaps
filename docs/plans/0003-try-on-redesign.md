@@ -57,3 +57,4 @@ Client modules (`src/components/tryon/`):
   - Browser at 375 px and desktop: silhouette, upload → auto-fit in about 0.5 s once loaded, drag/reset, cap switch, add to bag, modal opens on its cap, Escape closes.
   - Lighthouse mobile on `/en/try-on` (local, load average ≈ 8.5, median of 3): **89** (was 73), TBT **18 ms** (was 667 ms), 424 KB (was 1.36 MB), LCP 3.6 s. Home measured 86 / 4.1 s in the same state, so LCP is limited by the machine, as on every page.
   - Not checked yet: share/save card output, live camera capture (no camera in the test browser).
+- [x] 7. Follow-up (user request): sample models are back as a picker with stored face points (`src/data/tryOnModels.ts`, portraits in `public/try-on/models/`, recompressed to about 100 KB). A Fine-tune panel adds size, tilt and position sliders (`clampAdjust`, tested).
