@@ -5,7 +5,7 @@ import { AnatomyScroll } from "@/components/story/AnatomyScroll";
 import { BrandStory } from "@/components/story/BrandStory";
 import { CategoryTiles } from "@/components/hero/CategoryTiles";
 import { FeaturedProducts } from "@/components/catalog/FeaturedProducts";
-import { TeeLookbook } from "@/components/story/TeeLookbook";
+import { NycLookbook } from "@/components/story/NycLookbook";
 
 export async function generateMetadata({
   params,
@@ -73,7 +73,7 @@ export default function HomePage() {
       <FeaturedProducts />
       <AnatomyScroll />
       <DropRadar />
-      <TeeLookbook />
+      <NycLookbook />
       <BrandStory />
     </div>
   );

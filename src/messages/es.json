@@ -620,8 +620,12 @@
     "tileMeta": "{count, plural, one {# estilo} other {# estilos}} · desde ${price}",
     "featuredTitle": "Destacados",
     "shopAll": "Ver los {count}",
-    "lookbookTitle": "En la calle",
-    "lookbookBody": "Cada playera, puesta. Toca una para comprarla en ese color.",
-    "shopTees": "Ver playeras"
+    "nycTitle": "Good Luck, NYC",
+    "nycBody": "Tres paradas por la ciudad. Toca una playera para comprarla.",
+    "shopHotspot": "Comprar {name}",
+    "viewTee": "Ver playera",
+    "asShown": "Color como se muestra",
+    "otherColours": "{count, plural, one {Disponible en # color} other {Disponible en # colores}}",
+    "closeCard": "Cerrar"
   }
 }

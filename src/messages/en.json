@@ -620,8 +620,12 @@
     "tileMeta": "{count, plural, one {# style} other {# styles}} · from ${price}",
     "featuredTitle": "Featured",
     "shopAll": "Shop all {count}",
-    "lookbookTitle": "On the street",
-    "lookbookBody": "Every tee, worn. Tap one to shop it in that colour.",
-    "shopTees": "Shop tees"
+    "nycTitle": "Good Luck, NYC",
+    "nycBody": "Three stops across the city. Tap a shirt to shop it.",
+    "shopHotspot": "Shop {name}",
+    "viewTee": "View tee",
+    "asShown": "Colour as shown",
+    "otherColours": "{count, plural, one {Sold in # colour} other {Sold in # colours}}",
+    "closeCard": "Close"
   }
 }

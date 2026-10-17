@@ -59,33 +59,3 @@ export function categoryEntries(products: CapVariant[], preferred: { caps?: stri
   }
   return entries;
 }
-
-export interface LookbookShot {
-  productId: string;
-  colorway: string;
-  src: string;
-  name: { en: string; es: string };
-  colorwayName: { en: string; es: string };
-}
-
-/**
- * Street-photo strip: one Lifestyle Shot per tee, on its default colorway, featured tees
- * first. Each shot links to the product opened on that colorway.
- */
-export function lookbookShots(products: CapVariant[], count: number): LookbookShot[] {
-  return products
-    .filter((p) => isTee(p) && p.colorways?.length && p.isAvailable !== false)
-    .map((p, i) => ({ p, i }))
-    .sort((a, b) => Number(Boolean(b.p.isFeatured)) - Number(Boolean(a.p.isFeatured)) || a.i - b.i)
-    .slice(0, count)
-    .map(({ p }) => {
-      const cw = p.colorways!.find((c) => c.id === p.defaultColorway) ?? p.colorways![0];
-      return {
-        productId: p.id,
-        colorway: cw.id,
-        src: cw.modelImage,
-        name: { en: p.nameEn, es: p.nameEs },
-        colorwayName: { en: cw.nameEn, es: cw.nameEs },
-      };
-    });
-}

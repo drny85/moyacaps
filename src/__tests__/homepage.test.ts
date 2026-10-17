@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { CapVariant } from "../data/caps";
-import { categoryEntries, lookbookShots, pickFeatured } from "../lib/homepage";
+import { categoryEntries, pickFeatured } from "../lib/homepage";
 
 const NOW = Date.UTC(2026, 9, 17);
 
@@ -76,16 +76,5 @@ describe("categoryEntries", () => {
     const entries = categoryEntries([cap("c1"), cap("c2", { isFeatured: true })], { caps: "c1" });
     expect(entries).toHaveLength(1);
     expect(entries[0].image).toBe("/catalog/caps/c1.webp");
-  });
-});
-
-describe("lookbookShots", () => {
-  it("one Lifestyle Shot per tee on its default colorway, featured first, hidden tees left out", () => {
-    const shots = lookbookShots([cap("c1"), tee("t1"), tee("t2", { isFeatured: true }), tee("t3", { isAvailable: false })], 10);
-    expect(shots.map((s) => [s.productId, s.colorway, s.src])).toEqual([
-      ["t2", "crisp-white", "/shirts/t2-white.jpg"],
-      ["t1", "crisp-white", "/shirts/t1-white.jpg"],
-    ]);
-    expect(shots[0].name).toEqual({ en: "t2", es: "t2-es" });
   });
 });
