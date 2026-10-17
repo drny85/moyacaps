@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { m, useMotionValueEvent, useScroll, useTransform, type MotionValue } from "framer-motion";
+import { m, useMotionValue, useMotionValueEvent, useScroll, useTransform, type MotionValue } from "framer-motion";
 import { ArrowRight, Rotate3d } from "lucide-react";
 import { useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
@@ -13,7 +13,7 @@ import { useReducedMotionSafe } from "@/hooks/useMotionPrefs";
 import { useMinuteClock } from "@/hooks/useMinuteClock";
 import { CapTurntable, type TurntableFrame } from "@/components/viewer/CapTurntable";
 import { getCapAngleImages, TURNTABLE_ANGLES } from "@/lib/capAngles";
-import { HERO_LAYERS, HINT_HIDE_PROGRESS, platterAngle, scrub, type Range } from "@/lib/heroMotion";
+import { HERO_LAYERS, HINT_HIDE_PROGRESS, heroScrollProgress, platterAngle, scrub, type Range } from "@/lib/heroMotion";
 import { isTee } from "@/lib/shop";
 import { DURATION, EASE, SPRING, STAGGER } from "@/lib/motion";
 
@@ -71,18 +71,29 @@ export function HeroInteractive() {
   const motionOn = mounted && !reduceMotion;
   // 0 at the top of the page, 1 once one hero height has scrolled by. Measured against the page, not
   // the section's own position, so the sticky header's height never delays the choreography.
+  // `progress` is set only from the scroll and resize callbacks, never during render: a value derived
+  // in render (useTransform) is re-set on every render, and its listeners (the turntable's scrub sets
+  // state) would then update another component mid-render.
   const { scrollY } = useScroll();
-  const [heroHeight, setHeroHeight] = useState(0);
+  const progress = useMotionValue(0);
   useEffect(() => {
     const el = sectionRef.current;
     if (!el) return;
-    const measure = () => setHeroHeight(el.offsetHeight);
+    let heroHeight = 0;
+    const update = () => progress.set(heroScrollProgress(scrollY.get(), heroHeight));
+    const measure = () => {
+      heroHeight = el.offsetHeight;
+      update();
+    };
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
-  const progress = useTransform(scrollY, (y) => (heroHeight > 0 ? y / heroHeight : 0));
+    const unsubscribe = scrollY.on("change", update);
+    return () => {
+      ro.disconnect();
+      unsubscribe();
+    };
+  }, [scrollY, progress]);
 
   const ghostY = useScrubbed(progress, HERO_LAYERS.ghost.y, motionOn);
   const ghostRotate = useScrubbed(progress, HERO_LAYERS.ghost.rotate, motionOn);
