@@ -21,15 +21,14 @@ Each phase is its own branch and PR, merged in order. Each must pass `bun run te
 
 ### Phase 1 — Image pipeline & Catalog Shots (`feat/catalog-shots`)
 
-- Remove `src/components/Cap3DViewer.tsx`, `src/data/capsManifest.ts` (if only used there), `scripts/generate-3d-glb.ts`, its `package.json` script, and `three`, `@react-three/fiber`, `@react-three/drei`, `@types/three`. Remove usages in `HeroInteractive.tsx` and `ProductDetailView.tsx`.
-- New `scripts/build-catalog-shots.ts` (sharp):
-  - **Caps**: trim alpha bounds of `public/caps/{variantId}.png`, scale to a fixed product width ratio, center on 1600×2000 `#ECEAE6` canvas, add a blurred ellipse ground shadow.
-  - **Tees**: composite `public/shirts/graphics/{design}.jpg` (knock out the white background, multiply blend) onto `public/shirts/templates/{front|back}-{color}.jpg` at a per-design print box (front chest vs back print from tee data), then place on the same canvas.
-  - Output `public/catalog/{variantId}[--{colorway}].{avif,webp}` at 1600×2000 plus a 800×1000 size; write `src/data/catalogShots.json` manifest.
-  - Covers every design × colorway, including the current gaps (Angel Clover white, Gothic Angel non-white).
-- Normalize Lifestyle Shots: re-encode `public/shirts/*.{jpg,png}` to consistent jpg/avif, fix Eagle Clover png/jpg mix, cap long edge at 2000px.
-- Write `docs/photography-spec.md`: the shot list a future shoot must meet (backdrop, 4:5, lens/angle, lighting, centering, file naming, minimum 2000px long edge).
-- `next.config.mjs`: confirm `images.formats` includes avif/webp and `deviceSizes` fit 4:5 cards.
+Status: done on `feat/catalog-shots`. `next.config.mjs` already serves avif/webp.
+
+- Removed `Cap3DViewer`, `src/lib/cap3dMaterials.ts`, `scripts/generate-3d-glb.ts`, GLB fields in the caps manifest, and `three` / `@react-three/*`. Hero and product page turn between the real per-colorway angle photos instead (`src/lib/capAngles.ts`). `src/data/capsManifest.ts` stays as the angle-photo index.
+- `scripts/build-catalog-shots.ts` (`bun run build-catalog-shots`) writes `src/data/catalogShots.json`:
+  - **Caps**: trim, scale into a fixed box, center on 1600×2000 `#ECEAE6` with a contact shadow → `public/catalog/caps/{id}.webp`. The four angles are normalized to one crown height → `public/catalog/caps/{id}/{angle}.webp`.
+  - **Tees**: `public/shirts/templates/` turned out to be on-model photos, and background removal keeps the car, so neither gives a flat garment. Interim: an illustrated flat-lay tee (`scripts/lib/flatTee.ts`) with the real artwork printed in the print box. On dark fabric, black ink prints off-white. Output → `public/catalog/tees/{id}/{colorway}.webp` for all 11 × 4.
+  - Real blanks drop in automatically from `public/shirts/flatlay/{side}-{colorway}.png` once shot to `docs/photography-spec.md` (8 photos, framing guides in `docs/photography/`).
+- The Lifestyle Shot matrix is already complete (Angel Clover white is `gothic-angel-white.jpg`, and the Eagle Clover black/grey are `.png` shoot photos). Renaming is **deferred to Phase 2**, because live Convex variant rows and order snapshots store these paths (ADR 0008). Upscaling is skipped: the sources are about 900–1264 px, and upscaling adds no real detail.
 
 ### Phase 2 — Unified catalog in Convex (`feat/unified-product-catalog`)
 
@@ -41,6 +40,8 @@ Read `convex/_generated/ai/guidelines.md` first.
 - Inventory: `convex/stripe.ts` and `convex/orders.ts` reserve, deduct and release tee stock on the matching `skus` row (ADR 0007 idempotency unchanged). Add tests in `convex/orders.test.ts` for tee SKU reservation, oversell rejection and release.
 - Admin products page: edit SKU stock per colorway × size.
 - Routes: create `src/app/[locale]/products/[slug]/page.tsx` (moves current `caps/[id]` logic); `caps/[id]` → `permanentRedirect`. Update every `/caps/` link: `CapCard`, `DropRadar`, `ProductQuickView`, `ProductJsonLd`, `useProductShare`, `sitemap.ts`, `robots.ts`, admin drops/products, `DropScheduleDialog`, emails.
+- Lifestyle Shot names: rename `gothic-angel-white.jpg` → `angel-clover-white.jpg`, `eagle-clover-{black,grey}.png` → `.jpg`, rewriting the variant `image`/`images` paths in the same migration; keep the old files until no order snapshot references them.
+- Expose `catalogShots.json` paths as each Product's grid image (`catalogShot`, per colorway for tees).
 - Stop importing `CAP_VARIANTS` at runtime (`caps/[id]` page, `VirtualTryOnStudio`, studio); `src/data/caps.ts` becomes seed-only.
 
 ### Phase 3 — Shop page (`feat/shop-page`)

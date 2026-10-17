@@ -145,5 +145,106 @@
         "right": "/catalog/caps/verde-rojo/right.webp"
       }
     }
+  },
+  "tees": {
+    "boxing-gloves-tee": {
+      "printPosition": "front",
+      "colorways": {
+        "washed-black": "/catalog/tees/boxing-gloves-tee/washed-black.webp",
+        "crisp-white": "/catalog/tees/boxing-gloves-tee/crisp-white.webp",
+        "heather-grey": "/catalog/tees/boxing-gloves-tee/heather-grey.webp",
+        "butter-cream": "/catalog/tees/boxing-gloves-tee/butter-cream.webp"
+      }
+    },
+    "butterfly-grunge-tee": {
+      "printPosition": "front",
+      "colorways": {
+        "butter-cream": "/catalog/tees/butterfly-grunge-tee/butter-cream.webp",
+        "washed-black": "/catalog/tees/butterfly-grunge-tee/washed-black.webp",
+        "crisp-white": "/catalog/tees/butterfly-grunge-tee/crisp-white.webp",
+        "heather-grey": "/catalog/tees/butterfly-grunge-tee/heather-grey.webp"
+      }
+    },
+    "eagle-clover-tee": {
+      "printPosition": "back",
+      "colorways": {
+        "washed-black": "/catalog/tees/eagle-clover-tee/washed-black.webp",
+        "heather-grey": "/catalog/tees/eagle-clover-tee/heather-grey.webp",
+        "crisp-white": "/catalog/tees/eagle-clover-tee/crisp-white.webp",
+        "butter-cream": "/catalog/tees/eagle-clover-tee/butter-cream.webp"
+      }
+    },
+    "gothic-skull-tee": {
+      "printPosition": "front",
+      "colorways": {
+        "washed-black": "/catalog/tees/gothic-skull-tee/washed-black.webp",
+        "crisp-white": "/catalog/tees/gothic-skull-tee/crisp-white.webp",
+        "heather-grey": "/catalog/tees/gothic-skull-tee/heather-grey.webp",
+        "butter-cream": "/catalog/tees/gothic-skull-tee/butter-cream.webp"
+      }
+    },
+    "eight-ball-tee": {
+      "printPosition": "front",
+      "colorways": {
+        "crisp-white": "/catalog/tees/eight-ball-tee/crisp-white.webp",
+        "washed-black": "/catalog/tees/eight-ball-tee/washed-black.webp",
+        "heather-grey": "/catalog/tees/eight-ball-tee/heather-grey.webp",
+        "butter-cream": "/catalog/tees/eight-ball-tee/butter-cream.webp"
+      }
+    },
+    "snake-horseshoe-tee": {
+      "printPosition": "back",
+      "colorways": {
+        "washed-black": "/catalog/tees/snake-horseshoe-tee/washed-black.webp",
+        "crisp-white": "/catalog/tees/snake-horseshoe-tee/crisp-white.webp",
+        "heather-grey": "/catalog/tees/snake-horseshoe-tee/heather-grey.webp",
+        "butter-cream": "/catalog/tees/snake-horseshoe-tee/butter-cream.webp"
+      }
+    },
+    "vintage-f1-tee": {
+      "printPosition": "front",
+      "colorways": {
+        "butter-cream": "/catalog/tees/vintage-f1-tee/butter-cream.webp",
+        "washed-black": "/catalog/tees/vintage-f1-tee/washed-black.webp",
+        "crisp-white": "/catalog/tees/vintage-f1-tee/crisp-white.webp",
+        "heather-grey": "/catalog/tees/vintage-f1-tee/heather-grey.webp"
+      }
+    },
+    "retro-soul-tee": {
+      "printPosition": "front",
+      "colorways": {
+        "washed-black": "/catalog/tees/retro-soul-tee/washed-black.webp",
+        "crisp-white": "/catalog/tees/retro-soul-tee/crisp-white.webp",
+        "heather-grey": "/catalog/tees/retro-soul-tee/heather-grey.webp",
+        "butter-cream": "/catalog/tees/retro-soul-tee/butter-cream.webp"
+      }
+    },
+    "lightning-star-tee": {
+      "printPosition": "front",
+      "colorways": {
+        "heather-grey": "/catalog/tees/lightning-star-tee/heather-grey.webp",
+        "washed-black": "/catalog/tees/lightning-star-tee/washed-black.webp",
+        "crisp-white": "/catalog/tees/lightning-star-tee/crisp-white.webp",
+        "butter-cream": "/catalog/tees/lightning-star-tee/butter-cream.webp"
+      }
+    },
+    "gothic-angel-tee": {
+      "printPosition": "front",
+      "colorways": {
+        "crisp-white": "/catalog/tees/gothic-angel-tee/crisp-white.webp",
+        "washed-black": "/catalog/tees/gothic-angel-tee/washed-black.webp",
+        "heather-grey": "/catalog/tees/gothic-angel-tee/heather-grey.webp",
+        "butter-cream": "/catalog/tees/gothic-angel-tee/butter-cream.webp"
+      }
+    },
+    "muscle-car-tee": {
+      "printPosition": "front",
+      "colorways": {
+        "washed-black": "/catalog/tees/muscle-car-tee/washed-black.webp",
+        "crisp-white": "/catalog/tees/muscle-car-tee/crisp-white.webp",
+        "heather-grey": "/catalog/tees/muscle-car-tee/heather-grey.webp",
+        "butter-cream": "/catalog/tees/muscle-car-tee/butter-cream.webp"
+      }
+    }
   }
 }

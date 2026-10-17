@@ -7,12 +7,15 @@
  * Outputs
  *   public/catalog/caps/{id}.webp            1600×2000 Catalog Shot on #ECEAE6
  *   public/catalog/caps/{id}/{angle}.webp    1200×1200 transparent turntable angle
+ *   public/catalog/tees/{id}/{colorway}.webp 1600×2000 Catalog Shot on #ECEAE6
  *   src/data/catalogShots.json               manifest of everything written
  */
 import sharp from "sharp";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { ALL_CAPS_MANIFEST_MAP, type CapAngleKey } from "../src/data/capsManifest";
+import { SHIRT_VARIANTS } from "../src/data/caps";
+import { renderFlatTee, type FabricId, type PrintSide } from "./lib/flatTee";
 
 const ROOT = path.resolve(import.meta.dir, "..");
 const PUBLIC = path.join(ROOT, "public");
@@ -30,6 +33,13 @@ const ANGLE_SIZE = 1200;
 const ANGLE_HEIGHT = ANGLE_SIZE * 0.56;
 const ANGLE_MAX_WIDTH = ANGLE_SIZE * 0.92;
 const ANGLES: CapAngleKey[] = ["front", "left", "back", "right"];
+
+/** Tee square render width inside the shot, and its vertical centre (tee body spans y 118–950 of 1000) */
+const TEE_SIZE = 1360;
+const TEE_BODY_CENTER = 0.534;
+const TEE_CENTER_Y = 0.47;
+/** Real blank flat-lays, when shot to docs/photography-spec.md: {side}-{colorway}.png */
+const FLATLAY_DIR = path.join(PUBLIC, "shirts", "flatlay");
 
 const WEBP = { quality: 88, effort: 5 } as const;
 
@@ -127,12 +137,60 @@ async function buildCaps() {
   return result;
 }
 
+/** Shadow cast by a garment lying on the backdrop: its own alpha, darkened, blurred and offset down */
+async function liftShadow(product: Buffer, size: number) {
+  const alpha = await sharp(product).extractChannel("alpha").toColourspace("b-w").linear(0.22, 0).blur(24).toBuffer();
+  return sharp({ create: { width: size, height: size, channels: 3, background: "#000" } }).joinChannel(alpha).png().toBuffer();
+}
+
+async function teeCatalogShot(id: string, colorway: FabricId, side: PrintSide, artPath: string) {
+  const blank = path.join(FLATLAY_DIR, `${side}-${colorway}.png`);
+  const blankPhoto = (await exists(blank)) ? blank : undefined;
+  const tee = await renderFlatTee({ size: TEE_SIZE, fabric: colorway, side, artPath, blankPhoto });
+  const shadow = await liftShadow(tee, TEE_SIZE);
+  const left = Math.round((SHOT.width - TEE_SIZE) / 2);
+  const top = Math.round(SHOT.height * TEE_CENTER_Y - TEE_SIZE * TEE_BODY_CENTER);
+
+  await fs.mkdir(path.join(OUT, "tees", id), { recursive: true });
+  await sharp({ create: { width: SHOT.width, height: SHOT.height, channels: 3, background: BACKDROP } })
+    .composite([
+      { input: shadow, left, top: top + 24 },
+      { input: tee, left, top },
+    ])
+    .webp(WEBP)
+    .toFile(path.join(OUT, "tees", id, `${colorway}.webp`));
+  return { path: `/catalog/tees/${id}/${colorway}.webp`, source: blankPhoto ? "photo" : "illustrated" };
+}
+
+async function buildTees() {
+  const result: Record<string, { printPosition: PrintSide; colorways: Record<string, string> }> = {};
+  for (const tee of SHIRT_VARIANTS) {
+    if (!tee.graphicImage || !tee.colorways?.length) {
+      console.warn(`⚠️  ${tee.id}: no artwork or colorways, skipped`);
+      continue;
+    }
+    const side: PrintSide = tee.printPosition === "back" ? "back" : "front";
+    const art = path.join(PUBLIC, tee.graphicImage);
+    const colorways: Record<string, string> = {};
+    const sources = new Set<string>();
+    for (const cw of tee.colorways) {
+      const shot = await teeCatalogShot(tee.id, cw.id as FabricId, side, art);
+      colorways[cw.id] = shot.path;
+      sources.add(shot.source);
+    }
+    result[tee.id] = { printPosition: side, colorways };
+    console.log(`✅ ${tee.id} (${Object.keys(colorways).length} colorways, ${[...sources].join("+")})`);
+  }
+  return result;
+}
+
 async function main() {
   await fs.mkdir(path.join(OUT, "caps"), { recursive: true });
   const caps = await buildCaps();
+  const tees = await buildTees();
   const manifestPath = path.join(ROOT, "src", "data", "catalogShots.json");
-  await fs.writeFile(manifestPath, JSON.stringify({ backdrop: BACKDROP, caps }, null, 2) + "\n");
-  console.log(`📝 ${path.relative(ROOT, manifestPath)}: ${Object.keys(caps).length} caps`);
+  await fs.writeFile(manifestPath, JSON.stringify({ backdrop: BACKDROP, caps, tees }, null, 2) + "\n");
+  console.log(`📝 ${path.relative(ROOT, manifestPath)}: ${Object.keys(caps).length} caps, ${Object.keys(tees).length} tees`);
 }
 
 main().catch((err) => {
