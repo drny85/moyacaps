@@ -1,0 +1,164 @@
+{
+  "front-white": {
+    "file": "/shirts/templates/front-white.jpg",
+    "side": "front",
+    "color": "white",
+    "width": 896,
+    "height": 1200,
+    "measure": {
+      "collarY": 247,
+      "hemY": 635,
+      "torsoLeft": 345,
+      "torsoRight": 558,
+      "measureY": 460
+    },
+    "box": {
+      "cx": 452,
+      "top": 282,
+      "width": 202,
+      "height": 264
+    }
+  },
+  "front-black": {
+    "file": "/shirts/templates/front-black.jpg",
+    "side": "front",
+    "color": "black",
+    "width": 896,
+    "height": 1200,
+    "measure": {
+      "collarY": 292,
+      "hemY": 713,
+      "torsoLeft": 336,
+      "torsoRight": 568,
+      "measureY": 524
+    },
+    "box": {
+      "cx": 452,
+      "top": 330,
+      "width": 220,
+      "height": 286
+    }
+  },
+  "front-grey": {
+    "file": "/shirts/templates/front-grey.jpg",
+    "side": "front",
+    "color": "grey",
+    "width": 896,
+    "height": 1200,
+    "measure": {
+      "collarY": 292,
+      "hemY": 824,
+      "torsoLeft": 363,
+      "torsoRight": 594,
+      "measureY": 585
+    },
+    "box": {
+      "cx": 479,
+      "top": 340,
+      "width": 219,
+      "height": 362
+    }
+  },
+  "front-cream": {
+    "file": "/shirts/templates/front-cream.jpg",
+    "side": "front",
+    "color": "cream",
+    "width": 896,
+    "height": 1200,
+    "measure": {
+      "collarY": 254,
+      "hemY": 670,
+      "torsoLeft": 352,
+      "torsoRight": 565,
+      "measureY": 483
+    },
+    "box": {
+      "cx": 459,
+      "top": 291,
+      "width": 202,
+      "height": 283
+    }
+  },
+  "back-white": {
+    "file": "/shirts/templates/back-white.jpg",
+    "side": "back",
+    "color": "white",
+    "width": 848,
+    "height": 1264,
+    "measure": {
+      "collarY": 246,
+      "hemY": 723,
+      "torsoLeft": 373,
+      "torsoRight": 575,
+      "measureY": 508
+    },
+    "box": {
+      "cx": 474,
+      "top": 275,
+      "width": 202,
+      "height": 353
+    }
+  },
+  "back-black": {
+    "file": "/shirts/templates/back-black.jpg",
+    "side": "back",
+    "color": "black",
+    "width": 848,
+    "height": 1264,
+    "measure": {
+      "collarY": 246,
+      "hemY": 723,
+      "torsoLeft": 373,
+      "torsoRight": 575,
+      "measureY": 508
+    },
+    "box": {
+      "cx": 474,
+      "top": 275,
+      "width": 202,
+      "height": 353
+    },
+    "measuredFrom": "back-white"
+  },
+  "back-grey": {
+    "file": "/shirts/templates/back-grey.jpg",
+    "side": "back",
+    "color": "grey",
+    "width": 848,
+    "height": 1264,
+    "measure": {
+      "collarY": 246,
+      "hemY": 723,
+      "torsoLeft": 373,
+      "torsoRight": 575,
+      "measureY": 508
+    },
+    "box": {
+      "cx": 474,
+      "top": 275,
+      "width": 202,
+      "height": 353
+    },
+    "measuredFrom": "back-white"
+  },
+  "back-cream": {
+    "file": "/shirts/templates/back-cream.jpg",
+    "side": "back",
+    "color": "cream",
+    "width": 848,
+    "height": 1264,
+    "measure": {
+      "collarY": 245,
+      "hemY": 721,
+      "torsoLeft": 373,
+      "torsoRight": 573,
+      "measureY": 507
+    },
+    "box": {
+      "cx": 473,
+      "top": 274,
+      "width": 200,
+      "height": 352
+    }
+  }
+}

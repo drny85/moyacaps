@@ -8,15 +8,11 @@
  * and the same print box is used (the spec frames the photos to this geometry).
  */
 import sharp from "sharp";
+import { inkLayer, type DarkInkMode } from "./ink";
 
 export type FabricId = "washed-black" | "crisp-white" | "heather-grey" | "butter-cream";
 export type PrintSide = "front" | "back";
-/**
- * How black linework prints on dark fabric:
- *  - "knockout": black ink is left out, the fabric shows through (fine detail, hatching)
- *  - "invert":   black ink is printed off-white (wordmarks and outlines that must stay legible)
- */
-export type DarkInkMode = "knockout" | "invert";
+export type { DarkInkMode } from "./ink";
 
 /** Photographic fabric tones (the UI swatch hexes are brighter than real cotton) */
 const FABRIC: Record<FabricId, { base: string; shade: string; light: string; dark: boolean; heather: number }> = {
@@ -110,40 +106,6 @@ function overlaySvg(size: number, fabric: FabricId, side: PrintSide) {
   <path d="${NECK[side]}" stroke="#000" stroke-opacity="0.2" stroke-width="2" fill="none" transform="translate(0 12)"/>
   <path d="${NECK[side]}" stroke="#fff" stroke-opacity="${hi * 0.5}" stroke-width="2" fill="none" transform="translate(0 -8)"/>
 </svg>`;
-}
-
-/**
- * Turns artwork on a white background into an ink layer: white becomes transparent.
- * On dark fabric, near-black ink is knocked out or printed off-white (see DarkInkMode).
- */
-async function inkLayer(artPath: string, width: number, height: number, darkFabric: boolean, darkInk: DarkInkMode) {
-  const { data, info } = await sharp(artPath)
-    .resize({ width, height, fit: "inside", kernel: "lanczos3" })
-    .removeAlpha()
-    .raw()
-    .toBuffer({ resolveWithObject: true });
-  const out = Buffer.alloc(info.width * info.height * 4);
-  for (let i = 0, j = 0; i < data.length; i += 3, j += 4) {
-    let r = data[i], g = data[i + 1], b = data[i + 2];
-    const min = Math.min(r, g, b), max = Math.max(r, g, b);
-    // Whiteness → transparency, with a soft ramp so edges stay anti-aliased
-    let alpha = Math.max(0, Math.min(255, (255 - min) * 2.2 - 40));
-    if (darkFabric) {
-      // Neutral darkness 0 (mid grey) … 1 (black)
-      const darkness = max - min < 48 ? Math.max(0, Math.min(1, (130 - max) / 90)) : 0;
-      if (darkInk === "invert") {
-        const v = Math.round(236 * darkness + max * (1 - darkness));
-        r = Math.round(r + (v - r) * darkness);
-        g = Math.round(g + (v - g) * darkness);
-        b = Math.round(b + (v - b) * darkness);
-      } else {
-        alpha = Math.round(alpha * (1 - darkness));
-      }
-    }
-    out[j] = r; out[j + 1] = g; out[j + 2] = b;
-    out[j + 3] = alpha;
-  }
-  return sharp(out, { raw: { width: info.width, height: info.height, channels: 4 } }).png().toBuffer({ resolveWithObject: true });
 }
 
 /** Printed tee as a transparent square PNG of `size` px. `blankPhoto` swaps the drawing for a real flat-lay. */

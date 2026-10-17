@@ -63,7 +63,27 @@ Caps already meet the Catalog Shot standard through `scripts/build-catalog-shots
 
 The script trims each photo, scales every angle to the same crown height, and places the front angle on the shared backdrop. Framing does not need to be pixel-exact, but the cap must be fully in frame and in sharp focus edge to edge.
 
-## 3. Lifestyle Shots
+## 3. On-model blank templates (how tee photos are made today)
+
+Every tee Lifestyle Shot, and until flat-lays exist every tee Catalog Shot, is printed onto a real photo of the model wearing a **blank** tee: `public/shirts/templates/{front|back}-{black|white|grey|cream}.jpg`.
+
+- **New template** (new colour or new pose): shoot the blank garment in the same setting and drop it in `public/shirts/templates/` with the same naming. Then run:
+
+  ```bash
+  bun run calibrate-tee-templates
+  ```
+
+  Check `scripts/data/teeTemplates-review.jpg`: the green tint must cover the shirt and the red box must sit centred on the chest (front) or upper back (back). If lighting breaks the mask, add the template to `MEASURE_FROM` in `scripts/calibrate-tee-templates.ts` to reuse a same-pose template's measurement.
+- **Then rebuild the images:**
+
+  ```bash
+  bun run build-catalog-shots
+  ```
+
+  This regenerates every on-model shot and its 4:5 crop. Photos listed in `SHOOT_PHOTOS` (real printed-garment shots) are never overwritten.
+- **Template quality:** at least 1200 px wide; a frontal or back pose with arms away from the chest and back; even light, and no hands or straps across the print area.
+
+## 4. Lifestyle Shots
 
 Used on product pages and in editorial sections only, never in grids.
 
@@ -73,7 +93,7 @@ Used on product pages and in editorial sections only, never in grids.
 - **Size and format:** minimum 2000 px on the long edge, sRGB JPEG.
 - **Look:** keep the current night-street look so the lookbook reads as one series.
 
-## 4. Shared rules
+## 5. Shared rules
 
 - **Backdrop colour:** `#ECEAE6`. Exported as `BACKDROP` from the build script, and the only grid background.
 - **Catalog Shot size:** 1600 × 2000 (4:5) WebP. `next/image` serves the smaller sizes.

@@ -12,6 +12,7 @@
     "extract-caps": "bun run scripts/extract-caps.ts",
     "process-caps": "bun run scripts/process-cap-assets.ts",
     "build-catalog-shots": "bun run scripts/build-catalog-shots.ts",
+    "calibrate-tee-templates": "bun run scripts/calibrate-tee-templates.ts",
     "migrate:storage": "bun run scripts/migrate-storage.ts",
     "test": "vitest run"
   },

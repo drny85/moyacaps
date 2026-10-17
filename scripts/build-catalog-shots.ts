@@ -7,7 +7,8 @@
  * Outputs
  *   public/catalog/caps/{id}.webp            1600×2000 Catalog Shot on #ECEAE6
  *   public/catalog/caps/{id}/{angle}.webp    1200×1200 transparent turntable angle
- *   public/catalog/tees/{id}/{colorway}.webp 1600×2000 Catalog Shot on #ECEAE6
+ *   public/catalog/tees/{id}/{colorway}.webp 800×1000 Catalog Shot (on-model crop; flat-lay when photographed)
+ *   public/shirts/{design}-{color}.jpg       on-model Lifestyle Shots printed from the templates
  *   src/data/catalogShots.json               manifest of everything written
  *   src/app/icon.png, src/app/apple-icon.png site icons (Next app/ file convention)
  *   public/brand/logo-512.png                organization logo (JSON-LD)
@@ -19,6 +20,9 @@ import path from "node:path";
 import { ALL_CAPS_MANIFEST_MAP, type CapAngleKey } from "../src/data/capsManifest";
 import { SHIRT_VARIANTS } from "../src/data/caps";
 import { renderFlatTee, type FabricId, type PrintSide } from "./lib/flatTee";
+import { printOnModel } from "./lib/printOnModel";
+import type { PrintBox, TeeMeasure } from "./lib/teeCalibration";
+import teeTemplates from "./data/teeTemplates.json";
 
 const ROOT = path.resolve(import.meta.dir, "..");
 const PUBLIC = path.join(ROOT, "public");
@@ -146,23 +150,95 @@ async function liftShadow(product: Buffer, size: number) {
   return sharp({ create: { width: size, height: size, channels: 3, background: "#000" } }).joinChannel(alpha).png().toBuffer();
 }
 
-async function teeCatalogShot(id: string, colorway: FabricId, side: PrintSide, artPath: string) {
+/** Template colour name for each Apparel Colorway (public/shirts/templates/{side}-{color}.jpg) */
+const TEMPLATE_COLOR: Record<FabricId, string> = {
+  "washed-black": "black",
+  "crisp-white": "white",
+  "heather-grey": "grey",
+  "butter-cream": "cream",
+};
+
+/**
+ * Lifestyle Shots from the real photo shoot (printed garments). They are never regenerated;
+ * every other on-model shot is printed from the blank templates by printOnModel.
+ */
+const SHOOT_PHOTOS = new Set(["/shirts/eagle-clover-black.jpg", "/shirts/eagle-clover-grey.jpg", "/shirts/angel-clover-white.jpg"]);
+
+type TeeTemplates = Record<string, { file: string; measure: TeeMeasure; box: PrintBox; width: number; height: number }>;
+const TEE_TEMPLATES = teeTemplates as TeeTemplates;
+
+/** Tee Catalog Shot size: the on-model sources are ~900 px wide, so 800×1000 keeps them sharp */
+const TEE_SHOT = { width: 800, height: 1000 };
+
+/**
+ * 4:5 crop of an on-model photo around the tee: the print centred, chin to knees, so the
+ * garment fills the frame while staying a real photograph.
+ */
+async function onModelCatalogShot(lifestyleFile: string, template: TeeTemplates[string], out: string) {
+  const meta = await sharp(lifestyleFile).metadata();
+  const W = meta.width!;
+  const H = meta.height!;
+  const torso = template.measure.hemY - template.measure.collarY;
+  const cropH = Math.min(H, Math.round(torso * 1.75));
+  const cropW = Math.min(W, Math.round(cropH * 0.8));
+  const top = Math.max(0, Math.min(H - cropH, Math.round(template.measure.collarY - torso * 0.3)));
+  const left = Math.max(0, Math.min(W - cropW, Math.round(template.box.cx - cropW / 2)));
+  await sharp(lifestyleFile)
+    .extract({ left, top, width: cropW, height: cropH })
+    .resize(TEE_SHOT.width, TEE_SHOT.height, { kernel: "lanczos3" })
+    .sharpen({ sigma: 0.6 })
+    .webp(WEBP)
+    .toFile(out);
+}
+
+/** The illustrated flat-lay (or a real blank flat-lay photo when one exists), on the backdrop. */
+async function flatLayCatalogShot(colorway: FabricId, side: PrintSide, artPath: string, out: string) {
   const blank = path.join(FLATLAY_DIR, `${side}-${colorway}.png`);
   const blankPhoto = (await exists(blank)) ? blank : undefined;
   const tee = await renderFlatTee({ size: TEE_SIZE, fabric: colorway, side, artPath, blankPhoto });
   const shadow = await liftShadow(tee, TEE_SIZE);
   const left = Math.round((SHOT.width - TEE_SIZE) / 2);
   const top = Math.round(SHOT.height * TEE_CENTER_Y - TEE_SIZE * TEE_BODY_CENTER);
-
-  await fs.mkdir(path.join(OUT, "tees", id), { recursive: true });
   await sharp({ create: { width: SHOT.width, height: SHOT.height, channels: 3, background: BACKDROP } })
     .composite([
       { input: shadow, left, top: top + 24 },
       { input: tee, left, top },
     ])
     .webp(WEBP)
-    .toFile(path.join(OUT, "tees", id, `${colorway}.webp`));
-  return { path: `/catalog/tees/${id}/${colorway}.webp`, source: blankPhoto ? "photo" : "illustrated" };
+    .toFile(out);
+  return blankPhoto ? "flat-lay photo" : "illustrated";
+}
+
+/**
+ * One tee colorway: the on-model Lifestyle Shot (printed from the template unless it is a
+ * shoot photo) and its Catalog Shot. Catalog source, best first: real blank flat-lay photo →
+ * crop of the on-model photo → illustrated flat-lay.
+ */
+async function buildTeeColorway(teeId: string, colorway: FabricId, side: PrintSide, artPath: string, lifestyle: string) {
+  const out = path.join(OUT, "tees", teeId, `${colorway}.webp`);
+  await fs.mkdir(path.dirname(out), { recursive: true });
+  const template = TEE_TEMPLATES[`${side}-${TEMPLATE_COLOR[colorway]}`];
+  const lifestyleFile = path.join(PUBLIC, lifestyle);
+
+  if (template && !SHOOT_PHOTOS.has(lifestyle)) {
+    const jpg = await printOnModel({
+      templatePath: path.join(PUBLIC, template.file),
+      artPath,
+      box: template.box,
+      darkFabric: colorway === "washed-black",
+    });
+    await fs.writeFile(lifestyleFile, jpg);
+  }
+
+  const blank = path.join(FLATLAY_DIR, `${side}-${colorway}.png`);
+  let source: string;
+  if (!(await exists(blank)) && template && (await exists(lifestyleFile))) {
+    await onModelCatalogShot(lifestyleFile, template, out);
+    source = SHOOT_PHOTOS.has(lifestyle) ? "shoot photo" : "on-model";
+  } else {
+    source = await flatLayCatalogShot(colorway, side, artPath, out);
+  }
+  return { path: `/catalog/tees/${teeId}/${colorway}.webp`, source };
 }
 
 async function buildTees() {
@@ -177,12 +253,12 @@ async function buildTees() {
     const colorways: Record<string, string> = {};
     const sources = new Set<string>();
     for (const cw of tee.colorways) {
-      const shot = await teeCatalogShot(tee.id, cw.id as FabricId, side, art);
+      const shot = await buildTeeColorway(tee.id, cw.id as FabricId, side, art, cw.modelImage);
       colorways[cw.id] = shot.path;
       sources.add(shot.source);
     }
     result[tee.id] = { printPosition: side, colorways };
-    console.log(`✅ ${tee.id} (${Object.keys(colorways).length} colorways, ${[...sources].join("+")})`);
+    console.log(`✅ ${tee.id} (${Object.keys(colorways).length} colorways: ${[...sources].join(" + ")})`);
   }
   return result;
 }

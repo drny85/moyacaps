@@ -37,7 +37,7 @@ Any sellable item in the storefront, either a Cap or a Heavyweight Tee, browsed,
 _Avoid_: Item, cap (when meaning tees too), listing
 
 **Catalog Shot**:
-The canonical product image: the Product alone on the shared studio backdrop, at a fixed 4:5 aspect ratio, consistent scale and centering. The only image role allowed in grids and cards.
+The canonical 4:5 product image and the only image role allowed in grids and cards: a Cap alone on the shared studio backdrop, or (until flat-lay photos exist) a Heavyweight Tee cropped from its on-model photo.
 _Avoid_: Thumbnail, packshot, mockup, product photo
 
 **Lifestyle Shot**:
