@@ -3,6 +3,21 @@ import { internal } from "../_generated/api";
 import { Webhook } from "svix";
 import { toUserUpsert, type ClerkUserJSON } from "./clerk";
 
+export type ClerkWebhookEvent = { type: string; data: any };
+
+/**
+ * Throws unless the svix signature matches, then parses the payload. svix 2.x
+ * `verify()` returns undefined (it only throws), so the event comes from the body.
+ */
+export function verifyClerkEvent(
+  secret: string,
+  payload: string,
+  headers: { "svix-id": string; "svix-timestamp": string; "svix-signature": string },
+): ClerkWebhookEvent {
+  new Webhook(secret).verify(payload, headers);
+  return JSON.parse(payload) as ClerkWebhookEvent;
+}
+
 /** Clerk -> Convex user mirror. Routed at POST /clerk-users-webhook in convex/http.ts. */
 export const clerkUsersWebhook = httpAction(async (ctx, request) => {
   // Each Convex deployment has its own Clerk endpoint, so each has its own signing secret.
@@ -22,13 +37,13 @@ export const clerkUsersWebhook = httpAction(async (ctx, request) => {
     return new Response("Missing svix headers", { status: 400 });
   }
 
-  let event: { type: string; data: any };
+  let event: ClerkWebhookEvent;
   try {
-    event = new Webhook(webhookSecret).verify(payload, {
+    event = verifyClerkEvent(webhookSecret, payload, {
       "svix-id": svixId,
       "svix-timestamp": svixTimestamp,
       "svix-signature": svixSignature,
-    }) as unknown as typeof event;
+    });
   } catch (err: any) {
     console.error("Error verifying Clerk webhook:", err?.message || err);
     return new Response("Invalid webhook signature", { status: 400 });
