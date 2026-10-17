@@ -20,6 +20,7 @@ import type * as catalogShared from "../catalogShared.js";
 import type * as catalogValidators from "../catalogValidators.js";
 import type * as checkoutMetadata from "../checkoutMetadata.js";
 import type * as checkoutModel from "../checkoutModel.js";
+import type * as clerkUserModel from "../clerkUserModel.js";
 import type * as crons from "../crons.js";
 import type * as drops from "../drops.js";
 import type * as emails from "../emails.js";
@@ -68,6 +69,7 @@ declare const fullApi: ApiFromModules<{
   catalogValidators: typeof catalogValidators;
   checkoutMetadata: typeof checkoutMetadata;
   checkoutModel: typeof checkoutModel;
+  clerkUserModel: typeof clerkUserModel;
   crons: typeof crons;
   drops: typeof drops;
   emails: typeof emails;

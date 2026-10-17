@@ -1,5 +1,6 @@
-import { mutation, query, internalMutation } from "./_generated/server";
-import { v } from "convex/values";
+import { mutation, query, internalMutation, MutationCtx } from "./_generated/server";
+import { ConvexError, v } from "convex/values";
+import type { UserUpsert } from "./clerkUserModel";
 import { requireAdmin, PRIMARY_ADMIN_EMAIL, PRIMARY_ADMIN_CLERK_ID } from "./auth";
 import schema from "./schema";
 
@@ -72,57 +73,92 @@ export const syncCurrentUser = mutation({
   },
 });
 
-/**
- * Upsert user called by webhook handler or administrative backfill scripts.
- */
-export const upsertUser = internalMutation({
-  args: {
-    clerkId: v.string(),
-    email: v.string(),
-    name: v.optional(v.string()),
-    role: v.union(v.literal("admin"), v.literal("customer")),
-    imageUrl: v.optional(v.string()),
-    phone: v.optional(v.string()),
-  },
-  returns: v.object({ id: v.id("users"), action: v.union(v.literal("updated"), v.literal("created")) }),
-  handler: async (ctx, args) => {
-    const existing = await ctx.db
-      .query("users")
-      .withIndex("by_clerkId", (q) => q.eq("clerkId", args.clerkId))
-      .first();
+const userUpsertArgs = {
+  clerkId: v.string(),
+  email: v.string(),
+  name: v.optional(v.string()),
+  role: v.union(v.literal("admin"), v.literal("customer")),
+  imageUrl: v.optional(v.string()),
+  phone: v.optional(v.string()),
+};
 
-    const now = Date.now();
+const upsertResult = v.object({
+  id: v.id("users"),
+  action: v.union(v.literal("updated"), v.literal("created")),
+});
 
-    // Never demote an established admin through routine webhook chatter; role changes are a
-    // deliberate admin-management action, not a side effect of user.updated events.
-    const role =
-      args.role === "customer" && existing?.role === "admin" ? "admin" : args.role;
+async function upsertUserRow(ctx: MutationCtx, args: UserUpsert) {
+  const existing = await ctx.db
+    .query("users")
+    .withIndex("by_clerkId", (q) => q.eq("clerkId", args.clerkId))
+    .first();
 
-    if (existing) {
-      await ctx.db.patch(existing._id, {
-        email: args.email.toLowerCase(),
-        name: args.name ?? existing.name,
-        role,
-        imageUrl: args.imageUrl ?? existing.imageUrl,
-        phone: args.phone ?? existing.phone,
-        deletedAt: undefined,
-        updatedAt: now,
-      });
-      return { id: existing._id, action: "updated" as const };
-    }
+  const now = Date.now();
+  const email = args.email.toLowerCase();
 
-    const id = await ctx.db.insert("users", {
-      clerkId: args.clerkId,
-      email: args.email.toLowerCase(),
-      name: args.name,
+  // Never demote an established admin through routine webhook chatter; role changes are a
+  // deliberate admin-management action, not a side effect of user.updated events.
+  const role =
+    args.role === "customer" && existing?.role === "admin" ? "admin" : args.role;
+
+  if (existing) {
+    await ctx.db.patch(existing._id, {
+      // Phone-only Clerk accounts report no email; keep the one we already have.
+      email: email || existing.email,
+      name: args.name ?? existing.name,
       role,
-      imageUrl: args.imageUrl,
-      phone: args.phone,
-      createdAt: now,
+      imageUrl: args.imageUrl ?? existing.imageUrl,
+      phone: args.phone ?? existing.phone,
+      deletedAt: undefined,
       updatedAt: now,
     });
+    return { id: existing._id, action: "updated" as const };
+  }
 
-    return { id, action: "created" as const };
+  const id = await ctx.db.insert("users", {
+    clerkId: args.clerkId,
+    email,
+    name: args.name,
+    role,
+    imageUrl: args.imageUrl,
+    phone: args.phone,
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  return { id, action: "created" as const };
+}
+
+/**
+ * Upsert user called by the Clerk webhook handler.
+ */
+export const upsertUser = internalMutation({
+  args: userUpsertArgs,
+  returns: upsertResult,
+  handler: upsertUserRow,
+});
+
+/** Users per backfill call; matches the Clerk Backend API page size used by scripts/sync-users.ts. */
+export const MAX_USERS_PER_UPSERT = 100;
+
+/**
+ * Batch upsert for backfills (`scripts/sync-users.ts`). Runs one Clerk page per transaction.
+ */
+export const upsertUsers = internalMutation({
+  args: { users: v.array(v.object(userUpsertArgs)) },
+  returns: v.object({ created: v.number(), updated: v.number() }),
+  handler: async (ctx, { users }) => {
+    if (users.length > MAX_USERS_PER_UPSERT) {
+      throw new ConvexError(`upsertUsers accepts at most ${MAX_USERS_PER_UPSERT} users per call.`);
+    }
+    let created = 0;
+    let updated = 0;
+    for (const user of users) {
+      const { action } = await upsertUserRow(ctx, user);
+      if (action === "created") created++;
+      else updated++;
+    }
+    return { created, updated };
   },
 });
 

@@ -1,73 +1,71 @@
-import { createClerkClient } from "@clerk/backend";
-import { ConvexHttpClient } from "convex/browser";
-import { internal } from "../convex/_generated/api";
+/**
+ * Backfill Clerk users into the Convex `users` table.
+ *
+ *   bun run sync-users          # dev deployment from .env.local
+ *   bun run sync-users --prod   # production deployment
+ *
+ * Reads CLERK_SECRET_KEY locally (Bun loads .env.local) and writes through the
+ * internal `users:upsertUsers` mutation via `convex run`, so no Clerk secret is
+ * needed on the Convex deployment. Uses the same mapper as the Clerk webhook.
+ */
+import { toUserUpsert, type ClerkUserJSON } from "../convex/clerkUserModel";
+
+const PAGE_SIZE = 100; // Clerk's max page size; matches users.MAX_USERS_PER_UPSERT.
 
 const secretKey = process.env.CLERK_SECRET_KEY;
 if (!secretKey) {
-  console.error("❌ CLERK_SECRET_KEY is missing in environment variables.");
+  console.error("CLERK_SECRET_KEY is missing in environment variables.");
   process.exit(1);
 }
 
-const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL || process.env.CONVEX_URL;
-if (!convexUrl) {
-  console.error("❌ NEXT_PUBLIC_CONVEX_URL is missing in environment variables.");
-  process.exit(1);
+const convexRunFlags = process.argv.includes("--prod") ? ["--prod"] : [];
+
+async function fetchClerkPage(offset: number): Promise<ClerkUserJSON[]> {
+  const url = `https://api.clerk.com/v1/users?limit=${PAGE_SIZE}&offset=${offset}&order_by=created_at`;
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${secretKey}` } });
+  if (!res.ok) {
+    throw new Error(`Clerk API ${res.status}: ${await res.text()}`);
+  }
+  return (await res.json()) as ClerkUserJSON[];
 }
 
-const clerk = createClerkClient({ secretKey });
-const convex = new ConvexHttpClient(convexUrl);
-
-const PRIMARY_ADMIN_EMAIL = "drny85@gmail.com";
-const PRIMARY_ADMIN_CLERK_ID = "user_3JSsegPcMNMPs5hqmqnpuy8ri6o";
+function upsertBatch(users: ReturnType<typeof toUserUpsert>[]) {
+  const proc = Bun.spawnSync(
+    ["npx", "convex", "run", ...convexRunFlags, "users:upsertUsers", JSON.stringify({ users })],
+    { stdout: "pipe", stderr: "pipe" }
+  );
+  if (proc.exitCode !== 0) {
+    throw new Error(`convex run failed: ${proc.stderr.toString()}`);
+  }
+  return JSON.parse(proc.stdout.toString()) as { created: number; updated: number };
+}
 
 async function main() {
-  console.log("🔄 Starting Clerk -> Convex Users Synchronization...");
-  console.log(`📡 Convex Deployment: ${convexUrl}`);
+  console.log(`Syncing Clerk users to Convex (${convexRunFlags.length ? "prod" : "dev"})...`);
 
-  const userList = await clerk.users.getUserList({ limit: 100 });
-  console.log(`📋 Found ${userList.totalCount || userList.data.length} user(s) in Clerk.`);
+  let created = 0;
+  let updated = 0;
+  let missingEmail = 0;
 
-  let createdCount = 0;
-  let updatedCount = 0;
+  for (let offset = 0; ; offset += PAGE_SIZE) {
+    const page = await fetchClerkPage(offset);
+    if (page.length === 0) break;
 
-  for (const user of userList.data) {
-    const primaryEmailObj = user.emailAddresses.find(
-      (e) => e.id === user.primaryEmailAddressId
-    ) || user.emailAddresses[0];
+    const users = page.map(toUserUpsert);
+    missingEmail += users.filter((u) => !u.email).length;
 
-    const email = primaryEmailObj?.emailAddress?.toLowerCase() || "";
-    const name = [user.firstName, user.lastName].filter(Boolean).join(" ") || undefined;
-    const imageUrl = user.imageUrl || undefined;
-    const phone = user.phoneNumbers[0]?.phoneNumber || undefined;
+    const result = upsertBatch(users);
+    created += result.created;
+    updated += result.updated;
+    console.log(`  page ${offset / PAGE_SIZE + 1}: ${result.created} created, ${result.updated} updated`);
 
-    const isAdmin =
-      email === PRIMARY_ADMIN_EMAIL.toLowerCase() ||
-      user.id === PRIMARY_ADMIN_CLERK_ID ||
-      (user.publicMetadata as any)?.role === "admin";
-
-    const role = isAdmin ? "admin" : "customer";
-
-    const result: any = await (convex.mutation as any)(internal.users.upsertUser, {
-      clerkId: user.id,
-      email,
-      name,
-      role,
-      imageUrl,
-      phone,
-    });
-
-    console.log(`  👤 [${result.action.toUpperCase()}] ${email || user.id} -> role: ${role}`);
-    if (result.action === "created") createdCount++;
-    if (result.action === "updated") updatedCount++;
+    if (page.length < PAGE_SIZE) break;
   }
 
-  console.log("\n🎉 Synchronization complete!");
-  console.log(`   - Created: ${createdCount}`);
-  console.log(`   - Updated: ${updatedCount}`);
-  console.log(`   - Total Processed: ${userList.data.length}\n`);
+  console.log(`Done. Created ${created}, updated ${updated}, without email ${missingEmail}.`);
 }
 
 main().catch((err) => {
-  console.error("❌ Error running user sync:", err);
+  console.error("User sync failed:", err);
   process.exit(1);
 });
