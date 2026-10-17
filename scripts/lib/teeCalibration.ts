@@ -104,12 +104,25 @@ export function measureTee(mask: Uint8Array, width: number, height: number, seed
   let hemY = height - 1;
   while (hemY > collarY && !rowHasTee(hemY)) hemY--;
 
-  // Measure the torso at 55% of its length: below the sleeves, above the hands
-  const measureY = Math.round(collarY + (hemY - collarY) * 0.55);
-  let torsoLeft = seedX;
-  while (torsoLeft > 0 && mask[measureY * width + torsoLeft - 1]) torsoLeft--;
-  let torsoRight = seedX;
-  while (torsoRight < width - 1 && mask[measureY * width + torsoRight + 1]) torsoRight++;
+  // Torso width: scan rows between 45% and 75% of the length (below the sleeves, above the
+  // hands) and keep the median-width row: a patchy row (strong light, a fold shadow) cannot
+  // shrink the print, and a row still catching long sleeves cannot widen it.
+  const span = (y: number) => {
+    let l = seedX;
+    while (l > 0 && mask[y * width + l - 1]) l--;
+    let r = seedX;
+    while (r < width - 1 && mask[y * width + r + 1]) r++;
+    return { y, l, r, w: mask[y * width + seedX] ? r - l : 0 };
+  };
+  const rows = [];
+  for (let y = Math.round(collarY + (hemY - collarY) * 0.45); y <= Math.round(collarY + (hemY - collarY) * 0.75); y++) {
+    rows.push(span(y));
+  }
+  rows.sort((a, b) => a.w - b.w);
+  const pick = rows[Math.floor(rows.length / 2)] ?? span(Math.round((collarY + hemY) / 2));
+  const measureY = pick.y;
+  const torsoLeft = pick.l;
+  const torsoRight = pick.r;
   return { collarY, hemY, torsoLeft, torsoRight, measureY };
 }
 

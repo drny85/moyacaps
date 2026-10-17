@@ -1,0 +1,95 @@
+{
+  "model": "bfl/flux-pro-1.1-ultra",
+  "aspectRatio": "4:5",
+  "base": "Photorealistic street fashion photograph taken in the Bronx, New York. A very tall Black man with deep dark skin and heavily tattooed forearms, hands and neck, {look}, wearing a completely plain blank crisp white heavyweight cotton t-shirt, oversized 2XL boxy fit with dropped shoulders, wide short sleeves past the elbow and the hem falling just below the hips, the shirt has no logo, no print and no text, {bottoms}. He stands upright facing the camera with a confident streetwear attitude, arms relaxed at his sides and away from his torso, nothing covering the front of the shirt. Bare neckline: no chains, necklaces or pendants of any kind. {scene}. Shot on a 50mm lens at eye level, sharp focus, natural light, editorial streetwear lookbook quality, vertical frame with the model centred from head to mid-shin.",
+  "models": [
+    {
+      "id": "m01",
+      "tee": "boxing-gloves-tee",
+      "seed": 101,
+      "look": "short black twists and a full trimmed beard",
+      "bottoms": "black cargo pants and white sneakers",
+      "scene": "Under the elevated subway tracks on Jerome Avenue at dusk, steel girders and street lights behind him"
+    },
+    {
+      "id": "m02",
+      "tee": "butterfly-grunge-tee",
+      "seed": 102,
+      "look": "shoulder-length locs tied back and a thin goatee",
+      "bottoms": "washed black denim and black boots",
+      "scene": "On a corner outside a Bronx bodega at night, a glowing deli awning and neon sign behind him"
+    },
+    {
+      "id": "m03",
+      "tee": "eagle-clover-tee",
+      "seed": 103,
+      "look": "a clean low fade with 360 waves and a sharp lined-up beard",
+      "bottoms": "grey heavyweight sweatpants and red sneakers",
+      "scene": "In front of a chain-link fence at a Bronx basketball court in golden hour light, apartment towers behind"
+    },
+    {
+      "id": "m04",
+      "tee": "gothic-skull-tee",
+      "seed": 104,
+      "look": "a shaved head and a long full beard",
+      "bottoms": "black baggy jeans and black sneakers",
+      "scene": "Against a colourful graffiti wall in Hunts Point on an overcast afternoon"
+    },
+    {
+      "id": "m05",
+      "tee": "eight-ball-tee",
+      "seed": 105,
+      "look": "cornrows and a short boxed beard",
+      "bottoms": "dark blue baggy denim and white high-top sneakers",
+      "scene": "On the steps of a red brick prewar apartment building off the Grand Concourse in late afternoon light"
+    },
+    {
+      "id": "m06",
+      "tee": "snake-horseshoe-tee",
+      "seed": 106,
+      "look": "a high-top fade and a light moustache",
+      "bottoms": "olive cargo pants and black sneakers",
+      "scene": "In a narrow alley with fire escapes overhead at blue hour, wet pavement reflecting street lights"
+    },
+    {
+      "id": "m07",
+      "tee": "vintage-f1-tee",
+      "seed": 107,
+      "look": "short freeform dreads and a full beard",
+      "bottoms": "black nylon track pants and white sneakers",
+      "scene": "Outside a laundromat storefront at night, warm fluorescent light spilling onto the sidewalk"
+    },
+    {
+      "id": "m08",
+      "tee": "retro-soul-tee",
+      "seed": 108,
+      "look": "a buzz cut with a sharp beard line and small earrings",
+      "bottoms": "washed grey denim and black boots",
+      "scene": "On a Bronx street with a yellow taxi passing in the soft background at dusk"
+    },
+    {
+      "id": "m09",
+      "tee": "lightning-star-tee",
+      "seed": 109,
+      "look": "long box braids pulled back and a goatee",
+      "bottoms": "black cargo shorts over long socks and black sneakers",
+      "scene": "On a rooftop in the Bronx at sunset with the Manhattan skyline in the hazy distance"
+    },
+    {
+      "id": "m10",
+      "tee": "gothic-angel-tee",
+      "seed": 110,
+      "look": "a taper fade with a full thick beard",
+      "bottoms": "black baggy jeans and red sneakers",
+      "scene": "At the entrance to an elevated subway station at night, stairs and green station lamps behind him"
+    },
+    {
+      "id": "m11",
+      "tee": "muscle-car-tee",
+      "seed": 111,
+      "look": "a short afro and a trimmed beard",
+      "bottoms": "dark cargo pants and white sneakers",
+      "scene": "Leaning-free standing pose in front of a parked black muscle car on a Bronx side street at night"
+    }
+  ]
+}
