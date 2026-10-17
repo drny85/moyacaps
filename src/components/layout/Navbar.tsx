@@ -5,7 +5,7 @@ import { Link, usePathname, useRouter } from "@/i18n/routing";
 import { useStore } from "@/store/useStore";
 import { ShoppingBag, Globe, Menu, X, Sparkles, User, Package, Shield, Truck, Camera } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { m, AnimatePresence } from "framer-motion";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { SoundToggle } from "@/components/ui/SoundToggle";
 import { SafeUserButton, useSafeUser } from "@/lib/useSafeUser";
@@ -235,14 +235,14 @@ export function Navbar() {
             >
               <ShoppingBag className="w-5 h-5" />
               {totalItems > 0 && (
-                <motion.span
+                <m.span
                   key={totalItems}
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-moya-green text-black font-display font-extrabold text-[10px] flex items-center justify-center shadow"
                 >
                   {totalItems}
-                </motion.span>
+                </m.span>
               )}
             </button>
 
@@ -259,7 +259,7 @@ export function Navbar() {
         {/* ── Mobile Drawer ── */}
         <AnimatePresence>
           {mobileMenuOpen && (
-            <motion.div
+            <m.div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
@@ -371,7 +371,7 @@ export function Navbar() {
 
                 <ThemeToggle compact={false} />
               </div>
-            </motion.div>
+            </m.div>
           )}
         </AnimatePresence>
       </header>

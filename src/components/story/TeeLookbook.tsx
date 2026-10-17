@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useMemo, useRef } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { Link } from "@/i18n/routing";
 import { useCapVariants } from "@/hooks/useCapVariants";
 import { useParallax } from "@/hooks/useParallax";
@@ -51,7 +51,7 @@ export function TeeLookbook() {
                 className="group block focus-visible:outline-none"
               >
                 <div className="relative aspect-[3/4] overflow-hidden rounded-[14px] bg-zinc-900 group-focus-visible:ring-2 group-focus-visible:ring-moya-red">
-                  <motion.div style={{ y: drift }} className="absolute inset-[-6%_0]">
+                  <m.div style={{ y: drift }} className="absolute inset-[-6%_0]">
                     <Image
                       src={s.src}
                       alt={`${name} — ${colorway}`}
@@ -59,7 +59,7 @@ export function TeeLookbook() {
                       sizes="(min-width: 1024px) 23vw, (min-width: 640px) 40vw, 68vw"
                       className="object-cover transition-transform duration-700 ease-out motion-safe:group-hover:scale-[1.03]"
                     />
-                  </motion.div>
+                  </m.div>
                 </div>
                 <p className="mt-3 line-clamp-1 font-display text-[15px] font-semibold text-zinc-900 group-hover:text-moya-red dark:text-zinc-100">
                   {name}

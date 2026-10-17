@@ -1,93 +1,83 @@
 "use client";
 
-import React, { createContext, useContext } from "react";
+import React, { createContext, useContext, useEffect, useState } from "react";
+import { Slot } from "@radix-ui/react-slot";
+import { useStore } from "zustand";
+import { useShallow } from "zustand/react/shallow";
 import {
-  useUser as useClerkUser,
-  SignInButton as ClerkSignInButton,
-  UserButton as ClerkUserButton,
-} from "@clerk/nextjs";
+  convexAuthView,
+  safeAuthStore,
+  safeUserView,
+  type SafeAuthState,
+  type SignInOptions,
+} from "@/lib/auth/safeAuthStore";
 
-interface SafeUserContextType {
-  user: any;
-  isLoaded: boolean;
-  isSignedIn: boolean;
-}
+/**
+ * Auth for components (ADR 0018). Nothing here imports `@clerk/nextjs`: Clerk loads
+ * lazily in ClerkRuntime and reports into `safeAuthStore`, so these hooks and buttons
+ * cost a few hundred bytes on pages where nobody signs in.
+ */
 
-const SafeUserContext = createContext<SafeUserContextType>({
-  user: null,
-  isLoaded: true,
-  isSignedIn: false,
-});
+/** Whether the current route needs the session to render; set by ClerkClientProvider */
+export const RouteNeedsClerkContext = createContext(false);
 
-function RealClerkUserBridge({ children }: { children: React.ReactNode }) {
-  const { user, isLoaded, isSignedIn } = useClerkUser();
-  return (
-    <SafeUserContext.Provider value={{ user, isLoaded, isSignedIn: Boolean(isSignedIn) }}>
-      {children}
-    </SafeUserContext.Provider>
-  );
-}
-
-export function SafeUserProvider({ children }: { children: React.ReactNode }) {
-  if (process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) {
-    return <RealClerkUserBridge>{children}</RealClerkUserBridge>;
-  }
-  return (
-    <SafeUserContext.Provider value={{ user: null, isLoaded: true, isSignedIn: false }}>
-      {children}
-    </SafeUserContext.Provider>
-  );
+export function useSafeAuthState<T>(selector: (state: SafeAuthState) => T): T {
+  return useStore(safeAuthStore, selector);
 }
 
 export function useSafeUser() {
-  return useContext(SafeUserContext);
+  const routeNeedsClerk = useContext(RouteNeedsClerkContext);
+  return useStore(
+    safeAuthStore,
+    useShallow((state) => safeUserView(state, { routeNeedsClerk }))
+  );
+}
+
+/** Convex auth state derived from the same store (see ConvexClientProvider) */
+export function useSafeConvexAuth() {
+  const routeNeedsClerk = useContext(RouteNeedsClerkContext);
+  return useStore(
+    safeAuthStore,
+    useShallow((state) => convexAuthView(state, { routeNeedsClerk }))
+  );
+}
+
+/** Start loading Clerk ahead of a likely sign-in (hover / focus on a sign-in control) */
+export function preloadClerk() {
+  safeAuthStore.getState().load();
 }
 
 export function SafeSignInButton({
   children,
   mode = "modal",
-  forceRedirectUrl,
-  fallbackRedirectUrl,
-  signUpForceRedirectUrl,
-  signUpFallbackRedirectUrl,
+  ...redirects
 }: {
-  children: React.ReactNode;
-  mode?: "modal" | "redirect";
-  forceRedirectUrl?: string;
-  fallbackRedirectUrl?: string;
-  signUpForceRedirectUrl?: string;
-  signUpFallbackRedirectUrl?: string;
-}) {
-  if (process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) {
-    return (
-      <ClerkSignInButton
-        mode={mode}
-        forceRedirectUrl={forceRedirectUrl}
-        fallbackRedirectUrl={fallbackRedirectUrl}
-        signUpForceRedirectUrl={signUpForceRedirectUrl}
-        signUpFallbackRedirectUrl={signUpFallbackRedirectUrl}
-      >
-        {children}
-      </ClerkSignInButton>
-    );
-  }
-  return <>{children}</>;
+  children: React.ReactElement;
+} & SignInOptions) {
+  return (
+    <Slot
+      onPointerEnter={preloadClerk}
+      onFocus={preloadClerk}
+      onClick={() => safeAuthStore.getState().signIn({ mode, ...redirects })}
+    >
+      {children}
+    </Slot>
+  );
 }
 
+/**
+ * Clerk's UserButton for a signed-in visitor, otherwise `fallback`. The button itself is
+ * portaled in by ClerkRuntime (it needs Clerk's context); this reserves its box.
+ */
 export function SafeUserButton({ fallback }: { fallback?: React.ReactNode }) {
   const { isSignedIn } = useSafeUser();
-  if (process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY && isSignedIn) {
-    return (
-      <ClerkUserButton
-        appearance={{
-          elements: {
-            userButtonAvatarBox: "w-8 h-8 sm:w-9 sm:h-9 rounded-xl",
-          },
-        }}
-      />
-    );
-  }
-  return <>{fallback}</>;
+  const [slot, setSlot] = useState<HTMLSpanElement | null>(null);
+
+  useEffect(() => {
+    if (!slot) return;
+    return safeAuthStore.getState().registerUserButtonSlot(slot);
+  }, [slot]);
+
+  if (!isSignedIn) return <>{fallback}</>;
+  return <span ref={setSlot} className="inline-flex w-8 h-8 sm:w-9 sm:h-9 items-center justify-center" />;
 }
-
-

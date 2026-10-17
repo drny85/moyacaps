@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useRef, useState } from "react";
 import {
   AnimatePresence,
-  motion,
+  m,
   useMotionValueEvent,
   useScroll,
   useSpring,
@@ -69,7 +69,7 @@ function RailSegment({ progress, index }: { progress: MotionValue<number>; index
   const fill = useTransform(progress, [index / STOPS, (index + 1) / STOPS], ["0%", "100%"]);
   return (
     <div className="h-[3px] flex-1 overflow-hidden rounded-full bg-black/10 dark:bg-white/10">
-      <motion.div className="h-full bg-moya-red" style={{ width: fill }} />
+      <m.div className="h-full bg-moya-red" style={{ width: fill }} />
     </div>
   );
 }
@@ -95,7 +95,7 @@ function ZoomLayer({ progress, index }: { progress: MotionValue<number>; index: 
   const scale = useTransform(progress, [start + FADE, end - FADE], [1, zoom]);
 
   return (
-    <motion.div
+    <m.div
       style={{ opacity, rotateY, scale, transformOrigin: origin }}
       className="absolute inset-0"
     >
@@ -106,7 +106,7 @@ function ZoomLayer({ progress, index }: { progress: MotionValue<number>; index: 
         sizes="(max-width: 1024px) 90vw, 60vw"
         className="object-contain"
       />
-    </motion.div>
+    </m.div>
   );
 }
 
@@ -121,7 +121,7 @@ function FanCard({ progress, index }: { progress: MotionValue<number>; index: nu
   const opacity = useTransform(progress, [0.75 - FADE, 0.75 + FADE], [0, 1]);
 
   return (
-    <motion.div
+    <m.div
       style={{ x, y, rotate, scale, opacity }}
       className="absolute inset-0"
     >
@@ -132,7 +132,7 @@ function FanCard({ progress, index }: { progress: MotionValue<number>; index: nu
         sizes="(max-width: 1024px) 50vw, 30vw"
         className="object-contain"
       />
-    </motion.div>
+    </m.div>
   );
 }
 
@@ -178,7 +178,7 @@ function AnatomyScene() {
 
             <div className="order-2 min-h-[150px] lg:order-1 lg:col-span-5" aria-live="polite">
               <AnimatePresence mode="wait">
-                <motion.div
+                <m.div
                   key={step}
                   initial={{ opacity: 0, y: 18 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -192,7 +192,7 @@ function AnatomyScene() {
                   <p className="mt-2 max-w-md text-base leading-relaxed text-zinc-600 dark:text-zinc-400 sm:text-lg">
                     {t(STEPS[step].desc)}
                   </p>
-                </motion.div>
+                </m.div>
               </AnimatePresence>
             </div>
           </div>
@@ -217,7 +217,7 @@ function AnatomyPanel({ index }: { index: number }) {
   return (
     <article ref={ref} className="h-full rounded-2xl border border-black/[0.08] p-4 dark:border-white/[0.08]">
       <div className="relative mb-4 aspect-square overflow-hidden drop-shadow-[0_20px_30px_rgba(0,0,0,0.35)]">
-        <motion.div style={{ y }} className="absolute inset-0">
+        <m.div style={{ y }} className="absolute inset-0">
           <Image
             src={step.image}
             alt={t(step.title)}
@@ -225,7 +225,7 @@ function AnatomyPanel({ index }: { index: number }) {
             sizes="(max-width: 640px) 90vw, (max-width: 1024px) 45vw, 22vw"
             className="object-contain"
           />
-        </motion.div>
+        </m.div>
       </div>
       <StepLabel index={index} />
       <h3 className="mt-1.5 font-display text-xl font-bold text-zinc-950 dark:text-white">{t(step.title)}</h3>

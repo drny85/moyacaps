@@ -6,7 +6,7 @@ import { useTranslations, useLocale } from "next-intl";
 import { Link } from "@/i18n/routing";
 import { useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
-import { motion, AnimatePresence } from "framer-motion";
+import { m, AnimatePresence } from "framer-motion";
 import { useReducedMotionSafe } from "@/hooks/useMotionPrefs";
 import {
   Radio,
@@ -58,7 +58,7 @@ function RollingDigit({ digit }: { digit: string }) {
   return (
     <span className="relative inline-block h-[1.1em] w-[0.62em] overflow-hidden align-bottom">
       <AnimatePresence initial={false} mode="popLayout">
-        <motion.span
+        <m.span
           key={digit}
           initial={{ y: reduceMotion ? 0 : "100%", opacity: reduceMotion ? 0 : 1 }}
           animate={{ y: 0, opacity: 1 }}
@@ -67,7 +67,7 @@ function RollingDigit({ digit }: { digit: string }) {
           className="absolute inset-0 flex items-center justify-center"
         >
           {digit}
-        </motion.span>
+        </m.span>
       </AnimatePresence>
     </span>
   );
@@ -224,7 +224,7 @@ export function DropRadar() {
               </div>
 
               {/* Product Cap Image */}
-              <motion.div
+              <m.div
                 key={activeDrop.variantId}
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -238,7 +238,7 @@ export function DropRadar() {
                   priority
                   className="object-contain filter drop-shadow-[0_15px_25px_rgba(0,0,0,0.15)] dark:drop-shadow-[0_20px_35px_rgba(0,0,0,0.8)] group-hover:scale-105 transition-transform duration-500 ease-out"
                 />
-              </motion.div>
+              </m.div>
 
               {/* Hex Swatches */}
               <div className="absolute bottom-3 left-3 flex items-center gap-1.5 bg-white/90 dark:bg-black/40 backdrop-blur-md px-2.5 py-1 rounded-full border border-zinc-200 dark:border-white/[0.08] shadow-xs">
@@ -261,7 +261,7 @@ export function DropRadar() {
           <div className="lg:col-span-7 flex flex-col justify-center">
             {/* Live Unlock Banner OR Countdown */}
             {time.isLive ? (
-              <motion.div
+              <m.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="mb-6 p-4 rounded-2xl bg-emerald-500/10 dark:bg-emerald-500/15 border border-emerald-500/30 flex items-center gap-3 text-emerald-800 dark:text-emerald-400"
@@ -277,7 +277,7 @@ export function DropRadar() {
                       : "Vault gates are unlocked. You can now claim this colorway before allocated inventory depletes."}
                   </p>
                 </div>
-              </motion.div>
+              </m.div>
             ) : (
               <div className="mb-6">
                 <div className="flex items-center gap-2 text-xs font-mono text-zinc-600 dark:text-zinc-400 mb-2 font-medium">

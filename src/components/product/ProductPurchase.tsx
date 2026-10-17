@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, m } from "framer-motion";
 import { useReducedMotionSafe } from "@/hooks/useMotionPrefs";
 import { Bell, Camera, Check, MessageCircle, Share2 } from "lucide-react";
 import type { CapVariant } from "@/data/caps";
@@ -242,7 +242,7 @@ export function ProductPurchase({
       {/* Sticky add bar for phones; the global action bar is hidden on product pages */}
       <AnimatePresence>
         {showSticky && (
-          <motion.div
+          <m.div
             className="fixed inset-x-0 bottom-0 z-40 border-t border-black/[0.06] bg-white/95 px-4 pb-[calc(env(safe-area-inset-bottom)+12px)] pt-3 backdrop-blur-md dark:border-white/[0.08] dark:bg-zinc-950/95 lg:hidden"
             initial={reduceMotion ? { opacity: 0 } : { y: "100%" }}
             animate={reduceMotion ? { opacity: 1 } : { y: 0 }}
@@ -262,7 +262,7 @@ export function ProductPurchase({
                 <PrimaryButton label={label} enabled={enabled} added={justAdded} state={state} onClick={handlePrimary} t={t} compact />
               </div>
             </div>
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
     </div>
