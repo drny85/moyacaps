@@ -4,7 +4,7 @@ import { useTranslations, useLocale } from "next-intl";
 import { Flame, Clover } from "lucide-react";
 import {
   animate,
-  motion,
+  m,
   useInView,
   useScroll,
   useTransform,
@@ -53,7 +53,7 @@ function AnimatedStat({ value, label, description, delay = 0 }: {
   }, [isInView, parsed?.number, delay, reduceMotion]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <motion.div
+    <m.div
       ref={ref}
       initial={{ opacity: 0, y: reduceMotion ? 0 : 20 }}
       animate={isInView ? { opacity: 1, y: 0 } : {}}
@@ -69,16 +69,16 @@ function AnimatedStat({ value, label, description, delay = 0 }: {
       <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1 leading-relaxed">
         {description}
       </p>
-    </motion.div>
+    </m.div>
   );
 }
 
 function ScrollWord({ word, progress, range }: { word: string; progress: MotionValue<number>; range: [number, number] }) {
   const opacity = useTransform(progress, range, [0.15, 1]);
   return (
-    <motion.span style={{ opacity }} className="inline-block mr-[0.25em]">
+    <m.span style={{ opacity }} className="inline-block mr-[0.25em]">
       {word}
-    </motion.span>
+    </m.span>
   );
 }
 

@@ -4,7 +4,7 @@ import { useStore } from "@/store/useStore";
 import { useTranslations, useLocale } from "next-intl";
 import { Link, usePathname } from "@/i18n/routing";
 import { ShoppingBag, Compass, MessageCircle, Package, Shield } from "lucide-react";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { useState, useEffect } from "react";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { useSafeUser } from "@/lib/useSafeUser";
@@ -106,14 +106,14 @@ export function MobileActionBar() {
           <div className="relative">
             <ShoppingBag className="w-4 h-4" />
             {totalItems > 0 && (
-              <motion.span
+              <m.span
                 key={totalItems}
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 className="absolute -top-2 -right-2.5 w-4 h-4 rounded-full bg-moya-green text-black text-[9px] font-display font-black flex items-center justify-center shadow"
               >
                 {totalItems}
-              </motion.span>
+              </m.span>
             )}
           </div>
           <span className="font-mono text-[10px]">

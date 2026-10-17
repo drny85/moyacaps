@@ -18,7 +18,7 @@ import {
   AlertCircle,
   Sparkles,
 } from "lucide-react";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 
 export default function CheckoutPage() {
   const t = useTranslations("checkout");
@@ -192,7 +192,7 @@ export default function CheckoutPage() {
           </div>
         ) : (
           /* Active Checkout Dispatch Screen */
-          <motion.div
+          <m.div
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
             className="p-6 sm:p-8 rounded-3xl glass-card border border-black/[0.08] dark:border-white/[0.08] shadow-2xl space-y-6"
@@ -213,7 +213,7 @@ export default function CheckoutPage() {
 
             {/* Visual Progress Bar */}
             <div className="w-full bg-black/10 dark:bg-white/10 h-1.5 rounded-full overflow-hidden">
-              <motion.div
+              <m.div
                 className="bg-gradient-to-r from-moya-red via-moya-violet to-moya-green h-full rounded-full"
                 animate={{
                   x: ["-100%", "100%"],
@@ -336,7 +336,7 @@ export default function CheckoutPage() {
               <ShieldCheck className="w-3.5 h-3.5 text-moya-green" />
               <span>{t("secureNotice")}</span>
             </div>
-          </motion.div>
+          </m.div>
         )}
       </div>
     </div>

@@ -2,7 +2,7 @@
 
 import { useStore } from "@/store/useStore";
 import { VirtualTryOnStudio } from "./VirtualTryOnStudio";
-import { motion, AnimatePresence } from "framer-motion";
+import { m, AnimatePresence } from "framer-motion";
 import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
 
 export function VirtualTryOnModal() {
@@ -13,7 +13,7 @@ export function VirtualTryOnModal() {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md overflow-y-auto">
-      <motion.div
+      <m.div
         initial={{ opacity: 0, scale: 0.94, y: 15 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.94, y: 15 }}
@@ -25,7 +25,7 @@ export function VirtualTryOnModal() {
           onClose={closeTryOn}
           isModal={true}
         />
-      </motion.div>
+      </m.div>
     </div>
   );
 }

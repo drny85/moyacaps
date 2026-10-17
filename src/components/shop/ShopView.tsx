@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, m } from "framer-motion";
 import { useReducedMotionSafe } from "@/hooks/useMotionPrefs";
 import { SlidersHorizontal, X } from "lucide-react";
 import { usePathname, useRouter } from "@/i18n/routing";
@@ -11,6 +11,7 @@ import { useCapVariants } from "@/hooks/useCapVariants";
 import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
 import { DURATION, EASE } from "@/lib/motion";
 import { ProductCard } from "@/components/catalog/ProductCard";
+import { LayoutMotion } from "@/components/motion/LayoutMotion";
 import {
   activeFilterCount,
   applyShop,
@@ -60,131 +61,133 @@ export function ShopView() {
   ];
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 pb-24 sm:px-6 lg:px-8">
-      <header className="flex items-end justify-between gap-4 pb-5 pt-8 sm:pt-12">
-        <h1 className="font-poster text-[clamp(3.5rem,14vw,8rem)] uppercase leading-[0.85] tracking-tight text-zinc-900 dark:text-white">
-          {title}
-        </h1>
-        <p className="pb-2 text-sm text-zinc-500 dark:text-zinc-400 tabular-nums" aria-live="polite">
-          {t("count", { count: items.length })}
-        </p>
-      </header>
+    <LayoutMotion>
+      <div className="mx-auto w-full max-w-7xl px-4 pb-24 sm:px-6 lg:px-8">
+        <header className="flex items-end justify-between gap-4 pb-5 pt-8 sm:pt-12">
+          <h1 className="font-poster text-[clamp(3.5rem,14vw,8rem)] uppercase leading-[0.85] tracking-tight text-zinc-900 dark:text-white">
+            {title}
+          </h1>
+          <p className="pb-2 text-sm text-zinc-500 dark:text-zinc-400 tabular-nums" aria-live="polite">
+            {t("count", { count: items.length })}
+          </p>
+        </header>
 
-      {/* Category tabs, filter trigger and sort: sticky under the navbar */}
-      <div className="sticky top-[var(--navbar-h,66px)] z-30 -mx-4 border-y border-black/[0.06] bg-white/90 px-4 backdrop-blur-md dark:border-white/[0.08] dark:bg-zinc-950/90 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
-        <div className="flex h-14 items-center gap-3">
-          <nav aria-label={t("titleAll")} className="flex gap-1">
-            {tabs.map((tab) => {
-              const active = state.category === tab.key;
-              return (
-                <button
-                  key={tab.key}
-                  type="button"
-                  aria-pressed={active}
-                  onClick={() => setState({ ...state, category: tab.key })}
-                  className={`relative h-9 rounded-full px-4 font-display text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-moya-red ${
-                    active ? "text-white dark:text-zinc-950" : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
-                  }`}
-                >
-                  {active && (
-                    <motion.span
-                      layoutId="shop-tab"
-                      className="absolute inset-0 rounded-full bg-zinc-900 dark:bg-white"
-                      transition={reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 500, damping: 40 }}
-                    />
-                  )}
-                  <span className="relative">{tab.label}</span>
-                </button>
-              );
-            })}
-          </nav>
+        {/* Category tabs, filter trigger and sort: sticky under the navbar */}
+        <div className="sticky top-[var(--navbar-h,66px)] z-30 -mx-4 border-y border-black/[0.06] bg-white/90 px-4 backdrop-blur-md dark:border-white/[0.08] dark:bg-zinc-950/90 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+          <div className="flex h-14 items-center gap-3">
+            <nav aria-label={t("titleAll")} className="flex gap-1">
+              {tabs.map((tab) => {
+                const active = state.category === tab.key;
+                return (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => setState({ ...state, category: tab.key })}
+                    className={`relative h-9 rounded-full px-4 font-display text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-moya-red ${
+                      active ? "text-white dark:text-zinc-950" : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
+                    }`}
+                  >
+                    {active && (
+                      <m.span
+                        layoutId="shop-tab"
+                        className="absolute inset-0 rounded-full bg-zinc-900 dark:bg-white"
+                        transition={reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 500, damping: 40 }}
+                      />
+                    )}
+                    <span className="relative">{tab.label}</span>
+                  </button>
+                );
+              })}
+            </nav>
 
-          <div className="ml-auto flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setSheetOpen(true)}
-              className="inline-flex h-9 items-center gap-1.5 rounded-full border border-zinc-300 px-3.5 font-display text-sm font-semibold text-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-moya-red dark:border-white/15 dark:text-zinc-200 lg:hidden"
-            >
-              <SlidersHorizontal className="h-4 w-4" />
-              <span className="whitespace-nowrap sm:hidden">{t("filterSort")}</span>
-              <span className="hidden whitespace-nowrap sm:inline">{t("filters")}</span>
-              {filterCount > 0 && (
-                <span className="grid h-5 min-w-5 place-items-center rounded-full bg-moya-red px-1 text-[11px] font-bold tabular-nums text-white">
-                  <span className="sr-only">{t("filtersWithCount", { count: filterCount })}</span>
-                  <span aria-hidden>{filterCount}</span>
-                </span>
-              )}
-            </button>
-            <label className="relative hidden sm:block">
-              <span className="sr-only">{t("sortLabel")}</span>
-              <select
-                value={state.sort}
-                onChange={(e) => setState({ ...state, sort: e.target.value as SortKey })}
-                className="h-9 appearance-none rounded-full border border-zinc-300 bg-transparent pl-3.5 pr-8 font-display text-sm font-semibold text-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-moya-red dark:border-white/15 dark:text-zinc-200 sm:max-w-none"
-              >
-                <option value="featured">{t("sortFeatured")}</option>
-                <option value="newest">{t("sortNewest")}</option>
-                <option value="price-asc">{t("sortPriceAsc")}</option>
-                <option value="price-desc">{t("sortPriceDesc")}</option>
-              </select>
-              <svg aria-hidden className="pointer-events-none absolute right-3 top-1/2 h-3 w-3 -translate-y-1/2 text-zinc-500" viewBox="0 0 12 12">
-                <path d="M2 4l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.6" />
-              </svg>
-            </label>
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-6 grid grid-cols-1 gap-8 lg:grid-cols-[220px_1fr] lg:gap-10">
-        <aside className="hidden lg:block" aria-label={t("filters")}>
-          <div className="sticky top-[calc(var(--navbar-h,66px)+5rem)]">
-            <FilterPanel state={state} setState={setState} counts={counts} />
-          </div>
-        </aside>
-
-        <section aria-label={title}>
-          {items.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-zinc-300 px-6 py-16 text-center dark:border-white/15">
-              <p className="font-display text-lg font-semibold text-zinc-900 dark:text-white">{t("emptyTitle")}</p>
-              <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{t("emptyBody")}</p>
+            <div className="ml-auto flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => setState({ ...DEFAULT_STATE, category: state.category, sort: state.sort })}
-                className="mt-5 h-10 rounded-full bg-zinc-900 px-5 font-display text-sm font-semibold text-white dark:bg-white dark:text-zinc-950"
+                onClick={() => setSheetOpen(true)}
+                className="inline-flex h-9 items-center gap-1.5 rounded-full border border-zinc-300 px-3.5 font-display text-sm font-semibold text-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-moya-red dark:border-white/15 dark:text-zinc-200 lg:hidden"
               >
-                {t("clearAll")}
+                <SlidersHorizontal className="h-4 w-4" />
+                <span className="whitespace-nowrap sm:hidden">{t("filterSort")}</span>
+                <span className="hidden whitespace-nowrap sm:inline">{t("filters")}</span>
+                {filterCount > 0 && (
+                  <span className="grid h-5 min-w-5 place-items-center rounded-full bg-moya-red px-1 text-[11px] font-bold tabular-nums text-white">
+                    <span className="sr-only">{t("filtersWithCount", { count: filterCount })}</span>
+                    <span aria-hidden>{filterCount}</span>
+                  </span>
+                )}
               </button>
+              <label className="relative hidden sm:block">
+                <span className="sr-only">{t("sortLabel")}</span>
+                <select
+                  value={state.sort}
+                  onChange={(e) => setState({ ...state, sort: e.target.value as SortKey })}
+                  className="h-9 appearance-none rounded-full border border-zinc-300 bg-transparent pl-3.5 pr-8 font-display text-sm font-semibold text-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-moya-red dark:border-white/15 dark:text-zinc-200 sm:max-w-none"
+                >
+                  <option value="featured">{t("sortFeatured")}</option>
+                  <option value="newest">{t("sortNewest")}</option>
+                  <option value="price-asc">{t("sortPriceAsc")}</option>
+                  <option value="price-desc">{t("sortPriceDesc")}</option>
+                </select>
+                <svg aria-hidden className="pointer-events-none absolute right-3 top-1/2 h-3 w-3 -translate-y-1/2 text-zinc-500" viewBox="0 0 12 12">
+                  <path d="M2 4l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.6" />
+                </svg>
+              </label>
             </div>
-          ) : (
-            <ul className="grid grid-cols-2 gap-x-3 gap-y-8 sm:gap-x-5 md:grid-cols-3 xl:grid-cols-4">
-              <AnimatePresence initial={false} mode="popLayout">
-                {items.map((item, i) => (
-                  <motion.li
-                    key={item.product.id}
-                    layout={!reduceMotion}
-                    initial={reduceMotion ? false : { opacity: 0, scale: 0.97 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={reduceMotion ? { opacity: 0, transition: { duration: 0 } } : { opacity: 0, scale: 0.97 }}
-                    transition={{ duration: DURATION.fast, ease: EASE.out }}
-                  >
-                    <ProductCard key={`${item.product.id}-${item.colorway ?? ""}`} item={item} now={now} priority={i < 2} />
-                  </motion.li>
-                ))}
-              </AnimatePresence>
-            </ul>
-          )}
-        </section>
-      </div>
+          </div>
+        </div>
 
-      <FilterSheet
-        open={sheetOpen}
-        onClose={() => setSheetOpen(false)}
-        state={state}
-        setState={setState}
-        counts={counts}
-        resultCount={items.length}
-      />
-    </div>
+        <div className="mt-6 grid grid-cols-1 gap-8 lg:grid-cols-[220px_1fr] lg:gap-10">
+          <aside className="hidden lg:block" aria-label={t("filters")}>
+            <div className="sticky top-[calc(var(--navbar-h,66px)+5rem)]">
+              <FilterPanel state={state} setState={setState} counts={counts} />
+            </div>
+          </aside>
+
+          <section aria-label={title}>
+            {items.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-zinc-300 px-6 py-16 text-center dark:border-white/15">
+                <p className="font-display text-lg font-semibold text-zinc-900 dark:text-white">{t("emptyTitle")}</p>
+                <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{t("emptyBody")}</p>
+                <button
+                  type="button"
+                  onClick={() => setState({ ...DEFAULT_STATE, category: state.category, sort: state.sort })}
+                  className="mt-5 h-10 rounded-full bg-zinc-900 px-5 font-display text-sm font-semibold text-white dark:bg-white dark:text-zinc-950"
+                >
+                  {t("clearAll")}
+                </button>
+              </div>
+            ) : (
+              <ul className="grid grid-cols-2 gap-x-3 gap-y-8 sm:gap-x-5 md:grid-cols-3 xl:grid-cols-4">
+                <AnimatePresence initial={false} mode="popLayout">
+                  {items.map((item, i) => (
+                    <m.li
+                      key={item.product.id}
+                      layout={!reduceMotion}
+                      initial={reduceMotion ? false : { opacity: 0, scale: 0.97 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={reduceMotion ? { opacity: 0, transition: { duration: 0 } } : { opacity: 0, scale: 0.97 }}
+                      transition={{ duration: DURATION.fast, ease: EASE.out }}
+                    >
+                      <ProductCard key={`${item.product.id}-${item.colorway ?? ""}`} item={item} now={now} priority={i < 2} />
+                    </m.li>
+                  ))}
+                </AnimatePresence>
+              </ul>
+            )}
+          </section>
+        </div>
+
+        <FilterSheet
+          open={sheetOpen}
+          onClose={() => setSheetOpen(false)}
+          state={state}
+          setState={setState}
+          counts={counts}
+          resultCount={items.length}
+        />
+      </div>
+    </LayoutMotion>
   );
 }
 
@@ -349,7 +352,7 @@ function FilterSheet({
     <AnimatePresence>
       {open && (
         <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label={t("filters")}>
-          <motion.div
+          <m.div
             className="absolute inset-0 bg-black/50"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -357,7 +360,7 @@ function FilterSheet({
             transition={{ duration: DURATION.fast }}
             onClick={onClose}
           />
-          <motion.div
+          <m.div
             data-lenis-prevent
             className="absolute inset-x-0 bottom-0 flex max-h-[85svh] flex-col rounded-t-[20px] bg-white pb-[env(safe-area-inset-bottom)] dark:bg-zinc-950"
             initial={reduceMotion ? { opacity: 0 } : { y: "100%" }}
@@ -418,7 +421,7 @@ function FilterSheet({
                 {t("showResults", { count: resultCount })}
               </button>
             </div>
-          </motion.div>
+          </m.div>
         </div>
       )}
     </AnimatePresence>

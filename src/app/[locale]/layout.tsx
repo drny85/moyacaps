@@ -2,12 +2,9 @@ import { NextIntlClientProvider } from "next-intl";
 import { getMessages } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { routing } from "@/i18n/routing";
+import { pickNamespaces, STOREFRONT_NAMESPACES } from "@/i18n/clientMessages";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
-import { CartDrawer } from "@/components/cart/CartDrawer";
-import { DropAlertModal } from "@/components/drops/DropAlertModal";
-import { ProductShareToast } from "@/components/product/ProductShareToast";
-import { VirtualTryOnModal } from "@/components/tryon/VirtualTryOnModal";
 import { SmoothScrollProvider } from "@/components/providers/SmoothScrollProvider";
 import { MotionProvider } from "@/components/providers/MotionProvider";
 import { ConvexClientProvider } from "@/components/providers/ConvexClientProvider";
@@ -15,8 +12,8 @@ import { ClerkClientProvider } from "@/components/providers/ClerkClientProvider"
 import { UserSyncProvider } from "@/components/providers/UserSyncProvider";
 
 import { MobileActionBar } from "@/components/layout/MobileActionBar";
+import { DeferredOverlays } from "@/components/layout/DeferredOverlays";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
-import { AdminQuickBar } from "@/components/admin/AdminQuickBar";
 import { OrganizationJsonLd } from "@/components/seo/OrganizationJsonLd";
 
 export function generateStaticParams() {
@@ -36,7 +33,8 @@ export default async function LocaleLayout({
     notFound();
   }
 
-  const messages = await getMessages();
+  // Storefront copy only; auth-area segments add the rest (FullMessagesProvider, ADR 0018)
+  const messages = pickNamespaces(await getMessages(), STOREFRONT_NAMESPACES);
 
   return (
     <NextIntlClientProvider messages={messages}>
@@ -54,11 +52,7 @@ export default async function LocaleLayout({
                     <main className="flex-1 print:p-0">{children}</main>
                     <Footer />
                     <MobileActionBar />
-                    <CartDrawer />
-                    <DropAlertModal />
-                    <VirtualTryOnModal />
-                    <ProductShareToast />
-                    <AdminQuickBar />
+                    <DeferredOverlays />
                   </div>
                 </MotionProvider>
               </SmoothScrollProvider>

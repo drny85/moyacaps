@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { ArrowRight, Rotate3d } from "lucide-react";
 import { useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
@@ -81,7 +81,7 @@ export function HeroInteractive() {
 
       <div className="relative z-10 mx-auto grid w-full max-w-7xl grid-cols-1 items-center gap-4 lg:grid-cols-12 lg:gap-10">
         {/* ── Cap stage ── */}
-        <motion.div style={{ y: stageY }} className="order-1 lg:order-2 lg:col-span-7">
+        <m.div style={{ y: stageY }} className="order-1 lg:order-2 lg:col-span-7">
           <div className="relative mx-auto aspect-square w-full max-w-[min(100%,36svh)] sm:max-w-[min(560px,46svh)] lg:max-w-none">
             <CapTurntable
               key={activeCap.id}
@@ -93,7 +93,7 @@ export function HeroInteractive() {
               onInteract={() => setHasTurned(true)}
             />
             {frames.length > 1 && (
-              <motion.div
+              <m.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: hasTurned ? 0 : 1 }}
                 transition={{ duration: DURATION.base, delay: hasTurned ? 0 : 1.4 }}
@@ -101,10 +101,10 @@ export function HeroInteractive() {
               >
                 <Rotate3d className="h-3.5 w-3.5" />
                 <span>{t("dragHint")}</span>
-              </motion.div>
+              </m.div>
             )}
           </div>
-        </motion.div>
+        </m.div>
 
         {/* ── Copy ── */}
         <div className="order-2 flex flex-col items-center text-center lg:order-1 lg:col-span-5 lg:items-start lg:text-left">

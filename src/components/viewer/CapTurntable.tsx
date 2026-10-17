@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  motion,
+  m,
   useInView,
   useMotionTemplate,
   useMotionValue,
@@ -12,6 +12,7 @@ import {
 } from "framer-motion";
 import { useReducedMotionSafe } from "@/hooks/useMotionPrefs";
 import { DURATION, EASE, SPRING } from "@/lib/motion";
+import { whenIdle } from "@/lib/deferred";
 
 export interface TurntableFrame {
   src: string;
@@ -51,6 +52,15 @@ export function CapTurntable({
   const [index, setIndex] = useState(0);
   const [hasInteracted, setHasInteracted] = useState(false);
   const canTurn = frames.length > 1;
+  // A priority (hero) turntable paints only its front photo first, so the hidden angles do
+  // not compete with the LCP image for bandwidth; the rest load once the page is idle or
+  // the visitor reaches for the cap.
+  const [anglesReady, setAnglesReady] = useState(!priority);
+  const loadAngles = useCallback(() => setAnglesReady(true), []);
+  useEffect(() => {
+    if (anglesReady) return;
+    return whenIdle(loadAngles);
+  }, [anglesReady, loadAngles]);
 
   // ── Turning ──
   const turn = useCallback(
@@ -66,10 +76,10 @@ export function CapTurntable({
   }, [hasInteracted, onInteract]);
 
   useEffect(() => {
-    if (!canTurn || hasInteracted || reduceMotion || !inView) return;
+    if (!canTurn || !anglesReady || hasInteracted || reduceMotion || !inView) return;
     const id = setInterval(() => turn(1), AUTO_TURN_MS);
     return () => clearInterval(id);
-  }, [canTurn, hasInteracted, reduceMotion, inView, turn]);
+  }, [canTurn, anglesReady, hasInteracted, reduceMotion, inView, turn]);
 
   const drag = useRef<{ x: number; carried: number } | null>(null);
 
@@ -86,6 +96,7 @@ export function CapTurntable({
 
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!canTurn) return;
+    loadAngles();
     drag.current = { x: e.clientX, carried: 0 };
     e.currentTarget.setPointerCapture(e.pointerId);
   };
@@ -120,6 +131,7 @@ export function CapTurntable({
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (!canTurn) return;
+    loadAngles();
     if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
       e.preventDefault();
       turn(e.key === "ArrowRight" ? 1 : -1);
@@ -151,6 +163,8 @@ export function CapTurntable({
         onPointerUp={endDrag}
         onPointerCancel={endDrag}
         onPointerLeave={onPointerLeave}
+        onPointerEnter={loadAngles}
+        onFocus={loadAngles}
         className={`relative h-full w-full select-none [perspective:1100px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-moya-red/60 rounded-3xl ${
           canTurn ? "cursor-grab touch-pan-y active:cursor-grabbing" : ""
         }`}
@@ -161,7 +175,7 @@ export function CapTurntable({
           className="pointer-events-none absolute inset-x-0 bottom-0 h-[45%] opacity-60"
           style={{ background: `radial-gradient(closest-side, ${glowHex}, transparent)` }}
         />
-        <motion.div
+        <m.div
           aria-hidden
           style={{ x: shadowX, scaleX: shadowScale }}
           className="pointer-events-none absolute inset-x-[18%] bottom-[9%] h-[7%] rounded-[50%] bg-black/35 blur-xl dark:bg-black/70"
@@ -171,17 +185,18 @@ export function CapTurntable({
             from the first paint without waiting for JavaScript, and the photo is never hidden,
             so it counts as the LCP immediately. */}
         <div className="intro-drop absolute inset-0">
-          <motion.div
+          <m.div
             // Idle bob only while on screen: no work for a hero scrolled out of view
             animate={reduceMotion || !inView ? { y: 0 } : { y: [0, -10, 0] }}
             transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
             className="absolute inset-0"
           >
-            <motion.div style={{ rotateX, rotateY }} className="absolute inset-0 [transform-style:preserve-3d]">
+            <m.div style={{ rotateX, rotateY }} className="absolute inset-0 [transform-style:preserve-3d]">
               {frames.map((frame, i) => {
                 const rel = relative(i);
+                if (!anglesReady && i !== index) return null;
                 return (
-                  <motion.div
+                  <m.div
                     key={frame.src}
                     aria-hidden={rel !== 0}
                     initial={false}
@@ -205,20 +220,20 @@ export function CapTurntable({
                       draggable={false}
                       className="object-contain"
                     />
-                  </motion.div>
+                  </m.div>
                 );
               })}
 
               {/* Light sheen that follows the pointer */}
               {!reduceMotion && (
-                <motion.div
+                <m.div
                   aria-hidden
                   style={{ background: sheen }}
                   className="pointer-events-none absolute inset-[10%] rounded-[40%] mix-blend-soft-light"
                 />
               )}
-            </motion.div>
-          </motion.div>
+            </m.div>
+          </m.div>
         </div>
       </div>
 
@@ -230,6 +245,7 @@ export function CapTurntable({
               key={frame.src}
               type="button"
               onClick={() => {
+                loadAngles();
                 setIndex(i);
                 markInteracted();
               }}
