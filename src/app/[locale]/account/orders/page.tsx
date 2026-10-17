@@ -49,7 +49,7 @@ export default function AccountOrdersPage() {
 
   // Convex mutations & actions
   const updateAddressMutation = useMutation(api.orders.updateShippingAddress);
-  const cancelAndRefund = useAction(api.stripe.cancelAndRefundOrder);
+  const cancelAndRefund = useAction(api.stripeRefunds.cancelAndRefundOrder);
 
   // Orders for authenticated Clerk user
   const userOrders = useQuery(

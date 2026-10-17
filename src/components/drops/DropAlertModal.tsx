@@ -28,7 +28,7 @@ export function DropAlertModal() {
   const [alreadySubscribed, setAlreadySubscribed] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const subscribeMutation = useMutation(api.products.subscribeToDropAlert);
+  const subscribeMutation = useMutation(api.drops.subscribeToDropAlert);
 
   // Auto-fill user info if available
   useEffect(() => {

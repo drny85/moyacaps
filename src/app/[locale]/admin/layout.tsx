@@ -109,7 +109,7 @@ export default function AdminLayout({
 
   // Real-time attention telemetry from Convex (only query when authenticated & authorized)
   const attentionStats = useQuery(
-    api.orders.getOrdersAttentionStats,
+    api.orderDesk.getOrdersAttentionStats,
     isAuthorized ? { clientTime: statsClock } : "skip"
   );
 

@@ -32,7 +32,7 @@ export function HeroInteractive() {
   const reduceMotion = useReducedMotion() ?? false;
   const { addToCart, openDropAlert } = useStore();
   const { caps, isLive } = useCapVariants();
-  const upcomingDrops = useQuery(api.products.getUpcomingDrops);
+  const upcomingDrops = useQuery(api.drops.getUpcomingDrops);
   const activeUpcomingDrop = upcomingDrops && upcomingDrops.length > 0 ? upcomingDrops[0] : null;
 
   const quickSwapCaps = useMemo(() => pickQuickSwap(caps), [caps]);

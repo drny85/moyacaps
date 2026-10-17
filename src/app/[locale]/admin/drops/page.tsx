@@ -103,16 +103,16 @@ export default function AdminDropsPage() {
   const locale = useLocale();
 
   // Queries
-  const dropsData = useQuery(api.products.getAllDropsAdmin);
-  const productsData = useQuery(api.products.getAllProductsAdmin);
-  const subscribersData = useQuery(api.products.getDropSubscribersList, {});
+  const dropsData = useQuery(api.drops.getAllDropsAdmin);
+  const productsData = useQuery(api.catalogAdmin.getAllProductsAdmin);
+  const subscribersData = useQuery(api.drops.getDropSubscribersList, {});
 
   // Mutations
-  const scheduleDropMutation = useMutation(api.products.scheduleDrop);
-  const releaseDropNowMutation = useMutation(api.products.releaseDropNow);
-  const postponeDropMutation = useMutation(api.products.postponeDrop);
-  const cancelDropMutation = useMutation(api.products.cancelDrop);
-  const deleteDropMutation = useMutation(api.products.deleteDrop);
+  const scheduleDropMutation = useMutation(api.drops.scheduleDrop);
+  const releaseDropNowMutation = useMutation(api.drops.releaseDropNow);
+  const postponeDropMutation = useMutation(api.drops.postponeDrop);
+  const cancelDropMutation = useMutation(api.drops.cancelDrop);
+  const deleteDropMutation = useMutation(api.drops.deleteDrop);
 
   // Local state
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false);

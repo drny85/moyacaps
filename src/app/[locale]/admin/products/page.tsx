@@ -74,15 +74,15 @@ export default function AdminProductsPage() {
   const [feedbackStockId, setFeedbackStockId] = useState<string | null>(null);
 
   // Convex data & mutations
-  const data = useQuery(api.products.getAllProductsAdmin);
-  const adjustStock = useMutation(api.products.adjustVariantStock);
-  const updatePrice = useMutation(api.products.updateVariantPrice);
-  const toggleFeatured = useMutation(api.products.toggleVariantFeatured);
-  const toggleAvailable = useMutation(api.products.toggleVariantAvailable);
-  const saveVariant = useMutation(api.products.saveVariant);
-  const deleteVariant = useMutation(api.products.deleteVariant);
-  const generateUploadUrl = useMutation(api.products.generateUploadUrl);
-  const updateVariantDropStatus = useMutation(api.products.updateVariantDropStatus);
+  const data = useQuery(api.catalogAdmin.getAllProductsAdmin);
+  const adjustStock = useMutation(api.catalogAdmin.adjustVariantStock);
+  const updatePrice = useMutation(api.catalogAdmin.updateVariantPrice);
+  const toggleFeatured = useMutation(api.catalogAdmin.toggleVariantFeatured);
+  const toggleAvailable = useMutation(api.catalogAdmin.toggleVariantAvailable);
+  const saveVariant = useMutation(api.catalogAdmin.saveVariant);
+  const deleteVariant = useMutation(api.catalogAdmin.deleteVariant);
+  const generateUploadUrl = useMutation(api.catalogAdmin.generateUploadUrl);
+  const updateVariantDropStatus = useMutation(api.drops.updateVariantDropStatus);
 
   // Form state for Modal
   const [formVariantId, setFormVariantId] = useState("");

@@ -33,8 +33,8 @@ export default function AdminAnalyticsPage() {
     const id = setInterval(() => setStatsClock(Date.now()), 60 * 1000);
     return () => clearInterval(id);
   }, []);
-  const analytics = useQuery(api.orders.getAnalyticsAdmin, { clientTime: statsClock });
-  const adjustStock = useMutation(api.products.adjustVariantStock);
+  const analytics = useQuery(api.analytics.getAnalyticsAdmin, { clientTime: statsClock });
+  const adjustStock = useMutation(api.catalogAdmin.adjustVariantStock);
 
   const [restockingId, setRestockingId] = useState<string | null>(null);
   const [restockSuccess, setRestockSuccess] = useState<string | null>(null);

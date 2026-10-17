@@ -39,7 +39,7 @@ export function ProductQuickView() {
   const [addedSuccess, setAddedSuccess] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
 
-  const convexVariants = useQuery(api.products.getVariants, {});
+  const convexVariants = useQuery(api.catalog.getVariants, {});
 
   useEffect(() => {
     setIsMounted(true);

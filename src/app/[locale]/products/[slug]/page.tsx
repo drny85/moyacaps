@@ -12,7 +12,7 @@ type Params = Promise<{ locale: string; slug: string }>;
 
 /** One Convex read per request, shared by metadata and the page (ADR 0015: Convex is the only catalog). */
 const getProduct = cache(async (slug: string) => {
-  const doc = await fetchQuery(api.products.getProductBySlug, { slug });
+  const doc = await fetchQuery(api.catalog.getProductBySlug, { slug });
   return doc ?? null;
 });
 

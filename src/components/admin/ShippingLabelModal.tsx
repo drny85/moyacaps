@@ -72,7 +72,7 @@ export function ShippingLabelModal({
 }: ShippingLabelModalProps) {
   const getRates = useAction(api.shipping.getShippingRates);
   const buyLabel = useAction(api.shipping.buyShippingLabel);
-  const updateAddress = useMutation(api.orders.updateShippingAddressAdmin);
+  const updateAddress = useMutation(api.orderDesk.updateShippingAddressAdmin);
 
   // Address edit state
   const [isEditingAddress, setIsEditingAddress] = useState(false);
