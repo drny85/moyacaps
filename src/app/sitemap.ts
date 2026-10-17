@@ -55,14 +55,14 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // 3. Cap detail pages
     for (const cap of CAP_VARIANTS) {
       entries.push({
-        url: `${siteUrl}/${locale}/caps/${cap.id}`,
+        url: `${siteUrl}/${locale}/products/${cap.id}`,
         lastModified: now,
         changeFrequency: "daily",
         priority: 0.8,
         alternates: {
           languages: {
-            en: `${siteUrl}/en/caps/${cap.id}`,
-            es: `${siteUrl}/es/caps/${cap.id}`,
+            en: `${siteUrl}/en/products/${cap.id}`,
+            es: `${siteUrl}/es/products/${cap.id}`,
           },
         },
       });

@@ -7,7 +7,10 @@ export interface ApparelColorwayOption {
   nameEs: string;
   hex: string;
   borderHex: string;
+  /** Lifestyle Shot of this colorway */
   modelImage: string;
+  /** 4:5 Catalog Shot of this colorway (ADR 0016) */
+  catalogShot?: string;
 }
 
 export const APPAREL_COLORWAYS = [
@@ -61,6 +64,8 @@ export interface CapVariant {
   secondaryHex: string;
   image: string;
   images?: string[];
+  /** 4:5 Catalog Shot for grids and cards (ADR 0016) */
+  catalogShot?: string;
   graphicImage?: string;
   printPosition?: "front" | "back";
   stock: number;
@@ -161,10 +166,10 @@ export const SHIRT_VARIANTS: CapVariant[] = [
     category: "apparel",
     primaryHex: "#27272a",
     secondaryHex: "#f97316",
-    image: "/shirts/eagle-clover-black.png",
+    image: "/shirts/eagle-clover-black.jpg",
     images: [
-      "/shirts/eagle-clover-black.png",
-      "/shirts/eagle-clover-grey.png",
+      "/shirts/eagle-clover-black.jpg",
+      "/shirts/eagle-clover-grey.jpg",
       "/shirts/eagle-clover-white.jpg",
       "/shirts/eagle-clover-cream.jpg",
       "/shirts/graphics/eagle-clover.jpg",
@@ -182,8 +187,8 @@ export const SHIRT_VARIANTS: CapVariant[] = [
     fitEs: "Corte Boxy Drop-Shoulder Oversized",
     defaultColorway: "washed-black",
     colorways: [
-      { id: "washed-black", nameEn: "Vintage Washed Black", nameEs: "Negro Lavado", hex: "#18181b", borderHex: "#3f3f46", modelImage: "/shirts/eagle-clover-black.png" },
-      { id: "heather-grey", nameEn: "Athletic Heather Grey", nameEs: "Gris Jaspe", hex: "#9ca3af", borderHex: "#6b7280", modelImage: "/shirts/eagle-clover-grey.png" },
+      { id: "washed-black", nameEn: "Vintage Washed Black", nameEs: "Negro Lavado", hex: "#18181b", borderHex: "#3f3f46", modelImage: "/shirts/eagle-clover-black.jpg" },
+      { id: "heather-grey", nameEn: "Athletic Heather Grey", nameEs: "Gris Jaspe", hex: "#9ca3af", borderHex: "#6b7280", modelImage: "/shirts/eagle-clover-grey.jpg" },
       { id: "crisp-white", nameEn: "Crisp Optical White", nameEs: "Blanco Puro", hex: "#fafafa", borderHex: "#e4e4e7", modelImage: "/shirts/eagle-clover-white.jpg" },
       { id: "butter-cream", nameEn: "Butter Cream Vintage", nameEs: "Crema Vintage", hex: "#fefce8", borderHex: "#fef08a", modelImage: "/shirts/eagle-clover-cream.jpg" },
     ],
@@ -406,9 +411,9 @@ export const SHIRT_VARIANTS: CapVariant[] = [
     category: "apparel",
     primaryHex: "#ffffff",
     secondaryHex: "#881337",
-    image: "/shirts/gothic-angel-white.jpg",
+    image: "/shirts/angel-clover-white.jpg",
     images: [
-      "/shirts/gothic-angel-white.jpg",
+      "/shirts/angel-clover-white.jpg",
       "/shirts/angel-clover-black.jpg",
       "/shirts/angel-clover-grey.jpg",
       "/shirts/angel-clover-cream.jpg",
@@ -427,7 +432,7 @@ export const SHIRT_VARIANTS: CapVariant[] = [
     fitEs: "Corte Boxy Drop-Shoulder Oversized",
     defaultColorway: "crisp-white",
     colorways: [
-      { id: "crisp-white", nameEn: "Crisp Optical White", nameEs: "Blanco Puro", hex: "#fafafa", borderHex: "#e4e4e7", modelImage: "/shirts/gothic-angel-white.jpg" },
+      { id: "crisp-white", nameEn: "Crisp Optical White", nameEs: "Blanco Puro", hex: "#fafafa", borderHex: "#e4e4e7", modelImage: "/shirts/angel-clover-white.jpg" },
       { id: "washed-black", nameEn: "Vintage Washed Black", nameEs: "Negro Lavado", hex: "#18181b", borderHex: "#3f3f46", modelImage: "/shirts/angel-clover-black.jpg" },
       { id: "heather-grey", nameEn: "Athletic Heather Grey", nameEs: "Gris Jaspe", hex: "#9ca3af", borderHex: "#6b7280", modelImage: "/shirts/angel-clover-grey.jpg" },
       { id: "butter-cream", nameEn: "Butter Cream Vintage", nameEs: "Crema Vintage", hex: "#fefce8", borderHex: "#fef08a", modelImage: "/shirts/angel-clover-cream.jpg" },

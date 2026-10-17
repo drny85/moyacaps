@@ -550,7 +550,7 @@ export function ModelLookbookStudio({
               </span>
             </div>
             <Link
-              href={`/caps/${activeTee.id}`}
+              href={`/products/${activeTee.id}`}
               className="text-xs font-display font-bold text-moya-red hover:underline flex items-center gap-1 shrink-0"
             >
               <span>{locale === "es" ? "Ver Ficha" : "Full PDP"}</span>

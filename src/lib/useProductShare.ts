@@ -23,7 +23,7 @@ export function useProductShare() {
         process.env.NEXT_PUBLIC_SITE_URL ||
         "https://goodluckcaps.com";
 
-      const shareUrl = `${origin}/${locale}/caps/${cap.id}`;
+      const shareUrl = `${origin}/${locale}/products/${cap.id}`;
 
       // 1. Copy URL directly to clipboard
       try {

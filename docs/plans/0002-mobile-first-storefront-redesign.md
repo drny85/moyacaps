@@ -34,6 +34,14 @@ Status: done on `feat/catalog-shots`. `next.config.mjs` already serves avif/webp
 
 Read `convex/_generated/ai/guidelines.md` first.
 
+Status: done on `feat/unified-product-catalog`. Migration run on the dev deployment (16 caps, 11 tees, 220 SKUs; re-run is a no-op). **Production still needs `npx convex run --prod products:migrateUnifiedCatalog` right after the deploy that ships this schema**: until it runs, prod tees have no colorways, so they keep selling against the aggregate as before.
+
+As built:
+- `convex/inventory.ts` is the single stock path (`checkStock`, `adjustStock`, `setSkuStock`). A tee variant's `stock` is kept equal to the sum of its SKUs, so analytics and low-stock views are unchanged. Tee lines from pre-SKU orders cannot be attributed to a SKU; releasing them logs a warning for manual reconcile.
+- Order items carry `colorway` + `size`; Stripe metadata carries them as `c` / `s`. Fixed on the way: checkout sent the cart line id instead of `variantId`, and the cart sent the colorway display name instead of its id.
+- Admin edits tee stock in a colorway × size grid (`TeeSkuStockDialog`); aggregate stock edits are refused for tees.
+- Deferred: Colorway-family filtering moves to Phase 3 (client-side over the small catalog). `CAP_VARIANTS` stays only as the offline fallback in `useCapVariants`, the product page and try-on until Phase 4. Client "max in cart" still uses the tee's total; the server enforces per-SKU stock and Phase 4's size picker shows it.
+
 - `convex/schema.ts`: add tee fields to `variants` (`graphicDesign`, `printLocation`, `apparelColorways` with catalog/lifestyle image paths, `sizes`), add `skus` table `{ variantId, colorway, size, stock }` with index `by_variantId_colorway_size`.
 - Migration (idempotent mutation + `scripts/` runner): seed `skus` from current tee stock split across colorways/sizes; copy static tee metadata into `variants`.
 - `convex/products.ts`: `getVariants` gains `category`, `colorwayFamily`, `inStock` args and returns `catalogShot`; new `getProductBySlug` returning variant + SKUs.

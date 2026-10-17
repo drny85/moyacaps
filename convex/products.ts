@@ -1,6 +1,12 @@
-import { query, mutation, internalMutation } from "./_generated/server";
-import { v } from "convex/values";
+import { query, mutation, internalMutation, internalQuery } from "./_generated/server";
+import { v, ConvexError } from "convex/values";
 import { requireAdmin } from "./auth";
+import { checkStock, getVariant, hasSkus, listSkus, setSkuStock } from "./inventory";
+import { SHIRT_VARIANTS } from "../src/data/caps";
+import catalogShots from "../src/data/catalogShots.json";
+
+/** Tee stock lives on SKUs; the variant's `stock` is their sum and is never edited directly. */
+const TEE_STOCK_EDIT_ERROR = "Tee stock is tracked per colorway and size. Edit it in the SKU stock grid.";
 
 export const generateUploadUrl = mutation({
   args: {},
@@ -70,6 +76,9 @@ async function resolveVariantWithStorageUrl<T extends { storageId?: any; image: 
 export const getVariants = query({
   args: {
     silhouette: v.optional(v.string()),
+    // "headwear" | "apparel"; caps seeded before categories existed count as headwear
+    category: v.optional(v.string()),
+    inStock: v.optional(v.boolean()),
     includeUnavailable: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
@@ -79,6 +88,12 @@ export const getVariants = query({
     }
     if (args.silhouette && args.silhouette !== "all") {
       variants = variants.filter((v) => v.silhouette === args.silhouette);
+    }
+    if (args.category && args.category !== "all") {
+      variants = variants.filter((v) => (v.category ?? (v.silhouette === "tee" ? "apparel" : "headwear")) === args.category);
+    }
+    if (args.inStock) {
+      variants = variants.filter((v) => v.stock > 0);
     }
     return await Promise.all(
       variants.map((v) => resolveVariantWithStorageUrl(ctx, v))
@@ -369,8 +384,8 @@ export const seedAll = mutation({
         taxCode: "txcd_30011000",
         primaryHex: "#27272a",
         secondaryHex: "#f97316",
-        image: "/shirts/eagle-clover-black.png",
-        images: ["/shirts/eagle-clover-black.png", "/shirts/eagle-clover-grey.png", "/shirts/graphics/eagle-clover.jpg"],
+        image: "/shirts/eagle-clover-black.jpg",
+        images: ["/shirts/eagle-clover-black.jpg", "/shirts/eagle-clover-grey.jpg", "/shirts/graphics/eagle-clover.jpg"],
         stock: 22,
         priceUsd: 160,
         isFeatured: true,
@@ -474,8 +489,8 @@ export const seedAll = mutation({
         taxCode: "txcd_30011000",
         primaryHex: "#ffffff",
         secondaryHex: "#881337",
-        image: "/shirts/gothic-angel-white.jpg",
-        images: ["/shirts/gothic-angel-white.jpg", "/shirts/graphics/angel-clover.jpg"],
+        image: "/shirts/angel-clover-white.jpg",
+        images: ["/shirts/angel-clover-white.jpg", "/shirts/graphics/angel-clover.jpg"],
         stock: 14,
         priceUsd: 160,
         isFeatured: true,
@@ -546,6 +561,9 @@ export const updateVariantStock = mutation({
     if (!variant) {
       throw new Error(`Variant ${args.variantId} not found`);
     }
+    if (hasSkus(variant)) {
+      throw new ConvexError(TEE_STOCK_EDIT_ERROR);
+    }
 
     await ctx.db.patch(variant._id, {
       stock: Math.max(0, args.stock),
@@ -571,6 +589,9 @@ export const adjustVariantStock = mutation({
       throw new Error(`Variant ${args.variantId} not found`);
     }
 
+    if (hasSkus(variant)) {
+      throw new ConvexError(TEE_STOCK_EDIT_ERROR);
+    }
     const newStock = Math.max(0, variant.stock + args.delta);
     await ctx.db.patch(variant._id, {
       stock: newStock,
@@ -714,7 +735,7 @@ export const saveVariant = mutation({
         image: resolvedImage,
         storageId: args.storageId !== undefined ? args.storageId : existing.storageId,
         images: args.images !== undefined ? args.images : existing.images,
-        stock: args.stock,
+        stock: hasSkus(existing) ? existing.stock : args.stock,
         priceUsd: args.priceUsd,
         isFeatured: args.isFeatured,
         isAvailable: args.isAvailable !== undefined ? args.isAvailable : existing.isAvailable !== false,
@@ -1138,5 +1159,174 @@ export const getDropSubscribersList = query({
         };
       })
       .sort((a, b) => b.createdAt - a.createdAt);
+  },
+});
+
+// ── Unified Product catalog (ADR 0015) ─────────────────────────────────────────
+
+export const TEE_SIZES = ["S", "M", "L", "XL", "2XL"] as const;
+
+/** Old Lifestyle Shot paths (still referenced by historical order snapshots) → canonical names */
+const LIFESTYLE_RENAMES: Record<string, string> = {
+  "/shirts/gothic-angel-white.jpg": "/shirts/angel-clover-white.jpg",
+  "/shirts/eagle-clover-black.png": "/shirts/eagle-clover-black.jpg",
+  "/shirts/eagle-clover-grey.png": "/shirts/eagle-clover-grey.jpg",
+};
+const renamed = (path: string) => LIFESTYLE_RENAMES[path] ?? path;
+
+type CatalogShotsManifest = {
+  caps: Record<string, { catalog: string }>;
+  tees: Record<string, { colorways: Record<string, string> }>;
+};
+const SHOTS = catalogShots as CatalogShotsManifest;
+
+/** Per-line stock check for checkout actions: SKU stock for tees, variant stock for caps. */
+export const getLineStock = internalQuery({
+  args: {
+    variantId: v.string(),
+    colorway: v.optional(v.string()),
+    size: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const check = await checkStock(ctx, { ...args, quantity: 1 });
+    return check.ok
+      ? { ok: true as const, available: check.available }
+      : { ok: false as const, reason: check.reason };
+  },
+});
+
+/** One Product for its page: the variant (storage image resolved) plus SKU stock for tees. */
+export const getProductBySlug = query({
+  args: { slug: v.string(), allowUnavailable: v.optional(v.boolean()) },
+  handler: async (ctx, args) => {
+    const variant = await getVariant(ctx, args.slug);
+    if (!variant) return null;
+    if (!args.allowUnavailable && variant.isAvailable === false) return null;
+    const resolved = await resolveVariantWithStorageUrl(ctx, variant);
+    const skus = hasSkus(variant)
+      ? (await listSkus(ctx, variant.variantId)).map((s) => ({ colorway: s.colorway, size: s.size, stock: s.stock }))
+      : [];
+    return { ...resolved, skus };
+  },
+});
+
+/** Admin: set one tee SKU's stock; the tee's aggregate stock follows. */
+export const setTeeSkuStock = mutation({
+  args: {
+    variantId: v.string(),
+    colorway: v.string(),
+    size: v.string(),
+    stock: v.number(),
+  },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    const variant = await getVariant(ctx, args.variantId);
+    if (!variant) throw new ConvexError(`Variant ${args.variantId} not found`);
+    if (!hasSkus(variant)) throw new ConvexError(`${args.variantId} is not a tee with colorways and sizes`);
+    if (!variant.colorways!.some((c) => c.id === args.colorway) || !variant.sizes!.includes(args.size)) {
+      throw new ConvexError(`${args.colorway} / ${args.size} is not offered for ${args.variantId}`);
+    }
+    if (!Number.isFinite(args.stock) || args.stock < 0) throw new ConvexError("Stock must be zero or more");
+    await setSkuStock(ctx, variant, args.colorway, args.size, args.stock);
+    return { success: true };
+  },
+});
+
+/**
+ * Split a tee's current stock across its SKUs: an even share each, remainder to the
+ * default colorway first in the most common sizes. The sum is unchanged.
+ */
+function distributeStock(total: number, colorways: string[], defaultColorway: string) {
+  const order = ["L", "M", "XL", "S", "2XL"];
+  const cws = [defaultColorway, ...colorways.filter((c) => c !== defaultColorway)];
+  const cells = order.flatMap((size) => cws.map((colorway) => ({ colorway, size })));
+  const base = Math.floor(total / cells.length);
+  let remainder = total - base * cells.length;
+  return cells.map((cell) => ({ ...cell, stock: base + (remainder-- > 0 ? 1 : 0) }));
+}
+
+/**
+ * Idempotent catalog migration (ADR 0015/0016). Run with:
+ *   npx convex run products:migrateUnifiedCatalog
+ * - Caps: set `catalogShot` from src/data/catalogShots.json.
+ * - Tees: copy colorways, sizes, artwork and fit/fabric copy from src/data/caps.ts onto
+ *   the variant, rename Lifestyle Shot paths, and seed SKUs from the current stock
+ *   (only when the tee has no SKUs yet).
+ */
+export const migrateUnifiedCatalog = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const report = { capsUpdated: 0, teesUpdated: 0, teesInserted: 0, skusSeeded: 0 };
+
+    for (const [variantId, shot] of Object.entries(SHOTS.caps)) {
+      const variant = await getVariant(ctx, variantId);
+      if (variant && variant.catalogShot !== shot.catalog) {
+        await ctx.db.patch("variants", variant._id, { catalogShot: shot.catalog });
+        report.capsUpdated++;
+      }
+    }
+
+    for (const tee of SHIRT_VARIANTS) {
+      const shots = SHOTS.tees[tee.id]?.colorways ?? {};
+      const colorways = (tee.colorways ?? []).map((c) => ({
+        id: c.id,
+        nameEn: c.nameEn,
+        nameEs: c.nameEs,
+        hex: c.hex,
+        borderHex: c.borderHex,
+        lifestyleImage: renamed(c.modelImage),
+        catalogShot: shots[c.id] ?? renamed(c.modelImage),
+      }));
+      const defaultColorway = tee.defaultColorway ?? colorways[0]?.id;
+      const teeFields = {
+        silhouette: "tee",
+        category: "apparel",
+        image: renamed(tee.image),
+        images: tee.images?.map(renamed),
+        catalogShot: defaultColorway ? shots[defaultColorway] : undefined,
+        graphicImage: tee.graphicImage,
+        printPosition: tee.printPosition,
+        fabricEn: tee.fabricEn,
+        fabricEs: tee.fabricEs,
+        fitEn: tee.fitEn,
+        fitEs: tee.fitEs,
+        defaultColorway,
+        colorways,
+        sizes: [...TEE_SIZES],
+      };
+
+      let variant = await getVariant(ctx, tee.id);
+      if (variant) {
+        await ctx.db.patch("variants", variant._id, teeFields);
+        report.teesUpdated++;
+      } else {
+        await ctx.db.insert("variants", {
+          variantId: tee.id,
+          nameEn: tee.nameEn,
+          nameEs: tee.nameEs,
+          primaryHex: tee.primaryHex,
+          secondaryHex: tee.secondaryHex,
+          stock: tee.stock,
+          priceUsd: tee.priceUsd,
+          isFeatured: tee.isFeatured ?? false,
+          isAvailable: true,
+          taxCode: "txcd_30011000",
+          ...teeFields,
+        });
+        report.teesInserted++;
+      }
+      variant = (await getVariant(ctx, tee.id))!;
+
+      const existing = await listSkus(ctx, variant.variantId);
+      if (existing.length === 0 && defaultColorway) {
+        const cells = distributeStock(variant.stock, colorways.map((c) => c.id), defaultColorway);
+        for (const cell of cells) {
+          await ctx.db.insert("skus", { variantId: variant.variantId, ...cell });
+        }
+        report.skusSeeded += cells.length;
+      }
+    }
+
+    return report;
   },
 });

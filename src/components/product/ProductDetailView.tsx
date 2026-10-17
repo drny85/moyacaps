@@ -917,7 +917,7 @@ export function ProductDetailView({ cap, allCaps }: ProductDetailViewProps) {
             return (
               <Link
                 key={otherCap.id}
-                href={`/caps/${otherCap.id}`}
+                href={`/products/${otherCap.id}`}
                 className={`group relative aspect-square rounded-xl p-2 glass-card border flex flex-col items-center justify-center transition-all ${
                   isCurrent
                     ? "border-moya-red ring-2 ring-moya-red/40 scale-105 shadow-lg shadow-moya-red-deep/20"

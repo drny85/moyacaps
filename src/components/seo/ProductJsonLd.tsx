@@ -8,7 +8,7 @@ interface ProductJsonLdProps {
 
 export function ProductJsonLd({ cap, locale }: ProductJsonLdProps) {
   const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://goodluckcaps.com").replace(/\/$/, "");
-  const canonicalUrl = `${siteUrl}/${locale}/caps/${cap.id}`;
+  const canonicalUrl = `${siteUrl}/${locale}/products/${cap.id}`;
   const imageUrl = cap.image.startsWith("http")
     ? cap.image
     : `${siteUrl}${cap.image.startsWith("/") ? "" : "/"}${cap.image}`;

@@ -48,10 +48,7 @@ async function generateAll() {
       // Determine destination filename
       let destFilename = `${design.id}-${color.id}.jpg`;
       
-      // Special mappings for existing files to not overwrite official photoshoot shots
-      if (design.id === 'eagle-clover' && color.id === 'black') destFilename = 'eagle-clover-black.png';
-      if (design.id === 'eagle-clover' && color.id === 'grey') destFilename = 'eagle-clover-grey.png';
-      if (design.id === 'angel-clover' && color.id === 'white') destFilename = 'gothic-angel-white.jpg';
+      // Existing files (including official photoshoot shots) are never overwritten: see the [EXISTS] check below.
 
       const destPath = path.join(publicShirtsDir, destFilename);
 

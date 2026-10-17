@@ -492,7 +492,7 @@ export function ProductQuickView() {
                   </button>
 
                   <Link
-                    href={`/caps/${quickViewCap.id}`}
+                    href={`/products/${quickViewCap.id}`}
                     onClick={closeQuickView}
                     className="flex-1 min-w-0 py-2 rounded-xl glass-dark hover:bg-black/5 dark:hover:bg-white/10 text-zinc-700 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white font-display font-semibold text-xs transition-all flex items-center justify-center gap-1.5 border border-black/[0.06] dark:border-white/[0.06]"
                   >

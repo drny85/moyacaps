@@ -18,6 +18,7 @@ import type * as emails_OrderDeliveredEmail from "../emails/OrderDeliveredEmail.
 import type * as emails_OrderDispatchedEmail from "../emails/OrderDispatchedEmail.js";
 import type * as http from "../http.js";
 import type * as ids from "../ids.js";
+import type * as inventory from "../inventory.js";
 import type * as orders from "../orders.js";
 import type * as products from "../products.js";
 import type * as shipping from "../shipping.js";
@@ -41,6 +42,7 @@ declare const fullApi: ApiFromModules<{
   "emails/OrderDispatchedEmail": typeof emails_OrderDispatchedEmail;
   http: typeof http;
   ids: typeof ids;
+  inventory: typeof inventory;
   orders: typeof orders;
   products: typeof products;
   shipping: typeof shipping;

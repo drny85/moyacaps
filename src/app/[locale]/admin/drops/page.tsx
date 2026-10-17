@@ -599,7 +599,7 @@ export default function AdminDropsPage() {
 
                     <div className="flex items-center gap-1">
                       <Link
-                        href={`/caps/${drop.variantId}`}
+                        href={`/products/${drop.variantId}`}
                         target="_blank"
                         className="p-1.5 rounded-lg hover:bg-zinc-200/60 dark:hover:bg-white/[0.06] text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-all"
                         title="Inspect on Storefront"

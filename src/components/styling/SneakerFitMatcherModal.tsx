@@ -177,7 +177,7 @@ export function SneakerFitMatcherModal() {
   const handleSelectCap = (cap: CapVariant) => {
     playSuccessChime();
     closeSneakerMatcher();
-    router.push(`/caps/${cap.id}`);
+    router.push(`/products/${cap.id}`);
   };
 
   return (

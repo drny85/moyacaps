@@ -24,6 +24,13 @@ export function CapCard({ cap, index = 0 }: { cap: CapVariant; index?: number })
   const dropBadge = locale === "es" ? cap.dropBadgeTextEs || cap.dropBadgeTextEn : cap.dropBadgeTextEn;
 
   const isTee = cap.silhouette === "tee" || cap.category === "apparel";
+
+  // Quick add from the grid: tees go in as the default colorway in L (the server checks that SKU's stock).
+  const addCapOrTee = () => {
+    if (!isTee) return addToCart(cap, 1, stock);
+    const colorway = cap.colorways?.find((c) => c.id === cap.defaultColorway) ?? cap.colorways?.[0];
+    addToCart(cap, 1, stock, "L", colorway?.id, colorway?.nameEn);
+  };
   const name = locale === "es" ? cap.nameEs : cap.nameEn;
   const tag = locale === "es" ? cap.tagEs : cap.tagEn;
   const priceDisplay = `$${cap.priceUsd} USD`;
@@ -215,7 +222,7 @@ export function CapCard({ cap, index = 0 }: { cap: CapVariant; index?: number })
         <div className="mt-2 sm:mt-3 pt-1.5 sm:pt-2 border-t border-black/[0.06] dark:border-white/[0.05] flex flex-col gap-1 sm:gap-1.5 w-full min-w-0">
           <div className="flex items-baseline justify-between gap-1 w-full min-w-0">
             <Link
-              href={`/caps/${cap.id}`}
+              href={`/products/${cap.id}`}
               className="font-display font-bold text-[11px] sm:text-sm text-zinc-900 dark:text-white hover:text-moya-red transition-colors truncate min-w-0 flex-1"
               title={name}
             >
@@ -283,7 +290,7 @@ export function CapCard({ cap, index = 0 }: { cap: CapVariant; index?: number })
             </button>
           ) : isInCart ? (
             <button
-              onClick={() => addToCart(cap, 1, stock, isTee ? "L" : undefined)}
+              onClick={addCapOrTee}
               className="w-full py-1.5 sm:py-2.5 px-1.5 sm:px-2 rounded-lg sm:rounded-xl bg-emerald-600/15 dark:bg-emerald-600/20 hover:bg-emerald-600/25 dark:hover:bg-emerald-600/30 active:bg-emerald-600/40 text-emerald-700 dark:text-emerald-300 border border-emerald-500/40 font-display font-bold text-[9px] sm:text-xs uppercase tracking-wider transition-all hover:shadow-lg hover:shadow-emerald-950/10 dark:hover:shadow-emerald-950/40 flex items-center justify-center gap-1 sm:gap-1.5 active:scale-95 mt-0.5 min-w-0"
             >
               <Check className="w-3 sm:w-3.5 h-3 sm:h-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
@@ -291,7 +298,7 @@ export function CapCard({ cap, index = 0 }: { cap: CapVariant; index?: number })
             </button>
           ) : (
             <button
-              onClick={() => addToCart(cap, 1, stock, isTee ? "L" : undefined)}
+              onClick={addCapOrTee}
               className="w-full py-1.5 sm:py-2.5 px-1.5 sm:px-2 rounded-lg sm:rounded-xl bg-moya-red hover:bg-rose-500 active:bg-moya-red-deep text-white font-display font-bold text-[9px] sm:text-xs uppercase tracking-wider transition-all hover:shadow-lg hover:shadow-moya-red-deep/40 flex items-center justify-center gap-1 sm:gap-1.5 active:scale-95 mt-0.5 min-w-0"
             >
               <ShoppingBag className="w-3 sm:w-3.5 h-3 sm:h-3.5 shrink-0" />

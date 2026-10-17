@@ -26,7 +26,7 @@ export function OrganizationJsonLd() {
     inLanguage: ["en", "es"],
     potentialAction: {
       "@type": "SearchAction",
-      target: `${siteUrl}/en/caps/{search_term_string}`,
+      target: `${siteUrl}/en/products/{search_term_string}`,
       "query-input": "required name=search_term_string",
     },
   };

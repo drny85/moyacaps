@@ -3,6 +3,7 @@ import { v, ConvexError } from "convex/values";
 import { internal } from "./_generated/api";
 import { requireAdmin } from "./auth";
 import { randomDigitString } from "./ids";
+import { adjustStock, checkStock } from "./inventory";
 
 const shippingAddressValidator = v.object({
   line1: v.string(),
@@ -19,6 +20,8 @@ const orderItemValidator = v.object({
   quantity: v.number(),
   price: v.number(),
   image: v.string(),
+  colorway: v.optional(v.string()),
+  size: v.optional(v.string()),
 });
 
 /**
@@ -106,16 +109,7 @@ export const createOrder = mutation({
     // Decrement stock if paid
     if (args.status === "paid") {
       for (const item of args.items) {
-        const variant = await ctx.db
-          .query("variants")
-          .withIndex("by_variantId", (q) => q.eq("variantId", item.variantId))
-          .first();
-
-        if (variant) {
-          await ctx.db.patch(variant._id, {
-            stock: Math.max(0, variant.stock - item.quantity),
-          });
-        }
+        await adjustStock(ctx, item, -item.quantity);
       }
     }
 
@@ -541,16 +535,7 @@ export const createOrUpdateStripeOrder = internalMutation({
 
     // Decrement stock
     for (const item of args.items) {
-      const variant = await ctx.db
-        .query("variants")
-        .withIndex("by_variantId", (q) => q.eq("variantId", item.variantId))
-        .first();
-
-      if (variant) {
-        await ctx.db.patch(variant._id, {
-          stock: Math.max(0, variant.stock - item.quantity),
-        });
-      }
+      await adjustStock(ctx, item, -item.quantity);
     }
 
     await ctx.runMutation(internal.orders.recordPaymentEvent, {
@@ -838,16 +823,7 @@ export const cancelOrder = internalMutation({
     // Restore stock in variants only if stock was actually reserved or deducted
     if (hadStockReserved) {
       for (const item of order.items) {
-        const variant = await ctx.db
-          .query("variants")
-          .withIndex("by_variantId", (q) => q.eq("variantId", item.variantId))
-          .first();
-
-        if (variant) {
-          await ctx.db.patch(variant._id, {
-            stock: variant.stock + item.quantity,
-          });
-        }
+        await adjustStock(ctx, item, item.quantity);
       }
     }
 
@@ -903,16 +879,7 @@ export const cancelOrderAdmin = internalMutation({
     // Restore stock if it was previously deducted or reserved
     if (hadStockReserved) {
       for (const item of order.items) {
-        const variant = await ctx.db
-          .query("variants")
-          .withIndex("by_variantId", (q) => q.eq("variantId", item.variantId))
-          .first();
-
-        if (variant) {
-          await ctx.db.patch(variant._id, {
-            stock: variant.stock + item.quantity,
-          });
-        }
+        await adjustStock(ctx, item, item.quantity);
       }
     }
 
@@ -1356,24 +1323,25 @@ export const createWhatsAppOrderLead = internalMutation({
         throw new Error(`Invalid quantity for ${item.name}. Must be an integer between 1 and 10.`);
       }
 
-      const variant = await ctx.db
-        .query("variants")
-        .withIndex("by_variantId", (q) => q.eq("variantId", item.variantId))
-        .first();
-
-      if (!variant) {
+      const check = await checkStock(ctx, item);
+      if (!check.ok) {
+        if (check.reason === "option_required" || check.reason === "invalid_option") {
+          throw new Error(`Choose a valid colorway and size for ${item.name}.`);
+        }
+        if (check.reason === "unavailable" && check.variant) {
+          throw new Error(`"${check.variant.nameEn}" is currently sold out.`);
+        }
         throw new Error(`Item ${item.name} is no longer available.`);
       }
-      if (variant.isAvailable === false || variant.stock <= 0) {
+      const { variant, available } = check;
+      if (available <= 0) {
         throw new Error(`"${variant.nameEn}" is currently sold out.`);
       }
-      if (variant.stock < item.quantity) {
-        throw new Error(`Insufficient stock for ${variant.nameEn}. Only ${variant.stock} available.`);
+      if (available < item.quantity) {
+        throw new Error(`Insufficient stock for ${variant.nameEn}. Only ${available} available.`);
       }
 
-      await ctx.db.patch(variant._id, {
-        stock: Math.max(0, variant.stock - item.quantity),
-      });
+      await adjustStock(ctx, item, -item.quantity);
 
       const unitPrice = variant.priceUsd;
       verifiedSubtotal += unitPrice * item.quantity;
@@ -1381,10 +1349,12 @@ export const createWhatsAppOrderLead = internalMutation({
 
       verifiedItems.push({
         variantId: variant.variantId,
-        name: variant.nameEn,
+        name: item.colorway || item.size ? item.name : variant.nameEn,
         quantity: item.quantity,
         price: unitPrice,
         image: variant.image,
+        ...(item.colorway ? { colorway: item.colorway } : {}),
+        ...(item.size ? { size: item.size } : {}),
       });
     }
 
@@ -1713,16 +1683,7 @@ export const expireWhatsAppOrderLead = internalMutation({
     if (order.status === "whatsapp_initiated") {
       // Restore reserved inventory
       for (const item of order.items) {
-        const variant = await ctx.db
-          .query("variants")
-          .withIndex("by_variantId", (q) => q.eq("variantId", item.variantId))
-          .first();
-
-        if (variant) {
-          await ctx.db.patch(variant._id, {
-            stock: variant.stock + item.quantity,
-          });
-        }
+        await adjustStock(ctx, item, item.quantity);
       }
 
       await ctx.db.patch(order._id, {
@@ -1820,32 +1781,14 @@ export const updateOrderStatusAdmin = mutation({
     // 1. If transitioning to paid from an unpaid state (where stock was NOT already reserved, e.g. "pending")
     if (!wasPaidLike && isNowPaidLike && previousStatus !== "whatsapp_initiated") {
       for (const item of order.items) {
-        const variant = await ctx.db
-          .query("variants")
-          .withIndex("by_variantId", (q) => q.eq("variantId", item.variantId))
-          .first();
-
-        if (variant) {
-          await ctx.db.patch(variant._id, {
-            stock: Math.max(0, variant.stock - item.quantity),
-          });
-        }
+        await adjustStock(ctx, item, -item.quantity);
       }
     }
 
     // 2. If cancelling an order that had stock reserved (either was paid-like or was whatsapp_initiated), restore stock
     if ((wasPaidLike || previousStatus === "whatsapp_initiated") && args.newStatus === "cancelled") {
       for (const item of order.items) {
-        const variant = await ctx.db
-          .query("variants")
-          .withIndex("by_variantId", (q) => q.eq("variantId", item.variantId))
-          .first();
-
-        if (variant) {
-          await ctx.db.patch(variant._id, {
-            stock: variant.stock + item.quantity,
-          });
-        }
+        await adjustStock(ctx, item, item.quantity);
       }
     }
 
@@ -1956,16 +1899,7 @@ export const attachShippingLabelInternal = internalMutation({
     const wasPaidLike = ["paid", "dispatched", "delivered"].includes(previousStatus);
     if (!wasPaidLike && previousStatus !== "whatsapp_initiated") {
       for (const item of order.items) {
-        const variant = await ctx.db
-          .query("variants")
-          .withIndex("by_variantId", (q) => q.eq("variantId", item.variantId))
-          .first();
-
-        if (variant) {
-          await ctx.db.patch(variant._id, {
-            stock: Math.max(0, variant.stock - item.quantity),
-          });
-        }
+        await adjustStock(ctx, item, -item.quantity);
       }
     }
 

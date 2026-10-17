@@ -357,7 +357,7 @@ export function DropRadar() {
                 )}
 
                 <Link
-                  href={`/caps/${activeDrop.variantId}`}
+                  href={`/products/${activeDrop.variantId}`}
                   onClick={() => playClick()}
                   className="py-3 px-4 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-white/[0.05] dark:hover:bg-white/[0.1] border border-zinc-200 dark:border-white/[0.08] text-zinc-700 hover:text-zinc-950 dark:text-zinc-300 dark:hover:text-white font-display font-semibold text-xs flex items-center justify-center gap-1.5 transition-all shadow-xs"
                 >

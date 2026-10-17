@@ -96,15 +96,46 @@ function buildShippingOptions(
  * Compact items representation to stay strictly under Stripe's 500-char metadata limit.
  */
 function compactItemsMetadata(
-  items: Array<{ variantId: string; quantity: number; price: number }>
+  items: Array<{ variantId: string; quantity: number; price: number; colorway?: string; size?: string }>
 ): string {
   return JSON.stringify(
     items.map((item) => ({
       v: item.variantId,
       q: item.quantity,
       p: item.price,
+      ...(item.colorway ? { c: item.colorway } : {}),
+      ...(item.size ? { s: item.size } : {}),
     }))
   );
+}
+
+/** Line name shown on Stripe, receipts and orders: tees append size and the colorway's display name. */
+function lineItemName(
+  variant: { nameEn: string; nameEs: string; colorways?: Array<{ id: string; nameEn: string; nameEs: string }> | null },
+  locale: string,
+  colorway?: string,
+  size?: string
+): string {
+  const es = locale === "es";
+  const base = es ? variant.nameEs : variant.nameEn;
+  const cw = colorway ? variant.colorways?.find((c) => c.id === colorway) : undefined;
+  const sizeSuffix = size ? ` (${es ? "Talla" : "Size"}: ${size})` : "";
+  const colorSuffix = cw ? ` • ${es ? cw.nameEs : cw.nameEn}` : colorway ? ` • ${colorway}` : "";
+  return `${base}${sizeSuffix}${colorSuffix}`;
+}
+
+/** Bilingual message for a line that fails the per-SKU stock check (ADR 0015). */
+function lineStockError(
+  reason: "not_found" | "unavailable" | "option_required" | "invalid_option",
+  variantName: string,
+  es: boolean
+): string {
+  if (reason === "option_required" || reason === "invalid_option") {
+    return es
+      ? `Elige un color y talla válidos para "${variantName}".`
+      : `Choose a valid colorway and size for "${variantName}".`;
+  }
+  return es ? `"${variantName}" se encuentra agotado.` : `"${variantName}" is sold out.`;
 }
 
 /**
@@ -313,12 +344,16 @@ async function hydrateOrderItems(ctx: any, itemsJson?: string): Promise<any[]> {
         if (price === undefined) {
           console.error(`hydrateOrderItems: no price available for variant ${vid}; using 0 — flag for review.`);
         }
+        const colorway: string | undefined = i.colorway || i.c || undefined;
+        const size: string | undefined = i.size || i.s || undefined;
         return {
           variantId: vid,
-          name: variant?.nameEn || i.name || vid,
+          name: variant ? lineItemName(variant, "en", colorway, size) : i.name || vid,
           price: price ?? 0,
           quantity: qty,
           image: variant?.image || i.image || "",
+          ...(colorway ? { colorway } : {}),
+          ...(size ? { size } : {}),
         };
       })
     );
@@ -378,14 +413,27 @@ export const createCheckoutSession = action({
       taxCode?: string;
       category?: string;
       silhouette?: string;
+      colorway?: string;
+      size?: string;
     }[] = [];
 
-    // Concurrently fetch all variants to eliminate sequential network roundtrips
-    const fetchedVariants = await Promise.all(
-      args.items.map((item) =>
-        ctx.runQuery(api.products.getVariantById, { variantId: item.variantId })
-      )
-    );
+    // Concurrently fetch all variants and per-line (per-SKU for tees) stock
+    const [fetchedVariants, lineStocks] = await Promise.all([
+      Promise.all(
+        args.items.map((item) =>
+          ctx.runQuery(api.products.getVariantById, { variantId: item.variantId })
+        )
+      ),
+      Promise.all(
+        args.items.map((item) =>
+          ctx.runQuery(internal.products.getLineStock, {
+            variantId: item.variantId,
+            colorway: item.colorway,
+            size: item.size,
+          })
+        )
+      ),
+    ]);
 
     for (let i = 0; i < args.items.length; i++) {
       const item = args.items[i];
@@ -400,7 +448,11 @@ export const createCheckoutSession = action({
       }
 
       const variantName = args.locale === "es" ? variant.nameEs : variant.nameEn;
-      const stock = typeof variant.stock === "number" ? variant.stock : 0;
+      const lineStock = lineStocks[i];
+      if (!lineStock.ok) {
+        throw new ConvexError(lineStockError(lineStock.reason, variantName, args.locale === "es"));
+      }
+      const stock = lineStock.available;
 
       if (stock <= 0) {
         throw new ConvexError(
@@ -439,17 +491,17 @@ export const createCheckoutSession = action({
       totalItems += qty;
       subtotal += unitPrice * qty;
 
-      const sizeSuffix = item.size ? ` (${args.locale === "es" ? "Talla" : "Size"}: ${item.size})` : "";
-      const colorSuffix = item.colorway ? ` • ${item.colorway}` : "";
       validatedItems.push({
         variantId: variant.variantId,
-        name: `${variantName}${sizeSuffix}${colorSuffix}`,
+        name: lineItemName(variant, args.locale, item.colorway, item.size),
         quantity: qty,
         price: unitPrice,
         image: variant.image,
         taxCode: (variant as any).taxCode,
         category: (variant as any).category,
         silhouette: variant.silhouette,
+        ...(item.colorway ? { colorway: item.colorway } : {}),
+        ...(item.size ? { size: item.size } : {}),
       });
     }
 
@@ -623,13 +675,26 @@ export const createWhatsAppCheckoutSession = action({
       taxCode?: string;
       category?: string;
       silhouette?: string;
+      colorway?: string;
+      size?: string;
     }[] = [];
 
-    const fetchedVariants = await Promise.all(
-      args.items.map((item) =>
-        ctx.runQuery(api.products.getVariantById, { variantId: item.variantId })
-      )
-    );
+    const [fetchedVariants, lineStocks] = await Promise.all([
+      Promise.all(
+        args.items.map((item) =>
+          ctx.runQuery(api.products.getVariantById, { variantId: item.variantId })
+        )
+      ),
+      Promise.all(
+        args.items.map((item) =>
+          ctx.runQuery(internal.products.getLineStock, {
+            variantId: item.variantId,
+            colorway: item.colorway,
+            size: item.size,
+          })
+        )
+      ),
+    ]);
 
     for (let i = 0; i < args.items.length; i++) {
       const item = args.items[i];
@@ -644,7 +709,11 @@ export const createWhatsAppCheckoutSession = action({
       }
 
       const variantName = args.locale === "es" ? variant.nameEs : variant.nameEn;
-      const stock = typeof variant.stock === "number" ? variant.stock : 0;
+      const lineStock = lineStocks[i];
+      if (!lineStock.ok) {
+        throw new ConvexError(lineStockError(lineStock.reason, variantName, args.locale === "es"));
+      }
+      const stock = lineStock.available;
 
       if (stock <= 0) {
         throw new ConvexError(
@@ -681,17 +750,17 @@ export const createWhatsAppCheckoutSession = action({
       totalItems += qty;
       subtotal += unitPrice * qty;
 
-      const sizeSuffix = item.size ? ` (${args.locale === "es" ? "Talla" : "Size"}: ${item.size})` : "";
-      const colorSuffix = item.colorway ? ` • ${item.colorway}` : "";
       validatedItems.push({
         variantId: variant.variantId,
-        name: `${variantName}${sizeSuffix}${colorSuffix}`,
+        name: lineItemName(variant, args.locale, item.colorway, item.size),
         quantity: qty,
         price: unitPrice,
         image: variant.image,
         taxCode: (variant as any).taxCode,
         category: (variant as any).category,
         silhouette: variant.silhouette,
+        ...(item.colorway ? { colorway: item.colorway } : {}),
+        ...(item.size ? { size: item.size } : {}),
       });
     }
 
@@ -815,6 +884,8 @@ export const createWhatsAppCheckoutSession = action({
         quantity: v.quantity,
         price: v.price,
         image: v.image,
+        ...(v.colorway ? { colorway: v.colorway } : {}),
+        ...(v.size ? { size: v.size } : {}),
       })),
       currency: "USD",
       subtotal,

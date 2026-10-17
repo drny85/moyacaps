@@ -33,7 +33,38 @@ export default defineSchema({
     dropBadgeTextEn: v.optional(v.string()),
     dropBadgeTextEs: v.optional(v.string()),
     dropStatus: v.optional(v.union(v.literal("scheduled"), v.literal("live"), v.literal("archived"))),
+    // 4:5 Catalog Shot for grids and cards (ADR 0016). Tees carry one per colorway instead.
+    catalogShot: v.optional(v.string()),
+    // ── Heavyweight Tee fields (ADR 0015). For tees `stock` is the sum of the variant's SKUs. ──
+    graphicImage: v.optional(v.string()),
+    printPosition: v.optional(v.union(v.literal("front"), v.literal("back"))),
+    fabricEn: v.optional(v.string()),
+    fabricEs: v.optional(v.string()),
+    fitEn: v.optional(v.string()),
+    fitEs: v.optional(v.string()),
+    defaultColorway: v.optional(v.string()),
+    colorways: v.optional(
+      v.array(
+        v.object({
+          id: v.string(),
+          nameEn: v.string(),
+          nameEs: v.string(),
+          hex: v.string(),
+          borderHex: v.string(),
+          lifestyleImage: v.string(),
+          catalogShot: v.string(),
+        })
+      )
+    ),
+    sizes: v.optional(v.array(v.string())),
   }).index("by_variantId", ["variantId"]),
+  // One purchasable Heavyweight Tee combination: Graphic Design × Apparel Colorway × size (CONTEXT.md "SKU").
+  skus: defineTable({
+    variantId: v.string(),
+    colorway: v.string(),
+    size: v.string(),
+    stock: v.number(),
+  }).index("by_variantId_and_colorway_and_size", ["variantId", "colorway", "size"]),
   orders: defineTable({
     orderNumber: v.string(),
     customerEmail: v.optional(v.string()),
@@ -57,6 +88,9 @@ export default defineSchema({
         quantity: v.number(),
         price: v.number(),
         image: v.string(),
+        // Set for Heavyweight Tees: identifies the SKU whose stock this line holds.
+        colorway: v.optional(v.string()),
+        size: v.optional(v.string()),
       })
     ),
     currency: v.string(),

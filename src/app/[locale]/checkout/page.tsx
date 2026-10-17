@@ -77,8 +77,10 @@ export default function CheckoutPage() {
 
       const result = await createCheckoutSession({
         items: cart.map((item) => ({
-          variantId: item.id,
+          variantId: item.variantId ?? item.id,
           quantity: item.quantity,
+          ...(item.size ? { size: item.size } : {}),
+          ...(item.colorway ? { colorway: item.colorway } : {}),
         })),
         currency,
         locale,
