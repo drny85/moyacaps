@@ -1,12 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { AnimatePresence, m } from "framer-motion";
 import { useReducedMotionSafe } from "@/hooks/useMotionPrefs";
 import { SlidersHorizontal, X } from "lucide-react";
-import { usePathname, useRouter } from "@/i18n/routing";
+import { useUrlQuery } from "@/components/routing/useUrlQuery";
 import { useCapVariants } from "@/hooks/useCapVariants";
 import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
@@ -31,22 +30,25 @@ import {
 
 const toggle = <T,>(list: T[], value: T) => (list.includes(value) ? list.filter((v) => v !== value) : [...list, value]);
 
-export function ShopView() {
+/**
+ * `initialQuery` is what the static page was rendered for (the category route passes
+ * `category=caps|tees`, ADR 0019); the live query string takes over after hydration.
+ */
+export function ShopView({ initialQuery = "" }: { initialQuery?: string }) {
   const t = useTranslations("shop");
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
+  const [query, setQuery, querySync] = useUrlQuery(initialQuery);
   const reduceMotion = useReducedMotionSafe();
   const { caps: products } = useCapVariants();
   const [now] = useState(() => Date.now());
 
-  const state = useMemo(() => parseShopState(new URLSearchParams(searchParams.toString())), [searchParams]);
-  const setState = useCallback(
-    (next: ShopState) => {
-      router.replace(`${pathname}${serializeShopState(next)}`, { scroll: false });
-    },
-    [router, pathname]
-  );
+  const state = useMemo(() => parseShopState(new URLSearchParams(query)), [query]);
+  // Filters change the URL in place (no server round trip); the tab's page title follows
+  const setState = useCallback((next: ShopState) => setQuery(serializeShopState(next)), [setQuery]);
+  const metaTitle =
+    state.category === "caps" ? t("metaTitleCaps") : state.category === "tees" ? t("metaTitleTees") : t("metaTitleAll");
+  useEffect(() => {
+    document.title = metaTitle;
+  }, [metaTitle]);
 
   const items = useMemo(() => applyShop(products, state, now), [products, state, now]);
   const counts = useMemo(() => familyCounts(products, state, now), [products, state, now]);
@@ -62,6 +64,7 @@ export function ShopView() {
 
   return (
     <LayoutMotion>
+      {querySync}
       <div className="mx-auto w-full max-w-7xl px-4 pb-24 sm:px-6 lg:px-8">
         <header className="flex items-end justify-between gap-4 pb-5 pt-8 sm:pt-12">
           <h1 className="font-poster text-[clamp(3.5rem,14vw,8rem)] uppercase leading-[0.85] tracking-tight text-zinc-900 dark:text-white">
@@ -169,7 +172,7 @@ export function ShopView() {
                       exit={reduceMotion ? { opacity: 0, transition: { duration: 0 } } : { opacity: 0, scale: 0.97 }}
                       transition={{ duration: DURATION.fast, ease: EASE.out }}
                     >
-                      <ProductCard key={`${item.product.id}-${item.colorway ?? ""}`} item={item} now={now} priority={i < 2} />
+                      <ProductCard key={`${item.product.id}-${item.colorway ?? ""}`} item={item} now={now} priority={i < 2} defer={i >= 4} />
                     </m.li>
                   ))}
                 </AnimatePresence>

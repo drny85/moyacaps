@@ -1,5 +1,5 @@
 import { NextIntlClientProvider } from "next-intl";
-import { getMessages } from "next-intl/server";
+import { getMessages, setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { routing } from "@/i18n/routing";
 import { pickNamespaces, STOREFRONT_NAMESPACES } from "@/i18n/clientMessages";
@@ -32,6 +32,8 @@ export default async function LocaleLayout({
   if (!routing.locales.includes(locale as "en" | "es")) {
     notFound();
   }
+  // Locale from the route, not request headers, so storefront pages can prerender (ADR 0019)
+  setRequestLocale(locale);
 
   // Storefront copy only; auth-area segments add the rest (FullMessagesProvider, ADR 0018)
   const messages = pickNamespaces(await getMessages(), STOREFRONT_NAMESPACES);

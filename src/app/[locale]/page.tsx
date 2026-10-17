@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { setRequestLocale } from "next-intl/server";
 import { HeroInteractive } from "@/components/hero/HeroInteractive";
 import { DropRadar } from "@/components/drops/DropRadar";
 import { AnatomyScroll } from "@/components/story/AnatomyScroll";
@@ -65,7 +66,8 @@ export async function generateMetadata({
 }
 
 /** Homepage order (ADR 0016): product first, story after. */
-export default function HomePage() {
+export default async function HomePage({ params }: { params: Promise<{ locale: string }> }) {
+  setRequestLocale((await params).locale);
   return (
     <div className="flex flex-col gap-0 overflow-x-clip">
       <HeroInteractive />
