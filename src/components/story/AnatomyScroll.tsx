@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import Image from "next/image";
+import { DeferredImage } from "@/components/media/DeferredImage";
 import { useCallback, useRef, useState } from "react";
 import { AnimatePresence, m, useMotionValueEvent, useScroll, useTransform, type MotionValue } from "framer-motion";
 import { Reveal } from "@/components/motion/Reveal";
@@ -75,8 +76,9 @@ function Callout({ callout, index, animate }: { callout: AnatomyCallout; index: 
 function AnglePhoto({ step, priority = false }: { step: AnatomyStep; priority?: boolean }) {
   const t = useTranslations("anatomy");
   const mask = edgeFadeMask(step.cutEdges);
+  const Photo = priority ? Image : DeferredImage;
   return (
-    <Image
+    <Photo
       src={step.image}
       alt={t(step.title)}
       fill
@@ -192,7 +194,7 @@ function AngleStrip({ active, onSelect }: { active: number; onSelect: (index: nu
             active === i ? "border-moya-red bg-moya-red/10" : "border-black/10 opacity-50 hover:opacity-90 dark:border-white/10"
           }`}
         >
-          <Image src={step.image} alt="" fill sizes="56px" className="object-contain p-1" />
+          <DeferredImage src={step.image} alt="" fill sizes="56px" className="object-contain p-1" />
         </button>
       ))}
     </div>

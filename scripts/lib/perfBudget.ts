@@ -1,6 +1,13 @@
 /**
- * Pure helpers for the Lighthouse performance budget (ADR 0016 motion budget, ADR 0018).
- * No I/O here: scripts/perf-budget.ts runs Lighthouse and feeds the reports in.
+ * Pure helpers for the Lighthouse performance budget (ADR 0016 motion budget, ADR 0018,
+ * ADR 0020). No I/O here: scripts/perf-budget.ts runs Lighthouse and feeds the reports in.
+ *
+ * Each page is measured two ways, and each limit is judged on its own (ADR 0020):
+ * - performance score: Lighthouse's default simulated throttling (the Lantern model that
+ *   PageSpeed Insights reports);
+ * - LCP: applied DevTools throttling (slow 4G + 4x CPU actually applied), which measures
+ *   when the largest element paints. Simulated LCP counts all first-load JS requested
+ *   before the observed LCP, so it tracks bundle size rather than the paint.
  */
 
 export interface Budget {
@@ -22,10 +29,16 @@ export interface RunMetrics {
   speedIndexMs: number;
 }
 
+export type Throttling = "simulate" | "devtools";
+
 export interface PageResult {
   path: string;
-  runs: RunMetrics[];
-  median: RunMetrics;
+  /** Simulated-throttling runs: judge the performance score */
+  simulated: RunMetrics[];
+  /** Applied-throttling runs: judge LCP */
+  applied: RunMetrics[];
+  simulatedMedian: RunMetrics;
+  appliedMedian: RunMetrics;
   pass: boolean;
   failures: string[];
 }
@@ -74,40 +87,57 @@ export function medianMetrics(runs: RunMetrics[]): RunMetrics {
   };
 }
 
-export function evaluatePage(path: string, runs: RunMetrics[], budget: Budget): PageResult {
-  const m = medianMetrics(runs);
+export function evaluatePage(
+  path: string,
+  { simulated, applied }: { simulated: RunMetrics[]; applied: RunMetrics[] },
+  budget: Budget
+): PageResult {
+  const sim = medianMetrics(simulated);
+  const app = medianMetrics(applied);
   const failures: string[] = [];
-  if (m.performance < budget.minPerformance) {
-    failures.push(`performance ${m.performance} < ${budget.minPerformance}`);
+  if (sim.performance < budget.minPerformance) {
+    failures.push(`performance ${sim.performance} < ${budget.minPerformance} (simulated)`);
   }
-  if (m.lcpMs >= budget.maxLcpMs) {
-    failures.push(`LCP ${formatMs(m.lcpMs)} >= ${formatMs(budget.maxLcpMs)}`);
+  if (app.lcpMs >= budget.maxLcpMs) {
+    failures.push(`LCP ${formatMs(app.lcpMs)} >= ${formatMs(budget.maxLcpMs)} (applied throttling)`);
   }
-  return { path, runs, median: m, pass: failures.length === 0, failures };
+  return {
+    path,
+    simulated,
+    applied,
+    simulatedMedian: sim,
+    appliedMedian: app,
+    pass: failures.length === 0,
+    failures,
+  };
 }
 
 export function formatMs(ms: number): string {
   return ms >= 1000 ? `${(ms / 1000).toFixed(2)} s` : `${Math.round(ms)} ms`;
 }
 
-/** Markdown table, ready to paste into a plan doc */
+/**
+ * Markdown table, ready to paste into a plan doc. The two gated columns come first:
+ * performance (simulated) and LCP (applied); simulated LCP is shown for reference.
+ */
 export function formatTable(results: PageResult[]): string {
-  const rows = results.map(({ path, median: m, runs, pass }) =>
+  const rows = results.map(({ path, simulatedMedian: sim, appliedMedian: app, simulated, applied, pass }) =>
     [
       path,
-      String(m.performance),
-      formatMs(m.lcpMs),
-      formatMs(m.fcpMs),
-      formatMs(m.tbtMs),
-      m.cls.toFixed(3),
-      formatMs(m.speedIndexMs),
-      runs.map((run) => run.performance).join(" / "),
+      String(sim.performance),
+      formatMs(app.lcpMs),
+      formatMs(sim.lcpMs),
+      formatMs(app.fcpMs),
+      formatMs(sim.tbtMs),
+      sim.cls.toFixed(3),
+      simulated.map((run) => run.performance).join(" / "),
+      applied.map((run) => formatMs(run.lcpMs)).join(" / "),
       pass ? "pass" : "FAIL",
     ].join(" | ")
   );
   return [
-    "Page | Perf | LCP | FCP | TBT | CLS | SI | Runs (perf) | Budget",
-    "--- | --- | --- | --- | --- | --- | --- | --- | ---",
+    "Page | Perf (sim) | LCP (applied) | LCP (sim, ref.) | FCP (applied) | TBT (sim) | CLS | Runs perf (sim) | Runs LCP (applied) | Budget",
+    "--- | --- | --- | --- | --- | --- | --- | --- | --- | ---",
     ...rows,
   ]
     .map((row) => `| ${row} |`)

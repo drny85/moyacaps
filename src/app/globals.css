@@ -393,10 +393,17 @@ html.light .skeleton {
   from { transform: translateY(-70px) scale(0.92); }
   to { transform: none; }
 }
+/* Transform only: an element that starts at opacity 0 only counts for LCP once the main
+   thread repaints it (after hydration), so large decorative layers must not fade in (ADR 0020). */
+@keyframes intro-settle {
+  from { transform: translateY(14px) scale(0.97); }
+  to { transform: none; }
+}
 .intro-rise { animation: intro-rise 0.8s cubic-bezier(0.16, 1, 0.3, 1) var(--intro-delay, 0s) both; }
 .intro-fade { animation: intro-fade 0.5s cubic-bezier(0.16, 1, 0.3, 1) var(--intro-delay, 0s) both; }
 .intro-pop { animation: intro-pop 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) var(--intro-delay, 0s) backwards; }
 .intro-drop { animation: intro-drop 0.9s cubic-bezier(0.34, 1.4, 0.64, 1) both; }
+.intro-settle { animation: intro-settle 0.7s cubic-bezier(0.16, 1, 0.3, 1) var(--intro-delay, 0s) both; }
 
 /* Hero ghost type: the outlined series number behind the cap (HeroInteractive) */
 .ghost-type {

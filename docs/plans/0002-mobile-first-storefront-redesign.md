@@ -34,7 +34,7 @@ Status: done on `feat/catalog-shots`. `next.config.mjs` already serves avif/webp
 
 Read `convex/_generated/ai/guidelines.md` first.
 
-Status: done on `feat/unified-product-catalog`. Migration run on the dev deployment (16 caps, 11 tees, 220 SKUs; re-run is a no-op). **Production still needs `npx convex run --prod catalogMigrations:migrateUnifiedCatalog` right after the deploy that ships this schema**: until it runs, prod tees have no colorways, so they keep selling against the aggregate as before.
+Status: done on `feat/unified-product-catalog`. Migration run on the dev deployment (16 caps, 11 tees, 220 SKUs; re-run is a no-op). **Production still needs `npx convex run --prod catalog/migrations:migrateUnifiedCatalog` right after the deploy that ships this schema**: until it runs, prod tees have no colorways, so they keep selling against the aggregate as before.
 
 As built:
 - `convex/inventory.ts` is the single stock path (`checkStock`, `adjustStock`, `setSkuStock`). A tee variant's `stock` is kept equal to the sum of its SKUs, so analytics and low-stock views are unchanged. Tee lines from pre-SKU orders cannot be attributed to a SKU; releasing them logs a warning for manual reconcile.
@@ -62,7 +62,7 @@ As built:
 - On phones, sort lives in the "Filter & sort" sheet; from `sm` up it is a dropdown. The navbar publishes `--navbar-h` so the sticky bar sits flush at every breakpoint.
 - Tee cards swap colorways in place and open the product on the chosen colorway (`?colorway=`, read by the Phase 4 product page). With a colour filter on, tees open on the matching colorway.
 - Nav: Shop / Caps / Tees replace Collection and the studio anchor; the mobile action bar points at Shop. `CapCard` / `CapGrid` remain on the homepage until Phase 5.
-- Tee price changed to $80 in the same branch (`catalogMigrations:setApparelPriceUsd`, run on dev). **Production: run `npx convex run --prod catalogMigrations:setApparelPriceUsd '{"priceUsd": 80}'` after deploy.**
+- Tee price changed to $80 in the same branch (`catalog/migrations:setApparelPriceUsd`, run on dev). **Production: run `npx convex run --prod catalog/migrations:setApparelPriceUsd '{"priceUsd": 80}'` after deploy.**
 
 - `src/app/[locale]/products/page.tsx`: category tabs (All / Caps / Tees), filter chips (Colorway family, Silhouette, Graphic Design, In stock), sort (Featured, Newest, Price). State in URL query (`?category=tees&colorway=black&sort=price-asc`).
 - Mobile: sticky tab bar, filters in a bottom sheet, 2-column grid; desktop 3–4 columns with filter sidebar.
@@ -153,6 +153,26 @@ Vercel preview of `perf/storefront-budget-on-tee-photo-quality` (`bun run perf-b
 - Parallax depth layers in hero via transform only; gate with `(pointer: fine)` and reduced motion.
 - Audit all loops/`whileInView` against `src/lib/motion.ts`; remove anything not routed through it.
 
+#### Static storefront pass (`perf/static-storefront`, ADR 0020)
+
+As built: home, Shop (plus prerendered `?category=` views via a proxy rewrite) and product pages are SSG/ISR. Filters and colourway write the URL with `history.replaceState`. Offscreen images wait for first load to settle (`DeferredImage`). The hero's ghost number no longer fades in from opacity 0, so it counts for LCP at first paint.
+
+Vercel preview, median of 3 (applied) or 5 (simulated), 2026-10-17. Baseline is `feat/tee-photo-quality` at 79e4e5f; after is `perf/static-storefront` at 70d34c1:
+
+| Page | Applied throttling before | after | Simulated before | after |
+| --- | --- | --- | --- | --- |
+| `/en` | 84, LCP 4.25 s | **94, LCP 1.91 s** | 94, LCP 3.03 s | 94, LCP 3.03 s |
+| `/en/products` | 99, LCP 1.61 s | 98, LCP 1.72 s | 95, LCP 2.88 s | 95, LCP 2.87 s |
+| `/en/products/[slug]` | 99, LCP 1.57 s | 99, LCP 1.81 s | 96, LCP 2.77 s | 97, LCP 2.57 s |
+
+Applied = Lighthouse `--throttling-method=devtools` (real slow 4G + 4× CPU). Simulated = Lighthouse's default Lantern model, the same one PageSpeed Insights uses. The simulated baseline had runs from 73 to 100 on one page, so differences under ~0.1 s are noise.
+
+- **Applied throttling meets the budget on all three pages** (performance ≥ 90, LCP < 2.5 s).
+- **Simulated LCP is still 2.6–3.0 s.** Lantern's pessimistic estimate counts all first-load JS (~250 KB, about 200 KB of it framework + Convex client) as competing with the LCP whatever paints first.
+- Static HTML also removes cold-start server time for real visitors (one cold `/en` request took 2.0 s on the dynamic preview; prerendered pages answer from the CDN).
+
+**Budget method (ADR 0016 §8 / ADR 0020, decided 2026-10-17):** the performance score is judged on simulated throttling, and LCP on applied throttling. `bun run perf-budget` runs both on every page and gates each limit on its method. By that rule, **the budget is met on the preview**. `bun run perf-budget --url <preview>`, 2026-10-17, median of 3 per method: performance 94 / 95 / 97 (simulated), LCP 1.84 / 1.65 / 1.83 s (applied), exit 0. Simulated LCP for reference: 2.95 / 2.86 / 2.51 s.
+
 ## 4. Verification & Testing Checklist
 
 - Per phase: `bun run test`, `bunx tsc --noEmit`, `bun run lint`, `bun run build`.
@@ -160,4 +180,4 @@ Vercel preview of `perf/storefront-budget-on-tee-photo-quality` (`bun run perf-b
 - Phase 2: Convex tests for SKU reservation/deduct/release; old `/caps/{id}` URLs return 308 to `/products/{id}`; a tee order deducts the right SKU.
 - Phase 3: filters round-trip through URL; back button restores state; empty state shows.
 - Phase 4: buy a tee (colorway + size) and a cap end-to-end through Stripe test mode and WhatsApp concierge.
-- Phase 5 + final: Lighthouse mobile ≥ 90 on `/`, `/products`, `/products/[slug]`; LCP < 2.5 s at 4× CPU throttle; no layout shift from images; `prefers-reduced-motion` disables all motion; check at 375px width, both locales, light/dark.
+- Phase 5 + final: `bun run perf-budget` passes: Lighthouse mobile ≥ 90 (simulated) on `/`, `/products`, `/products/[slug]`; LCP < 2.5 s with applied throttling (slow 4G, 4× CPU); no layout shift from images; `prefers-reduced-motion` disables all motion; check at 375px width, both locales, light/dark.

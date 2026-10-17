@@ -31,7 +31,7 @@ async function main() {
 
     try {
       // 1. Generate upload URL from Convex
-      const uploadUrlOutput = execSync("bunx convex run catalogAdmin:generateUploadUrlInternal", {
+      const uploadUrlOutput = execSync("bunx convex run catalog/admin:generateUploadUrlInternal", {
         encoding: "utf-8",
       }).trim();
 
@@ -65,7 +65,7 @@ async function main() {
 
       // 4. Associate storageId with variant in Convex
       const setPayload = JSON.stringify({ variantId, storageId });
-      const setResult = execSync(`bunx convex run catalogAdmin:setVariantStorageId '${setPayload}'`, {
+      const setResult = execSync(`bunx convex run catalog/admin:setVariantStorageId '${setPayload}'`, {
         encoding: "utf-8",
       }).trim();
 
@@ -82,7 +82,7 @@ async function main() {
 
   // Query live variants to verify
   console.log("Verifying live variants from Convex:");
-  const variantsRaw = execSync("bunx convex run catalog:getVariants", { encoding: "utf-8" });
+  const variantsRaw = execSync("bunx convex run catalog/queries:getVariants", { encoding: "utf-8" });
   console.log(variantsRaw);
 }
 

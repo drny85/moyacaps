@@ -1,8 +1,10 @@
 import { Suspense, cache } from "react";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { fetchQuery } from "convex/nextjs";
+import { setRequestLocale } from "next-intl/server";
 import { api } from "@convex/_generated/api";
+import { routing } from "@/i18n/routing";
+import { queryForStaticRender } from "@/lib/server/convexStatic";
 import { toCapVariant } from "@/lib/toCapVariant";
 import { isTee } from "@/lib/shop";
 import { ProductView } from "@/components/product/ProductView";
@@ -10,9 +12,22 @@ import { ProductJsonLd } from "@/components/seo/ProductJsonLd";
 
 type Params = Promise<{ locale: string; slug: string }>;
 
-/** One Convex read per request, shared by metadata and the page (ADR 0015: Convex is the only catalog). */
+/**
+ * Static, regenerated every 5 minutes (ISR, ADR 0020). Slugs added later render on first
+ * request and are then cached too. Price and SKU stock stay live through ProductView's
+ * Convex subscription.
+ */
+export const revalidate = 300;
+export const dynamicParams = true;
+
+export async function generateStaticParams() {
+  const variants = await queryForStaticRender(api.catalog.queries.getVariants, {});
+  return routing.locales.flatMap((locale) => variants.map((v) => ({ locale, slug: v.variantId })));
+}
+
+/** One Convex read per render, shared by metadata and the page (ADR 0015: Convex is the only catalog). */
 const getProduct = cache(async (slug: string) => {
-  const doc = await fetchQuery(api.catalog.queries.getProductBySlug, { slug });
+  const doc = await queryForStaticRender(api.catalog.queries.getProductBySlug, { slug });
   return doc ?? null;
 });
 
@@ -63,6 +78,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
 
 export default async function ProductPage({ params }: { params: Params }) {
   const { locale, slug } = await params;
+  setRequestLocale(locale);
   const doc = await getProduct(slug);
   if (!doc) notFound();
 

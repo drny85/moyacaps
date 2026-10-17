@@ -1,13 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { useQuery } from "convex/react";
 import { ChevronRight } from "lucide-react";
 import { api } from "@convex/_generated/api";
 import type { Doc } from "@convex/_generated/dataModel";
-import { Link, usePathname, useRouter } from "@/i18n/routing";
+import { Link } from "@/i18n/routing";
+import { useUrlQuery } from "@/components/routing/useUrlQuery";
 import { toCapVariant } from "@/lib/toCapVariant";
 import { getCapAngleImages } from "@/lib/capAngles";
 import { applyShop, DEFAULT_STATE, isTee } from "@/lib/shop";
@@ -28,9 +28,7 @@ export function ProductView({ initial }: { initial: ProductWithSkus }) {
   const t = useTranslations("product");
   const tPdp = useTranslations("pdp");
   const locale = useLocale();
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
+  const [query, setQuery, querySync] = useUrlQuery();
   const [now] = useState(() => Date.now());
 
   const live = useQuery(api.catalog.queries.getProductBySlug, { slug: initial.variantId });
@@ -40,16 +38,16 @@ export function ProductView({ initial }: { initial: ProductWithSkus }) {
   const tee = isTee(product);
   const name = locale === "es" ? product.nameEs : product.nameEn;
 
-  const [selection, setSelection] = useState<Selection>(() =>
-    initialSelection(product, { colorway: searchParams.get("colorway"), size: searchParams.get("size") })
-  );
+  // The choice lives in the URL; the static page renders the default until it is read (ADR 0020)
+  const selection = useMemo<Selection>(() => {
+    const params = new URLSearchParams(query);
+    return initialSelection(product, { colorway: params.get("colorway"), size: params.get("size") });
+  }, [product, query]);
   const select = (next: Selection) => {
-    setSelection(next);
     const params = new URLSearchParams();
     if (next.colorway) params.set("colorway", next.colorway);
     if (next.size) params.set("size", next.size);
-    const qs = params.toString();
-    router.replace(`${pathname}${qs ? `?${qs}` : ""}`, { scroll: false });
+    setQuery(params.toString());
   };
 
   const colorway = product.colorways?.find((c) => c.id === selection.colorway);
@@ -79,6 +77,7 @@ export function ProductView({ initial }: { initial: ProductWithSkus }) {
 
   return (
     <div className="mx-auto w-full max-w-7xl px-4 pb-28 pt-4 sm:px-6 lg:px-8 lg:pb-20 lg:pt-8">
+      {querySync}
       <nav aria-label="Breadcrumb" className="mb-4 flex items-center gap-1.5 text-sm text-zinc-500 dark:text-zinc-400">
         <Link href="/products" className="hover:text-zinc-900 dark:hover:text-white">
           {t("breadcrumbShop")}
@@ -170,7 +169,7 @@ export function ProductView({ initial }: { initial: ProductWithSkus }) {
           <ul className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 [scrollbar-width:none] sm:-mx-6 sm:px-6 lg:mx-0 lg:grid lg:grid-cols-4 lg:gap-5 lg:overflow-visible lg:px-0 [&::-webkit-scrollbar]:hidden">
             {related.map((item) => (
               <li key={item.product.id} className="w-[44%] shrink-0 snap-start sm:w-[30%] lg:w-auto">
-                <ProductCard item={item} now={now} />
+                <ProductCard item={item} now={now} defer />
               </li>
             ))}
           </ul>

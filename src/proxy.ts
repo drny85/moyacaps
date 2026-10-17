@@ -1,8 +1,9 @@
 import { clerkMiddleware } from "@clerk/nextjs/server";
 import createMiddleware from "next-intl/middleware";
-import type { NextFetchEvent, NextRequest } from "next/server";
+import { NextResponse, type NextFetchEvent, type NextRequest } from "next/server";
 import { routing } from "./i18n/routing";
 import { routeNeedsClerk } from "./lib/auth/clerkLoadPolicy";
+import { shopCategoryRewrite } from "./lib/shopRoutes";
 
 const intlMiddleware = createMiddleware(routing);
 
@@ -15,6 +16,15 @@ export const proxy = (req: NextRequest, ev: NextFetchEvent) => {
   // manages the session client-side when it loads.
   if (process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY && routeNeedsClerk(req.nextUrl.pathname)) {
     return clerkAndIntl(req, ev);
+  }
+
+  // Shop category views are prerendered under an internal path (ADR 0020); the public
+  // URL keeps its `?category=` query.
+  const shopTarget = shopCategoryRewrite(req.nextUrl.pathname, req.nextUrl.searchParams.get("category"));
+  if (shopTarget) {
+    const url = req.nextUrl.clone();
+    url.pathname = shopTarget;
+    return NextResponse.rewrite(url);
   }
 
   return intlMiddleware(req);
