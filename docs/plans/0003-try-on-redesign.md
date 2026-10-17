@@ -48,8 +48,12 @@ Client modules (`src/components/tryon/`):
 ## 4. Status
 
 - [x] 1. Docs
-- [ ] 2. Pure modules
-- [ ] 3. Face detector
-- [ ] 4. Studio UI
-- [ ] 5. Wiring and removals
-- [ ] 6. Verification
+- [x] 2. Pure modules (`src/lib/tryOn/`, `src/__tests__/tryOn.test.ts`)
+- [x] 3. Face detector: `@mediapipe/tasks-vision@1.0.1`, model in `public/models/`. `src/proxy.ts` skips `models/`, because the i18n middleware had redirected the model to `/en/models/…`. Calibrated on three frontal portraits (`FIT.widthPerEarSpan` 1.45, `brimAboveEyes` 0.45).
+- [x] 4. Studio UI
+- [x] 5. Wiring and removals: store v2 (`migratePersisted`), MobileActionBar hidden on `/try-on`, `VirtualTryOnStudio` and `public/avatars/` deleted
+- [x] 6. Verification:
+  - `tsc` and 355 tests pass, and the build passes.
+  - Browser at 375 px and desktop: silhouette, upload → auto-fit in about 0.5 s once loaded, drag/reset, cap switch, add to bag, modal opens on its cap, Escape closes.
+  - Lighthouse mobile on `/en/try-on` (local, load average ≈ 8.5, median of 3): **89** (was 73), TBT **18 ms** (was 667 ms), 424 KB (was 1.36 MB), LCP 3.6 s. Home measured 86 / 4.1 s in the same state, so LCP is limited by the machine, as on every page.
+  - Not checked yet: share/save card output, live camera capture (no camera in the test browser).

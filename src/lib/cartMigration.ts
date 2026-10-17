@@ -38,3 +38,17 @@ export function backfillTeeColorways(cart: CartItem[]): CartItem[] {
   }
   return out;
 }
+
+/**
+ * Upgrades the store's persisted slice to the current version: v1 backfills tee colorways,
+ * v2 drops the Try-On Photo and fit settings that older versions saved (ADR 0019).
+ */
+export function migratePersisted(persisted: unknown, version: number): Record<string, unknown> {
+  const state = { ...((persisted ?? {}) as Record<string, unknown>) };
+  if (version < 1 && Array.isArray(state.cart)) state.cart = backfillTeeColorways(state.cart as CartItem[]);
+  if (version < 2) {
+    delete state.tryOnImage;
+    delete state.tryOnSettings;
+  }
+  return state;
+}

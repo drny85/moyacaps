@@ -56,7 +56,7 @@ export const CAP_ASPECT = CAP_CONTENT.height / CAP_CONTENT.width;
  * - the cap is this many times wider than ear-to-ear;
  * - its lower edge sits this many eye-to-mouth lengths above the eyes.
  */
-export const FIT = { widthPerEarSpan: 1.32, brimAboveEyes: 0.62 } as const;
+export const FIT = { widthPerEarSpan: 1.45, brimAboveEyes: 0.45 } as const;
 
 export const NO_ADJUST: FitAdjust = { dx: 0, dy: 0, scale: 1, rotation: 0 };
 

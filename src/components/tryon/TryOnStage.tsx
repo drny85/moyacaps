@@ -159,6 +159,7 @@ export function TryOnStage({ photoUrl, overlay, label, handleLabel, anchor, plac
             src={overlay}
             alt=""
             fill
+            priority
             sizes="(min-width: 1024px) 30vw, 70vw"
             draggable={false}
             className="pointer-events-none object-contain"

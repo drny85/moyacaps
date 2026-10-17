@@ -24,8 +24,8 @@ export function MobileActionBar() {
     setIsMounted(true);
   }, []);
 
-  // Product pages carry their own sticky add-to-bag bar.
-  if (pathname.startsWith("/admin") || /^\/products\/[^/]+$/.test(pathname)) {
+  // Product pages and the Try-On carry their own sticky add-to-bag bar.
+  if (pathname.startsWith("/admin") || pathname === "/try-on" || /^\/products\/[^/]+$/.test(pathname)) {
     return null;
   }
 

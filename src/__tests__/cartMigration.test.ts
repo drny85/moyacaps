@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { backfillTeeColorways } from "../lib/cartMigration";
+import { backfillTeeColorways, migratePersisted } from "../lib/cartMigration";
 import type { CartItem } from "../store/useStore";
 
 const line = (over: Partial<CartItem>): CartItem => ({
@@ -47,5 +47,17 @@ describe("backfillTeeColorways (bag saved before per-SKU tees)", () => {
   it("defaults a missing size to L, as the old quick-add did", () => {
     const [out] = backfillTeeColorways([line({ id: "eight-ball-tee", variantId: "eight-ball-tee" })]);
     expect(out.id).toBe("eight-ball-tee-crisp-white-L");
+  });
+});
+
+describe("migratePersisted", () => {
+  it("drops the saved Try-On Photo and fit settings from v1 state", () => {
+    const out = migratePersisted({ cart: [], theme: "dark", tryOnImage: "data:image/jpeg;base64,xx", tryOnSettings: { scale: 1 } }, 1);
+    expect(out).toEqual({ cart: [], theme: "dark" });
+  });
+
+  it("still backfills tee colorways from v0", () => {
+    const out = migratePersisted({ cart: [] }, 0);
+    expect(out.cart).toEqual([]);
   });
 });

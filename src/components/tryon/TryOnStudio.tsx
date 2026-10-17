@@ -169,7 +169,8 @@ export function TryOnStudio({
   const reach = { onPointerEnter: preloadFaceDetector, onFocus: preloadFaceDetector };
 
   return (
-    <div>
+    // Bottom padding keeps the last content clear of the fixed add-to-bag bar on phones
+    <div className="pb-24 lg:pb-0">
       <div className="flex items-start justify-between gap-4">
         <div>
           <Heading id={headingId} className="font-poster text-5xl uppercase leading-[0.9] text-zinc-950 dark:text-white sm:text-6xl">
@@ -189,28 +190,32 @@ export function TryOnStudio({
         )}
       </div>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-12 lg:gap-10">
+      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-12 lg:gap-10">
         <div className="lg:col-span-7">
-          {selected && (
-            <TryOnStage
-              photoUrl={photo?.url ?? null}
-              overlay={selected.overlay}
-              label={t(photo ? "stageLabel" : "silhouetteLabel", { cap: capName })}
-              handleLabel={t("capHandle", { cap: capName })}
-              anchor={anchor}
-              placement={placement}
-              onAdjust={(update) => setAdjust((prev) => update(prev))}
-              cover={cameraOpen ? <CameraSheet onCapture={onCapture} onCancel={() => setCameraOpen(false)} onError={onCameraError} /> : undefined}
-              status={
-                busy ? (
-                  <span className="inline-flex items-center gap-2 rounded-full bg-black/70 px-3 py-1.5 text-xs font-medium text-white backdrop-blur">
-                    <span className="h-3 w-3 animate-spin rounded-full border-2 border-white/40 border-t-white" aria-hidden />
-                    {t(status)}
-                  </span>
-                ) : undefined
-              }
-            />
-          )}
+          {/* Square stage, never taller than the window on desktop */}
+          <div className="mx-auto w-full lg:max-w-[min(100%,calc(100svh-9rem))]">
+            {selected && (
+              <TryOnStage
+                photoUrl={photo?.url ?? null}
+                overlay={selected.overlay}
+                label={t(photo ? "stageLabel" : "silhouetteLabel", { cap: capName })}
+                handleLabel={t("capHandle", { cap: capName })}
+                anchor={anchor}
+                placement={placement}
+                onAdjust={(update) => setAdjust((prev) => update(prev))}
+                cover={cameraOpen ? <CameraSheet onCapture={onCapture} onCancel={() => setCameraOpen(false)} onError={onCameraError} /> : undefined}
+                status={
+                  busy ? (
+                    <span className="inline-flex items-center gap-2 rounded-full bg-black/70 px-3 py-1.5 text-xs font-medium text-white backdrop-blur">
+                      <span className="h-3 w-3 animate-spin rounded-full border-2 border-white/40 border-t-white" aria-hidden />
+                      {t(status)}
+                    </span>
+                  ) : undefined
+                }
+              />
+            )}
+
+          </div>
 
           <p aria-live="polite" className="mt-3 min-h-5 text-sm text-zinc-600 dark:text-zinc-400">
             {busy ? "" : t(status === "empty" ? "emptyHint" : status)}
@@ -250,7 +255,7 @@ export function TryOnStudio({
             />
           </div>
 
-          <div className="sticky bottom-0 z-10 -mx-4 mt-6 border-t border-black/[0.06] bg-white/90 px-4 py-3 backdrop-blur dark:border-white/[0.08] dark:bg-zinc-950/90 sm:mx-0 sm:px-0 lg:static lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none">
+          <div className="fixed inset-x-0 bottom-0 z-40 border-t border-black/[0.06] bg-white/90 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur dark:border-white/[0.08] dark:bg-zinc-950/90 sm:px-6 lg:static lg:mt-6 lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none">
             <div className="flex gap-2">
               <button
                 type="button"

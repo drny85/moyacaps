@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { CapVariant } from "@/data/caps";
-import { backfillTeeColorways } from "@/lib/cartMigration";
+import { migratePersisted } from "@/lib/cartMigration";
 
 export interface CartItem {
   id: string;
@@ -18,7 +18,7 @@ export interface CartItem {
 }
 
 /** The slice of the store saved to localStorage (see `partialize`). */
-type PersistedState = Pick<StoreState, "cart" | "currency" | "theme" | "soundEnabled" | "tryOnImage" | "tryOnSettings">;
+type PersistedState = Pick<StoreState, "cart" | "currency" | "theme" | "soundEnabled">;
 
 interface StoreState {
   // Cart
@@ -74,12 +74,8 @@ interface StoreState {
   // Virtual Try-On Fitting Room
   isTryOnOpen: boolean;
   tryOnTargetCap: CapVariant | null;
-  tryOnImage: string | null;
-  tryOnSettings: { offsetX: number; offsetY: number; scale: number; tilt: number; tiltX: number };
   openTryOn: (cap?: CapVariant | null) => void;
   closeTryOn: () => void;
-  setTryOnImage: (img: string | null) => void;
-  setTryOnSettings: (settings: { offsetX: number; offsetY: number; scale: number; tilt: number; tiltX: number }) => void;
 
   // Share Notification Toast
   shareToast: {
@@ -274,14 +270,10 @@ export const useStore = create<StoreState>()(
       // Virtual Try-On
       isTryOnOpen: false,
       tryOnTargetCap: null,
-      tryOnImage: null,
-      tryOnSettings: { offsetX: 0, offsetY: 0, scale: 1, tilt: 0, tiltX: 0 },
       openTryOn: (cap = null) =>
         set({ isTryOnOpen: true, tryOnTargetCap: cap }),
       closeTryOn: () =>
         set({ isTryOnOpen: false, tryOnTargetCap: null }),
-      setTryOnImage: (img) => set({ tryOnImage: img }),
-      setTryOnSettings: (settings) => set({ tryOnSettings: settings }),
 
       shareToast: null,
       showShareToast: (data) =>
@@ -296,21 +288,14 @@ export const useStore = create<StoreState>()(
     {
       name: "moyacaps-storage",
       // v1: tee lines need a colorway for per-SKU checkout (ADR 0015)
-      version: 1,
-      migrate: (persisted, version) => {
-        const state = (persisted ?? {}) as PersistedState;
-        if (version < 1 && Array.isArray(state.cart)) {
-          return { ...state, cart: backfillTeeColorways(state.cart) };
-        }
-        return state;
-      },
+      // v2: the Try-On Photo is never stored (ADR 0019); drop any saved copy
+      version: 2,
+      migrate: (persisted, version) => migratePersisted(persisted, version) as PersistedState,
       partialize: (state) => ({
         cart: state.cart,
         currency: state.currency,
         theme: state.theme,
         soundEnabled: state.soundEnabled,
-        tryOnImage: state.tryOnImage,
-        tryOnSettings: state.tryOnSettings,
       }),
     }
   )
