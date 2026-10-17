@@ -153,6 +153,24 @@ Vercel preview of `perf/storefront-budget-on-tee-photo-quality` (`bun run perf-b
 - Parallax depth layers in hero via transform only; gate with `(pointer: fine)` and reduced motion.
 - Audit all loops/`whileInView` against `src/lib/motion.ts`; remove anything not routed through it.
 
+#### Static storefront pass (`perf/static-storefront`, ADR 0019)
+
+As built: home, Shop (plus prerendered `?category=` views via a proxy rewrite) and product pages are SSG/ISR. Filters and colourway write the URL with `history.replaceState`. Offscreen images wait for first load to settle (`DeferredImage`). The hero's ghost number no longer fades in from opacity 0, so it counts for LCP at first paint.
+
+Vercel preview, median of 3 (applied) or 5 (simulated), 2026-10-17. Baseline is `feat/tee-photo-quality` at 79e4e5f; after is `perf/static-storefront` at 70d34c1:
+
+| Page | Applied throttling before | after | Simulated before | after |
+| --- | --- | --- | --- | --- |
+| `/en` | 84, LCP 4.25 s | **94, LCP 1.91 s** | 94, LCP 3.03 s | 94, LCP 3.03 s |
+| `/en/products` | 99, LCP 1.61 s | 98, LCP 1.72 s | 95, LCP 2.88 s | 95, LCP 2.87 s |
+| `/en/products/[slug]` | 99, LCP 1.57 s | 99, LCP 1.81 s | 96, LCP 2.77 s | 97, LCP 2.57 s |
+
+Applied = `bun run perf-budget --url <preview> --devtools` (real slow 4G + 4× CPU). Simulated = Lighthouse's default Lantern model, the same one PageSpeed Insights uses. The simulated baseline had runs from 73 to 100 on one page, so differences under ~0.1 s are noise.
+
+- **Applied throttling meets the budget on all three pages** (performance ≥ 90, LCP < 2.5 s).
+- **Simulated LCP is still 2.6–3.0 s.** Lantern's pessimistic estimate counts all first-load JS (~250 KB, about 200 KB of it framework + Convex client) as competing with the LCP whatever paints first.
+- Static HTML also removes cold-start server time for real visitors (one cold `/en` request took 2.0 s on the dynamic preview; prerendered pages answer from the CDN).
+
 ## 4. Verification & Testing Checklist
 
 - Per phase: `bun run test`, `bunx tsc --noEmit`, `bun run lint`, `bun run build`.
