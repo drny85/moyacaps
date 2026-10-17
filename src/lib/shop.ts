@@ -35,13 +35,11 @@ export const COLOR_FAMILY_SWATCH: Record<ColorFamily, string> = {
 export type Category = "all" | "caps" | "tees";
 export type SortKey = "featured" | "newest" | "price-asc" | "price-desc";
 export type Silhouette = "snapback" | "trucker";
-export type PrintSide = "front" | "back";
 
 export interface ShopState {
   category: Category;
   colors: ColorFamily[];
   silhouettes: Silhouette[];
-  prints: PrintSide[];
   inStock: boolean;
   sort: SortKey;
 }
@@ -50,7 +48,6 @@ export const DEFAULT_STATE: ShopState = {
   category: "all",
   colors: [],
   silhouettes: [],
-  prints: [],
   inStock: false,
   sort: "featured",
 };
@@ -141,9 +138,8 @@ export function applyShop(products: CapVariant[], state: ShopState, now: number)
     if (state.category === "caps" && tee) return false;
     if (state.category === "tees" && !tee) return false;
     if (state.colors.length && !productFamilies(p).some((f) => state.colors.includes(f))) return false;
-    // Cap-only and tee-only facets narrow their own category and leave the other untouched
+    // The cap-only fit facet narrows caps and leaves tees untouched
     if (state.silhouettes.length && !tee && !state.silhouettes.includes(p.silhouette as Silhouette)) return false;
-    if (state.prints.length && tee && !state.prints.includes(p.printPosition ?? "front")) return false;
     if (state.inStock && !isPurchasable(p, now)) return false;
     return true;
   });
@@ -190,7 +186,6 @@ export function parseShopState(params: URLSearchParams): ShopState {
     category: category === "caps" || category === "tees" ? category : "all",
     colors: list(params.get("color"), COLOR_FAMILIES),
     silhouettes: list(params.get("silhouette"), ["snapback", "trucker"] as const),
-    prints: list(params.get("print"), ["front", "back"] as const),
     inStock: params.get("stock") === "1",
     sort: sort === "newest" || sort === "price-asc" || sort === "price-desc" ? sort : "featured",
   };
@@ -202,7 +197,6 @@ export function serializeShopState(state: ShopState): string {
   if (state.category !== "all") params.set("category", state.category);
   if (state.colors.length) params.set("color", state.colors.join(","));
   if (state.silhouettes.length && state.category !== "tees") params.set("silhouette", state.silhouettes.join(","));
-  if (state.prints.length && state.category !== "caps") params.set("print", state.prints.join(","));
   if (state.inStock) params.set("stock", "1");
   if (state.sort !== "featured") params.set("sort", state.sort);
   const qs = params.toString();
@@ -210,5 +204,5 @@ export function serializeShopState(state: ShopState): string {
 }
 
 export function activeFilterCount(state: ShopState): number {
-  return state.colors.length + state.silhouettes.length + state.prints.length + (state.inStock ? 1 : 0);
+  return state.colors.length + state.silhouettes.length + (state.inStock ? 1 : 0);
 }

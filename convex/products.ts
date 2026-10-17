@@ -1175,6 +1175,9 @@ const LIFESTYLE_RENAMES: Record<string, string> = {
 };
 const renamed = (path: string) => LIFESTYLE_RENAMES[path] ?? path;
 
+/** Tee fields with no admin editor: the catalog data owns them, so the migration keeps them in sync. */
+const DATA_OWNED_TEE_FIELDS = new Set(["printPosition", "graphicImage"]);
+
 type CatalogShotsManifest = {
   caps: Record<string, { catalog: string }>;
   tees: Record<string, { colorways: Record<string, string> }>;
@@ -1301,9 +1304,12 @@ export const migrateUnifiedCatalog = internalMutation({
       let variant = await getVariant(ctx, tee.id);
       if (variant) {
         // Fill only what is missing: re-running must never undo an Administrator's edits.
+        // Exception: fields no admin screen edits are owned by the catalog data and kept in sync.
         const patch: Record<string, unknown> = {};
         for (const [key, value] of Object.entries(teeFields)) {
-          if (value !== undefined && variant[key as keyof typeof variant] === undefined) patch[key] = value;
+          if (value === undefined) continue;
+          const current = variant[key as keyof typeof variant];
+          if (current === undefined || (DATA_OWNED_TEE_FIELDS.has(key) && current !== value)) patch[key] = value;
         }
         // Canonical Lifestyle Shot names: rewrite only paths that still point at the old files.
         if (LIFESTYLE_RENAMES[variant.image]) patch.image = renamed(variant.image);

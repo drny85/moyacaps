@@ -162,7 +162,8 @@ const TEMPLATE_COLOR: Record<FabricId, string> = {
  * Lifestyle Shots from the real photo shoot (printed garments). They are never regenerated;
  * every other on-model shot is printed from the blank templates by printOnModel.
  */
-const SHOOT_PHOTOS = new Set(["/shirts/eagle-clover-black.jpg", "/shirts/eagle-clover-grey.jpg", "/shirts/angel-clover-white.jpg"]);
+// (The eagle-clover black/grey shoot photos show a back print; every design is front-only now.)
+const SHOOT_PHOTOS = new Set(["/shirts/angel-clover-white.jpg"]);
 
 type TeeTemplates = Record<string, { file: string; measure: TeeMeasure; box: PrintBox; width: number; height: number }>;
 const TEE_TEMPLATES = teeTemplates as TeeTemplates;

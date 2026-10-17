@@ -166,7 +166,7 @@
       }
     },
     "eagle-clover-tee": {
-      "printPosition": "back",
+      "printPosition": "front",
       "colorways": {
         "washed-black": "/catalog/tees/eagle-clover-tee/washed-black.webp",
         "heather-grey": "/catalog/tees/eagle-clover-tee/heather-grey.webp",
@@ -193,7 +193,7 @@
       }
     },
     "snake-horseshoe-tee": {
-      "printPosition": "back",
+      "printPosition": "front",
       "colorways": {
         "washed-black": "/catalog/tees/snake-horseshoe-tee/washed-black.webp",
         "crisp-white": "/catalog/tees/snake-horseshoe-tee/crisp-white.webp",

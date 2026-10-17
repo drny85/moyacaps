@@ -22,7 +22,6 @@ import {
   serializeShopState,
   type Category,
   type ColorFamily,
-  type PrintSide,
   type ShopState,
   type Silhouette,
   type SortKey,
@@ -200,7 +199,6 @@ function FilterPanel({
   const t = useTranslations("shop");
   const families = COLOR_FAMILIES.filter((f) => counts[f] || state.colors.includes(f));
   const showFit = state.category !== "tees";
-  const showPrint = state.category !== "caps";
 
   return (
     <div className="flex flex-col gap-7">
@@ -245,17 +243,6 @@ function FilterPanel({
         />
       )}
 
-      {showPrint && (
-        <ChoiceGroup
-          legend={t("facetPrint")}
-          options={[
-            { value: "front" as PrintSide, label: t("printFront") },
-            { value: "back" as PrintSide, label: t("printBack") },
-          ]}
-          selected={state.prints}
-          onToggle={(v) => setState({ ...state, prints: toggle(state.prints, v) })}
-        />
-      )}
 
       <fieldset>
         <legend className="mb-3 font-display text-sm font-bold text-zinc-900 dark:text-white">{t("facetAvailability")}</legend>

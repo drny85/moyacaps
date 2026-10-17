@@ -94,7 +94,7 @@ describe("applyShop", () => {
     cap("negro-rojo", "#111111", { isFeatured: true }),
     cap("blanco-negro-trucker", "#f8fafc", { silhouette: "trucker", priceUsd: 125 }),
     cap("rosa-blanco", "#f472b6", { stock: 0 }),
-    tee("eagle-clover-tee", { printPosition: "back" }),
+    tee("eagle-clover-tee"),
     tee("butterfly-grunge-tee"),
   ];
 
@@ -114,11 +114,9 @@ describe("applyShop", () => {
     expect(items[0].image).toBe("/catalog/tees/eagle-clover-tee/butter-cream.webp");
   });
 
-  it("silhouette narrows caps only; print narrows tees only", () => {
+  it("silhouette narrows caps only", () => {
     const bySilhouette = applyShop(products, state({ silhouettes: ["trucker"] }), NOW).map((i) => i.product.id);
     expect(bySilhouette).toEqual(["blanco-negro-trucker", "eagle-clover-tee", "butterfly-grunge-tee"]);
-    const byPrint = applyShop(products, state({ category: "tees", prints: ["back"] }), NOW).map((i) => i.product.id);
-    expect(byPrint).toEqual(["eagle-clover-tee"]);
   });
 
   it("in-stock hides sold-out products and unreleased drops", () => {
@@ -149,9 +147,9 @@ describe("applyShop", () => {
 
 describe("URL state", () => {
   it("round-trips and omits defaults", () => {
-    const s = state({ category: "tees", colors: ["black", "cream"], prints: ["back"], inStock: true, sort: "price-asc" });
+    const s = state({ category: "tees", colors: ["black", "cream"], inStock: true, sort: "price-asc" });
     const qs = serializeShopState(s);
-    expect(qs).toBe("?category=tees&color=black%2Ccream&print=back&stock=1&sort=price-asc");
+    expect(qs).toBe("?category=tees&color=black%2Ccream&stock=1&sort=price-asc");
     expect(parseShopState(new URLSearchParams(qs))).toEqual(s);
     expect(serializeShopState(DEFAULT_STATE)).toBe("");
   });

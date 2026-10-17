@@ -384,6 +384,26 @@ describe("migrateUnifiedCatalog", () => {
     expect(after?.fitEn).toBe("Custom fit copy");
   });
 
+  it("keeps data-owned fields in sync, e.g. a print moved from back to front", async () => {
+    const tt = t();
+    await tt.mutation(internal.products.migrateUnifiedCatalog, {});
+    await tt.run(async (ctx) => {
+      const v = await ctx.db
+        .query("variants")
+        .withIndex("by_variantId", (q) => q.eq("variantId", "eagle-clover-tee"))
+        .first();
+      await ctx.db.patch(v!._id, { printPosition: "back" });
+    });
+    await tt.mutation(internal.products.migrateUnifiedCatalog, {});
+    const row = await tt.run(async (ctx) =>
+      ctx.db
+        .query("variants")
+        .withIndex("by_variantId", (q) => q.eq("variantId", "eagle-clover-tee"))
+        .first()
+    );
+    expect(row?.printPosition).toBe("front");
+  });
+
   it("fills only missing tee fields on a pre-existing row", async () => {
     const tt = t();
     await tt.run(async (ctx) => {
