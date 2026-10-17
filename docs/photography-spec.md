@@ -119,6 +119,7 @@ Every tee Lifestyle Shot, and until flat-lays exist every tee Catalog Shot, is p
   ```
 
   This regenerates every on-model shot and its 4:5 crop. Photos listed in `SHOOT_PHOTOS` (real printed-garment shots) are never overwritten.
+- **New Graphic Design:** if the artwork is a photograph or a tonal render (halftone portrait, photo collage), add its path to `UNDERBASE_PRINTS` in `scripts/build-catalog-shots.ts`. It then prints full-colour on a white underbase, so dark tees keep its midtones. Line art (black linework, flat colour) is left out of that list, and its black ink prints off-white on dark tees.
 - **Template quality:** at least 1200 px wide; a frontal or back pose with arms away from the chest and back; even light, and no hands or straps across the print area.
 
 ## 5. Lifestyle Shots
