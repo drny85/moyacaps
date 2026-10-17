@@ -31,3 +31,19 @@ export const SPRING = {
 
 /** Stagger between siblings in a reveal group */
 export const STAGGER = 0.06;
+
+/**
+ * Piecewise-linear value at progress `p` (clamped to the first/last keyframe). Scroll scenes
+ * use it in function-form `useTransform`: the array form can be handed to the browser's
+ * native scroll timeline, which tracks a different range than the section's own progress.
+ */
+export function valueAt(p: number, input: number[], output: number[]): number {
+  if (p <= input[0]) return output[0];
+  for (let i = 1; i < input.length; i++) {
+    if (p <= input[i]) {
+      const t = (p - input[i - 1]) / (input[i] - input[i - 1]);
+      return output[i - 1] + (output[i] - output[i - 1]) * t;
+    }
+  }
+  return output[output.length - 1];
+}

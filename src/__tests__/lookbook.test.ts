@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { CapVariant } from "../data/caps";
 import { NYC_LOOKBOOK } from "../data/lookbook";
-import { sceneKeyframes, shoppableHotspots, valueAt } from "../lib/lookbook";
+import { sceneKeyframes, shoppableHotspots } from "../lib/lookbook";
+import { valueAt } from "../lib/motion";
 import { SHIRT_VARIANTS } from "../data/caps";
 
 const tee = (id: string, over: Partial<CapVariant> = {}): CapVariant => ({

@@ -65,16 +65,3 @@ export function sceneKeyframes(index: number, count: number, slide = 60): SceneK
     y: [slide, 0, 0, -slide],
   };
 }
-
-/** Piecewise-linear value at progress `p` (clamped to the first/last keyframe). */
-export function valueAt(p: number, input: number[], output: number[]): number {
-  if (p <= input[0]) return output[0];
-  for (let i = 1; i < input.length; i++) {
-    if (p <= input[i]) {
-      const t = (p - input[i - 1]) / (input[i] - input[i - 1]);
-      return output[i - 1] + (output[i] - output[i - 1]) * t;
-    }
-  }
-  return output[output.length - 1];
-}
-

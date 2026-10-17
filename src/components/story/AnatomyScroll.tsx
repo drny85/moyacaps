@@ -7,8 +7,8 @@ import { AnimatePresence, m, useMotionValueEvent, useScroll, useTransform, type 
 import { Reveal } from "@/components/motion/Reveal";
 import { ANATOMY_STEPS, type AnatomyCallout, type AnatomyStep } from "@/data/anatomy";
 import { useMotionPrefs } from "@/hooks/useMotionPrefs";
-import { calloutLayout, stepAt, stepRange } from "@/lib/anatomy";
-import { DURATION, EASE, STAGGER } from "@/lib/motion";
+import { calloutLayout, edgeFadeMask, stepAt, stepRange } from "@/lib/anatomy";
+import { DURATION, EASE, STAGGER, valueAt } from "@/lib/motion";
 
 const STEPS = ANATOMY_STEPS;
 const COUNT = STEPS.length;
@@ -57,7 +57,7 @@ function Callout({ callout, index, animate }: { callout: AnatomyCallout; index: 
         style={left ? { left: `${lineLeft}%`, top: `${callout.y}%` } : { right: `${100 - lineLeft - lineWidth}%`, top: `${callout.y}%` }}
       >
         <m.span
-          className={`font-display text-[11px] font-semibold leading-tight tracking-wide text-zinc-950 dark:text-white sm:text-xs ${
+          className={`rounded-md bg-white/85 px-1.5 py-0.5 font-display text-[11px] font-semibold leading-tight tracking-wide text-zinc-950 backdrop-blur-sm dark:bg-zinc-950/80 dark:text-white sm:text-xs ${
             left ? "text-left" : "text-right"
           }`}
           initial={animate ? { opacity: 0, y: 4 } : false}
@@ -74,12 +74,14 @@ function Callout({ callout, index, animate }: { callout: AnatomyCallout; index: 
 /** A square photo of one angle with its callouts drawn on top. The photos are 1024² with the cap centred. */
 function AnglePhoto({ step, priority = false }: { step: AnatomyStep; priority?: boolean }) {
   const t = useTranslations("anatomy");
+  const mask = edgeFadeMask(step.cutEdges);
   return (
     <Image
       src={step.image}
       alt={t(step.title)}
       fill
       priority={priority}
+      style={mask ? { maskImage: mask, WebkitMaskImage: mask } : undefined}
       sizes="(max-width: 1024px) 90vw, 55vh"
       className="object-contain drop-shadow-[0_30px_40px_rgba(0,0,0,0.45)]"
     />
@@ -91,11 +93,10 @@ function StageLayer({ progress, index }: { progress: MotionValue<number>; index:
   const [start, end] = stepRange(index, COUNT);
   const first = index === 0;
   const last = index === COUNT - 1;
-  const opacity = useTransform(
-    progress,
-    first ? [end - FADE, end + FADE] : last ? [start - FADE, start + FADE] : [start - FADE, start + FADE, end - FADE, end + FADE],
-    first ? [1, 0] : last ? [0, 1] : [0, 1, 1, 0]
-  );
+  const input = first ? [end - FADE, end + FADE] : last ? [start - FADE, start + FADE] : [start - FADE, start + FADE, end - FADE, end + FADE];
+  const output = first ? [1, 0] : last ? [0, 1] : [0, 1, 1, 0];
+  // Function form keeps this on the section's own progress (see valueAt)
+  const opacity = useTransform(progress, (p) => valueAt(p, input, output));
   return (
     <m.div style={{ opacity }} className="absolute inset-0">
       <AnglePhoto step={STEPS[index]} priority={first} />
@@ -135,7 +136,7 @@ function SpecRow({
 }) {
   const t = useTranslations("anatomy");
   const [start, end] = stepRange(index, COUNT);
-  const fill = useTransform(progress, [start, end], ["0%", "100%"]);
+  const fill = useTransform(progress, (p) => `${valueAt(p, [start, end], [0, 100])}%`);
   const Tag = onSelect ? "button" : "div";
   return (
     <Tag

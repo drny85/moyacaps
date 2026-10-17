@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { ANATOMY_STEPS } from "../data/anatomy";
-import { calloutLayout, calloutSide, labelCollisions, stepAt, stepRange } from "../lib/anatomy";
+import { calloutLayout, calloutSide, edgeFadeMask, fadeBands, labelCollisions, stepAt, stepRange } from "../lib/anatomy";
 import en from "../messages/en.json";
 import es from "../messages/es.json";
 
@@ -72,6 +72,32 @@ describe("ANATOMY_STEPS data", () => {
         expect(typeof steps[step.key], `${locale}:steps.${step.key}`).toBe("string");
         for (const c of step.callouts) {
           expect(typeof callouts[c.label], `${locale}:callouts.${c.label}`).toBe("string");
+        }
+      }
+    }
+  });
+});
+
+describe("edgeFadeMask", () => {
+  it("leaves whole photos unmasked", () => {
+    expect(edgeFadeMask(undefined)).toBeUndefined();
+    expect(edgeFadeMask({})).toBeUndefined();
+  });
+
+  it("fades each cropped edge to clear by the cut", () => {
+    expect(edgeFadeMask({ right: 95 })).toBe("linear-gradient(to right, #000 0%, #000 83%, transparent 95%)");
+    expect(edgeFadeMask({ left: 5 })).toBe("linear-gradient(to right, transparent 5%, #000 17%, #000 100%)");
+    expect(edgeFadeMask({ left: 5, right: 95 })).toBe(
+      "linear-gradient(to right, transparent 5%, #000 17%, #000 83%, transparent 95%)"
+    );
+  });
+
+  it("never fades a callout dot", () => {
+    for (const step of ANATOMY_STEPS) {
+      if (!step.cutEdges) continue;
+      for (const [from, to] of fadeBands(step.cutEdges)) {
+        for (const c of step.callouts) {
+          expect(c.x < from || c.x > to, `${step.key}: ${c.label} at x=${c.x}`).toBe(true);
         }
       }
     }

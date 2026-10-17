@@ -22,6 +22,16 @@ export interface AnatomyStep {
   /** The one hard number or fact for the spec-sheet row (message key) */
   spec: string;
   callouts: AnatomyCallout[];
+  /**
+   * Where the source photo crops the cap with a straight vertical edge, as % of the photo
+   * width from the left. Those edges fade out instead of ending in a hard line.
+   */
+  cutEdges?: CutEdges;
+}
+
+export interface CutEdges {
+  left?: number;
+  right?: number;
 }
 
 export const ANATOMY_STEPS: readonly AnatomyStep[] = [
@@ -42,6 +52,7 @@ export const ANATOMY_STEPS: readonly AnatomyStep[] = [
     key: "flanks",
     angle: "left",
     image: "/caps/angles/left.png",
+    cutEdges: { left: 5, right: 95 },
     title: "layer2Title",
     desc: "layer2Desc",
     spec: "layer2Spec",
@@ -68,6 +79,7 @@ export const ANATOMY_STEPS: readonly AnatomyStep[] = [
     key: "structure",
     angle: "right",
     image: "/caps/angles/right.png",
+    cutEdges: { left: 5, right: 95 },
     title: "layer4Title",
     desc: "layer4Desc",
     spec: "layer4Spec",

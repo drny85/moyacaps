@@ -2,7 +2,7 @@
  * Geometry for the Anatomy walkthrough (pure, tested): which step a scroll position is on,
  * and where a callout's leader line and label go so labels never cover the cap.
  */
-import type { AnatomyCallout } from "../data/anatomy";
+import type { AnatomyCallout, CutEdges } from "../data/anatomy";
 
 export type CalloutSide = "left" | "right";
 
@@ -59,4 +59,29 @@ export function labelCollisions(callouts: AnatomyCallout[]): [AnatomyCallout, An
     }
   }
   return out;
+}
+
+/** How wide (in % of the photo) a cropped edge takes to fade out */
+export const EDGE_FADE = 12;
+
+/** The bands (% of photo width, from the left) where cropped edges are fading out */
+export function fadeBands(cut: CutEdges): [number, number][] {
+  const bands: [number, number][] = [];
+  if (cut.left !== undefined) bands.push([cut.left, cut.left + EDGE_FADE]);
+  if (cut.right !== undefined) bands.push([cut.right - EDGE_FADE, cut.right]);
+  return bands;
+}
+
+/**
+ * CSS mask that dissolves a photo's cropped edges instead of ending them in a hard line
+ * (the mask also trims the drop shadow, which would trace the cut). Undefined when the
+ * photo is whole.
+ */
+export function edgeFadeMask(cut: CutEdges | undefined): string | undefined {
+  if (!cut || (cut.left === undefined && cut.right === undefined)) return undefined;
+  const stops = [
+    ...(cut.left !== undefined ? [`transparent ${cut.left}%`, `#000 ${cut.left + EDGE_FADE}%`] : ["#000 0%"]),
+    ...(cut.right !== undefined ? [`#000 ${cut.right - EDGE_FADE}%`, `transparent ${cut.right}%`] : ["#000 100%"]),
+  ];
+  return `linear-gradient(to right, ${stops.join(", ")})`;
 }
