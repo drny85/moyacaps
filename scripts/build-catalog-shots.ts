@@ -8,6 +8,7 @@
  *   public/catalog/caps/{id}.webp            1600×2000 Catalog Shot on #ECEAE6
  *   public/catalog/caps/{id}/{angle}.webp    1200×1200 transparent turntable angle
  *   public/catalog/tees/{id}/{colorway}.webp 800×1000 Catalog Shot (on-model crop; flat-lay when photographed)
+ *                                            or 1600×2000 from a printed tee's `flatLayPhoto` cut-out
  *   public/shirts/{design}-{color}.jpg       on-model Lifestyle Shots printed from the templates
  *   src/data/catalogShots.json               manifest of everything written
  *   src/app/icon.png, src/app/apple-icon.png site icons (Next app/ file convention)
@@ -22,6 +23,7 @@ import { SHIRT_VARIANTS } from "../src/data/caps";
 import { renderFlatTee, type FabricId, type PrintSide } from "./lib/flatTee";
 import { printOnModel } from "./lib/printOnModel";
 import type { PrintBox, TeeMeasure } from "./lib/teeCalibration";
+import { fitToFlatLayGuide } from "./lib/teePhoto";
 import teeTemplates from "./data/teeTemplates.json";
 
 const ROOT = path.resolve(import.meta.dir, "..");
@@ -207,11 +209,8 @@ async function onModelCatalogShot(lifestyleFile: string, template: TeeTemplates[
     .toFile(out);
 }
 
-/** The illustrated flat-lay (or a real blank flat-lay photo when one exists), on the backdrop. */
-async function flatLayCatalogShot(colorway: FabricId, side: PrintSide, artPath: string, out: string) {
-  const blank = path.join(FLATLAY_DIR, `${side}-${colorway}.png`);
-  const blankPhoto = (await exists(blank)) ? blank : undefined;
-  const tee = await renderFlatTee({ size: TEE_SIZE, fabric: colorway, side, artPath, blankPhoto });
+/** A TEE_SIZE square flat-lay (transparent PNG) laid on the backdrop with its lift shadow */
+async function composeFlatLay(tee: Buffer, out: string) {
   const shadow = await liftShadow(tee, TEE_SIZE);
   const left = Math.round((SHOT.width - TEE_SIZE) / 2);
   const top = Math.round(SHOT.height * TEE_CENTER_Y - TEE_SIZE * TEE_BODY_CENTER);
@@ -222,7 +221,30 @@ async function flatLayCatalogShot(colorway: FabricId, side: PrintSide, artPath: 
     ])
     .webp(WEBP)
     .toFile(out);
+}
+
+/** The illustrated flat-lay (or a real blank flat-lay photo when one exists), on the backdrop. */
+async function flatLayCatalogShot(colorway: FabricId, side: PrintSide, artPath: string, out: string) {
+  const blank = path.join(FLATLAY_DIR, `${side}-${colorway}.png`);
+  const blankPhoto = (await exists(blank)) ? blank : undefined;
+  const tee = await renderFlatTee({ size: TEE_SIZE, fabric: colorway, side, artPath, blankPhoto });
+  await composeFlatLay(tee, out);
   return blankPhoto ? "flat-lay photo" : "illustrated";
+}
+
+/**
+ * A photographed printed tee (cut out by scripts/prep-tee-photo.ts), framed to the flat-lay
+ * guide so it matches the scale and centre of every other tee flat-lay.
+ */
+async function printedFlatLayCatalogShot(cutout: string, out: string) {
+  const garment = await trimmed(cutout);
+  const fit = fitToFlatLayGuide(garment.width, garment.height, TEE_SIZE);
+  const resized = await sharp(garment.data).resize(fit.width, fit.height, { kernel: "lanczos3" }).png().toBuffer();
+  const tee = await sharp({ create: { width: TEE_SIZE, height: TEE_SIZE, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } })
+    .composite([{ input: resized, left: fit.left, top: fit.top }])
+    .png()
+    .toBuffer();
+  await composeFlatLay(tee, out);
 }
 
 /**
@@ -261,15 +283,25 @@ async function buildTeeColorway(teeId: string, colorway: FabricId, side: PrintSi
 async function buildTees() {
   const result: Record<string, { printPosition: PrintSide; colorways: Record<string, string> }> = {};
   for (const tee of SHIRT_VARIANTS) {
-    if (!tee.graphicImage || !tee.colorways?.length) {
+    const photographed = tee.colorways?.length && tee.colorways.every((cw) => cw.flatLayPhoto);
+    if ((!tee.graphicImage && !photographed) || !tee.colorways?.length) {
       console.warn(`⚠️  ${tee.id}: no artwork or colorways, skipped`);
       continue;
     }
     const side: PrintSide = tee.printPosition === "back" ? "back" : "front";
-    const art = path.join(PUBLIC, tee.graphicImage);
+    const art = tee.graphicImage ? path.join(PUBLIC, tee.graphicImage) : "";
     const colorways: Record<string, string> = {};
     const sources = new Set<string>();
     for (const cw of tee.colorways) {
+      if (cw.flatLayPhoto) {
+        // Real printed garment: its photo is the Catalog Shot source, nothing is printed digitally
+        const out = path.join(OUT, "tees", tee.id, `${cw.id}.webp`);
+        await fs.mkdir(path.dirname(out), { recursive: true });
+        await printedFlatLayCatalogShot(path.join(PUBLIC, cw.flatLayPhoto), out);
+        colorways[cw.id] = `/catalog/tees/${tee.id}/${cw.id}.webp`;
+        sources.add("printed flat-lay photo");
+        continue;
+      }
       const shot = await buildTeeColorway(tee.id, cw.id as FabricId, side, art, cw.modelImage);
       colorways[cw.id] = shot.path;
       sources.add(shot.source);

@@ -2,7 +2,7 @@ export type ProductSilhouette = "snapback" | "trucker" | "tee" | string;
 export type ProductCategory = "headwear" | "apparel" | string;
 
 export interface ApparelColorwayOption {
-  id: "washed-black" | "crisp-white" | "heather-grey" | "butter-cream";
+  id: ApparelColorwayId;
   nameEn: string;
   nameEs: string;
   hex: string;
@@ -11,6 +11,12 @@ export interface ApparelColorwayOption {
   modelImage: string;
   /** 4:5 Catalog Shot of this colorway (ADR 0016) */
   catalogShot?: string;
+  /**
+   * Cut-out photo of the printed garment (transparent PNG from scripts/prep-tee-photo.ts).
+   * When set, build-catalog-shots builds the Catalog Shot from it instead of printing the
+   * Graphic Design on a blank.
+   */
+  flatLayPhoto?: string;
 }
 
 export const APPAREL_COLORWAYS = [
@@ -49,6 +55,15 @@ export const APPAREL_COLORWAYS = [
     borderHex: "#fef08a",
     descriptionEn: "280 GSM Combed Cotton • Retro Butter Cream Dye",
     descriptionEs: "Algodón Peinado 280 GSM • Tono Crema Vintage",
+  },
+  {
+    id: "acid-wash-lime",
+    nameEn: "Acid Wash Lime",
+    nameEs: "Lima Acid Wash",
+    hex: "#a4b85c",
+    borderHex: "#7d8f3a",
+    descriptionEn: "280 GSM Combed Cotton • Lime Acid Wash",
+    descriptionEs: "Algodón Peinado 280 GSM • Lavado Ácido Lima",
   },
 ] as const;
 
@@ -475,6 +490,42 @@ export const SHIRT_VARIANTS: CapVariant[] = [
       { id: "crisp-white", nameEn: "Crisp Optical White", nameEs: "Blanco Puro", hex: "#fafafa", borderHex: "#e4e4e7", modelImage: "/shirts/muscle-car-white.jpg" },
       { id: "heather-grey", nameEn: "Athletic Heather Grey", nameEs: "Gris Jaspe", hex: "#9ca3af", borderHex: "#6b7280", modelImage: "/shirts/muscle-car-grey.jpg" },
       { id: "butter-cream", nameEn: "Butter Cream Vintage", nameEs: "Crema Vintage", hex: "#fefce8", borderHex: "#fef08a", modelImage: "/shirts/muscle-car-cream.jpg" },
+    ],
+  },
+  {
+    // A photographed printed garment sold in one colorway: its Catalog Shot comes from the
+    // flat-lay photo (flatLayPhoto), and the artwork file is shown on the product page only
+    id: "crash-scene-tee",
+    nameEn: "Good Luck Crash Scene Acid-Wash Tee",
+    nameEs: "Playera Crash Scene Acid-Wash Good Luck",
+    silhouette: "tee",
+    category: "apparel",
+    primaryHex: "#a4b85c",
+    secondaryHex: "#dc2626",
+    image: "/shirts/crash-scene-acid-wash-lime.jpg",
+    images: ["/shirts/crash-scene-acid-wash-lime.jpg", "/shirts/graphics/crash-scene.jpg"],
+    graphicImage: "/shirts/graphics/crash-scene.jpg",
+    printPosition: "front",
+    stock: 25,
+    priceUsd: 80,
+    isFeatured: false,
+    tagEn: "Acid Wash Drop",
+    tagEs: "Drop Acid Wash",
+    fabricEn: "Heavyweight 280 GSM 100% Combed Cotton • Lime Acid Wash",
+    fabricEs: "Algodón Peinado Heavyweight 280 GSM • Lavado Ácido Lima",
+    fitEn: "Boxy Drop-Shoulder Oversized Streetwear Fit",
+    fitEs: "Corte Boxy Drop-Shoulder Oversized",
+    defaultColorway: "acid-wash-lime",
+    colorways: [
+      {
+        id: "acid-wash-lime",
+        nameEn: "Acid Wash Lime",
+        nameEs: "Lima Acid Wash",
+        hex: "#a4b85c",
+        borderHex: "#7d8f3a",
+        modelImage: "/shirts/crash-scene-acid-wash-lime.jpg",
+        flatLayPhoto: "/shirts/flatlay/crash-scene-acid-wash-lime.png",
+      },
     ],
   },
 ];

@@ -83,6 +83,13 @@ Final files go in `public/shirts/flatlay/`.
 
   The build log reports `photo` instead of `illustrated` for each tee that uses a real blank.
 
+### Photographed printed tees
+A design that only exists as a finished garment (no separate print file to apply to the blanks), such as the Crash Scene Tee, uses a photo of the printed tee laid flat instead:
+
+1. Shoot it flat, front up, on a dark plain surface. The Crash Scene original is on a black car hood: `shirts/crash-scene-flatlay-original.jpg`.
+2. Cut it out with `bun run scripts/prep-tee-photo.ts <photo> <design>-<colorway>`. This writes `public/shirts/flatlay/<design>-<colorway>.png`. Check the edge, since the fabric test in `scripts/lib/teePhoto.ts` is tuned per colorway.
+3. Set the colorway's `flatLayPhoto` in `src/data/caps.ts` and run `bun run build-catalog-shots`. The garment is framed to the flat-lay guide above and laid on the backdrop. The log reports `printed flat-lay photo`.
+
 ## 3. Cap Catalog Shots
 
 Caps already meet the Catalog Shot standard through `scripts/build-catalog-shots.ts`. New cap colorways need:
