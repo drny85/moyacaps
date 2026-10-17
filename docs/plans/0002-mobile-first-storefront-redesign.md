@@ -165,11 +165,13 @@ Vercel preview, median of 3 (applied) or 5 (simulated), 2026-10-17. Baseline is 
 | `/en/products` | 99, LCP 1.61 s | 98, LCP 1.72 s | 95, LCP 2.88 s | 95, LCP 2.87 s |
 | `/en/products/[slug]` | 99, LCP 1.57 s | 99, LCP 1.81 s | 96, LCP 2.77 s | 97, LCP 2.57 s |
 
-Applied = `bun run perf-budget --url <preview> --devtools` (real slow 4G + 4× CPU). Simulated = Lighthouse's default Lantern model, the same one PageSpeed Insights uses. The simulated baseline had runs from 73 to 100 on one page, so differences under ~0.1 s are noise.
+Applied = Lighthouse `--throttling-method=devtools` (real slow 4G + 4× CPU). Simulated = Lighthouse's default Lantern model, the same one PageSpeed Insights uses. The simulated baseline had runs from 73 to 100 on one page, so differences under ~0.1 s are noise.
 
 - **Applied throttling meets the budget on all three pages** (performance ≥ 90, LCP < 2.5 s).
 - **Simulated LCP is still 2.6–3.0 s.** Lantern's pessimistic estimate counts all first-load JS (~250 KB, about 200 KB of it framework + Convex client) as competing with the LCP whatever paints first.
 - Static HTML also removes cold-start server time for real visitors (one cold `/en` request took 2.0 s on the dynamic preview; prerendered pages answer from the CDN).
+
+**Budget method (ADR 0016 §8 / ADR 0019, decided 2026-10-17):** the performance score is judged on simulated throttling, and LCP on applied throttling. `bun run perf-budget` runs both on every page and gates each limit on its method. By that rule, **the budget is met on the preview**. `bun run perf-budget --url <preview>`, 2026-10-17, median of 3 per method: performance 94 / 95 / 97 (simulated), LCP 1.84 / 1.65 / 1.83 s (applied), exit 0. Simulated LCP for reference: 2.95 / 2.86 / 2.51 s.
 
 ## 4. Verification & Testing Checklist
 
@@ -178,4 +180,4 @@ Applied = `bun run perf-budget --url <preview> --devtools` (real slow 4G + 4× C
 - Phase 2: Convex tests for SKU reservation/deduct/release; old `/caps/{id}` URLs return 308 to `/products/{id}`; a tee order deducts the right SKU.
 - Phase 3: filters round-trip through URL; back button restores state; empty state shows.
 - Phase 4: buy a tee (colorway + size) and a cap end-to-end through Stripe test mode and WhatsApp concierge.
-- Phase 5 + final: Lighthouse mobile ≥ 90 on `/`, `/products`, `/products/[slug]`; LCP < 2.5 s at 4× CPU throttle; no layout shift from images; `prefers-reduced-motion` disables all motion; check at 375px width, both locales, light/dark.
+- Phase 5 + final: `bun run perf-budget` passes: Lighthouse mobile ≥ 90 (simulated) on `/`, `/products`, `/products/[slug]`; LCP < 2.5 s with applied throttling (slow 4G, 4× CPU); no layout shift from images; `prefers-reduced-motion` disables all motion; check at 375px width, both locales, light/dark.

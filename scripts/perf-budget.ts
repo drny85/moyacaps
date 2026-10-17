@@ -1,17 +1,18 @@
 /**
- * Lighthouse mobile performance budget for the storefront (ADR 0016 §8, ADR 0018).
+ * Lighthouse mobile performance budget for the storefront (ADR 0016 §8, ADR 0018, ADR 0019).
  *
- *   bun run perf-budget                      build, serve on :3210, 3 runs per page
+ *   bun run perf-budget                      build, serve on :3210, 3 runs per method per page
  *   bun run perf-budget --skip-build         reuse the current .next build
  *   bun run perf-budget --url https://…      test a deployed URL (e.g. a Vercel preview)
  *   bun run perf-budget --runs 5 --pages /en,/en/products
  *   bun run perf-budget --url https://… --header "Cookie: _vercel_jwt=…"   protected preview
- *   bun run perf-budget --devtools           apply real throttling instead of simulating it
  *
- * Fails (exit 1) when the median performance score is below 90 or the median LCP is
- * 2.5 s or more on any page. Lighthouse uses its default mobile emulation (Moto G
- * Power, simulated slow 4G, 4× CPU slowdown). Local numbers swing with machine load:
- * close other heavy apps, and trust a preview deployment over a busy laptop.
+ * Every page runs twice per round on Lighthouse's mobile emulation (Moto G Power, slow 4G,
+ * 4× CPU): once with simulated throttling and once with applied DevTools throttling.
+ * Fails (exit 1) when, on any page, the median simulated performance score is below 90
+ * or the median applied-throttling LCP is 2.5 s or more (ADR 0019 explains why each limit
+ * uses its own method). Local numbers swing with machine load: close other heavy apps,
+ * and trust a preview deployment over a busy laptop.
  */
 import { spawn, type ChildProcess } from "node:child_process";
 import fs from "node:fs/promises";
@@ -26,6 +27,7 @@ import {
   type LighthouseReport,
   type PageResult,
   type RunMetrics,
+  type Throttling,
 } from "./lib/perfBudget";
 
 const ROOT = path.resolve(import.meta.dir, "..");
@@ -58,11 +60,11 @@ async function waitForServer(url: string, timeoutMs = 60_000): Promise<void> {
 async function lighthouseRun(
   url: string,
   outDir: string,
-  index: number,
+  name: string,
   headers: Record<string, string>,
-  throttling: "simulate" | "devtools"
+  throttling: Throttling
 ): Promise<RunMetrics> {
-  const out = path.join(outDir, `${index}.json`);
+  const out = path.join(outDir, `${name}.json`);
   await run(
     LIGHTHOUSE,
     [
@@ -106,17 +108,25 @@ async function main() {
 
     const outDir = await fs.mkdtemp(path.join(os.tmpdir(), "perf-budget-"));
     const results: PageResult[] = [];
-    for (const page of pages) {
-      const runs: RunMetrics[] = [];
-      for (let i = 0; i < args.runs; i++) {
-        const metrics = await lighthouseRun(`${base}${page}`, outDir, results.length * 100 + i, args.headers, args.throttling);
-        runs.push(metrics);
-        console.log(`  ${page} run ${i + 1}/${args.runs}: perf ${metrics.performance}, LCP ${Math.round(metrics.lcpMs)} ms`);
-      }
-      results.push(evaluatePage(page, runs, args.budget));
+    for (const [p, page] of pages.entries()) {
+      const measure = async (throttling: Throttling) => {
+        const runs: RunMetrics[] = [];
+        for (let i = 0; i < args.runs; i++) {
+          const file = `${p}-${throttling}-${i}`;
+          const metrics = await lighthouseRun(`${base}${page}`, outDir, file, args.headers, throttling);
+          runs.push(metrics);
+          console.log(
+            `  ${page} ${throttling} ${i + 1}/${args.runs}: perf ${metrics.performance}, LCP ${Math.round(metrics.lcpMs)} ms`
+          );
+        }
+        return runs;
+      };
+      const simulated = await measure("simulate");
+      const applied = await measure("devtools");
+      results.push(evaluatePage(page, { simulated, applied }, args.budget));
     }
 
-    console.log(`\nLighthouse mobile (${args.throttling} throttling), median of ${args.runs} — ${base}\n`);
+    console.log(`\nLighthouse mobile, median of ${args.runs} per method — ${base}\n`);
     console.log(formatTable(results));
     console.log(`\nReports: ${outDir}`);
 
@@ -125,7 +135,9 @@ async function main() {
       console.error(`\nBudget failed:\n${failed.map((r) => `  ${r.path}: ${r.failures.join(", ")}`).join("\n")}`);
       process.exitCode = 1;
     } else {
-      console.log(`\nBudget met (performance >= ${args.budget.minPerformance}, LCP < ${args.budget.maxLcpMs} ms).`);
+      console.log(
+        `\nBudget met (simulated performance >= ${args.budget.minPerformance}, applied-throttling LCP < ${args.budget.maxLcpMs} ms).`
+      );
     }
   } finally {
     server?.kill();

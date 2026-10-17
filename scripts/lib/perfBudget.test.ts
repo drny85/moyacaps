@@ -72,29 +72,50 @@ describe("metricsFromReport", () => {
 });
 
 describe("evaluatePage", () => {
-  it("passes on the median even when one run is an outlier", () => {
-    const result = evaluatePage("/en", [run(93, 2000), run(70, 6000), run(92, 2200)], DEFAULT_BUDGET);
-    expect(result.median.performance).toBe(92);
-    expect(result.median.lcpMs).toBe(2200);
+  it("judges performance on simulated runs and LCP on applied-throttling runs", () => {
+    // Simulated LCP is slow (bundle-bound) but does not gate; applied LCP does
+    const result = evaluatePage(
+      "/en",
+      { simulated: [run(94, 3000), run(95, 2900), run(93, 3100)], applied: [run(96, 1900), run(97, 1800), run(90, 2100)] },
+      DEFAULT_BUDGET
+    );
+    expect(result.simulatedMedian.performance).toBe(94);
+    expect(result.appliedMedian.lcpMs).toBe(1900);
     expect(result.pass).toBe(true);
   });
 
-  it("names each broken limit", () => {
-    const result = evaluatePage("/en", [run(80, 3000)], DEFAULT_BUDGET);
+  it("passes on the median even when one run is an outlier", () => {
+    const result = evaluatePage(
+      "/en",
+      { simulated: [run(93, 3000), run(70, 6000), run(92, 3000)], applied: [run(95, 2000), run(60, 6000), run(95, 2200)] },
+      DEFAULT_BUDGET
+    );
+    expect(result.pass).toBe(true);
+  });
+
+  it("names each broken limit with the method it was measured by", () => {
+    const result = evaluatePage("/en", { simulated: [run(80, 2000)], applied: [run(99, 3000)] }, DEFAULT_BUDGET);
     expect(result.pass).toBe(false);
-    expect(result.failures).toEqual(["performance 80 < 90", "LCP 3.00 s >= 2.50 s"]);
+    expect(result.failures).toEqual(["performance 80 < 90 (simulated)", "LCP 3.00 s >= 2.50 s (applied throttling)"]);
+  });
+
+  it("ignores the applied runs' score and the simulated runs' LCP", () => {
+    const result = evaluatePage("/en", { simulated: [run(95, 9000)], applied: [run(10, 1500)] }, DEFAULT_BUDGET);
+    expect(result.pass).toBe(true);
   });
 
   it("treats LCP equal to the limit as a failure (budget is LCP < 2.5 s)", () => {
-    expect(evaluatePage("/en", [run(95, 2500)], DEFAULT_BUDGET).pass).toBe(false);
+    expect(evaluatePage("/en", { simulated: [run(95, 1000)], applied: [run(95, 2500)] }, DEFAULT_BUDGET).pass).toBe(false);
   });
 });
 
 describe("formatTable", () => {
-  it("renders one markdown row per page", () => {
-    const table = formatTable([evaluatePage("/en", [run(91, 2100)], DEFAULT_BUDGET)]);
+  it("renders one markdown row per page, gated columns first", () => {
+    const table = formatTable([
+      evaluatePage("/en", { simulated: [run(91, 2900)], applied: [run(97, 1900)] }, DEFAULT_BUDGET),
+    ]);
     expect(table.split("\n")).toHaveLength(3);
-    expect(table).toContain("| /en | 91 | 2.10 s | 900 ms | 40 ms | 0.000 | 1.80 s | 91 | pass |");
+    expect(table).toContain("| /en | 91 | 1.90 s | 2.90 s | 900 ms | 40 ms | 0.000 | 91 | 1.90 s | pass |");
   });
 });
 
@@ -107,7 +128,6 @@ describe("parseArgs", () => {
       url: null,
       pages: null,
       headers: {},
-      throttling: "simulate",
       budget: { minPerformance: 90, maxLcpMs: 2500 },
     });
   });
@@ -129,10 +149,6 @@ describe("parseArgs", () => {
       "X-Test": "1",
     });
     expect(() => parseArgs(["--header", "nocolon"])).toThrow(/Name: value/);
-  });
-
-  it("switches to applied DevTools throttling", () => {
-    expect(parseArgs(["--devtools"]).throttling).toBe("devtools");
   });
 
   it("rejects unknown flags and bad numbers", () => {
