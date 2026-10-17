@@ -8,11 +8,11 @@
  * and the same print box is used (the spec frames the photos to this geometry).
  */
 import sharp from "sharp";
-import { inkLayer, type DarkInkMode } from "./ink";
+import { inkLayer, type InkMode } from "./ink";
 
 export type FabricId = "washed-black" | "crisp-white" | "heather-grey" | "butter-cream";
 export type PrintSide = "front" | "back";
-export type { DarkInkMode } from "./ink";
+export type { InkMode } from "./ink";
 
 /** Photographic fabric tones (the UI swatch hexes are brighter than real cotton) */
 const FABRIC: Record<FabricId, { base: string; shade: string; light: string; dark: boolean; heather: number }> = {
@@ -114,14 +114,14 @@ export async function renderFlatTee(opts: {
   fabric: FabricId;
   side: PrintSide;
   artPath: string;
-  darkInk?: DarkInkMode;
+  ink?: InkMode;
   blankPhoto?: string;
 }) {
-  const { size, fabric, side, artPath, darkInk = "invert", blankPhoto } = opts;
+  const { size, fabric, side, artPath, ink: inkMode = "invert", blankPhoto } = opts;
   const unit = size / 1000;
   const box = PRINT_BOX[side];
   const dark = FABRIC[fabric].dark;
-  const ink = await inkLayer(artPath, Math.round(box.width * unit), Math.round(box.height * unit), dark, darkInk);
+  const ink = await inkLayer(artPath, Math.round(box.width * unit), Math.round(box.height * unit), dark, inkMode);
   const inkPlacement = {
     input: ink.data,
     left: Math.round(box.cx * unit - ink.info.width / 2),

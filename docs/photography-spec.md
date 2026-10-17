@@ -83,6 +83,13 @@ Final files go in `public/shirts/flatlay/`.
 
   The build log reports `photo` instead of `illustrated` for each tee that uses a real blank.
 
+### Photographed printed tees
+A design that only exists as a finished garment (no separate print file to apply to the blanks), such as the Crash Scene Tee, uses a photo of the printed tee laid flat instead:
+
+1. Shoot it flat, front up, on a dark plain surface. The Crash Scene original is on a black car hood: `shirts/crash-scene-flatlay-original.jpg`.
+2. Cut it out with `bun run scripts/prep-tee-photo.ts <photo> <design>-<colorway>`. This writes `public/shirts/flatlay/<design>-<colorway>.png`. Check the edge, since the fabric test in `scripts/lib/teePhoto.ts` is tuned per colorway.
+3. Set the colorway's `flatLayPhoto` in `src/data/caps.ts` and run `bun run build-catalog-shots`. The garment is framed to the flat-lay guide above and laid on the backdrop. The log reports `printed flat-lay photo`.
+
 ## 3. Cap Catalog Shots
 
 Caps already meet the Catalog Shot standard through `scripts/build-catalog-shots.ts`. New cap colorways need:
@@ -112,6 +119,7 @@ Every tee Lifestyle Shot, and until flat-lays exist every tee Catalog Shot, is p
   ```
 
   This regenerates every on-model shot and its 4:5 crop. Photos listed in `SHOOT_PHOTOS` (real printed-garment shots) are never overwritten.
+- **New Graphic Design:** if the artwork is a photograph or a tonal render (halftone portrait, photo collage), add its path to `UNDERBASE_PRINTS` in `scripts/build-catalog-shots.ts`. It then prints full-colour on a white underbase, so dark tees keep its midtones. Line art (black linework, flat colour) is left out of that list, and its black ink prints off-white on dark tees.
 - **Template quality:** at least 1200 px wide; a frontal or back pose with arms away from the chest and back; even light, and no hands or straps across the print area.
 
 ## 5. Lifestyle Shots

@@ -6,7 +6,7 @@
  *  - lit by the photo: the ink darkens in fold shadows and keeps the cotton's fine texture.
  */
 import sharp from "sharp";
-import { inkLayerRaw } from "./ink";
+import { inkLayerRaw, type InkMode } from "./ink";
 import type { PrintBox } from "./teeCalibration";
 
 export interface PrintOnModelOptions {
@@ -14,6 +14,8 @@ export interface PrintOnModelOptions {
   artPath: string;
   box: PrintBox;
   darkFabric: boolean;
+  /** How the artwork prints (see inkModel.ts): "underbase" for photographic art, "invert" for line art */
+  ink?: InkMode;
   /** Max px the ink shifts across a fold (0 disables warping) */
   warp?: number;
 }
@@ -28,7 +30,7 @@ async function luminance(path: string, blur: number) {
 
 /** JPEG of the template with the design printed on the tee. */
 export async function printOnModel(opts: PrintOnModelOptions): Promise<Buffer> {
-  const { templatePath, artPath, box, darkFabric, warp = 5 } = opts;
+  const { templatePath, artPath, box, darkFabric, ink: inkMode = "invert", warp = 5 } = opts;
 
   const base = await sharp(templatePath).removeAlpha().raw().toBuffer({ resolveWithObject: true });
   const W = base.info.width;
@@ -36,7 +38,7 @@ export async function printOnModel(opts: PrintOnModelOptions): Promise<Buffer> {
   const shading = await luminance(templatePath, 7); // broad light and folds
   const detail = await luminance(templatePath, 0); // weave and fine wrinkles
 
-  const ink = await inkLayerRaw(artPath, box.width, box.height, darkFabric, "invert");
+  const ink = await inkLayerRaw(artPath, box.width, box.height, darkFabric, inkMode);
   const iw = ink.info.width;
   const ih = ink.info.height;
   const left = Math.round(box.cx - iw / 2);

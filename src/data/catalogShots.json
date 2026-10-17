@@ -245,6 +245,12 @@
         "heather-grey": "/catalog/tees/muscle-car-tee/heather-grey.webp",
         "butter-cream": "/catalog/tees/muscle-car-tee/butter-cream.webp"
       }
+    },
+    "crash-scene-tee": {
+      "printPosition": "front",
+      "colorways": {
+        "acid-wash-lime": "/catalog/tees/crash-scene-tee/acid-wash-lime.webp"
+      }
     }
   }
 }

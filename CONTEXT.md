@@ -17,7 +17,7 @@ A specific combination of crown, visor, underbill, and embroidery thread colors 
 _Avoid_: Color theme, flavor
 
 **Apparel Colorway**:
-The specific textile fabric wash/dye of a Heavyweight Tee (Vintage Washed Black, Crisp White, Heather Grey, Butter Cream).
+The specific textile fabric wash/dye of a Heavyweight Tee (Vintage Washed Black, Crisp White, Heather Grey, Butter Cream, Acid Wash Lime). Most Graphic Designs come in the first four; a photographed printed tee such as the Crash Scene Tee may come in only its own colorway.
 _Avoid_: Shirt color, shade
 
 **Graphic Design**:
