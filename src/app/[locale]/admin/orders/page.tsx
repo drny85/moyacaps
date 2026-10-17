@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useTranslations, useLocale } from "next-intl";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "@convex/_generated/api";
+import { useMinuteClock } from "@/hooks/useMinuteClock";
 import { Id } from "@convex/_generated/dataModel";
 import { getCarrierTrackingUrl } from "@/lib/tracking";
 import {
@@ -114,7 +115,9 @@ export default function AdminOrdersPage() {
   };
 
   // Convex queries, mutations & actions
+  const statsClock = useMinuteClock();
   const orders = useQuery(api.orderDesk.getAllOrdersAdmin, {
+    clientTime: statsClock,
     status: statusFilter,
     paymentMethod: paymentFilter,
     search: searchQuery,
@@ -156,11 +159,6 @@ export default function AdminOrdersPage() {
   const cancelAndRefundAdmin = useAction(api.stripeRefunds.cancelAndRefundOrderAdmin);
 
   // Attention stats & Resend test alert action
-  const [statsClock, setStatsClock] = useState<number>(() => Date.now());
-  useEffect(() => {
-    const id = setInterval(() => setStatsClock(Date.now()), 60 * 1000);
-    return () => clearInterval(id);
-  }, []);
   const attentionStats = useQuery(api.orderDesk.getOrdersAttentionStats, { clientTime: statsClock });
   const sendTestAlert = useAction(api.emails.sendTestAdminOrderAlert);
   const [isSendingTestAlert, setIsSendingTestAlert] = useState(false);

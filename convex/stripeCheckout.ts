@@ -70,6 +70,7 @@ export const createCheckoutSession = action({
     clerkUserId: v.optional(v.string()),
     customerEmail: v.optional(v.string()),
   },
+  returns: v.object({ url: v.union(v.string(), v.null()), sessionId: v.string(), orderNumber: v.string() }),
   handler: async (
     ctx,
     args
@@ -204,6 +205,16 @@ export const createWhatsAppCheckoutSession = action({
     origin: v.string(),
     clerkUserId: v.optional(v.string()),
   },
+  returns: v.object({
+    orderId: v.id("orders"),
+    orderNumber: v.string(),
+    paymentUrl: v.union(v.string(), v.null()),
+    reservationExpiresAt: v.number(),
+    subtotal: v.number(),
+    shippingFee: v.number(),
+    total: v.number(),
+    items: v.array(v.object({ name: v.string(), quantity: v.number(), price: v.number() })),
+  }),
   handler: async (
     ctx,
     args
@@ -398,6 +409,7 @@ export const generateOrRefreshWhatsAppPaymentLink = action({
     origin: v.string(),
     locale: v.string(),
   },
+  returns: v.object({ paymentUrl: v.union(v.string(), v.null()), stripeSessionId: v.optional(v.string()) }),
   handler: async (
     ctx,
     args
@@ -552,6 +564,7 @@ export const expireOpenCheckoutSessionsInternal = internalAction({
   args: {
     orderId: v.id("orders"),
   },
+  returns: v.object({ expired: v.array(v.string()), skipped: v.array(v.string()) }),
   handler: async (ctx, args): Promise<{ expired: string[]; skipped: string[] }> => {
     const order: any = await ctx.runQuery(internal.orders.getOrderByIdInternal, {
       orderId: args.orderId,

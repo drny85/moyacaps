@@ -1,4 +1,5 @@
 import { cronJobs } from "convex/server";
+import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { internalAction } from "./_generated/server";
 
@@ -10,6 +11,7 @@ import { internalAction } from "./_generated/server";
  */
 export const reconcileReservations = internalAction({
   args: {},
+  returns: v.object({ checked: v.number(), expired: v.number() }),
   handler: async (ctx): Promise<{ checked: number; expired: number }> => {
     const now = Date.now();
     const BATCH = 500;

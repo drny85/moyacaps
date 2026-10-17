@@ -9,6 +9,7 @@ import { api } from "@convex/_generated/api";
 import { useStore } from "@/store/useStore";
 import type { CapVariant } from "@/data/caps";
 import { useCapVariants } from "@/hooks/useCapVariants";
+import { useMinuteClock } from "@/hooks/useMinuteClock";
 import { useCapPurchaseState } from "@/hooks/useCapPurchaseState";
 import { CapTurntable, type TurntableFrame } from "@/components/viewer/CapTurntable";
 import { getCapAngleImages, TURNTABLE_ANGLES } from "@/lib/capAngles";
@@ -32,7 +33,8 @@ export function HeroInteractive() {
   const reduceMotion = useReducedMotion() ?? false;
   const { addToCart, openDropAlert } = useStore();
   const { caps, isLive } = useCapVariants();
-  const upcomingDrops = useQuery(api.drops.getUpcomingDrops);
+  const clientTime = useMinuteClock();
+  const upcomingDrops = useQuery(api.drops.getUpcomingDrops, { clientTime });
   const activeUpcomingDrop = upcomingDrops && upcomingDrops.length > 0 ? upcomingDrops[0] : null;
 
   const quickSwapCaps = useMemo(() => pickQuickSwap(caps), [caps]);

@@ -12,7 +12,7 @@ import { randomDigitString } from "./ids";
 import { adjustStock, checkStock } from "./inventory";
 import { appendBoundedId, appendNote, computeShipping, isPaidLike, newTrackingNumber, orderSessionIds } from "./orderModel";
 import { hasEmail, releaseStock, scheduleSessionExpiry } from "./orderShared";
-import { orderItemValidator, shippingAddressValidator } from "./orderValidators";
+import { orderDoc, orderItemValidator, shippingAddressValidator, successResult } from "./orderValidators";
 import {
   countReservationsInWindow,
   isValidLineQuantity,
@@ -45,6 +45,16 @@ export const createWhatsAppOrderLead = internalMutation({
     paymentUrl: v.optional(v.string()),
     stripeSessionId: v.optional(v.string()),
   },
+  returns: v.object({
+    orderId: v.id("orders"),
+    orderNumber: v.string(),
+    reservationExpiresAt: v.number(),
+    paymentUrl: v.optional(v.string()),
+    subtotal: v.number(),
+    shippingFee: v.number(),
+    total: v.number(),
+    items: v.array(orderItemValidator),
+  }),
   handler: async (ctx, args) => {
     const timestamp = Date.now();
 
@@ -244,6 +254,7 @@ export const updateOrderPaymentUrl = internalMutation({
     paymentUrl: v.string(),
     stripeSessionId: v.optional(v.string()),
   },
+  returns: successResult,
   handler: async (ctx, args) => {
     const order = await ctx.db.get(args.orderId);
     if (!order) {
@@ -269,6 +280,7 @@ export const dispatchWhatsAppPaymentLinkAdmin = mutation({
   args: {
     orderId: v.id("orders"),
   },
+  returns: v.object({ success: v.boolean(), paymentLinkSentAt: v.number(), reservationExpiresAt: v.number() }),
   handler: async (ctx, args) => {
     const admin = await requireAdmin(ctx);
     const order = await ctx.db.get(args.orderId);
@@ -320,6 +332,12 @@ export const markWhatsAppOrderPaidAdmin = mutation({
     orderId: v.id("orders"),
     notes: v.optional(v.string()),
   },
+  returns: v.object({
+    success: v.boolean(),
+    message: v.optional(v.string()),
+    orderNumber: v.optional(v.string()),
+    trackingNumber: v.optional(v.string()),
+  }),
   handler: async (ctx, args) => {
     const admin = await requireAdmin(ctx);
     const order = await ctx.db.get(args.orderId);
@@ -390,15 +408,16 @@ export const expireWhatsAppOrderLead = internalMutation({
   args: {
     orderId: v.id("orders"),
   },
+  returns: v.null(),
   handler: async (ctx, args) => {
     const order = await ctx.db.get(args.orderId);
-    if (!order) return;
+    if (!order) return null;
 
     // Race guard: a link dispatch/refresh reschedules a NEW expiry and pushes
     // reservationExpiresAt forward. A stale job scheduled earlier must self-veto so it
     // never cancels a reservation that is still inside its extended hold window.
     if (order.reservationExpiresAt && order.reservationExpiresAt > Date.now()) {
-      return;
+      return null;
     }
 
     // Only auto-cancel if it's still awaiting WhatsApp payment confirmation
@@ -418,6 +437,7 @@ export const expireWhatsAppOrderLead = internalMutation({
         details: "Reservation hold expired without payment; stock restored.",
       });
     }
+    return null;
   },
 });
 
@@ -430,6 +450,7 @@ export const getExpiredWhatsAppReservationsInternal = internalQuery({
     now: v.number(),
     limit: v.number(),
   },
+  returns: v.array(orderDoc),
   handler: async (ctx, args) => {
     // Walk elapsed holds oldest first and keep the first `limit` still awaiting payment.
     const expired: Doc<"orders">[] = [];

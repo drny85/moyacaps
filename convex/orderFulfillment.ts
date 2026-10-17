@@ -37,6 +37,13 @@ export const attachShippingLabelInternal = internalMutation({
     ),
     actor: v.optional(v.string()),
   },
+  returns: v.object({
+    success: v.boolean(),
+    orderId: v.id("orders"),
+    trackingNumber: v.string(),
+    labelUrl: v.string(),
+    status: v.union(v.literal("dispatched"), v.literal("delivered")),
+  }),
   handler: async (ctx, args) => {
     const order = await ctx.db.get(args.orderId);
     if (!order) {
@@ -51,7 +58,7 @@ export const attachShippingLabelInternal = internalMutation({
       await deductStock(ctx, order.items);
     }
 
-    const nextStatus = previousStatus === "delivered" ? "delivered" : "dispatched";
+    const nextStatus = previousStatus === "delivered" ? ("delivered" as const) : ("dispatched" as const);
 
     await ctx.db.patch(args.orderId, {
       status: nextStatus,
@@ -123,6 +130,16 @@ export const handleTrackingWebhookInternal = internalMutation({
       })
     ),
   },
+  returns: v.union(
+    v.object({ found: v.literal(false), ignored: v.literal(true) }),
+    v.object({
+      found: v.literal(true),
+      orderNumber: v.string(),
+      orderId: v.id("orders"),
+      trackingStatus: v.string(),
+      status: v.string(),
+    })
+  ),
   handler: async (ctx, args) => {
     const cleanTrk = args.trackingNumber.trim();
     const order = await ctx.db
@@ -132,7 +149,7 @@ export const handleTrackingWebhookInternal = internalMutation({
 
     if (!order) {
       console.log(`[TrackingWebhook] Order with tracking number "${cleanTrk}" not found in system.`);
-      return { found: false, ignored: true };
+      return { found: false as const, ignored: true as const };
     }
 
     const plan = planTrackingUpdate(order, args, Date.now());
@@ -164,7 +181,7 @@ export const handleTrackingWebhookInternal = internalMutation({
     await ctx.db.patch(order._id, plan.patch);
 
     return {
-      found: true,
+      found: true as const,
       orderNumber: order.orderNumber,
       orderId: order._id,
       trackingStatus: plan.trackingStatus,

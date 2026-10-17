@@ -186,15 +186,32 @@ export interface FormattedRate {
   recommendedTag?: string;
 }
 
-const parcelValidator = v.optional(
-  v.object({
-    length: v.number(),
-    width: v.number(),
-    height: v.number(),
-    weight: v.number(),
-    unit: v.string(),
-  })
-);
+const parcelDimensionsValidator = v.object({
+  length: v.number(),
+  width: v.number(),
+  height: v.number(),
+  weight: v.number(),
+  unit: v.string(),
+});
+
+const parcelValidator = v.optional(parcelDimensionsValidator);
+
+/** Return validator for FormattedRate. */
+const formattedRateValidator = v.object({
+  objectId: v.string(),
+  provider: v.string(),
+  providerImage: v.optional(v.string()),
+  serviceName: v.string(),
+  amount: v.number(),
+  currency: v.string(),
+  estimatedDays: v.optional(v.number()),
+  durationTerms: v.optional(v.string()),
+  attributes: v.array(v.string()),
+  isCheapest: v.optional(v.boolean()),
+  isFastest: v.optional(v.boolean()),
+  isPoBoxIncompatible: v.optional(v.boolean()),
+  recommendedTag: v.optional(v.string()),
+});
 
 /**
  * Fetch live commercial shipping rates from carriers (USPS, UPS, DHL Express) via Shippo.
@@ -205,6 +222,22 @@ export const getShippingRates = action({
     orderId: v.id("orders"),
     parcel: parcelValidator,
   },
+  returns: v.object({
+    success: v.boolean(),
+    rates: v.array(formattedRateValidator),
+    parcel: parcelDimensionsValidator,
+    destination: v.object({
+      name: v.optional(v.string()),
+      address: v.string(),
+      city: v.string(),
+      state: v.string(),
+      postalCode: v.string(),
+      country: v.string(),
+    }),
+    isSandbox: v.boolean(),
+    isPoBox: v.boolean(),
+    error: v.optional(v.string()),
+  }),
   handler: async (ctx, args): Promise<{
     success: boolean;
     rates: FormattedRate[];
@@ -445,6 +478,14 @@ export const buyShippingLabel = action({
     estimatedDays: v.optional(v.number()),
     parcel: parcelValidator,
   },
+  returns: v.object({
+    success: v.boolean(),
+    trackingNumber: v.string(),
+    labelUrl: v.string(),
+    carrier: v.string(),
+    serviceLevel: v.optional(v.string()),
+    isSandbox: v.boolean(),
+  }),
   handler: async (ctx, args): Promise<{
     success: boolean;
     trackingNumber: string;

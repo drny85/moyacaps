@@ -5,6 +5,8 @@
 import { query, mutation, internalMutation } from "./_generated/server";
 import { v, ConvexError } from "convex/values";
 import { requireAdmin } from "./auth";
+import schema from "./schema";
+import { successResult, variantWithSubscribers } from "./catalogValidators";
 import { getVariant, hasSkus, setSkuStock } from "./inventory";
 import { mergeVariantUpdate, newVariantDoc, nextAvailability, TEE_STOCK_EDIT_ERROR } from "./catalogModel";
 import {
@@ -17,6 +19,7 @@ import {
 
 export const generateUploadUrl = mutation({
   args: {},
+  returns: v.string(),
   handler: async (ctx) => {
     await requireAdmin(ctx);
     return await ctx.storage.generateUploadUrl();
@@ -25,6 +28,7 @@ export const generateUploadUrl = mutation({
 
 export const generateUploadUrlInternal = internalMutation({
   args: {},
+  returns: v.string(),
   handler: async (ctx) => {
     return await ctx.storage.generateUploadUrl();
   },
@@ -35,6 +39,7 @@ export const setVariantStorageId = internalMutation({
     variantId: v.string(),
     storageId: v.id("_storage"),
   },
+  returns: v.object({ success: v.boolean(), variantId: v.string(), storageId: v.id("_storage") }),
   handler: async (ctx, args) => {
     const variant = await requireVariant(ctx, args.variantId);
 
@@ -52,6 +57,7 @@ export const setVariantStorageId = internalMutation({
 
 export const getAllProductsAdmin = query({
   args: {},
+  returns: v.object({ products: v.array(schema.doc("products")), variants: v.array(variantWithSubscribers) }),
   handler: async (ctx) => {
     await requireAdmin(ctx);
     // The products table holds the single collection record seeded by seedAll.
@@ -78,6 +84,7 @@ export const updateVariantStock = mutation({
     variantId: v.string(),
     stock: v.number(),
   },
+  returns: v.object({ success: v.boolean(), variantId: v.string(), stock: v.number() }),
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
     const variant = await requireVariant(ctx, args.variantId);
@@ -98,6 +105,7 @@ export const adjustVariantStock = mutation({
     variantId: v.string(),
     delta: v.number(),
   },
+  returns: v.object({ success: v.boolean(), variantId: v.string(), stock: v.number() }),
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
     const variant = await requireVariant(ctx, args.variantId);
@@ -119,6 +127,7 @@ export const updateVariantPrice = mutation({
     variantId: v.string(),
     priceUsd: v.number(),
   },
+  returns: v.object({ success: v.boolean(), variantId: v.string(), priceUsd: v.number() }),
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
     const variant = await requireVariant(ctx, args.variantId);
@@ -135,6 +144,7 @@ export const toggleVariantFeatured = mutation({
   args: {
     variantId: v.string(),
   },
+  returns: v.object({ success: v.boolean(), isFeatured: v.boolean() }),
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
     const variant = await requireVariant(ctx, args.variantId);
@@ -152,6 +162,7 @@ export const toggleVariantAvailable = mutation({
     variantId: v.string(),
     isAvailable: v.optional(v.boolean()),
   },
+  returns: v.object({ success: v.boolean(), variantId: v.string(), isAvailable: v.boolean() }),
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
     const variant = await requireVariant(ctx, args.variantId);
@@ -188,6 +199,7 @@ export const saveVariant = mutation({
     category: v.optional(v.string()),
     taxCode: v.optional(v.string()),
   },
+  returns: v.object({ success: v.boolean(), action: v.union(v.literal("updated"), v.literal("created")), id: v.id("variants") }),
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
     let resolvedImage = args.image;
@@ -206,12 +218,12 @@ export const saveVariant = mutation({
       }
 
       await ctx.db.patch(existing._id, mergeVariantUpdate(existing, args, resolvedImage, hasSkus(existing)));
-      return { success: true, action: "updated", id: existing._id };
+      return { success: true, action: "updated" as const, id: existing._id };
     }
 
     const id = await ctx.db.insert("variants", newVariantDoc(args, resolvedImage));
 
-    return { success: true, action: "created", id };
+    return { success: true, action: "created" as const, id };
   },
 });
 
@@ -219,6 +231,7 @@ export const deleteVariant = mutation({
   args: {
     variantId: v.string(),
   },
+  returns: successResult,
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
     const variant = await requireVariant(ctx, args.variantId);
@@ -240,6 +253,7 @@ export const setTeeSkuStock = mutation({
     size: v.string(),
     stock: v.number(),
   },
+  returns: successResult,
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
     const variant = await getVariant(ctx, args.variantId);

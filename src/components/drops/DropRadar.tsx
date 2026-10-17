@@ -6,6 +6,7 @@ import { useTranslations, useLocale } from "next-intl";
 import { Link } from "@/i18n/routing";
 import { useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
+import { useMinuteClock } from "@/hooks/useMinuteClock";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
   Radio,
@@ -89,7 +90,8 @@ export function DropRadar() {
   const { openDropAlert, addToCart } = useStore();
   const { playRadarPing, playClick, playSuccessChime } = useSoundEffects();
 
-  const drops = useQuery(api.drops.getUpcomingDrops);
+  const clientTime = useMinuteClock();
+  const drops = useQuery(api.drops.getUpcomingDrops, { clientTime });
   const [activeDropIndex, setActiveDropIndex] = useState(0);
   const [now, setNow] = useState(Date.now());
 

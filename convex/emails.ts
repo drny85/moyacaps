@@ -41,6 +41,14 @@ const orderItemValidator = v.object({
   image: v.optional(v.string()),
 });
 
+/** Result of a scheduled transactional email; failures are reported, not thrown. */
+const emailResult = v.object({
+  success: v.boolean(),
+  emailId: v.optional(v.string()),
+  error: v.optional(v.string()),
+  reason: v.optional(v.string()),
+});
+
 /**
  * Sends a high-priority order alert to the store administrator(s).
  */
@@ -61,6 +69,7 @@ export const sendAdminOrderAlert = internalAction({
     tax: v.optional(v.number()),
     createdAt: v.optional(v.number()),
   },
+  returns: emailResult,
   handler: async (ctx, args) => {
     try {
       const recipient = DEFAULT_ADMIN_EMAIL;
@@ -124,6 +133,7 @@ export const sendCustomerReceipt = internalAction({
     shippingFee: v.optional(v.number()),
     tax: v.optional(v.number()),
   },
+  returns: emailResult,
   handler: async (ctx, args) => {
     try {
       if (!args.customerEmail || !args.customerEmail.includes("@")) {
@@ -174,6 +184,7 @@ export const sendTestAdminOrderAlert = action({
   args: {
     targetEmail: v.optional(v.string()),
   },
+  returns: v.object({ success: v.boolean(), emailId: v.string(), recipient: v.string() }),
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
@@ -267,6 +278,7 @@ export const sendAdminDisputeAlert = internalAction({
     isClosed: v.optional(v.boolean()),
     outcome: v.optional(v.string()),
   },
+  returns: emailResult,
   handler: async (ctx, args) => {
     try {
       const recipient = DEFAULT_ADMIN_EMAIL;
@@ -332,6 +344,7 @@ export const sendOrderDispatchedEmail = internalAction({
     shippingAddress: shippingAddressValidator,
     items: v.optional(v.array(orderItemValidator)),
   },
+  returns: emailResult,
   handler: async (ctx, args) => {
     try {
       if (!args.customerEmail || !args.customerEmail.includes("@")) {
@@ -388,6 +401,7 @@ export const sendOrderDeliveredEmail = internalAction({
     deliveredDetails: v.optional(v.string()),
     items: v.optional(v.array(orderItemValidator)),
   },
+  returns: emailResult,
   handler: async (ctx, args) => {
     try {
       if (!args.customerEmail || !args.customerEmail.includes("@")) {

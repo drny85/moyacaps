@@ -9,6 +9,9 @@
 3. **Database helpers live in `*Shared.ts`.** Lookups and writes reused across modules (`requireVariant`, `resolveVariantWithStorageUrl`, `findOrderByTypedNumber`, `releaseStock`, `scheduleSessionExpiry`) live in `catalogShared.ts` and `orderShared.ts`. Stock still goes only through `inventory.ts` (ADR 0007, ADR 0015).
 4. **Stripe SDK only in `"use node"` files.** `stripeClient.ts` holds the client, customer upsert, session expiry and refunds. Only `stripeCheckout.ts`, `stripeWebhook.ts` and `stripeRefunds.ts` import it.
 5. **Bounded catalog reads.** Whole-catalog scans use `listCatalogVariants` (`take(MAX_CATALOG_VARIANTS = 500)`; the catalog is ~30 products). Drop-alert counts clamp at `MAX_DROP_ALERTS_COUNTED = 1000`. Move to `@convex-dev/aggregate` before a waitlist approaches the cap.
+6. **Every function declares `returns:`.** Shared shapes live in `catalogValidators.ts`, `orderValidators.ts` (customer order views) and `analyticsModel.ts`. `returnContracts.test.ts` calls each read once, because convex-test enforces the validators.
+7. **Queries never read the clock.** Time-dependent queries (`drops:getUpcomingDrops`, `drops:getAllDropsAdmin`, `orderDesk:getAllOrdersAdmin`, `orderDesk:getOrdersAttentionStats`, `analytics:getAnalyticsAdmin`) take a required `clientTime`, which clients get from `useMinuteClock` (floored to the minute so components share one subscription).
+8. **Admin lists clamp.** Subscriber lists (1000 newest), account order history (200 newest) and the users list (1000 newest) are bounded; `drops:deleteDrop` deletes alerts in batches of 500 and schedules `drops:deleteDropAlertsBatch` for the rest.
 
 ## Module map
 

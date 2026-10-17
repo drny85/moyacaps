@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useTranslations, useLocale } from "next-intl";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@convex/_generated/api";
+import { useMinuteClock } from "@/hooks/useMinuteClock";
 import {
   Flame,
   Radio,
@@ -103,7 +104,8 @@ export default function AdminDropsPage() {
   const locale = useLocale();
 
   // Queries
-  const dropsData = useQuery(api.drops.getAllDropsAdmin);
+  const clientTime = useMinuteClock();
+  const dropsData = useQuery(api.drops.getAllDropsAdmin, { clientTime });
   const productsData = useQuery(api.catalogAdmin.getAllProductsAdmin);
   const subscribersData = useQuery(api.drops.getDropSubscribersList, {});
 

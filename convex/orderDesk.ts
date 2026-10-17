@@ -6,11 +6,11 @@ import { mutation, query, internalMutation } from "./_generated/server";
 import { v, ConvexError } from "convex/values";
 import { internal } from "./_generated/api";
 import { requireAdmin } from "./auth";
-import { computeAttentionStats } from "./analyticsModel";
+import { attentionStatsValidator, computeAttentionStats } from "./analyticsModel";
 import { listCatalogVariants } from "./catalogShared";
 import { holdsStock, matchesOrderSearch, newTrackingNumber, planAdminStatusChange } from "./orderModel";
 import { deductStock, findOrderByTypedNumber, releaseStock, scheduleSessionExpiry } from "./orderShared";
-import { orderStatusValidator, shippingAddressValidator } from "./orderValidators";
+import { orderDoc, orderStatusValidator, shippingAddressValidator, successResult } from "./orderValidators";
 
 /**
  * Admin query to retrieve complete order details for dedicated fulfillment inspection.
@@ -19,6 +19,7 @@ export const getOrderDetailAdmin = query({
   args: {
     orderNumber: v.string(),
   },
+  returns: v.union(orderDoc, v.null()),
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
@@ -29,13 +30,16 @@ export const getOrderDetailAdmin = query({
   },
 });
 
+/** Admin order list. `clientTime` (caller-supplied, minute granularity) drives the "overdue" view. */
 export const getAllOrdersAdmin = query({
   args: {
+    clientTime: v.number(),
     status: v.optional(v.string()),
     paymentMethod: v.optional(v.string()),
     search: v.optional(v.string()),
     limit: v.optional(v.number()),
   },
+  returns: v.array(orderDoc),
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
@@ -62,7 +66,7 @@ export const getAllOrdersAdmin = query({
         .sort((a, b) => b.createdAt - a.createdAt)
         .slice(0, maxItems);
     } else if (args.status === "overdue") {
-      const twentyFourHoursAgo = Date.now() - 24 * 60 * 60 * 1000;
+      const twentyFourHoursAgo = args.clientTime - 24 * 60 * 60 * 1000;
       const paid = await ctx.db
         .query("orders")
         .withIndex("by_status", (q) => q.eq("status", "paid"))
@@ -105,6 +109,7 @@ export const getOrdersAttentionStats = query({
   args: {
     clientTime: v.number(),
   },
+  returns: v.union(attentionStatsValidator, v.null()),
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
@@ -147,6 +152,7 @@ export const updateShippingAddressAdmin = mutation({
     customerEmail: v.optional(v.string()),
     adminNotes: v.optional(v.string()),
   },
+  returns: successResult,
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
     const order = await ctx.db.get(args.orderId);
@@ -174,6 +180,14 @@ export const cancelOrderAdmin = internalMutation({
     reason: v.optional(v.string()),
     adminNotes: v.optional(v.string()),
   },
+  returns: v.object({
+    success: v.boolean(),
+    stripeSessionId: v.optional(v.string()),
+    orderNumber: v.string(),
+    total: v.number(),
+    currency: v.string(),
+    paymentMethod: v.union(v.literal("stripe"), v.literal("whatsapp")),
+  }),
   handler: async (ctx, args) => {
     const admin = await requireAdmin(ctx);
     const order = await ctx.db.get(args.orderId);
@@ -233,6 +247,7 @@ export const updateOrderStatusAdmin = mutation({
     trackingNumber: v.optional(v.string()),
     adminNotes: v.optional(v.string()),
   },
+  returns: v.object({ success: v.boolean(), orderId: v.id("orders"), status: orderStatusValidator }),
   handler: async (ctx, args) => {
     const admin = await requireAdmin(ctx);
     const order = await ctx.db.get(args.orderId);
@@ -293,6 +308,7 @@ export const updateOrderFulfillmentAdmin = mutation({
     trackingNumber: v.optional(v.string()),
     adminNotes: v.optional(v.string()),
   },
+  returns: successResult,
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
     const order = await ctx.db.get(args.orderId);
