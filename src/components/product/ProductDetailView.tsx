@@ -27,15 +27,13 @@ import {
   Share2,
   Scan,
   Camera,
-  Rotate3d,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
 import { useProductShare } from "@/lib/useProductShare";
 import { getWhatsAppInquiryUrl } from "@/lib/whatsapp";
 import { EmbroideryLoupe } from "@/components/product/EmbroideryLoupe";
-import { Cap3DViewer } from "@/components/Cap3DViewer";
-import { getCapColorwayManifest, type CapAngleKey } from "@/data/capsManifest";
+import { getCapColorwayManifest } from "@/data/capsManifest";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 
 interface ProductDetailViewProps {
@@ -66,7 +64,6 @@ export function ProductDetailView({ cap, allCaps }: ProductDetailViewProps) {
   const [addedSuccess, setAddedSuccess] = useState(false);
   const [isZoomed, setIsZoomed] = useState(false);
   const [isLoupeMode, setIsLoupeMode] = useState(false);
-  const [is3DMode, setIs3DMode] = useState(true);
   const [isMounted, setIsMounted] = useState(false);
 
   const convexVariants = useQuery(api.products.getVariants, {});
@@ -291,181 +288,123 @@ export function ProductDetailView({ cap, allCaps }: ProductDetailViewProps) {
 
       {/* ── Main Product Stage ── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
-        {/* ── Left Column: Multi-Angle Gallery / 360° 3D Viewer ── */}
+        {/* ── Left Column: Multi-Angle Gallery ── */}
         <div className="lg:col-span-7 flex flex-col gap-4">
-          {!isTee && is3DMode && !isLoupeMode ? (
-            <div className="relative">
-              <div className="mb-2 flex items-center justify-between">
-                <span className="inline-flex items-center gap-1.5 text-xs font-mono uppercase tracking-wider text-moya-red font-bold">
-                  <Rotate3d className="w-3.5 h-3.5" />
-                  <span>{locale === "es" ? "Estudio Interactivo 360° 3D" : "360° Interactive 3D Studio"}</span>
+          {/* Main Visualizer Stage */}
+          <div className={`relative aspect-square w-full rounded-2xl sm:rounded-3xl glass-card border border-black/[0.08] dark:border-white/[0.08] flex items-center justify-center overflow-hidden group shadow-xl ${
+            isTee ? "p-0 bg-zinc-950" : "p-4 sm:p-8"
+          }`}>
+            {/* Ambient Blueprint Grid */}
+            <div className="absolute inset-0 blueprint-grid opacity-15 dark:opacity-20 pointer-events-none" />
+
+            {/* Silhouette & Code watermark */}
+            <div className="absolute top-4 left-4 z-10 flex items-center gap-2">
+              <span className="px-2.5 py-1 rounded-md bg-zinc-900/5 dark:bg-white/5 border border-zinc-900/10 dark:border-white/10 text-[10px] font-mono uppercase tracking-widest text-zinc-600 dark:text-zinc-400">
+                {isTee
+                  ? (locale === "es" ? "Playera Heavyweight 280 GSM" : "Heavyweight 280 GSM Tee")
+                  : cap.silhouette === "trucker"
+                  ? "Trucker Edition"
+                  : "6-Panel Snapback"}
+              </span>
+              {tag && (
+                <span className="sticker-badge sticker-badge--red text-[10px] py-0.5 px-2">
+                  <Sparkles className="w-2.5 h-2.5" />
+                  <span>{tag}</span>
                 </span>
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsLoupeMode(true);
-                      playToggle(true);
-                    }}
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-display font-semibold glass-dark text-zinc-600 dark:text-zinc-300 hover:text-moya-red border border-black/[0.06] dark:border-white/[0.08]"
-                  >
-                    <Scan className="w-3.5 h-3.5" />
-                    <span>{locale === "es" ? "Lupa Macro" : "Macro Loupe"}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIs3DMode(false);
-                      playToggle(false);
-                    }}
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-display font-semibold glass-dark text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white border border-black/[0.06] dark:border-white/[0.08]"
-                  >
-                    <Maximize2 className="w-3.5 h-3.5" />
-                    <span>{locale === "es" ? "Vista 2D" : "2D Gallery"}</span>
-                  </button>
-                </div>
-              </div>
-              <Cap3DViewer
-                colorwayId={cap.id}
-                activeAngle={activeAngle === "hero" ? "front" : (activeAngle as CapAngleKey)}
-                onAngleChange={(ang) => setActiveAngle(ang)}
-                locale={locale}
-                showColorwayDock={false}
-                priority
-              />
-            </div>
-          ) : (
-            /* Main Visualizer Stage */
-            <div className={`relative aspect-square w-full rounded-2xl sm:rounded-3xl glass-card border border-black/[0.08] dark:border-white/[0.08] flex items-center justify-center overflow-hidden group shadow-xl ${
-              isTee ? "p-0 bg-zinc-950" : "p-4 sm:p-8"
-            }`}>
-              {/* Ambient Blueprint Grid */}
-              <div className="absolute inset-0 blueprint-grid opacity-15 dark:opacity-20 pointer-events-none" />
-
-              {/* Silhouette & Code watermark */}
-              <div className="absolute top-4 left-4 z-10 flex items-center gap-2">
-                <span className="px-2.5 py-1 rounded-md bg-zinc-900/5 dark:bg-white/5 border border-zinc-900/10 dark:border-white/10 text-[10px] font-mono uppercase tracking-widest text-zinc-600 dark:text-zinc-400">
-                  {isTee
-                    ? (locale === "es" ? "Playera Heavyweight 280 GSM" : "Heavyweight 280 GSM Tee")
-                    : cap.silhouette === "trucker"
-                    ? "Trucker Edition"
-                    : "6-Panel Snapback"}
-                </span>
-                {tag && (
-                  <span className="sticker-badge sticker-badge--red text-[10px] py-0.5 px-2">
-                    <Sparkles className="w-2.5 h-2.5" />
-                    <span>{tag}</span>
-                  </span>
-                )}
-              </div>
-
-              {/* Action Tools: 3D Mode, Loupe, Share & Zoom */}
-              <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
-                {!isTee && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsLoupeMode(false);
-                      setIs3DMode(true);
-                      playToggle(true);
-                    }}
-                    className="px-2.5 py-1.5 rounded-xl transition-all border glass-dark text-moya-red hover:bg-moya-red hover:text-white border-moya-red/30 flex items-center gap-1 text-xs font-display font-bold"
-                    title="Switch to 360° 3D Viewer"
-                  >
-                    <Rotate3d className="w-3.5 h-3.5" />
-                    <span>360° 3D</span>
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => {
-                    const next = !isLoupeMode;
-                    setIsLoupeMode(next);
-                    playToggle(next);
-                  }}
-                  className={`p-2 rounded-xl transition-all border ${
-                    isLoupeMode
-                      ? "bg-moya-red text-white border-moya-red shadow-lg shadow-moya-red/30"
-                      : "glass-dark text-zinc-500 hover:text-zinc-900 dark:hover:text-white border-black/[0.06] dark:border-white/[0.08]"
-                  }`}
-                  title={isLoupeMode ? "Exit 3D Macro Loupe" : "3D Embroidery Macro Loupe"}
-                >
-                  <Scan className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={handleShare}
-                  className="p-2 rounded-xl glass-dark text-zinc-500 hover:text-moya-red dark:hover:text-white transition-colors border border-black/[0.06] dark:border-white/[0.08]"
-                  title={tShare("tooltip")}
-                >
-                  <Share2 className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => {
-                    playClick();
-                    setIsZoomed(!isZoomed);
-                  }}
-                  className="p-2 rounded-xl glass-dark text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors border border-black/[0.06] dark:border-white/[0.08]"
-                  title="Toggle Zoom"
-                >
-                  <Maximize2 className="w-4 h-4" />
-                </button>
-              </div>
-
-              {/* Active Image Render / Loupe Mode */}
-              {isLoupeMode ? (
-                <div className="w-full h-full p-2 flex items-center justify-center">
-                  <EmbroideryLoupe
-                    imageSrc={currentMedia.src}
-                    alt={`${name} - ${currentMedia.label}`}
-                    activeAngle={activeAngle}
-                    capName={name}
-                  />
-                </div>
-              ) : (
-                <>
-                  <AnimatePresence mode="wait">
-                    <motion.div
-                      key={currentMedia.key + cap.id}
-                      initial={{ opacity: 0.85, scale: 0.98 }}
-                      animate={{ opacity: 1, scale: isZoomed ? 1.25 : 1 }}
-                      exit={{ opacity: 0.85, scale: 0.98 }}
-                      transition={{ duration: 0.25 }}
-                      className="relative w-full h-full flex items-center justify-center cursor-zoom-in"
-                      onClick={() => {
-                        playClick();
-                        setIsZoomed(!isZoomed);
-                      }}
-                    >
-                      <Image
-                        src={currentMedia.src}
-                        alt={`${name} - ${currentMedia.label}`}
-                        fill
-                        priority
-                        unoptimized
-                        className={`${
-                          isTee
-                            ? "object-cover object-top sm:object-[center_15%]"
-                            : "object-contain drop-shadow-[0_25px_45px_rgba(0,0,0,0.22)] dark:drop-shadow-[0_25px_50px_rgba(0,0,0,0.85)]"
-                        } transition-transform duration-500`}
-                        sizes="(max-width: 1024px) 90vw, 55vw"
-                      />
-                    </motion.div>
-                  </AnimatePresence>
-
-                  {/* Active Angle Descriptor Pill */}
-                  <div className="absolute bottom-4 inset-x-4 sm:inset-x-8 z-10 flex items-center justify-between glass-dark px-3.5 py-2 rounded-xl border border-black/[0.06] dark:border-white/[0.06] text-xs">
-                    <span className="font-display font-semibold text-zinc-900 dark:text-white flex items-center gap-1.5">
-                      <Layers className="w-3.5 h-3.5 text-moya-red" />
-                      {currentMedia.label}
-                    </span>
-                    <span className="text-[11px] text-zinc-500 truncate max-w-[240px] sm:max-w-sm font-sans">
-                      {currentMedia.desc}
-                    </span>
-                  </div>
-                </>
               )}
             </div>
-          )}
+
+            {/* Action Tools: Loupe, Share & Zoom */}
+            <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  const next = !isLoupeMode;
+                  setIsLoupeMode(next);
+                  playToggle(next);
+                }}
+                className={`p-2 rounded-xl transition-all border ${
+                  isLoupeMode
+                    ? "bg-moya-red text-white border-moya-red shadow-lg shadow-moya-red/30"
+                    : "glass-dark text-zinc-500 hover:text-zinc-900 dark:hover:text-white border-black/[0.06] dark:border-white/[0.08]"
+                }`}
+                title={isLoupeMode ? "Exit 3D Macro Loupe" : "3D Embroidery Macro Loupe"}
+              >
+                <Scan className="w-4 h-4" />
+              </button>
+              <button
+                onClick={handleShare}
+                className="p-2 rounded-xl glass-dark text-zinc-500 hover:text-moya-red dark:hover:text-white transition-colors border border-black/[0.06] dark:border-white/[0.08]"
+                title={tShare("tooltip")}
+              >
+                <Share2 className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => {
+                  playClick();
+                  setIsZoomed(!isZoomed);
+                }}
+                className="p-2 rounded-xl glass-dark text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors border border-black/[0.06] dark:border-white/[0.08]"
+                title="Toggle Zoom"
+              >
+                <Maximize2 className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Active Image Render / Loupe Mode */}
+            {isLoupeMode ? (
+              <div className="w-full h-full p-2 flex items-center justify-center">
+                <EmbroideryLoupe
+                  imageSrc={currentMedia.src}
+                  alt={`${name} - ${currentMedia.label}`}
+                  activeAngle={activeAngle}
+                  capName={name}
+                />
+              </div>
+            ) : (
+              <>
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={currentMedia.key + cap.id}
+                    initial={{ opacity: 0.85, scale: 0.98 }}
+                    animate={{ opacity: 1, scale: isZoomed ? 1.25 : 1 }}
+                    exit={{ opacity: 0.85, scale: 0.98 }}
+                    transition={{ duration: 0.25 }}
+                    className="relative w-full h-full flex items-center justify-center cursor-zoom-in"
+                    onClick={() => {
+                      playClick();
+                      setIsZoomed(!isZoomed);
+                    }}
+                  >
+                    <Image
+                      src={currentMedia.src}
+                      alt={`${name} - ${currentMedia.label}`}
+                      fill
+                      priority
+                      unoptimized
+                      className={`${
+                        isTee
+                          ? "object-cover object-top sm:object-[center_15%]"
+                          : "object-contain drop-shadow-[0_25px_45px_rgba(0,0,0,0.22)] dark:drop-shadow-[0_25px_50px_rgba(0,0,0,0.85)]"
+                      } transition-transform duration-500`}
+                      sizes="(max-width: 1024px) 90vw, 55vw"
+                    />
+                  </motion.div>
+                </AnimatePresence>
+
+                {/* Active Angle Descriptor Pill */}
+                <div className="absolute bottom-4 inset-x-4 sm:inset-x-8 z-10 flex items-center justify-between glass-dark px-3.5 py-2 rounded-xl border border-black/[0.06] dark:border-white/[0.06] text-xs">
+                  <span className="font-display font-semibold text-zinc-900 dark:text-white flex items-center gap-1.5">
+                    <Layers className="w-3.5 h-3.5 text-moya-red" />
+                    {currentMedia.label}
+                  </span>
+                  <span className="text-[11px] text-zinc-500 truncate max-w-[240px] sm:max-w-sm font-sans">
+                    {currentMedia.desc}
+                  </span>
+                </div>
+              </>
+            )}
+          </div>
 
           {/* Angle Thumbnails Switcher */}
           <div className="grid grid-cols-5 gap-2 sm:gap-3">

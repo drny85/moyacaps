@@ -10,7 +10,8 @@ import { useStore } from "@/store/useStore";
 import type { CapVariant } from "@/data/caps";
 import { useCapVariants } from "@/hooks/useCapVariants";
 import { useCapPurchaseState } from "@/hooks/useCapPurchaseState";
-import { Cap3DViewer } from "@/components/Cap3DViewer";
+import { CapTurntable, type TurntableFrame } from "@/components/viewer/CapTurntable";
+import { getCapAngleImages, TURNTABLE_ANGLES } from "@/lib/capAngles";
 import { DURATION, EASE, STAGGER } from "@/lib/motion";
 
 const FLAGSHIP_ID = "negro-rojo";
@@ -48,6 +49,16 @@ export function HeroInteractive() {
   const { stock, inCartQty, isInCart, isOutOfStock, isMaxInCart, isDropUpcoming } = useCapPurchaseState(activeCap);
   const name = locale === "es" ? activeCap.nameEs : activeCap.nameEn;
 
+  // ── Real-photo turntable: every angle shot when the colorway has them, the catalog shot otherwise ──
+  const tAngles = useTranslations("pdp.angles");
+  const frames: TurntableFrame[] = useMemo(() => {
+    const angles = getCapAngleImages(activeCap.id);
+    return angles
+      ? TURNTABLE_ANGLES.map((angle) => ({ src: angles[angle], label: tAngles(angle) }))
+      : [{ src: activeCap.image, label: tAngles("hero") }];
+  }, [activeCap.id, activeCap.image, tAngles]);
+  const [hasTurned, setHasTurned] = useState(false);
+
   const lineReveal = (i: number) => ({
     initial: { y: reduceMotion ? 0 : "105%", opacity: reduceMotion ? 0 : 1 },
     animate: { y: 0, opacity: 1 },
@@ -67,19 +78,33 @@ export function HeroInteractive() {
       />
 
       <div className="relative z-10 mx-auto grid w-full max-w-7xl grid-cols-1 items-center gap-4 lg:grid-cols-12 lg:gap-10">
-        {/* ── 360° 3D Cap Viewer & Customizer Stage ── */}
+        {/* ── Cap stage ── */}
         <div className="order-1 lg:order-2 lg:col-span-7">
-          <div className="relative mx-auto w-full max-w-[min(100%,520px)] lg:max-w-none">
-            <Cap3DViewer
-              colorwayId={activeCap.id}
-              onColorwayChange={(id) => setActiveCapId(id)}
-              locale={locale}
-              showColorwayDock={true}
+          <div className="relative mx-auto aspect-square w-full max-w-[min(100%,36svh)] sm:max-w-[min(560px,46svh)] lg:max-w-none">
+            <CapTurntable
+              key={activeCap.id}
+              frames={frames}
+              alt={`Good Luck 0880 — ${name}`}
+              glowHex={`${activeCap.secondaryHex}66`}
               priority
+              className="h-full w-full"
+              onInteract={() => setHasTurned(true)}
             />
 
+            {frames.length > 1 && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: hasTurned ? 0 : 1 }}
+                transition={{ duration: DURATION.base, delay: hasTurned ? 0 : 1.4 }}
+                className="pointer-events-none absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-1.5 whitespace-nowrap rounded-full border border-black/10 bg-white/70 px-3 py-1.5 text-[11px] font-display font-semibold text-zinc-700 backdrop-blur-md dark:border-white/10 dark:bg-black/40 dark:text-zinc-300"
+              >
+                <Rotate3d className="h-3.5 w-3.5" />
+                <span>{t("dragHint")}</span>
+              </motion.div>
+            )}
+
             {isInCart && (
-              <div className="absolute left-3.5 top-14 z-20 flex items-center gap-1.5 rounded-full border border-emerald-500/40 bg-white/85 px-2.5 py-1 text-[11px] font-display font-semibold text-emerald-600 backdrop-blur-md dark:bg-black/60 dark:text-emerald-400">
+              <div className="absolute left-2 top-2 z-20 flex items-center gap-1.5 rounded-full border border-emerald-500/40 bg-white/80 px-2.5 py-1.5 text-[11px] font-display font-semibold text-emerald-600 backdrop-blur-md dark:bg-black/50 dark:text-emerald-400">
                 <Check className="h-3 w-3" />
                 <span>
                   {t("inCart")} ({inCartQty})
