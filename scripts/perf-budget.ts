@@ -5,6 +5,7 @@
  *   bun run perf-budget --skip-build         reuse the current .next build
  *   bun run perf-budget --url https://…      test a deployed URL (e.g. a Vercel preview)
  *   bun run perf-budget --runs 5 --pages /en,/en/products
+ *   bun run perf-budget --url https://… --header "Cookie: _vercel_jwt=…"   protected preview
  *
  * Fails (exit 1) when the median performance score is below 90 or the median LCP is
  * 2.5 s or more on any page. Lighthouse uses its default mobile emulation (Moto G
@@ -53,7 +54,12 @@ async function waitForServer(url: string, timeoutMs = 60_000): Promise<void> {
   throw new Error(`Server at ${url} did not come up within ${timeoutMs / 1000}s`);
 }
 
-async function lighthouseRun(url: string, outDir: string, index: number): Promise<RunMetrics> {
+async function lighthouseRun(
+  url: string,
+  outDir: string,
+  index: number,
+  headers: Record<string, string>
+): Promise<RunMetrics> {
   const out = path.join(outDir, `${index}.json`);
   await run(
     LIGHTHOUSE,
@@ -64,6 +70,7 @@ async function lighthouseRun(url: string, outDir: string, index: number): Promis
       `--output-path=${out}`,
       "--quiet",
       "--chrome-flags=--headless=new",
+      ...(Object.keys(headers).length ? [`--extra-headers=${JSON.stringify(headers)}`] : []),
     ],
     { quiet: true }
   );
@@ -85,21 +92,21 @@ async function main() {
 
     let pages = args.pages;
     if (!pages) {
-      const shop = await (await fetch(`${base}/en/products`)).text();
+      const shop = await (await fetch(`${base}/en/products`, { headers: args.headers })).text();
       const product = firstProductPath(shop);
       if (!product) throw new Error("No product link found on /en/products; pass --pages");
       pages = ["/en", "/en/products", product];
     }
 
     // Warm server caches (rendering, image optimizer) so run 1 is not a cold outlier
-    for (const page of pages) await fetch(`${base}${page}`);
+    for (const page of pages) await fetch(`${base}${page}`, { headers: args.headers });
 
     const outDir = await fs.mkdtemp(path.join(os.tmpdir(), "perf-budget-"));
     const results: PageResult[] = [];
     for (const page of pages) {
       const runs: RunMetrics[] = [];
       for (let i = 0; i < args.runs; i++) {
-        const metrics = await lighthouseRun(`${base}${page}`, outDir, results.length * 100 + i);
+        const metrics = await lighthouseRun(`${base}${page}`, outDir, results.length * 100 + i, args.headers);
         runs.push(metrics);
         console.log(`  ${page} run ${i + 1}/${args.runs}: perf ${metrics.performance}, LCP ${Math.round(metrics.lcpMs)} ms`);
       }
