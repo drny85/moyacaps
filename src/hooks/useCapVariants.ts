@@ -34,7 +34,7 @@ const STATIC_CATALOG: CapVariant[] = CAP_VARIANTS.map((p) => {
  * Falls back to the static catalog until Convex responds (or when it is empty).
  */
 export function useCapVariants(): { caps: CapVariant[]; isLive: boolean } {
-  const convexVariants = useQuery(api.products.getVariants, {});
+  const convexVariants = useQuery(api.catalog.getVariants, {});
 
   return useMemo(() => {
     if (convexVariants && convexVariants.length > 0) {

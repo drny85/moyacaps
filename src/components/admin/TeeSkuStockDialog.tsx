@@ -19,10 +19,10 @@ const key = (colorway: string, size: string) => `${colorway}/${size}`;
  */
 export function TeeSkuStockDialog({ variantId, onClose }: TeeSkuStockDialogProps) {
   const product = useQuery(
-    api.products.getProductBySlug,
+    api.catalog.getProductBySlug,
     variantId ? { slug: variantId, allowUnavailable: true } : "skip"
   );
-  const setSkuStock = useMutation(api.products.setTeeSkuStock);
+  const setSkuStock = useMutation(api.catalogAdmin.setTeeSkuStock);
 
   const saved = useMemo(() => {
     const map: Record<string, number> = {};

@@ -114,7 +114,7 @@ export default function AdminOrdersPage() {
   };
 
   // Convex queries, mutations & actions
-  const orders = useQuery(api.orders.getAllOrdersAdmin, {
+  const orders = useQuery(api.orderDesk.getAllOrdersAdmin, {
     status: statusFilter,
     paymentMethod: paymentFilter,
     search: searchQuery,
@@ -147,13 +147,13 @@ export default function AdminOrdersPage() {
     }
   }, [orders, selectedOrder]);
 
-  const updateOrderStatus = useMutation(api.orders.updateOrderStatusAdmin);
-  const markWhatsAppOrderPaidAdmin = useMutation(api.orders.markWhatsAppOrderPaidAdmin);
-  const dispatchWhatsAppPaymentLinkAdmin = useMutation(api.orders.dispatchWhatsAppPaymentLinkAdmin);
-  const generateOrRefreshPaymentLink = useAction(api.stripe.generateOrRefreshWhatsAppPaymentLink);
-  const updateOrderFulfillment = useMutation(api.orders.updateOrderFulfillmentAdmin);
-  const updateShippingAddressAdmin = useMutation(api.orders.updateShippingAddressAdmin);
-  const cancelAndRefundAdmin = useAction(api.stripe.cancelAndRefundOrderAdmin);
+  const updateOrderStatus = useMutation(api.orderDesk.updateOrderStatusAdmin);
+  const markWhatsAppOrderPaidAdmin = useMutation(api.whatsappOrders.markWhatsAppOrderPaidAdmin);
+  const dispatchWhatsAppPaymentLinkAdmin = useMutation(api.whatsappOrders.dispatchWhatsAppPaymentLinkAdmin);
+  const generateOrRefreshPaymentLink = useAction(api.stripeCheckout.generateOrRefreshWhatsAppPaymentLink);
+  const updateOrderFulfillment = useMutation(api.orderDesk.updateOrderFulfillmentAdmin);
+  const updateShippingAddressAdmin = useMutation(api.orderDesk.updateShippingAddressAdmin);
+  const cancelAndRefundAdmin = useAction(api.stripeRefunds.cancelAndRefundOrderAdmin);
 
   // Attention stats & Resend test alert action
   const [statsClock, setStatsClock] = useState<number>(() => Date.now());
@@ -161,7 +161,7 @@ export default function AdminOrdersPage() {
     const id = setInterval(() => setStatsClock(Date.now()), 60 * 1000);
     return () => clearInterval(id);
   }, []);
-  const attentionStats = useQuery(api.orders.getOrdersAttentionStats, { clientTime: statsClock });
+  const attentionStats = useQuery(api.orderDesk.getOrdersAttentionStats, { clientTime: statsClock });
   const sendTestAlert = useAction(api.emails.sendTestAdminOrderAlert);
   const [isSendingTestAlert, setIsSendingTestAlert] = useState(false);
 

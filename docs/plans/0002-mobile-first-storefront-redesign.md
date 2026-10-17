@@ -34,7 +34,7 @@ Status: done on `feat/catalog-shots`. `next.config.mjs` already serves avif/webp
 
 Read `convex/_generated/ai/guidelines.md` first.
 
-Status: done on `feat/unified-product-catalog`. Migration run on the dev deployment (16 caps, 11 tees, 220 SKUs; re-run is a no-op). **Production still needs `npx convex run --prod products:migrateUnifiedCatalog` right after the deploy that ships this schema**: until it runs, prod tees have no colorways, so they keep selling against the aggregate as before.
+Status: done on `feat/unified-product-catalog`. Migration run on the dev deployment (16 caps, 11 tees, 220 SKUs; re-run is a no-op). **Production still needs `npx convex run --prod catalogMigrations:migrateUnifiedCatalog` right after the deploy that ships this schema**: until it runs, prod tees have no colorways, so they keep selling against the aggregate as before.
 
 As built:
 - `convex/inventory.ts` is the single stock path (`checkStock`, `adjustStock`, `setSkuStock`). A tee variant's `stock` is kept equal to the sum of its SKUs, so analytics and low-stock views are unchanged. Tee lines from pre-SKU orders cannot be attributed to a SKU; releasing them logs a warning for manual reconcile.
@@ -44,8 +44,8 @@ As built:
 
 - `convex/schema.ts`: add tee fields to `variants` (`graphicDesign`, `printLocation`, `apparelColorways` with catalog/lifestyle image paths, `sizes`), add `skus` table `{ variantId, colorway, size, stock }` with index `by_variantId_colorway_size`.
 - Migration (idempotent mutation + `scripts/` runner): seed `skus` from current tee stock split across colorways/sizes; copy static tee metadata into `variants`.
-- `convex/products.ts`: `getVariants` gains `category`, `colorwayFamily`, `inStock` args and returns `catalogShot`; new `getProductBySlug` returning variant + SKUs.
-- Inventory: `convex/stripe.ts` and `convex/orders.ts` reserve, deduct and release tee stock on the matching `skus` row (ADR 0007 idempotency unchanged). Add tests in `convex/orders.test.ts` for tee SKU reservation, oversell rejection and release.
+- `convex/products.ts` (now `convex/catalog.ts`, ADR 0017): `getVariants` gains `category`, `colorwayFamily`, `inStock` args and returns `catalogShot`; new `getProductBySlug` returning variant + SKUs.
+- Inventory: `convex/stripe.ts` and `convex/orders.ts` (now split per ADR 0017) reserve, deduct and release tee stock on the matching `skus` row (ADR 0007 idempotency unchanged). Add tests in `convex/orders.test.ts` for tee SKU reservation, oversell rejection and release.
 - Admin products page: edit SKU stock per colorway × size.
 - Routes: create `src/app/[locale]/products/[slug]/page.tsx` (moves current `caps/[id]` logic); `caps/[id]` → `permanentRedirect`. Update every `/caps/` link: `CapCard`, `DropRadar`, `ProductQuickView`, `ProductJsonLd`, `useProductShare`, `sitemap.ts`, `robots.ts`, admin drops/products, `DropScheduleDialog`, emails.
 - Lifestyle Shot names: rename `gothic-angel-white.jpg` → `angel-clover-white.jpg`, `eagle-clover-{black,grey}.png` → `.jpg`, rewriting the variant `image`/`images` paths in the same migration; keep the old files until no order snapshot references them.
@@ -62,7 +62,7 @@ As built:
 - On phones, sort lives in the "Filter & sort" sheet; from `sm` up it is a dropdown. The navbar publishes `--navbar-h` so the sticky bar sits flush at every breakpoint.
 - Tee cards swap colorways in place and open the product on the chosen colorway (`?colorway=`, read by the Phase 4 product page). With a colour filter on, tees open on the matching colorway.
 - Nav: Shop / Caps / Tees replace Collection and the studio anchor; the mobile action bar points at Shop. `CapCard` / `CapGrid` remain on the homepage until Phase 5.
-- Tee price changed to $80 in the same branch (`products:setApparelPriceUsd`, run on dev). **Production: run `npx convex run --prod products:setApparelPriceUsd '{"priceUsd": 80}'` after deploy.**
+- Tee price changed to $80 in the same branch (`catalogMigrations:setApparelPriceUsd`, run on dev). **Production: run `npx convex run --prod catalogMigrations:setApparelPriceUsd '{"priceUsd": 80}'` after deploy.**
 
 - `src/app/[locale]/products/page.tsx`: category tabs (All / Caps / Tees), filter chips (Colorway family, Silhouette, Graphic Design, In stock), sort (Featured, Newest, Price). State in URL query (`?category=tees&colorway=black&sort=price-asc`).
 - Mobile: sticky tab bar, filters in a bottom sheet, 2-column grid; desktop 3–4 columns with filter sidebar.

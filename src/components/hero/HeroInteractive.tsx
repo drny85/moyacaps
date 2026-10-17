@@ -47,7 +47,7 @@ export function HeroInteractive() {
   const locale = useLocale();
   const { caps: catalog, isLive } = useCapVariants();
   const caps = useMemo(() => catalog.filter((p) => !isTee(p)), [catalog]);
-  const upcomingDrops = useQuery(api.products.getUpcomingDrops);
+  const upcomingDrops = useQuery(api.drops.getUpcomingDrops);
   const hasLiveDrop = Boolean(upcomingDrops && upcomingDrops.length > 0);
 
   const quickSwapCaps = useMemo(() => pickQuickSwap(caps), [caps]);

@@ -76,7 +76,7 @@ async function teeStock(tt: T) {
 
 function teeLead(tt: T, line: { quantity?: number; colorway?: string; size?: string }) {
   const qty = line.quantity ?? 1;
-  return tt.mutation(internal.orders.createWhatsAppOrderLead, {
+  return tt.mutation(internal.whatsappOrders.createWhatsAppOrderLead, {
     items: [
       {
         variantId: "T1",
@@ -143,7 +143,7 @@ describe("Tee SKU inventory (ADR 0015)", () => {
     await tt.run(async (ctx) => {
       await ctx.db.patch(lead.orderId, { reservationExpiresAt: Date.now() - 1000 });
     });
-    await tt.mutation(internal.orders.expireWhatsAppOrderLead, { orderId: lead.orderId });
+    await tt.mutation(internal.whatsappOrders.expireWhatsAppOrderLead, { orderId: lead.orderId });
 
     expect(await skuStock(tt, "washed-black", "L")).toBe(3);
     expect(await teeStock(tt)).toBe(3);
@@ -153,7 +153,7 @@ describe("Tee SKU inventory (ADR 0015)", () => {
   it("a direct Stripe settlement deducts the purchased SKU", async () => {
     const tt = t();
     await seedTee(tt, { "washed-black/L": 0, "washed-black/M": 0, "crisp-white/L": 0, "crisp-white/M": 4 });
-    await tt.mutation(internal.orders.createOrUpdateStripeOrder, {
+    await tt.mutation(internal.orderSettlement.createOrUpdateStripeOrder, {
       stripeSessionId: "cs_tee1",
       orderNumber: "GL-TEE-1",
       customerEmail: "buyer@test.com",
@@ -185,13 +185,13 @@ describe("Tee SKU inventory (ADR 0015)", () => {
     await seedTee(tt, { "washed-black/L": 7, "washed-black/M": 0, "crisp-white/L": 0, "crisp-white/M": 0 });
 
     expect(
-      await tt.query(internal.products.getLineStock, { variantId: "T1", colorway: "washed-black", size: "L" })
+      await tt.query(internal.catalog.getLineStock, { variantId: "T1", colorway: "washed-black", size: "L" })
     ).toEqual({ ok: true, available: 7 });
-    expect(await tt.query(internal.products.getLineStock, { variantId: "T1" })).toEqual({
+    expect(await tt.query(internal.catalog.getLineStock, { variantId: "T1" })).toEqual({
       ok: false,
       reason: "option_required",
     });
-    expect(await tt.query(internal.products.getLineStock, { variantId: "nope" })).toEqual({
+    expect(await tt.query(internal.catalog.getLineStock, { variantId: "nope" })).toEqual({
       ok: false,
       reason: "not_found",
     });
@@ -202,13 +202,13 @@ describe("Tee SKU inventory (ADR 0015)", () => {
     await seedTee(tt, { "washed-black/L": 1, "washed-black/M": 1, "crisp-white/L": 1, "crisp-white/M": 1 });
 
     await expect(
-      admin(tt).mutation(api.products.updateVariantStock, { variantId: "T1", stock: 50 })
+      admin(tt).mutation(api.catalogAdmin.updateVariantStock, { variantId: "T1", stock: 50 })
     ).rejects.toThrow(/per colorway and size/);
     await expect(
-      admin(tt).mutation(api.products.adjustVariantStock, { variantId: "T1", delta: 5 })
+      admin(tt).mutation(api.catalogAdmin.adjustVariantStock, { variantId: "T1", delta: 5 })
     ).rejects.toThrow(/per colorway and size/);
 
-    await admin(tt).mutation(api.products.setTeeSkuStock, {
+    await admin(tt).mutation(api.catalogAdmin.setTeeSkuStock, {
       variantId: "T1",
       colorway: "crisp-white",
       size: "L",
@@ -218,7 +218,7 @@ describe("Tee SKU inventory (ADR 0015)", () => {
     expect(await teeStock(tt)).toBe(13);
 
     await expect(
-      admin(tt).mutation(api.products.setTeeSkuStock, { variantId: "T1", colorway: "crisp-white", size: "S", stock: 1 })
+      admin(tt).mutation(api.catalogAdmin.setTeeSkuStock, { variantId: "T1", colorway: "crisp-white", size: "S", stock: 1 })
     ).rejects.toThrow(/not offered/);
   });
 });
@@ -238,7 +238,7 @@ describe("adjustStock edge cases", () => {
     });
 
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    await tt.mutation(internal.orders.createOrUpdateStripeOrder, {
+    await tt.mutation(internal.orderSettlement.createOrUpdateStripeOrder, {
       stripeSessionId: "cs_missing_sku",
       orderNumber: "GL-MISSING-SKU",
       customerEmail: "buyer@test.com",
@@ -274,21 +274,21 @@ describe("hidden products (allowUnavailable)", () => {
   it("customers and guests cannot read a hidden product, even when asking for it", async () => {
     const tt = t();
     await hideTee(tt);
-    expect(await tt.query(api.products.getProductBySlug, { slug: "T1", allowUnavailable: true })).toBeNull();
-    expect(await tt.query(api.products.getVariantById, { variantId: "T1", allowUnavailable: true })).toBeNull();
+    expect(await tt.query(api.catalog.getProductBySlug, { slug: "T1", allowUnavailable: true })).toBeNull();
+    expect(await tt.query(api.catalog.getVariantById, { variantId: "T1", allowUnavailable: true })).toBeNull();
     const customer = tt.withIdentity({ subject: "user_cust", email: "buyer@test.com" });
-    expect(await customer.query(api.products.getProductBySlug, { slug: "T1", allowUnavailable: true })).toBeNull();
+    expect(await customer.query(api.catalog.getProductBySlug, { slug: "T1", allowUnavailable: true })).toBeNull();
   });
 
   it("administrators can, with SKU stock", async () => {
     const tt = t();
     await hideTee(tt);
-    const product = await admin(tt).query(api.products.getProductBySlug, { slug: "T1", allowUnavailable: true });
+    const product = await admin(tt).query(api.catalog.getProductBySlug, { slug: "T1", allowUnavailable: true });
     expect(product?.variantId).toBe("T1");
     expect(product?.skus.find((s) => s.colorway === "washed-black" && s.size === "L")?.stock).toBe(3);
-    expect(await admin(tt).query(api.products.getVariantById, { variantId: "T1", allowUnavailable: true })).not.toBeNull();
+    expect(await admin(tt).query(api.catalog.getVariantById, { variantId: "T1", allowUnavailable: true })).not.toBeNull();
     // Without the flag even admins get the public answer
-    expect(await admin(tt).query(api.products.getProductBySlug, { slug: "T1" })).toBeNull();
+    expect(await admin(tt).query(api.catalog.getProductBySlug, { slug: "T1" })).toBeNull();
   });
 });
 
@@ -323,8 +323,8 @@ describe("migrateUnifiedCatalog", () => {
       });
     });
 
-    const first = await tt.mutation(internal.products.migrateUnifiedCatalog, {});
-    const second = await tt.mutation(internal.products.migrateUnifiedCatalog, {});
+    const first = await tt.mutation(internal.catalogMigrations.migrateUnifiedCatalog, {});
+    const second = await tt.mutation(internal.catalogMigrations.migrateUnifiedCatalog, {});
     expect(second.skusSeeded).toBe(0);
     expect(first.teesInserted).toBeGreaterThan(0); // tees missing from this DB are created
 
@@ -353,7 +353,7 @@ describe("migrateUnifiedCatalog", () => {
 
   it("re-running never overwrites an Administrator's edits", async () => {
     const tt = t();
-    await tt.mutation(internal.products.migrateUnifiedCatalog, {});
+    await tt.mutation(internal.catalogMigrations.migrateUnifiedCatalog, {});
 
     // Admin edits after the first run
     await tt.run(async (ctx) => {
@@ -369,7 +369,7 @@ describe("migrateUnifiedCatalog", () => {
       });
     });
 
-    const rerun = await tt.mutation(internal.products.migrateUnifiedCatalog, {});
+    const rerun = await tt.mutation(internal.catalogMigrations.migrateUnifiedCatalog, {});
     expect(rerun.teesUpdated).toBe(0);
     expect(rerun.skusSeeded).toBe(0);
 
@@ -386,7 +386,7 @@ describe("migrateUnifiedCatalog", () => {
 
   it("keeps data-owned fields in sync, e.g. a print moved from back to front", async () => {
     const tt = t();
-    await tt.mutation(internal.products.migrateUnifiedCatalog, {});
+    await tt.mutation(internal.catalogMigrations.migrateUnifiedCatalog, {});
     await tt.run(async (ctx) => {
       const v = await ctx.db
         .query("variants")
@@ -394,7 +394,7 @@ describe("migrateUnifiedCatalog", () => {
         .first();
       await ctx.db.patch(v!._id, { printPosition: "back" });
     });
-    await tt.mutation(internal.products.migrateUnifiedCatalog, {});
+    await tt.mutation(internal.catalogMigrations.migrateUnifiedCatalog, {});
     const row = await tt.run(async (ctx) =>
       ctx.db
         .query("variants")
@@ -422,7 +422,7 @@ describe("migrateUnifiedCatalog", () => {
         fitEn: "Admin fit copy",
       });
     });
-    await tt.mutation(internal.products.migrateUnifiedCatalog, {});
+    await tt.mutation(internal.catalogMigrations.migrateUnifiedCatalog, {});
     const row = await tt.run(async (ctx) =>
       ctx.db
         .query("variants")

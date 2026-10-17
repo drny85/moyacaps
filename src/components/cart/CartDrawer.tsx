@@ -22,9 +22,9 @@ export function CartDrawer() {
   const locale = useLocale();
   const router = useRouter();
   const { user, isSignedIn } = useSafeUser();
-  const createCheckoutSession = useAction(api.stripe.createCheckoutSession);
-  const createWhatsAppCheckoutSession = useAction(api.stripe.createWhatsAppCheckoutSession);
-  const convexVariants = useQuery(api.products.getVariants, {
+  const createCheckoutSession = useAction(api.stripeCheckout.createCheckoutSession);
+  const createWhatsAppCheckoutSession = useAction(api.stripeCheckout.createWhatsAppCheckoutSession);
+  const convexVariants = useQuery(api.catalog.getVariants, {
     includeUnavailable: true,
   });
 

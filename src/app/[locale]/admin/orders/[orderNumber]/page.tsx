@@ -53,17 +53,17 @@ export default function DedicatedOrderDetailPage({
   const locale = useLocale();
   const router = useRouter();
 
-  const order = useQuery(api.orders.getOrderDetailAdmin, {
+  const order = useQuery(api.orderDesk.getOrderDetailAdmin, {
     orderNumber: decodeURIComponent(orderNumber),
   });
 
-  const updateOrderStatus = useMutation(api.orders.updateOrderStatusAdmin);
-  const markWhatsAppOrderPaidAdmin = useMutation(api.orders.markWhatsAppOrderPaidAdmin);
-  const dispatchWhatsAppPaymentLinkAdmin = useMutation(api.orders.dispatchWhatsAppPaymentLinkAdmin);
-  const generateOrRefreshPaymentLink = useAction(api.stripe.generateOrRefreshWhatsAppPaymentLink);
-  const updateOrderFulfillment = useMutation(api.orders.updateOrderFulfillmentAdmin);
-  const updateShippingAddressAdmin = useMutation(api.orders.updateShippingAddressAdmin);
-  const cancelAndRefundAdmin = useAction(api.stripe.cancelAndRefundOrderAdmin);
+  const updateOrderStatus = useMutation(api.orderDesk.updateOrderStatusAdmin);
+  const markWhatsAppOrderPaidAdmin = useMutation(api.whatsappOrders.markWhatsAppOrderPaidAdmin);
+  const dispatchWhatsAppPaymentLinkAdmin = useMutation(api.whatsappOrders.dispatchWhatsAppPaymentLinkAdmin);
+  const generateOrRefreshPaymentLink = useAction(api.stripeCheckout.generateOrRefreshWhatsAppPaymentLink);
+  const updateOrderFulfillment = useMutation(api.orderDesk.updateOrderFulfillmentAdmin);
+  const updateShippingAddressAdmin = useMutation(api.orderDesk.updateShippingAddressAdmin);
+  const cancelAndRefundAdmin = useAction(api.stripeRefunds.cancelAndRefundOrderAdmin);
 
   // Local interaction states
   const [copiedTracking, setCopiedTracking] = useState(false);

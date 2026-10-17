@@ -72,7 +72,7 @@ async function createLead(
 ) {
   const qty = opts.qty ?? 1;
   const subtotal = qty * 100;
-  return await t.mutation(internal.orders.createWhatsAppOrderLead, {
+  return await t.mutation(internal.whatsappOrders.createWhatsAppOrderLead, {
     items: [
       {
         variantId,
@@ -102,7 +102,7 @@ async function settleStripe(
   sessionId: string,
   opts: { eventId?: string; isWhatsApp?: boolean } = {}
 ) {
-  return await t.mutation(internal.orders.createOrUpdateStripeOrder, {
+  return await t.mutation(internal.orderSettlement.createOrUpdateStripeOrder, {
     stripeSessionId: sessionId,
     orderNumber,
     customerEmail: "buyer@test.com",
@@ -126,21 +126,21 @@ describe("API surface lockdown (security regression locks)", () => {
     // eslint-disable-next-line @typescript-eslint/no-unused-expressions
     (() => {
       // @ts-expect-error updateOrderPaymentUrl must remain an internalMutation
-      void api.orders.updateOrderPaymentUrl;
+      void api.whatsappOrders.updateOrderPaymentUrl;
       // @ts-expect-error attachStripeCustomerInternal must remain internal
-      void api.orders.attachStripeCustomerInternal;
+      void api.orderSettlement.attachStripeCustomerInternal;
       // @ts-expect-error createWhatsAppOrderLead must remain internal
-      void api.orders.createWhatsAppOrderLead;
+      void api.whatsappOrders.createWhatsAppOrderLead;
       // @ts-expect-error cancelOrder must remain internal
       void api.orders.cancelOrder;
       // @ts-expect-error cancelOrderAdmin must remain internal
-      void api.orders.cancelOrderAdmin;
+      void api.orderDesk.cancelOrderAdmin;
       // @ts-expect-error debugGetOrders was deleted
       void api.orders.debugGetOrders;
       // @ts-expect-error fulfillStripeWebhook must remain an internalAction
-      void api.stripe.fulfillStripeWebhook;
+      void api.stripeWebhook.fulfillStripeWebhook;
       // @ts-expect-error expireOpenCheckoutSessionsInternal must remain internal
-      void api.stripe.expireOpenCheckoutSessionsInternal;
+      void api.stripeCheckout.expireOpenCheckoutSessionsInternal;
     });
     expect(true).toBe(true);
   });
@@ -228,7 +228,7 @@ describe("Reservation expiry state machine", () => {
     const lead = await createLead(tt, "V1");
 
     // Admin dispatches the link → hold extended 24h from dispatch.
-    const dispatched = await admin(tt).mutation(api.orders.dispatchWhatsAppPaymentLinkAdmin, {
+    const dispatched = await admin(tt).mutation(api.whatsappOrders.dispatchWhatsAppPaymentLinkAdmin, {
       orderId: lead.orderId,
     });
     expect(dispatched.reservationExpiresAt).toBeGreaterThan(Date.now());
@@ -236,7 +236,7 @@ describe("Reservation expiry state machine", () => {
     expect(order0?.paymentLinkSentAt).toBeDefined();
 
     // Original (stale) expiration job fires early → must NOT cancel.
-    await tt.mutation(internal.orders.expireWhatsAppOrderLead, { orderId: lead.orderId });
+    await tt.mutation(internal.whatsappOrders.expireWhatsAppOrderLead, { orderId: lead.orderId });
     const order = await getOrder(tt, lead.orderNumber);
     expect(order?.status).toBe("whatsapp_initiated");
     expect(await getStock(tt, "V1")).toBe(4); // still reserved
@@ -253,7 +253,7 @@ describe("Reservation expiry state machine", () => {
       await ctx.db.patch(lead.orderId, { reservationExpiresAt: Date.now() - 1000 });
     });
 
-    await tt.mutation(internal.orders.expireWhatsAppOrderLead, { orderId: lead.orderId });
+    await tt.mutation(internal.whatsappOrders.expireWhatsAppOrderLead, { orderId: lead.orderId });
     const order = await getOrder(tt, lead.orderNumber);
     expect(order?.status).toBe("cancelled");
     expect(await getStock(tt, "V1")).toBe(5); // restored
@@ -270,8 +270,8 @@ describe("Reservation expiry state machine", () => {
     await tt.run(async (ctx) => {
       await ctx.db.patch(lead.orderId, { reservationExpiresAt: Date.now() - 1000 });
     });
-    await tt.mutation(internal.orders.expireWhatsAppOrderLead, { orderId: lead.orderId });
-    await tt.mutation(internal.orders.expireWhatsAppOrderLead, { orderId: lead.orderId });
+    await tt.mutation(internal.whatsappOrders.expireWhatsAppOrderLead, { orderId: lead.orderId });
+    await tt.mutation(internal.whatsappOrders.expireWhatsAppOrderLead, { orderId: lead.orderId });
     expect(await getStock(tt, "V1")).toBe(5); // NOT restored twice
     await drain(tt);
   });
@@ -284,7 +284,7 @@ describe("Reservation expiry state machine", () => {
       await ctx.db.patch(active.orderId, { reservationExpiresAt: Date.now() - 1 });
     });
 
-    const stale = await tt.query(internal.orders.getExpiredWhatsAppReservationsInternal, {
+    const stale = await tt.query(internal.whatsappOrders.getExpiredWhatsAppReservationsInternal, {
       now: Date.now(),
       limit: 100,
     });
@@ -299,7 +299,7 @@ describe("Settlement guards (double-payment prevention)", () => {
     await seedVariant(tt, "V1", 5);
     const lead = await createLead(tt, "V1", { withSession: false });
 
-    const res = await admin(tt).mutation(api.orders.markWhatsAppOrderPaidAdmin, {
+    const res = await admin(tt).mutation(api.whatsappOrders.markWhatsAppOrderPaidAdmin, {
       orderId: lead.orderId,
       notes: "Zelle ref 8842",
     });
@@ -318,7 +318,7 @@ describe("Settlement guards (double-payment prevention)", () => {
     const tt = t();
     await seedVariant(tt, "V1", 5);
     const lead = await createLead(tt, "V1", { withSession: false });
-    await admin(tt).mutation(api.orders.markWhatsAppOrderPaidAdmin, { orderId: lead.orderId });
+    await admin(tt).mutation(api.whatsappOrders.markWhatsAppOrderPaidAdmin, { orderId: lead.orderId });
 
     await settleStripe(tt, lead.orderNumber, "cs_test_late", { eventId: "evt_late" });
 
@@ -359,7 +359,7 @@ describe("Settlement guards (double-payment prevention)", () => {
       clerkUserId: "user_cust",
     });
     await expect(
-      admin(tt).mutation(api.orders.markWhatsAppOrderPaidAdmin, { orderId: lead.orderId })
+      admin(tt).mutation(api.whatsappOrders.markWhatsAppOrderPaidAdmin, { orderId: lead.orderId })
     ).rejects.toThrow(/cancelled/i);
     await drain(tt);
   });
@@ -401,7 +401,7 @@ describe("Stripe settlement of WhatsApp leads", () => {
   it("marks brand-new direct Stripe orders paid with stock decrement", async () => {
     const tt = t();
     await seedVariant(tt, "V1", 5);
-    await tt.mutation(internal.orders.createOrUpdateStripeOrder, {
+    await tt.mutation(internal.orderSettlement.createOrUpdateStripeOrder, {
       stripeSessionId: "cs_direct1",
       orderNumber: "GL-DIRECT-1",
       customerEmail: "buyer@test.com",
@@ -428,7 +428,7 @@ describe("updateOrderStatusAdmin state machine", () => {
     await seedVariant(tt, "V1", 5);
     const lead = await createLead(tt, "V1");
     await expect(
-      admin(tt).mutation(api.orders.updateOrderStatusAdmin, {
+      admin(tt).mutation(api.orderDesk.updateOrderStatusAdmin, {
         orderId: lead.orderId,
         newStatus: "dispatched",
       })
@@ -443,13 +443,13 @@ describe("updateOrderStatusAdmin state machine", () => {
     await settleStripe(tt, lead.orderNumber, "cs_test_demo1", { eventId: "evt_sm" });
 
     await expect(
-      admin(tt).mutation(api.orders.updateOrderStatusAdmin, {
+      admin(tt).mutation(api.orderDesk.updateOrderStatusAdmin, {
         orderId: lead.orderId,
         newStatus: "whatsapp_initiated",
       })
     ).rejects.toThrow(/Invalid transition/);
 
-    await admin(tt).mutation(api.orders.updateOrderStatusAdmin, {
+    await admin(tt).mutation(api.orderDesk.updateOrderStatusAdmin, {
       orderId: lead.orderId,
       newStatus: "dispatched",
     });
@@ -464,7 +464,7 @@ describe("updateOrderStatusAdmin state machine", () => {
     await seedVariant(tt, "V1", 5);
     const lead = await createLead(tt, "V1");
     await expect(
-      customer(tt).mutation(api.orders.updateOrderStatusAdmin, {
+      customer(tt).mutation(api.orderDesk.updateOrderStatusAdmin, {
         orderId: lead.orderId,
         newStatus: "dispatched",
       })
@@ -548,7 +548,7 @@ describe("Stripe Refund and Dispute Webhook Lifecycle", () => {
   it("handles full refund: marks status refunded, sets refundedAmount, and retains stock", async () => {
     const tt = t();
     await seedVariant(tt, "V1", 5);
-    await tt.mutation(internal.orders.createOrUpdateStripeOrder, {
+    await tt.mutation(internal.orderSettlement.createOrUpdateStripeOrder, {
       stripeSessionId: "cs_refund_test",
       orderNumber: "GL-REFUND-1",
       customerEmail: "refund@test.com",
@@ -567,7 +567,7 @@ describe("Stripe Refund and Dispute Webhook Lifecycle", () => {
     expect(orderBefore?.status).toBe("paid");
 
     // Full refund processed via webhook
-    await tt.mutation(internal.orders.recordStripeRefundInternal, {
+    await tt.mutation(internal.orderSettlement.recordStripeRefundInternal, {
       orderId: orderBefore!._id,
       orderNumber: "GL-REFUND-1",
       refundedAmount: 100,
@@ -586,7 +586,7 @@ describe("Stripe Refund and Dispute Webhook Lifecycle", () => {
     expect(events.map((e) => e.type)).toContain("charge_refunded");
 
     // Replay idempotency
-    await tt.mutation(internal.orders.recordStripeRefundInternal, {
+    await tt.mutation(internal.orderSettlement.recordStripeRefundInternal, {
       orderId: orderBefore!._id,
       orderNumber: "GL-REFUND-1",
       refundedAmount: 100,
@@ -602,7 +602,7 @@ describe("Stripe Refund and Dispute Webhook Lifecycle", () => {
   it("handles partial refund: marks status partially_refunded with cumulative amount", async () => {
     const tt = t();
     await seedVariant(tt, "V1", 5);
-    await tt.mutation(internal.orders.createOrUpdateStripeOrder, {
+    await tt.mutation(internal.orderSettlement.createOrUpdateStripeOrder, {
       stripeSessionId: "cs_partial_refund_test",
       orderNumber: "GL-PARTIAL-1",
       customerEmail: "partial@test.com",
@@ -618,7 +618,7 @@ describe("Stripe Refund and Dispute Webhook Lifecycle", () => {
 
     const order = await getOrder(tt, "GL-PARTIAL-1");
 
-    await tt.mutation(internal.orders.recordStripeRefundInternal, {
+    await tt.mutation(internal.orderSettlement.recordStripeRefundInternal, {
       orderId: order!._id,
       orderNumber: "GL-PARTIAL-1",
       refundedAmount: 30,
@@ -639,7 +639,7 @@ describe("Stripe Refund and Dispute Webhook Lifecycle", () => {
   it("handles dispute lifecycle: flags order on opened and unflags on closed", async () => {
     const tt = t();
     await seedVariant(tt, "V1", 5);
-    await tt.mutation(internal.orders.createOrUpdateStripeOrder, {
+    await tt.mutation(internal.orderSettlement.createOrUpdateStripeOrder, {
       stripeSessionId: "cs_dispute_test",
       orderNumber: "GL-DISPUTE-1",
       customerEmail: "dispute@test.com",
@@ -657,7 +657,7 @@ describe("Stripe Refund and Dispute Webhook Lifecycle", () => {
     expect(order?.disputed).toBeFalsy();
 
     // 1. Dispute opened
-    await tt.mutation(internal.orders.recordStripeDisputeInternal, {
+    await tt.mutation(internal.orderSettlement.recordStripeDisputeInternal, {
       orderId: order!._id,
       orderNumber: "GL-DISPUTE-1",
       disputeId: "dp_test_123",
@@ -679,7 +679,7 @@ describe("Stripe Refund and Dispute Webhook Lifecycle", () => {
     expect(events.map((e) => e.type)).toContain("dispute_created");
 
     // 2. Dispute closed (won)
-    await tt.mutation(internal.orders.recordStripeDisputeInternal, {
+    await tt.mutation(internal.orderSettlement.recordStripeDisputeInternal, {
       orderId: order!._id,
       orderNumber: "GL-DISPUTE-1",
       disputeId: "dp_test_123",
@@ -719,7 +719,7 @@ describe("Stripe Customer Identity Attachment", () => {
     });
 
     // Settle a new direct order with a Stripe customer id
-    await tt.mutation(internal.orders.createOrUpdateStripeOrder, {
+    await tt.mutation(internal.orderSettlement.createOrUpdateStripeOrder, {
       stripeSessionId: "cs_test_cust_1",
       orderNumber: "GL-CUST-1",
       customerEmail: "collector@example.com",
@@ -756,7 +756,7 @@ describe("Stripe Invoice Attachment", () => {
     await seedVariant(tt, "V1", 5, 120);
 
     // 1. Settle order with invoice details
-    await tt.mutation(internal.orders.createOrUpdateStripeOrder, {
+    await tt.mutation(internal.orderSettlement.createOrUpdateStripeOrder, {
       stripeSessionId: "cs_test_inv_1",
       orderNumber: "GL-INV-1",
       customerEmail: "invoice@example.com",
@@ -780,7 +780,7 @@ describe("Stripe Invoice Attachment", () => {
     expect(order?.hostedInvoiceUrl).toBe("https://invoice.stripe.com/i/acct_123/inv_12345");
 
     // 2. Asynchronous invoice.paid webhook attaches / updates PDF URL
-    const res = await tt.mutation(internal.orders.attachStripeInvoiceInternal, {
+    const res = await tt.mutation(internal.orderSettlement.attachStripeInvoiceInternal, {
       orderNumber: "GL-INV-1",
       stripeInvoiceId: "in_12345",
       invoicePdfUrl: "https://stripe.com/invoice_12345_final.pdf",
@@ -801,7 +801,7 @@ describe("Shipping & Multi-Carrier Label Printing Lifecycle", () => {
     await seedVariant(tt, "V_CAP1", 10, 150);
 
     // 1. Create a paid order
-    await tt.mutation(internal.orders.createOrUpdateStripeOrder, {
+    await tt.mutation(internal.orderSettlement.createOrUpdateStripeOrder, {
       stripeSessionId: "cs_test_ship_1",
       orderNumber: "GL-SHIP-01",
       customerEmail: "collector@example.com",
@@ -822,7 +822,7 @@ describe("Shipping & Multi-Carrier Label Printing Lifecycle", () => {
     expect(order?.shippingLabelUrl).toBeUndefined();
 
     // 2. Attach shipping label purchased via Shippo
-    const res = await tt.mutation(internal.orders.attachShippingLabelInternal, {
+    const res = await tt.mutation(internal.orderFulfillment.attachShippingLabelInternal, {
       orderId: order!._id,
       carrier: "USPS",
       trackingNumber: "9400111899223344556677",
@@ -877,7 +877,7 @@ describe("Shipping & Multi-Carrier Label Printing Lifecycle", () => {
     await seedVariant(tt, "V_CAP2", 5, 175);
 
     // 1. Create order and dispatch with tracking
-    await tt.mutation(internal.orders.createOrUpdateStripeOrder, {
+    await tt.mutation(internal.orderSettlement.createOrUpdateStripeOrder, {
       stripeSessionId: "cs_test_ship_deliv",
       orderNumber: "GL-DELIV-01",
       customerEmail: "vip@example.com",
@@ -894,7 +894,7 @@ describe("Shipping & Multi-Carrier Label Printing Lifecycle", () => {
     });
 
     let order = await getOrder(tt, "GL-DELIV-01");
-    await tt.mutation(internal.orders.attachShippingLabelInternal, {
+    await tt.mutation(internal.orderFulfillment.attachShippingLabelInternal, {
       orderId: order!._id,
       carrier: "USPS",
       trackingNumber: "9400111899000000000001",
@@ -905,7 +905,7 @@ describe("Shipping & Multi-Carrier Label Printing Lifecycle", () => {
     expect(order?.status).toBe("dispatched");
 
     // 2. Incoming carrier webhook: DELIVERED
-    const webhookRes = await tt.mutation(internal.orders.handleTrackingWebhookInternal, {
+    const webhookRes = await tt.mutation(internal.orderFulfillment.handleTrackingWebhookInternal, {
       trackingNumber: "9400111899000000000001",
       carrier: "USPS",
       status: "DELIVERED",
@@ -942,7 +942,7 @@ describe("Shipping & Multi-Carrier Label Printing Lifecycle", () => {
     const tt = t();
     await seedVariant(tt, "V_CAP3", 5, 175);
 
-    await tt.mutation(internal.orders.createOrUpdateStripeOrder, {
+    await tt.mutation(internal.orderSettlement.createOrUpdateStripeOrder, {
       stripeSessionId: "cs_test_ship_fail",
       orderNumber: "GL-FAIL-01",
       customerEmail: "buyer@example.com",
@@ -958,7 +958,7 @@ describe("Shipping & Multi-Carrier Label Printing Lifecycle", () => {
     });
 
     let order = await getOrder(tt, "GL-FAIL-01");
-    await tt.mutation(internal.orders.attachShippingLabelInternal, {
+    await tt.mutation(internal.orderFulfillment.attachShippingLabelInternal, {
       orderId: order!._id,
       carrier: "UPS",
       trackingNumber: "1Z9999999900000002",
@@ -966,7 +966,7 @@ describe("Shipping & Multi-Carrier Label Printing Lifecycle", () => {
     });
 
     // Incoming carrier webhook: FAILURE (no access code)
-    const res = await tt.mutation(internal.orders.handleTrackingWebhookInternal, {
+    const res = await tt.mutation(internal.orderFulfillment.handleTrackingWebhookInternal, {
       trackingNumber: "1Z9999999900000002",
       carrier: "UPS",
       status: "FAILURE",
@@ -997,7 +997,7 @@ describe("Shipping & Multi-Carrier Label Printing Lifecycle", () => {
     const tt = t();
     await seedVariant(tt, "V_CAP4", 5, 175);
 
-    await tt.mutation(internal.orders.createOrUpdateStripeOrder, {
+    await tt.mutation(internal.orderSettlement.createOrUpdateStripeOrder, {
       stripeSessionId: "cs_test_override",
       orderNumber: "GL-OVER-01",
       customerEmail: "cust@example.com",
@@ -1013,7 +1013,7 @@ describe("Shipping & Multi-Carrier Label Printing Lifecycle", () => {
     });
 
     let order = await getOrder(tt, "GL-OVER-01");
-    await tt.mutation(internal.orders.attachShippingLabelInternal, {
+    await tt.mutation(internal.orderFulfillment.attachShippingLabelInternal, {
       orderId: order!._id,
       carrier: "USPS",
       trackingNumber: "9400111899000000000003",
@@ -1021,7 +1021,7 @@ describe("Shipping & Multi-Carrier Label Printing Lifecycle", () => {
     });
 
     // Carrier scans DELIVERED
-    await tt.mutation(internal.orders.handleTrackingWebhookInternal, {
+    await tt.mutation(internal.orderFulfillment.handleTrackingWebhookInternal, {
       trackingNumber: "9400111899000000000003",
       status: "DELIVERED",
       statusDetails: "Delivered",
@@ -1031,7 +1031,7 @@ describe("Shipping & Multi-Carrier Label Printing Lifecycle", () => {
     expect(order?.status).toBe("delivered");
 
     // Human admin investigates missing parcel and manually reverts to dispatched
-    await admin(tt).mutation(api.orders.updateOrderStatusAdmin, {
+    await admin(tt).mutation(api.orderDesk.updateOrderStatusAdmin, {
       orderId: order!._id,
       newStatus: "dispatched",
       adminNotes: "Customer called concierge: package not at porch, checking with neighbor.",
@@ -1042,7 +1042,7 @@ describe("Shipping & Multi-Carrier Label Printing Lifecycle", () => {
     expect(order?.manualStatusOverride).toBe(true);
 
     // Another DELIVERED webhook arrives from carrier (e.g. carrier system sync)
-    const subsequentRes = await tt.mutation(internal.orders.handleTrackingWebhookInternal, {
+    const subsequentRes = await tt.mutation(internal.orderFulfillment.handleTrackingWebhookInternal, {
       trackingNumber: "9400111899000000000003",
       status: "DELIVERED",
       statusDetails: "Delivered scan re-transmitted",

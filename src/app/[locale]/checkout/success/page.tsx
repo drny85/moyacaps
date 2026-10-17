@@ -31,7 +31,7 @@ export default function CheckoutSuccessPage() {
   const locale = useLocale();
   const searchParams = useSearchParams();
   const { clearCart } = useStore();
-  const syncSession = useAction(api.stripe.syncCheckoutSession);
+  const syncSession = useAction(api.stripeWebhook.syncCheckoutSession);
 
   const sessionId = searchParams.get("session_id") || "";
   const orderNumberParam = searchParams.get("order_number") || "";

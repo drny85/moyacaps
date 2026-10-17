@@ -90,7 +90,7 @@ export function DropRadar() {
   const { openDropAlert, addToCart } = useStore();
   const { playRadarPing, playClick, playSuccessChime } = useSoundEffects();
 
-  const drops = useQuery(api.products.getUpcomingDrops);
+  const drops = useQuery(api.drops.getUpcomingDrops);
   const [activeDropIndex, setActiveDropIndex] = useState(0);
   const [now, setNow] = useState(Date.now());
 

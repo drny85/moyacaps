@@ -531,7 +531,7 @@ export const buyShippingLabel = action({
     const carrierTrackingUrl = buildCarrierTrackingUrl(chosenCarrier, trackingNumber) || undefined;
 
     // Attach to order in database & trigger fulfillment notifications
-    await ctx.runMutation(internal.orders.attachShippingLabelInternal, {
+    await ctx.runMutation(internal.orderFulfillment.attachShippingLabelInternal, {
       orderId: args.orderId,
       carrier: chosenCarrier,
       trackingNumber,

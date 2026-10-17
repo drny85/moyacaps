@@ -33,7 +33,7 @@ export function ProductView({ initial }: { initial: ProductWithSkus }) {
   const searchParams = useSearchParams();
   const [now] = useState(() => Date.now());
 
-  const live = useQuery(api.products.getProductBySlug, { slug: initial.variantId });
+  const live = useQuery(api.catalog.getProductBySlug, { slug: initial.variantId });
   const doc = live ?? initial;
   const product = useMemo(() => toCapVariant(doc), [doc]);
   const skus: SkuStock[] = doc.skus;
