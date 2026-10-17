@@ -7,7 +7,6 @@ import { Footer } from "@/components/layout/Footer";
 import { CartDrawer } from "@/components/cart/CartDrawer";
 import { DropAlertModal } from "@/components/drops/DropAlertModal";
 import { ProductShareToast } from "@/components/product/ProductShareToast";
-import { LiveCollectorFeed } from "@/components/drops/LiveCollectorFeed";
 import { VirtualTryOnModal } from "@/components/tryon/VirtualTryOnModal";
 import { SmoothScrollProvider } from "@/components/providers/SmoothScrollProvider";
 import { MotionProvider } from "@/components/providers/MotionProvider";
@@ -58,7 +57,6 @@ export default async function LocaleLayout({
                     <CartDrawer />
                     <DropAlertModal />
                     <VirtualTryOnModal />
-                    <LiveCollectorFeed />
                     <ProductShareToast />
                     <AdminQuickBar />
                   </div>
