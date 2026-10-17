@@ -10,6 +10,7 @@ import type { CapVariant } from "@/data/caps";
 import { Link } from "@/i18n/routing";
 import { useCapVariants } from "@/hooks/useCapVariants";
 import { useReducedMotionSafe } from "@/hooks/useMotionPrefs";
+import { useMinuteClock } from "@/hooks/useMinuteClock";
 import { CapTurntable, type TurntableFrame } from "@/components/viewer/CapTurntable";
 import { getCapAngleImages, TURNTABLE_ANGLES } from "@/lib/capAngles";
 import { HERO_LAYERS, HINT_HIDE_PROGRESS, platterAngle, scrub, type Range } from "@/lib/heroMotion";
@@ -47,7 +48,8 @@ export function HeroInteractive() {
   const locale = useLocale();
   const { caps: catalog, isLive } = useCapVariants();
   const caps = useMemo(() => catalog.filter((p) => !isTee(p)), [catalog]);
-  const upcomingDrops = useQuery(api.drops.getUpcomingDrops);
+  const clientTime = useMinuteClock();
+  const upcomingDrops = useQuery(api.drops.getUpcomingDrops, { clientTime });
   const hasLiveDrop = Boolean(upcomingDrops && upcomingDrops.length > 0);
 
   const quickSwapCaps = useMemo(() => pickQuickSwap(caps), [caps]);

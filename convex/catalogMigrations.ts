@@ -15,6 +15,7 @@ import { deleteStorageQuietly, MAX_CATALOG_VARIANTS } from "./catalogShared";
 /** Dev/fresh-deployment seed: wipes the catalog and inserts catalogData.ts. */
 export const seedAll = mutation({
   args: {},
+  returns: v.object({ success: v.boolean(), count: v.number() }),
   handler: async (ctx) => {
     await requireAdmin(ctx);
     // Clear existing
@@ -57,6 +58,7 @@ const SHOTS = catalogShots as CatalogShotsManifest;
  */
 export const migrateUnifiedCatalog = internalMutation({
   args: {},
+  returns: v.object({ capsUpdated: v.number(), teesUpdated: v.number(), teesInserted: v.number(), skusSeeded: v.number() }),
   handler: async (ctx) => {
     const report = { capsUpdated: 0, teesUpdated: 0, teesInserted: 0, skusSeeded: 0 };
 
@@ -143,6 +145,7 @@ export const migrateUnifiedCatalog = internalMutation({
  */
 export const setApparelPriceUsd = internalMutation({
   args: { priceUsd: v.number() },
+  returns: v.object({ updated: v.number() }),
   handler: async (ctx, args) => {
     if (!Number.isFinite(args.priceUsd) || args.priceUsd <= 0) {
       throw new ConvexError("priceUsd must be a positive number");

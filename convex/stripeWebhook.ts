@@ -97,6 +97,7 @@ export const syncCheckoutSession = action({
   args: {
     sessionId: v.string(),
   },
+  returns: v.object({ success: v.boolean(), orderId: v.optional(v.id("orders")), status: v.string() }),
   handler: async (
     ctx,
     args
@@ -152,6 +153,7 @@ export const fulfillStripeWebhook = internalAction({
     payload: v.string(),
     signature: v.string(),
   },
+  returns: v.object({ received: v.boolean() }),
   handler: async (
     ctx,
     args

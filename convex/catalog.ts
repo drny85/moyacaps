@@ -5,6 +5,7 @@
 import { query, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
 import { isAdmin } from "./auth";
+import { lineStockResult, productPage, resolvedVariant } from "./catalogValidators";
 import { checkStock, getVariant, hasSkus, listSkus } from "./inventory";
 import { filterCatalogVariants } from "./catalogModel";
 import { listCatalogVariants, resolveVariantWithStorageUrl } from "./catalogShared";
@@ -17,6 +18,7 @@ export const getVariants = query({
     inStock: v.optional(v.boolean()),
     includeUnavailable: v.optional(v.boolean()),
   },
+  returns: v.array(resolvedVariant),
   handler: async (ctx, args) => {
     const variants = filterCatalogVariants(await listCatalogVariants(ctx), args);
     return await Promise.all(
@@ -30,6 +32,7 @@ export const getVariantById = query({
     variantId: v.string(),
     allowUnavailable: v.optional(v.boolean()),
   },
+  returns: v.union(resolvedVariant, v.null()),
   handler: async (ctx, args) => {
     const variant = await getVariant(ctx, args.variantId);
     if (!variant) return null;
@@ -44,6 +47,7 @@ export const getVariantById = query({
 /** One Product for its page: the variant (storage image resolved) plus SKU stock for tees. */
 export const getProductBySlug = query({
   args: { slug: v.string(), allowUnavailable: v.optional(v.boolean()) },
+  returns: v.union(productPage, v.null()),
   handler: async (ctx, args) => {
     const variant = await getVariant(ctx, args.slug);
     if (!variant) return null;
@@ -64,6 +68,7 @@ export const getLineStock = internalQuery({
     colorway: v.optional(v.string()),
     size: v.optional(v.string()),
   },
+  returns: lineStockResult,
   handler: async (ctx, args) => {
     const check = await checkStock(ctx, { ...args, quantity: 1 });
     return check.ok

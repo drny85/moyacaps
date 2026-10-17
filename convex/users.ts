@@ -1,6 +1,7 @@
 import { mutation, query, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import { requireAdmin, PRIMARY_ADMIN_EMAIL, PRIMARY_ADMIN_CLERK_ID } from "./auth";
+import schema from "./schema";
 
 /**
  * Just-In-Time (JIT) sync called by client upon authentication.
@@ -8,6 +9,7 @@ import { requireAdmin, PRIMARY_ADMIN_EMAIL, PRIMARY_ADMIN_CLERK_ID } from "./aut
  */
 export const syncCurrentUser = mutation({
   args: {},
+  returns: v.union(v.id("users"), v.null()),
   handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
@@ -82,6 +84,7 @@ export const upsertUser = internalMutation({
     imageUrl: v.optional(v.string()),
     phone: v.optional(v.string()),
   },
+  returns: v.object({ id: v.id("users"), action: v.union(v.literal("updated"), v.literal("created")) }),
   handler: async (ctx, args) => {
     const existing = await ctx.db
       .query("users")
@@ -105,7 +108,7 @@ export const upsertUser = internalMutation({
         deletedAt: undefined,
         updatedAt: now,
       });
-      return { id: existing._id, action: "updated" };
+      return { id: existing._id, action: "updated" as const };
     }
 
     const id = await ctx.db.insert("users", {
@@ -119,7 +122,7 @@ export const upsertUser = internalMutation({
       updatedAt: now,
     });
 
-    return { id, action: "created" };
+    return { id, action: "created" as const };
   },
 });
 
@@ -130,6 +133,7 @@ export const softDeleteUser = internalMutation({
   args: {
     clerkId: v.string(),
   },
+  returns: v.object({ success: v.boolean(), reason: v.optional(v.string()) }),
   handler: async (ctx, args) => {
     const user = await ctx.db
       .query("users")
@@ -155,6 +159,7 @@ export const getUserByClerkId = query({
   args: {
     clerkId: v.string(),
   },
+  returns: v.union(schema.doc("users"), v.null()),
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
@@ -179,14 +184,18 @@ export const getUserByClerkId = query({
   },
 });
 
+/** Most recent users the admin list returns; paginate before the user base approaches it. */
+const MAX_USERS_LISTED = 1000;
+
 /**
- * Admin query to inspect all registered users and collectors.
+ * Admin query to inspect the most recent registered users and collectors.
  */
 export const getAllUsersAdmin = query({
   args: {},
+  returns: v.array(schema.doc("users")),
   handler: async (ctx) => {
     await requireAdmin(ctx);
-    return await ctx.db.query("users").order("desc").collect();
+    return await ctx.db.query("users").order("desc").take(MAX_USERS_LISTED);
   },
 });
 

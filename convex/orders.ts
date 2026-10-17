@@ -16,7 +16,16 @@ import {
   releaseStock,
   scheduleSessionExpiry,
 } from "./orderShared";
-import { orderItemValidator, orderStatusValidator, shippingAddressValidator } from "./orderValidators";
+import {
+  confirmationViewValidator,
+  guestTrackingViewValidator,
+  orderDoc,
+  orderItemValidator,
+  orderStatusValidator,
+  ownerTrackingViewValidator,
+  shippingAddressValidator,
+  successResult,
+} from "./orderValidators";
 
 /**
  * Append-only audit log for every money-relevant state transition on an order.
@@ -31,6 +40,7 @@ export const recordPaymentEvent = internalMutation({
     actor: v.optional(v.string()),
     details: v.optional(v.string()),
   },
+  returns: successResult,
   handler: async (ctx, args) => {
     await ctx.db.insert("payment_events", {
       orderId: args.orderId,
@@ -64,6 +74,7 @@ export const createOrder = mutation({
     stripeSessionId: v.optional(v.string()),
     trackingNumber: v.optional(v.string()),
   },
+  returns: v.id("orders"),
   handler: async (ctx, args) => {
     // Only administrators or verified system processes can create orders directly
     await requireAdmin(ctx);
@@ -105,6 +116,7 @@ export const getOrderByIdInternal = internalQuery({
   args: {
     orderId: v.id("orders"),
   },
+  returns: v.union(orderDoc, v.null()),
   handler: async (ctx, args) => {
     return await ctx.db.get(args.orderId);
   },
@@ -114,6 +126,7 @@ export const getOrderByNumberInternal = internalQuery({
   args: {
     orderNumber: v.string(),
   },
+  returns: v.union(orderDoc, v.null()),
   handler: async (ctx, args) => {
     return await getOrderByNumber(ctx, args.orderNumber);
   },
@@ -123,6 +136,7 @@ export const getOrderByStripeSessionIdInternal = internalQuery({
   args: {
     stripeSessionId: v.string(),
   },
+  returns: v.union(orderDoc, v.null()),
   handler: async (ctx, args) => {
     return await getOrderByStripeSessionId(ctx, args.stripeSessionId);
   },
@@ -132,6 +146,7 @@ export const getOrderBySessionOrNumber = query({
   args: {
     identifier: v.string(),
   },
+  returns: v.union(confirmationViewValidator, v.null()),
   handler: async (ctx, args) => {
     // Stripe session ids are high-entropy, unguessable, and only appear in the payer's own
     // return URL — safe to render the checkout summary (address/phone) for confirmation.
@@ -146,10 +161,14 @@ export const getOrderBySessionOrNumber = query({
   },
 });
 
+/** Most recent orders shown in a customer's account history. */
+const MAX_ACCOUNT_ORDERS = 200;
+
 export const getOrdersByClerkId = query({
   args: {
     clerkUserId: v.string(),
   },
+  returns: v.array(orderDoc),
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
@@ -165,7 +184,7 @@ export const getOrdersByClerkId = query({
       .query("orders")
       .withIndex("by_clerkUserId", (q) => q.eq("clerkUserId", args.clerkUserId))
       .order("desc")
-      .collect();
+      .take(MAX_ACCOUNT_ORDERS);
 
     // Customers only see confirmed purchases (never abandoned checkout drafts)
     return orders.filter((o) => o.status !== "pending");
@@ -179,6 +198,7 @@ export const updateShippingAddress = mutation({
     shippingAddress: shippingAddressValidator,
     customerPhone: v.optional(v.string()),
   },
+  returns: successResult,
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
@@ -216,6 +236,13 @@ export const cancelOrder = internalMutation({
     clerkUserId: v.string(),
     reason: v.optional(v.string()),
   },
+  returns: v.object({
+    success: v.boolean(),
+    stripeSessionId: v.optional(v.string()),
+    orderNumber: v.string(),
+    total: v.number(),
+    currency: v.string(),
+  }),
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
@@ -277,6 +304,7 @@ export const getOrderByOrderNumberAndEmail = query({
     orderNumber: v.string(),
     email: v.optional(v.string()),
   },
+  returns: v.union(ownerTrackingViewValidator, guestTrackingViewValidator, v.null()),
   handler: async (ctx, args) => {
     const cleanEmail = args.email?.trim().toLowerCase();
     const order = await findOrderByTypedNumber(ctx, args.orderNumber);

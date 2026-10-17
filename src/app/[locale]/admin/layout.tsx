@@ -9,6 +9,7 @@ import { SafeUserButton, useSafeUser } from "@/lib/useSafeUser";
 import { checkIsAdmin } from "@/lib/adminAuth";
 import { useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
+import { useMinuteClock } from "@/hooks/useMinuteClock";
 import {
   BarChart3,
   PackageCheck,
@@ -101,11 +102,7 @@ export default function AdminLayout({
 
   // Attention telemetry refresh clock (queries must not read wall clock server-side,
   // so the client supplies a minute-granularity timestamp).
-  const [statsClock, setStatsClock] = useState<number>(() => Date.now());
-  useEffect(() => {
-    const id = setInterval(() => setStatsClock(Date.now()), 60 * 1000);
-    return () => clearInterval(id);
-  }, []);
+  const statsClock = useMinuteClock();
 
   // Real-time attention telemetry from Convex (only query when authenticated & authorized)
   const attentionStats = useQuery(

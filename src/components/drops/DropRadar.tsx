@@ -8,6 +8,7 @@ import { useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
 import { motion, AnimatePresence } from "framer-motion";
 import { useReducedMotionSafe } from "@/hooks/useMotionPrefs";
+import { useMinuteClock } from "@/hooks/useMinuteClock";
 import {
   Radio,
   Bell,
@@ -90,7 +91,8 @@ export function DropRadar() {
   const { openDropAlert, addToCart } = useStore();
   const { playRadarPing, playClick, playSuccessChime } = useSoundEffects();
 
-  const drops = useQuery(api.drops.getUpcomingDrops);
+  const clientTime = useMinuteClock();
+  const drops = useQuery(api.drops.getUpcomingDrops, { clientTime });
   const [activeDropIndex, setActiveDropIndex] = useState(0);
   const [now, setNow] = useState(Date.now());
 

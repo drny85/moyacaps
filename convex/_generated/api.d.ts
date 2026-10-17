@@ -17,6 +17,7 @@ import type * as catalogData from "../catalogData.js";
 import type * as catalogMigrations from "../catalogMigrations.js";
 import type * as catalogModel from "../catalogModel.js";
 import type * as catalogShared from "../catalogShared.js";
+import type * as catalogValidators from "../catalogValidators.js";
 import type * as checkoutMetadata from "../checkoutMetadata.js";
 import type * as checkoutModel from "../checkoutModel.js";
 import type * as crons from "../crons.js";
@@ -64,6 +65,7 @@ declare const fullApi: ApiFromModules<{
   catalogMigrations: typeof catalogMigrations;
   catalogModel: typeof catalogModel;
   catalogShared: typeof catalogShared;
+  catalogValidators: typeof catalogValidators;
   checkoutMetadata: typeof checkoutMetadata;
   checkoutModel: typeof checkoutModel;
   crons: typeof crons;

@@ -2,6 +2,7 @@
  * Pure admin analytics: revenue, pipeline, top sellers, stock health and the
  * 7-day sales chart. Covered by analyticsModel.test.ts.
  */
+import { v } from "convex/values";
 import type { Doc } from "./_generated/dataModel";
 import { isPaidLike } from "./orderModel";
 
@@ -153,3 +154,49 @@ export function computeAttentionStats(
     latestOrderTimestamp,
   };
 }
+
+// ── Return validators (keep in step with the functions above) ───────────────
+
+const revenueCount = v.object({ revenue: v.number(), orders: v.number() });
+
+export const analyticsValidator = v.object({
+  totalRevenue: v.number(),
+  completedOrdersCount: v.number(),
+  totalOrdersCount: v.number(),
+  aov: v.number(),
+  whatsappPipeline: v.object({ value: v.number(), count: v.number() }),
+  paymentBreakdown: v.object({ stripe: revenueCount, whatsapp: revenueCount }),
+  statusCounts: v.record(v.string(), v.number()),
+  topVariants: v.array(
+    v.object({ variantId: v.string(), name: v.string(), units: v.number(), revenue: v.number(), image: v.string() })
+  ),
+  lowStockVariants: v.array(
+    v.object({
+      _id: v.id("variants"),
+      variantId: v.string(),
+      nameEn: v.string(),
+      nameEs: v.string(),
+      stock: v.number(),
+      silhouette: v.string(),
+      priceUsd: v.number(),
+      image: v.string(),
+      primaryHex: v.string(),
+    })
+  ),
+  inventorySummary: v.object({
+    totalVariantsCount: v.number(),
+    totalInventoryUnits: v.number(),
+    outOfStockCount: v.number(),
+  }),
+  dailySales: v.array(v.object({ date: v.string(), revenue: v.number(), orders: v.number() })),
+});
+
+export const attentionStatsValidator = v.object({
+  totalActionRequired: v.number(),
+  unfulfilledPaid: v.number(),
+  overduePaid: v.number(),
+  pendingWhatsApp: v.number(),
+  lowStockCount: v.number(),
+  lowStockVariants: v.array(v.object({ variantId: v.string(), nameEn: v.string(), nameEs: v.string(), stock: v.number() })),
+  latestOrderTimestamp: v.number(),
+});

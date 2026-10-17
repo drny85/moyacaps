@@ -22,7 +22,7 @@ import {
   hasEmail,
   mirrorStripeCustomerToUser,
 } from "./orderShared";
-import { orderItemValidator, shippingAddressValidator } from "./orderValidators";
+import { orderItemValidator, shippingAddressValidator, successResult } from "./orderValidators";
 
 /**
  * INTERNAL: record a processed Stripe event id on the order (bounded replay guard).
@@ -32,6 +32,7 @@ export const recordWebhookEventIdInternal = internalMutation({
     orderId: v.id("orders"),
     webhookEventId: v.string(),
   },
+  returns: successResult,
   handler: async (ctx, args) => {
     const order = await ctx.db.get(args.orderId);
     if (!order) return { success: false };
@@ -55,6 +56,11 @@ export const recordStripeRefundInternal = internalMutation({
     webhookEventId: v.string(),
     stripeChargeId: v.optional(v.string()),
   },
+  returns: v.object({
+    success: v.boolean(),
+    replayed: v.optional(v.boolean()),
+    status: v.optional(v.union(v.literal("refunded"), v.literal("partially_refunded"))),
+  }),
   handler: async (ctx, args) => {
     const order = await ctx.db.get(args.orderId);
     if (!order) {
@@ -109,6 +115,7 @@ export const recordStripeDisputeInternal = internalMutation({
     webhookEventId: v.string(),
     action: v.union(v.literal("opened"), v.literal("closed")),
   },
+  returns: v.object({ success: v.boolean(), replayed: v.optional(v.boolean()) }),
   handler: async (ctx, args) => {
     const order = await ctx.db.get(args.orderId);
     if (!order) {
@@ -201,6 +208,7 @@ export const createOrUpdateStripeOrder = internalMutation({
     // True when the session was issued for a WhatsApp concierge lead order.
     isWhatsAppOrder: v.optional(v.boolean()),
   },
+  returns: v.id("orders"),
   handler: async (ctx, args) => {
     // Check if order exists by stripeSessionId or orderNumber (e.g. GL-WA-XXXXXXXX)
     let existing = await getOrderByStripeSessionId(ctx, args.stripeSessionId);
@@ -405,6 +413,7 @@ export const attachStripeCustomerInternal = internalMutation({
     orderId: v.id("orders"),
     stripeCustomerId: v.string(),
   },
+  returns: successResult,
   handler: async (ctx, args) => {
     await ctx.db.patch(args.orderId, {
       stripeCustomerId: args.stripeCustomerId,
@@ -425,6 +434,7 @@ export const attachStripeInvoiceInternal = internalMutation({
     invoicePdfUrl: v.optional(v.string()),
     hostedInvoiceUrl: v.optional(v.string()),
   },
+  returns: v.object({ success: v.boolean(), orderId: v.optional(v.id("orders")), reason: v.optional(v.string()) }),
   handler: async (ctx, args) => {
     let order = null;
     if (args.orderNumber) {

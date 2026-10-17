@@ -15,6 +15,7 @@ export const cancelAndRefundOrder = action({
     clerkUserId: v.string(),
     reason: v.optional(v.string()),
   },
+  returns: v.object({ success: v.boolean(), refundIssued: v.boolean(), orderNumber: v.string(), message: v.string() }),
   handler: async (
     ctx,
     args
@@ -82,6 +83,13 @@ export const cancelAndRefundOrderAdmin = action({
     reason: v.optional(v.string()),
     adminNotes: v.optional(v.string()),
   },
+  returns: v.object({
+    success: v.boolean(),
+    refundIssued: v.boolean(),
+    refundError: v.optional(v.string()),
+    orderNumber: v.string(),
+    message: v.string(),
+  }),
   handler: async (
     ctx,
     args
