@@ -11,6 +11,7 @@ import { ProductShareToast } from "@/components/product/ProductShareToast";
 import { SneakerFitMatcherModal } from "@/components/styling/SneakerFitMatcherModal";
 import { LiveCollectorFeed } from "@/components/drops/LiveCollectorFeed";
 import { VirtualTryOnModal } from "@/components/tryon/VirtualTryOnModal";
+import { ModelLookbookStudioModal } from "@/components/studio/ModelLookbookStudioModal";
 import { SmoothScrollProvider } from "@/components/providers/SmoothScrollProvider";
 import { ConvexClientProvider } from "@/components/providers/ConvexClientProvider";
 import { ClerkClientProvider } from "@/components/providers/ClerkClientProvider";
@@ -60,6 +61,7 @@ export default async function LocaleLayout({
                   <DropAlertModal />
                   <SneakerFitMatcherModal />
                   <VirtualTryOnModal />
+                  <ModelLookbookStudioModal />
                   <LiveCollectorFeed />
                   <ProductShareToast />
                   <AdminQuickBar />

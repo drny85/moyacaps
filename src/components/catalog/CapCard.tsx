@@ -16,13 +16,14 @@ export function CapCard({ cap, index = 0 }: { cap: CapVariant; index?: number })
   const t = useTranslations("catalog");
   const tShare = useTranslations("share");
   const locale = useLocale();
-  const { addToCart, openQuickView, openDropAlert } = useStore();
+  const { addToCart, openQuickView, openDropAlert, openApparelStudio } = useStore();
   const { shareProduct } = useProductShare();
   const [imageLoaded, setImageLoaded] = useState(false);
   const reduceMotion = useReducedMotion();
   const { stock, inCartQty, isInCart, isOutOfStock, isMaxInCart, isDropUpcoming } = useCapPurchaseState(cap);
   const dropBadge = locale === "es" ? cap.dropBadgeTextEs || cap.dropBadgeTextEn : cap.dropBadgeTextEn;
 
+  const isTee = cap.silhouette === "tee" || cap.category === "apparel";
   const name = locale === "es" ? cap.nameEs : cap.nameEn;
   const tag = locale === "es" ? cap.tagEs : cap.tagEn;
   const priceDisplay = `$${cap.priceUsd} USD`;
@@ -107,7 +108,7 @@ export function CapCard({ cap, index = 0 }: { cap: CapVariant; index?: number })
               </span>
             ) : (
               <span className="text-[8px] sm:text-[10px] font-display font-semibold text-zinc-600 dark:text-zinc-500 uppercase tracking-wider truncate">
-                {cap.silhouette === "trucker" ? "Trucker" : "Snapback"}
+                {isTee ? "Heavyweight Tee" : cap.silhouette === "trucker" ? "Trucker" : "Snapback"}
               </span>
             )}
 
@@ -133,21 +134,23 @@ export function CapCard({ cap, index = 0 }: { cap: CapVariant; index?: number })
               <span
                 className="w-2 sm:w-2.5 md:w-3 h-2 sm:h-2.5 md:h-3 rounded-full border border-white/40 dark:border-white/20 shadow-sm"
                 style={{ backgroundColor: cap.primaryHex }}
-                title="Crown"
+                title="Primary Color"
               />
               <span
                 className="w-2 sm:w-2.5 md:w-3 h-2 sm:h-2.5 md:h-3 rounded-full border border-white/40 dark:border-white/20 shadow-sm"
                 style={{ backgroundColor: cap.secondaryHex }}
-                title="Accent"
+                title="Accent Color"
               />
             </div>
           </div>
         </div>
 
-        {/* ── Cap Image ── */}
+        {/* ── Product Image ── */}
         <div
           onClick={() => openQuickView(cap)}
-          className="relative w-full aspect-square rounded-lg sm:rounded-xl bg-gradient-to-b from-black/[0.02] dark:from-white/[0.03] to-transparent flex items-center justify-center p-1.5 sm:p-2 overflow-hidden"
+          className={`relative w-full aspect-square rounded-lg sm:rounded-xl bg-gradient-to-b from-black/[0.02] dark:from-white/[0.03] to-transparent flex items-center justify-center p-1.5 sm:p-2 overflow-hidden ${
+            isTee ? "p-0 bg-zinc-900" : ""
+          }`}
         >
           {/* Skeleton shimmer while loading */}
           {!imageLoaded && <div className="absolute inset-[10%] skeleton rounded-xl" />}
@@ -157,24 +160,54 @@ export function CapCard({ cap, index = 0 }: { cap: CapVariant; index?: number })
               src={cap.image}
               alt={name}
               fill
-              className={`object-contain drop-shadow-[0_8px_16px_rgba(0,0,0,0.18)] dark:drop-shadow-[0_8px_16px_rgba(0,0,0,0.6)] transition-opacity duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
+              className={`${
+                isTee
+                  ? "object-cover rounded-lg sm:rounded-xl"
+                  : "object-contain drop-shadow-[0_8px_16px_rgba(0,0,0,0.18)] dark:drop-shadow-[0_8px_16px_rgba(0,0,0,0.6)]"
+              } transition-opacity duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
               sizes="(max-width: 640px) 48vw, (max-width: 1024px) 33vw, 25vw"
               onLoad={() => setImageLoaded(true)}
             />
           </div>
 
-          {/* ── Slide-up Quick View (hover reveal on desktop) ── */}
+          {/* ── Slide-up Quick View & Studio (hover reveal on desktop) ── */}
           <div className="hidden sm:block absolute bottom-0 inset-x-0 p-2 slide-up-reveal">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                openQuickView(cap);
-              }}
-              className="w-full py-2 rounded-xl glass-dark text-zinc-900 dark:text-white text-[11px] font-display font-semibold flex items-center justify-center gap-1.5 hover:bg-black/5 dark:hover:bg-white/15 transition-colors shadow-md"
-            >
-              <Eye className="w-3 h-3" />
-              <span>{t("quickView")}</span>
-            </button>
+            {isTee ? (
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openQuickView(cap);
+                  }}
+                  className="flex-1 py-2 rounded-xl glass-dark text-zinc-900 dark:text-white text-[11px] font-display font-semibold flex items-center justify-center gap-1 hover:bg-black/5 dark:hover:bg-white/15 transition-colors shadow-md"
+                >
+                  <Eye className="w-3 h-3" />
+                  <span>{t("quickView")}</span>
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openApparelStudio(cap);
+                  }}
+                  className="py-2 px-2.5 rounded-xl bg-moya-red hover:bg-rose-500 text-white text-[11px] font-display font-semibold flex items-center justify-center gap-1 transition-colors shadow-md"
+                  title="Open in Model Lookbook Studio"
+                >
+                  <Sparkles className="w-3 h-3" />
+                  <span>Studio</span>
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openQuickView(cap);
+                }}
+                className="w-full py-2 rounded-xl glass-dark text-zinc-900 dark:text-white text-[11px] font-display font-semibold flex items-center justify-center gap-1.5 hover:bg-black/5 dark:hover:bg-white/15 transition-colors shadow-md"
+              >
+                <Eye className="w-3 h-3" />
+                <span>{t("quickView")}</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -217,7 +250,7 @@ export function CapCard({ cap, index = 0 }: { cap: CapVariant; index?: number })
               </span>
             )}
             <span className="font-mono uppercase tracking-wider">
-              0880
+              {isTee ? "280 GSM" : "0880"}
             </span>
           </div>
 
@@ -250,7 +283,7 @@ export function CapCard({ cap, index = 0 }: { cap: CapVariant; index?: number })
             </button>
           ) : isInCart ? (
             <button
-              onClick={() => addToCart(cap, 1, stock)}
+              onClick={() => addToCart(cap, 1, stock, isTee ? "L" : undefined)}
               className="w-full py-1.5 sm:py-2.5 px-1.5 sm:px-2 rounded-lg sm:rounded-xl bg-emerald-600/15 dark:bg-emerald-600/20 hover:bg-emerald-600/25 dark:hover:bg-emerald-600/30 active:bg-emerald-600/40 text-emerald-700 dark:text-emerald-300 border border-emerald-500/40 font-display font-bold text-[9px] sm:text-xs uppercase tracking-wider transition-all hover:shadow-lg hover:shadow-emerald-950/10 dark:hover:shadow-emerald-950/40 flex items-center justify-center gap-1 sm:gap-1.5 active:scale-95 mt-0.5 min-w-0"
             >
               <Check className="w-3 sm:w-3.5 h-3 sm:h-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
@@ -258,7 +291,7 @@ export function CapCard({ cap, index = 0 }: { cap: CapVariant; index?: number })
             </button>
           ) : (
             <button
-              onClick={() => addToCart(cap, 1, stock)}
+              onClick={() => addToCart(cap, 1, stock, isTee ? "L" : undefined)}
               className="w-full py-1.5 sm:py-2.5 px-1.5 sm:px-2 rounded-lg sm:rounded-xl bg-moya-red hover:bg-rose-500 active:bg-moya-red-deep text-white font-display font-bold text-[9px] sm:text-xs uppercase tracking-wider transition-all hover:shadow-lg hover:shadow-moya-red-deep/40 flex items-center justify-center gap-1 sm:gap-1.5 active:scale-95 mt-0.5 min-w-0"
             >
               <ShoppingBag className="w-3 sm:w-3.5 h-3 sm:h-3.5 shrink-0" />

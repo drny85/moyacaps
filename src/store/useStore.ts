@@ -4,12 +4,16 @@ import type { CapVariant } from "@/data/caps";
 
 export interface CartItem {
   id: string;
+  variantId?: string;
   name: string;
   priceUsd: number;
   image: string;
   silhouette: string;
   quantity: number;
   maxStock?: number;
+  size?: string;
+  colorway?: string;
+  colorwayName?: string;
 }
 
 interface StoreState {
@@ -19,7 +23,15 @@ interface StoreState {
   openCart: () => void;
   closeCart: () => void;
   toggleCart: () => void;
-  addToCart: (cap: CapVariant, quantity?: number, maxStock?: number) => void;
+  addToCart: (
+    cap: CapVariant,
+    quantity?: number,
+    maxStock?: number,
+    size?: string,
+    colorway?: string,
+    colorwayName?: string,
+    customImage?: string
+  ) => void;
   removeFromCart: (id: string) => void;
   updateQuantity: (id: string, delta: number, maxStock?: number) => void;
   clampCartToStock: (variants: {
@@ -66,6 +78,12 @@ interface StoreState {
   openSneakerMatcher: (cap?: CapVariant | null) => void;
   closeSneakerMatcher: () => void;
 
+  // Model Lookbook Studio (Heavyweight Streetwear Apparel)
+  isApparelStudioOpen: boolean;
+  apparelStudioTargetTee: CapVariant | null;
+  openApparelStudio: (tee?: CapVariant | null) => void;
+  closeApparelStudio: () => void;
+
   // Virtual Try-On Fitting Room
   isTryOnOpen: boolean;
   tryOnTargetCap: CapVariant | null;
@@ -96,7 +114,7 @@ export const useStore = create<StoreState>()(
       closeCart: () => set({ isCartOpen: false }),
       toggleCart: () => set((state) => ({ isCartOpen: !state.isCartOpen })),
 
-      addToCart: (cap, quantity = 1, maxStock?: number) => {
+      addToCart: (cap, quantity = 1, maxStock?: number, size?: string, colorway?: string, colorwayName?: string, customImage?: string) => {
         // Enforce strict drop lock: cannot add drops to cart if not released yet
         const isUpcomingDrop = Boolean(
           cap.isDrop &&
@@ -108,7 +126,8 @@ export const useStore = create<StoreState>()(
         }
 
         const { cart } = get();
-        const existing = cart.find((item) => item.id === cap.id);
+        const cartItemId = `${cap.id}${colorway ? `-${colorway}` : ""}${size ? `-${size}` : ""}`;
+        const existing = cart.find((item) => item.id === cartItemId || (!colorway && !size && item.id === cap.id));
         const limit = maxStock !== undefined ? maxStock : (cap.stock ?? 99);
 
         if (limit <= 0) {
@@ -116,14 +135,26 @@ export const useStore = create<StoreState>()(
           return;
         }
 
+        const displayName = colorwayName
+          ? `${cap.nameEn} (${colorwayName})`
+          : cap.nameEn;
+
         if (existing) {
           const targetQty = existing.quantity + quantity;
           const newQty = Math.min(limit, targetQty);
 
           set({
             cart: cart.map((item) =>
-              item.id === cap.id
-                ? { ...item, quantity: newQty, maxStock: limit }
+              item.id === existing.id
+                ? {
+                    ...item,
+                    quantity: newQty,
+                    maxStock: limit,
+                    ...(size ? { size } : {}),
+                    ...(colorway ? { colorway } : {}),
+                    ...(colorwayName ? { colorwayName } : {}),
+                    ...(customImage ? { image: customImage } : {}),
+                  }
                 : item
             ),
             isCartOpen: true,
@@ -134,13 +165,17 @@ export const useStore = create<StoreState>()(
             cart: [
               ...cart,
               {
-                id: cap.id,
-                name: cap.nameEn,
+                id: cartItemId,
+                variantId: cap.id,
+                name: displayName,
                 priceUsd: cap.priceUsd,
-                image: cap.image,
+                image: customImage || cap.image,
                 silhouette: cap.silhouette,
                 quantity: initialQty,
                 maxStock: limit,
+                ...(size ? { size } : {}),
+                ...(colorway ? { colorway } : {}),
+                ...(colorwayName ? { colorwayName } : {}),
               },
             ],
             isCartOpen: true,
@@ -179,7 +214,7 @@ export const useStore = create<StoreState>()(
 
         const updatedCart = cart
           .map((item) => {
-            const variant = variants.find((v) => v.variantId === item.id);
+            const variant = variants.find((v) => v.variantId === (item.variantId || item.id));
             if (!variant) return item;
 
             const isAvailable = variant.isAvailable !== false;
@@ -257,6 +292,14 @@ export const useStore = create<StoreState>()(
         set({ isSneakerMatcherOpen: true, sneakerMatcherTargetCap: cap }),
       closeSneakerMatcher: () =>
         set({ isSneakerMatcherOpen: false, sneakerMatcherTargetCap: null }),
+
+      // Model Lookbook Studio
+      isApparelStudioOpen: false,
+      apparelStudioTargetTee: null,
+      openApparelStudio: (tee = null) =>
+        set({ isApparelStudioOpen: true, apparelStudioTargetTee: tee }),
+      closeApparelStudio: () =>
+        set({ isApparelStudioOpen: false, apparelStudioTargetTee: null }),
 
       // Virtual Try-On
       isTryOnOpen: false,

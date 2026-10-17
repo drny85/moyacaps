@@ -14,19 +14,23 @@ export function ProductJsonLd({ cap, locale }: ProductJsonLdProps) {
     : `${siteUrl}${cap.image.startsWith("/") ? "" : "/"}${cap.image}`;
 
   const name = locale === "es" ? cap.nameEs : cap.nameEn;
-  const description =
-    locale === "es"
-      ? `Gorra oficial Good Luck — Edición 0880 — ${name}. Bordado 3D de alta densidad, diablos laterales y silueta ${cap.silhouette}.`
-      : `Official Good Luck Cap — 0880 Edition — ${name}. High-density 3D puff embroidery, twin pitchfork devil flanks, and ${cap.silhouette} profile.`;
+  const isTee = cap.silhouette === "tee" || (cap as any).category === "apparel";
+  const description = isTee
+    ? (locale === "es"
+        ? `Playera streetwear boxy heavyweight oficial Good Luck — ${name}. Algodón peinado de 280-300 GSM, corte drop-shoulder y serigrafía HD por $160 USD.`
+        : `Official Good Luck Heavyweight Streetwear Boxy Tee — ${name}. 280-300 GSM combed cotton, drop-shoulder cut, and HD screen print for $160 USD.`)
+    : (locale === "es"
+        ? `Gorra oficial Good Luck — Edición 0880 — ${name}. Bordado 3D de alta densidad, diablos laterales y silueta ${cap.silhouette}.`
+        : `Official Good Luck Cap — 0880 Edition — ${name}. High-density 3D puff embroidery, twin pitchfork devil flanks, and ${cap.silhouette} profile.`);
 
   const isOutOfStock = cap.stock <= 0;
-  const price = locale === "es" ? Math.round(cap.priceUsd * 18.5) : cap.priceUsd;
-  const currency = locale === "es" ? "MXN" : "USD";
+  const price = cap.priceUsd;
+  const currency = "USD";
 
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Product",
-    name: `${name} | Good Luck 0880 Edition`,
+    name: isTee ? `${name} | Good Luck Heavyweight Streetwear` : `${name} | Good Luck 0880 Edition`,
     image: [imageUrl],
     description,
     sku: `GL-0880-${cap.id.toUpperCase()}`,

@@ -15,6 +15,9 @@ import { useProductShare } from "@/lib/useProductShare";
 import { getWhatsAppInquiryUrl } from "@/lib/whatsapp";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 
+const TEE_SIZES = ["S", "M", "L", "XL", "2XL"] as const;
+type TeeSize = (typeof TEE_SIZES)[number];
+
 export function ProductQuickView() {
   const {
     quickViewCap,
@@ -24,14 +27,17 @@ export function ProductQuickView() {
     cart,
     openSneakerMatcher,
     openTryOn,
+    openApparelStudio,
   } = useStore();
-  const { playClick, playSuccessChime } = useSoundEffects();
+  const { playClick, playSuccessChime, playToggle } = useSoundEffects();
   useLockBodyScroll(Boolean(quickViewCap));
   const t = useTranslations("quickView");
   const tShare = useTranslations("share");
   const locale = useLocale();
   const { shareProduct } = useProductShare();
   const [quantity, setQuantity] = useState(1);
+  const [selectedSize, setSelectedSize] = useState<TeeSize>("L");
+  const [selectedColorway, setSelectedColorway] = useState<string>("washed-black");
   const [addedSuccess, setAddedSuccess] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
 
@@ -40,9 +46,13 @@ export function ProductQuickView() {
   useEffect(() => {
     setIsMounted(true);
     setQuantity(1);
-  }, [quickViewCap?.id]);
+    setSelectedSize("L");
+    setSelectedColorway(quickViewCap?.defaultColorway || "washed-black");
+  }, [quickViewCap?.id, quickViewCap?.defaultColorway]);
 
   if (!quickViewCap) return null;
+
+  const isTee = quickViewCap.silhouette === "tee" || quickViewCap.category === "apparel";
 
   const liveVariant = convexVariants?.find((v) => v.variantId === quickViewCap.id);
   const stock = liveVariant ? (typeof liveVariant.stock === "number" ? liveVariant.stock : 0) : (quickViewCap.stock ?? 0);
@@ -63,12 +73,23 @@ export function ProductQuickView() {
   const isInCart = inCartQty > 0;
   const maxAvailableToAdd = Math.max(0, stock - inCartQty);
 
+  const activeColorway = quickViewCap?.colorways?.find((c) => c.id === selectedColorway);
+  const activeImage = isTee && activeColorway?.modelImage ? activeColorway.modelImage : quickViewCap.image;
+
   const priceDisplay = `$${quickViewCap.priceUsd * Math.max(1, quantity)}.00 USD`;
 
   const handleAdd = () => {
     if (isDrop || isOutOfStock || maxAvailableToAdd <= 0) return;
     const addQty = Math.min(maxAvailableToAdd, Math.max(1, quantity));
-    addToCart(quickViewCap, addQty, stock);
+    addToCart(
+      quickViewCap,
+      addQty,
+      stock,
+      isTee ? selectedSize : undefined,
+      isTee ? selectedColorway : undefined,
+      isTee ? activeColorway?.nameEn : undefined,
+      isTee ? activeImage : undefined
+    );
     playSuccessChime();
     setAddedSuccess(true);
     confetti({
@@ -97,6 +118,9 @@ export function ProductQuickView() {
       currency: "USD",
       isDrop: false,
       locale,
+      size: isTee ? selectedSize : undefined,
+      colorway: isTee ? activeColorway?.nameEn || selectedColorway : undefined,
+      silhouette: quickViewCap.silhouette,
     });
     window.open(url, "_blank");
   };
@@ -146,13 +170,22 @@ export function ProductQuickView() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 items-center">
             {/* Left: Image */}
-            <div className="relative aspect-[16/11] sm:aspect-square max-h-[190px] xs:max-h-[220px] sm:max-h-[320px] md:max-h-none w-full rounded-xl sm:rounded-2xl bg-gradient-to-b from-black/[0.02] dark:from-white/[0.03] to-transparent flex items-center justify-center p-2 sm:p-4 border border-black/[0.06] dark:border-white/[0.06] overflow-hidden">
+            <div
+              className={`relative aspect-[16/11] sm:aspect-square max-h-[190px] xs:max-h-[220px] sm:max-h-[320px] md:max-h-none w-full rounded-xl sm:rounded-2xl bg-gradient-to-b from-black/[0.02] dark:from-white/[0.03] to-transparent flex items-center justify-center p-2 sm:p-4 border border-black/[0.06] dark:border-white/[0.06] overflow-hidden ${
+                isTee ? "p-0 bg-zinc-900" : ""
+              }`}
+            >
               <div className="relative w-full h-full">
                 <Image
-                  src={quickViewCap.image}
+                  src={activeImage}
                   alt={name}
                   fill
-                  className="object-contain drop-shadow-[0_15px_30px_rgba(0,0,0,0.22)] dark:drop-shadow-[0_15px_30px_rgba(0,0,0,0.7)]"
+                  unoptimized
+                  className={`${
+                    isTee
+                      ? "object-cover object-top sm:object-[center_15%] rounded-xl"
+                      : "object-contain drop-shadow-[0_15px_30px_rgba(0,0,0,0.22)] dark:drop-shadow-[0_15px_30px_rgba(0,0,0,0.7)]"
+                  }`}
                 />
               </div>
 
@@ -166,7 +199,7 @@ export function ProductQuickView() {
                   className="w-3 h-3 rounded-full border border-white/40 dark:border-white/20"
                   style={{ backgroundColor: quickViewCap.secondaryHex }}
                 />
-                <span className="font-mono text-[10px]">Dual Tone</span>
+                <span className="font-mono text-[10px]">{isTee ? "280 GSM" : "Dual Tone"}</span>
               </div>
             </div>
 
@@ -174,7 +207,11 @@ export function ProductQuickView() {
             <div className="flex flex-col gap-2.5 sm:gap-3.5 min-w-0">
               <div>
                 <span className="text-[11px] font-mono uppercase tracking-widest text-moya-red font-bold">
-                  {quickViewCap.silhouette === "trucker" ? "Trucker Edition" : "6-Panel Snapback"}
+                  {isTee
+                    ? (locale === "es" ? "Playera Heavyweight Streetwear" : "Heavyweight Streetwear Tee")
+                    : quickViewCap.silhouette === "trucker"
+                      ? "Trucker Edition"
+                      : "6-Panel Snapback"}
                 </span>
                 <h2 className="text-xl sm:text-2xl font-display font-bold text-zinc-900 dark:text-white mt-0.5 truncate">{name}</h2>
                 <div className="flex flex-wrap items-center gap-2 mt-1">
@@ -194,20 +231,119 @@ export function ProductQuickView() {
                 <div className="flex justify-between">
                   <span className="text-zinc-500">{t("silhouetteLabel")}:</span>
                   <span className="font-semibold text-zinc-900 dark:text-white font-display">
-                    {quickViewCap.silhouette === "trucker"
-                      ? t("silhouetteTrucker")
-                      : t("silhouetteSnapback")}
+                    {isTee
+                      ? (locale === "es" ? "Corte Boxy Drop-Shoulder" : "Boxy Drop-Shoulder Oversized")
+                      : quickViewCap.silhouette === "trucker"
+                        ? t("silhouetteTrucker")
+                        : t("silhouetteSnapback")}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-zinc-500">{t("sizeLabel")}:</span>
-                  <span className="font-semibold text-zinc-900 dark:text-white font-display">{t("sizeValue")}</span>
+                  <span className="font-semibold text-zinc-900 dark:text-white font-display">
+                    {isTee
+                      ? (locale === "es" ? "Streetwear Oversized (S a 2XL)" : "Streetwear Oversized (S - 2XL)")
+                      : t("sizeValue")}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-zinc-500">{t("materialsLabel")}:</span>
-                  <span className="font-semibold text-zinc-900 dark:text-white font-display">{t("materialsValue")}</span>
+                  <span className="font-semibold text-zinc-900 dark:text-white font-display truncate max-w-[200px] text-right">
+                    {isTee
+                      ? (locale === "es" ? "100% Algodón Peinado 280 GSM • Serigrafía HD" : "100% Combed Cotton 280 GSM • HD Screen Print")
+                      : t("materialsValue")}
+                  </span>
                 </div>
               </div>
+
+              {/* Colorway Swatches for Tees */}
+              {isTee && quickViewCap.colorways && quickViewCap.colorways.length > 0 && (
+                <div className="flex flex-col gap-1.5 py-2 border-b border-black/[0.06] dark:border-white/[0.06]">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-semibold text-zinc-800 dark:text-zinc-200 font-display">
+                      {locale === "es" ? "Color en Modelo" : "Model Colorway"}:{" "}
+                      <span className="text-moya-red font-mono font-bold">
+                        {locale === "es" ? activeColorway?.nameEs : activeColorway?.nameEn}
+                      </span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        closeQuickView();
+                        openApparelStudio(quickViewCap);
+                      }}
+                      className="text-[10px] font-mono text-moya-red hover:underline"
+                    >
+                      {locale === "es" ? "Abrir en Studio →" : "Open Studio →"}
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-4 gap-1.5">
+                    {quickViewCap.colorways.map((cw) => {
+                      const isSelected = selectedColorway === cw.id;
+                      const cwLabel = locale === "es" ? cw.nameEs : cw.nameEn;
+                      return (
+                        <button
+                          key={cw.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedColorway(cw.id);
+                            playToggle();
+                          }}
+                          className={`flex items-center gap-1.5 p-1.5 rounded-lg border text-left transition-all ${
+                            isSelected
+                              ? "border-moya-red bg-moya-red/10 shadow-sm"
+                              : "border-black/[0.06] dark:border-white/[0.06] hover:border-zinc-400 bg-black/[0.02] dark:bg-white/[0.02]"
+                          }`}
+                        >
+                          <span
+                            className="w-3.5 h-3.5 rounded-full border border-black/20 dark:border-white/20 shrink-0"
+                            style={{ backgroundColor: cw.hex }}
+                          />
+                          <span className="text-[10px] font-display font-medium text-zinc-700 dark:text-zinc-300 truncate">
+                            {cwLabel.split(" ")[0]}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Size Selector for Tees */}
+              {isTee && (
+                <div className="flex flex-col gap-1.5 py-2 border-b border-black/[0.06] dark:border-white/[0.06]">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-semibold text-zinc-800 dark:text-zinc-200 font-display">
+                      {locale === "es" ? "Talla" : "Size"}: <span className="text-moya-red font-mono font-bold">{selectedSize}</span>
+                    </span>
+                    <span className="text-[10px] text-zinc-500 font-display">
+                      {locale === "es" ? "Corte Boxy Streetwear" : "Boxy Streetwear Fit"}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-5 gap-1.5">
+                    {TEE_SIZES.map((size) => {
+                      const isSelected = selectedSize === size;
+                      return (
+                        <button
+                          key={size}
+                          type="button"
+                          onClick={() => {
+                            setSelectedSize(size);
+                            playToggle();
+                          }}
+                          className={`py-1.5 rounded-lg text-xs font-mono font-bold transition-all ${
+                            isSelected
+                              ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 shadow ring-2 ring-moya-red/50"
+                              : "bg-black/[0.04] dark:bg-white/[0.04] text-zinc-700 dark:text-zinc-300 hover:bg-black/[0.08] dark:hover:bg-white/[0.08]"
+                          }`}
+                        >
+                          {size}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {/* Quantity */}
               <div className="flex items-center justify-between">
@@ -275,10 +411,10 @@ export function ProductQuickView() {
                       isOutOfStock || maxAvailableToAdd <= 0
                         ? "bg-zinc-200 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 cursor-not-allowed"
                         : addedSuccess
-                        ? "bg-emerald-600 text-white shadow-xl shadow-emerald-950/50"
-                        : isInCart
-                        ? "bg-emerald-600/25 hover:bg-emerald-600/35 active:bg-emerald-600/45 text-emerald-300 border border-emerald-500/40 shadow-xl shadow-emerald-950/40"
-                        : "bg-moya-red hover:bg-rose-500 text-white shadow-xl shadow-moya-red-deep/50"
+                          ? "bg-emerald-600 text-white shadow-xl shadow-emerald-950/50"
+                          : isInCart
+                            ? "bg-emerald-600/25 hover:bg-emerald-600/35 active:bg-emerald-600/45 text-emerald-300 border border-emerald-500/40 shadow-xl shadow-emerald-950/40"
+                            : "bg-moya-red hover:bg-rose-500 text-white shadow-xl shadow-moya-red-deep/50"
                     }`}
                   >
                     {isOutOfStock ? (

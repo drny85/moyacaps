@@ -55,8 +55,10 @@
   "catalog": {
     "eyebrow": "CATÁLOGO COMPLETO",
     "title": "Las 16 Combinaciones",
-    "subtitle": "Diseñadas para uso diario. Encuentra tu estilo de la suerte ideal.",
-    "filterAll": "Todas ({count})",
+    "subtitle": "Diseñadas para el uso diario. Elige tu combinación contrastante de la suerte.",
+    "filterAll": "Todos los Lanzamientos ({count})",
+    "filterTee": "Playeras Heavyweight ({count})",
+    "filterCaps": "Gorras ({count})",
     "filterSnapback": "Snapback Clásica ({count})",
     "filterTrucker": "Estilo Trucker / Malla ({count})",
     "searchPlaceholder": "Filtrar por color (ej. Rojo, Camuflaje, Rosa)...",
@@ -100,7 +102,7 @@
   "cart": {
     "title": "Tu Bolsa de Compra",
     "emptyTitle": "Tu carrito está vacío",
-    "emptyDesc": "Aún no has apartado tu gorra de la suerte. Elige una de nuestras 16 opciones.",
+    "emptyDesc": "Aún no has apartado tu gorra de la suerte ni tu playera heavyweight streetwear. Explora nuestros drops para comenzar.",
     "exploreBtn": "Explorar Catálogo",
     "freeShippingAchieved": "🎉 ¡Desbloqueaste Envío Express Gratis!",
     "freeShippingRemaining": "Agrega {amount} más para Envío Express Gratis a EE. UU.",

@@ -1,6 +1,6 @@
 # Good Luck
 
-An e-commerce platform for high-end streetwear caps (gorras) featuring signature collections, bilingual shopping (English/Spanish), interactive 3D/parallax showcase, and streamlined checkout.
+An e-commerce platform for high-end streetwear caps (gorras) and heavyweight apparel tees featuring signature collections, bilingual shopping (English/Spanish), interactive 3D/parallax showcase, model lookbook studio, and streamlined checkout.
 
 ## Language
 
@@ -8,12 +8,28 @@ An e-commerce platform for high-end streetwear caps (gorras) featuring signature
 A structured, premium headwear piece featuring high-density 3D embroidery and adjustable closure.
 _Avoid_: Hat, sombrero, beanie
 
+**Heavyweight Tee**:
+A boxy, drop-shoulder luxury streetwear t-shirt crafted in 280–300 GSM combed cotton with high-density screen print graphics (front chest or back print) and signature Good Luck branding.
+_Avoid_: Shirt, regular t-shirt, top, undershirt
+
 **Colorway**:
 A specific combination of crown, visor, underbill, and embroidery thread colors for a Cap model.
 _Avoid_: Color theme, flavor
 
+**Apparel Colorway**:
+The specific textile fabric wash/dye of a Heavyweight Tee (Vintage Washed Black, Crisp White, Heather Grey, Butter Cream).
+_Avoid_: Shirt color, shade
+
+**Graphic Design**:
+The authentic artwork motif printed on a Heavyweight Tee (e.g., "Boxing Gloves", "Gothic Skull", "Street 8-Ball", "Eagle & Clover").
+_Avoid_: Logo, print, picture
+
+**Model Lookbook Studio**:
+An interactive shopping interface enabling customers to preview any Graphic Design across different Apparel Colorways on realistic streetwear model photography before selecting a size and adding to cart.
+_Avoid_: Mockup tool, customizer, shirt maker
+
 **Collection**:
-A themed design release encompassing multiple colorways and silhouettes (e.g., the "0880 Series").
+A themed design release encompassing multiple colorways and silhouettes (e.g., the "0880 Series" for Headwear and "0880 Heavyweight Apparel").
 _Avoid_: Category, department, bundle
 
 **Silhouette**:

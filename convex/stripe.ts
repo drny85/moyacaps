@@ -334,6 +334,8 @@ export const createCheckoutSession = action({
       v.object({
         variantId: v.string(),
         quantity: v.number(),
+        size: v.optional(v.string()),
+        colorway: v.optional(v.string()),
       })
     ),
     currency: v.string(),
@@ -437,9 +439,11 @@ export const createCheckoutSession = action({
       totalItems += qty;
       subtotal += unitPrice * qty;
 
+      const sizeSuffix = item.size ? ` (${args.locale === "es" ? "Talla" : "Size"}: ${item.size})` : "";
+      const colorSuffix = item.colorway ? ` • ${item.colorway}` : "";
       validatedItems.push({
         variantId: variant.variantId,
-        name: variantName,
+        name: `${variantName}${sizeSuffix}${colorSuffix}`,
         quantity: qty,
         price: unitPrice,
         image: variant.image,
@@ -472,7 +476,7 @@ export const createCheckoutSession = action({
         invoice_creation: {
           enabled: true,
           invoice_data: {
-            description: `Good Luck 0880 — Order #${orderNumber} (${totalItems} cap${totalItems > 1 ? "s" : ""})`,
+            description: `Good Luck — Order #${orderNumber} (${totalItems} item${totalItems > 1 ? "s" : ""})`,
             metadata: {
               orderNumber,
               clerkUserId: resolvedClerkId || "",
@@ -565,6 +569,8 @@ export const createWhatsAppCheckoutSession = action({
       v.object({
         variantId: v.string(),
         quantity: v.number(),
+        size: v.optional(v.string()),
+        colorway: v.optional(v.string()),
       })
     ),
     customerName: v.string(),
@@ -675,9 +681,11 @@ export const createWhatsAppCheckoutSession = action({
       totalItems += qty;
       subtotal += unitPrice * qty;
 
+      const sizeSuffix = item.size ? ` (${args.locale === "es" ? "Talla" : "Size"}: ${item.size})` : "";
+      const colorSuffix = item.colorway ? ` • ${item.colorway}` : "";
       validatedItems.push({
         variantId: variant.variantId,
-        name: variantName,
+        name: `${variantName}${sizeSuffix}${colorSuffix}`,
         quantity: qty,
         price: unitPrice,
         image: variant.image,

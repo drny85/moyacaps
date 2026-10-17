@@ -17,31 +17,43 @@ export function CapGrid() {
   const { openSneakerMatcher } = useStore();
   const { playClick } = useSoundEffects();
 
-  const [activeFilter, setActiveFilter] = useState<"all" | "snapback" | "trucker">("all");
+  type FilterKey = "all" | "tee" | "caps" | "snapback" | "trucker";
+  const [activeFilter, setActiveFilter] = useState<FilterKey>("all");
   const [searchQuery, setSearchQuery] = useState("");
 
   const { caps } = useCapVariants();
 
+  const teeCount = caps.filter((c) => c.silhouette === "tee" || c.category === "apparel").length;
   const snapbackCount = caps.filter((c) => c.silhouette === "snapback").length;
   const truckerCount = caps.filter((c) => c.silhouette === "trucker").length;
+  const capsCount = snapbackCount + truckerCount;
 
   const filteredCaps = useMemo(() => {
     return caps.filter((cap) => {
-      if (activeFilter !== "all" && cap.silhouette !== activeFilter) {
-        return false;
-      }
+      const isTee = cap.silhouette === "tee" || cap.category === "apparel";
+      const isCap = cap.silhouette === "snapback" || cap.silhouette === "trucker" || cap.category === "headwear";
+
+      if (activeFilter === "tee" && !isTee) return false;
+      if (activeFilter === "caps" && !isCap) return false;
+      if (activeFilter === "snapback" && cap.silhouette !== "snapback") return false;
+      if (activeFilter === "trucker" && cap.silhouette !== "trucker") return false;
+
       if (searchQuery.trim() !== "") {
         const query = searchQuery.toLowerCase();
         const name = (locale === "es" ? cap.nameEs : cap.nameEn).toLowerCase();
         const id = cap.id.toLowerCase();
-        return name.includes(query) || id.includes(query);
+        const silhouette = (cap.silhouette || "").toLowerCase();
+        const tag = ((locale === "es" ? cap.tagEs : cap.tagEn) || "").toLowerCase();
+        return name.includes(query) || id.includes(query) || silhouette.includes(query) || tag.includes(query);
       }
       return true;
     });
   }, [caps, activeFilter, searchQuery, locale]);
 
-  const filters: { key: "all" | "snapback" | "trucker"; label: string }[] = [
-    { key: "all", label: t("filterAll", { count: caps.length }) },
+  const filters: { key: FilterKey; label: string }[] = [
+    { key: "all", label: locale === "es" ? `Todo (${caps.length})` : `All Releases (${caps.length})` },
+    { key: "tee", label: locale === "es" ? `Playeras Boxy ($160) (${teeCount})` : `Heavyweight Tees ($160) (${teeCount})` },
+    { key: "caps", label: locale === "es" ? `Gorras ($120) (${capsCount})` : `Caps ($120) (${capsCount})` },
     { key: "snapback", label: t("filterSnapback", { count: snapbackCount }) },
     { key: "trucker", label: t("filterTrucker", { count: truckerCount }) },
   ];
@@ -59,13 +71,21 @@ export function CapGrid() {
 
           <Reveal delay={0.05}>
             <h2 className="font-poster uppercase text-4xl sm:text-6xl lg:text-7xl leading-[0.95] tracking-tight text-zinc-950 dark:text-white">
-              {t("title")}
+              {activeFilter === "tee"
+                ? (locale === "es" ? "Playeras Heavyweight" : "Heavyweight Tees")
+                : activeFilter === "caps" || activeFilter === "snapback" || activeFilter === "trucker"
+                ? (locale === "es" ? "Gorras Insignia" : "Signature Caps")
+                : (locale === "es" ? "Colección Oficial" : "Official Collection")}
             </h2>
           </Reveal>
 
           <Reveal delay={0.1}>
             <p className="text-zinc-600 dark:text-zinc-400 text-sm sm:text-lg mt-3 max-w-xl">
-              {t("subtitle")}
+              {activeFilter === "tee"
+                ? (locale === "es"
+                    ? "Algodón peinado de 280-300 GSM, corte boxy drop-shoulder y serigrafía de alta definición a $160 USD."
+                    : "Heavyweight 280-300 GSM combed cotton, boxy drop-shoulder silhouette, and high-density screen prints at $160 USD.")
+                : t("subtitle")}
             </p>
           </Reveal>
         </div>

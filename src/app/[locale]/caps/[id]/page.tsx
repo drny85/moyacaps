@@ -22,15 +22,22 @@ async function getCapById(id: string): Promise<CapVariant | null> {
         id: convexVariant.variantId,
         nameEn: convexVariant.nameEn,
         nameEs: convexVariant.nameEs,
-        silhouette: (convexVariant.silhouette as "snapback" | "trucker") || "snapback",
+        silhouette: convexVariant.silhouette || (convexVariant.category === "apparel" ? "tee" : "snapback"),
+        category: convexVariant.category || (convexVariant.silhouette === "tee" ? "apparel" : "headwear"),
         primaryHex: convexVariant.primaryHex,
         secondaryHex: convexVariant.secondaryHex,
         image: convexVariant.image,
+        images: convexVariant.images,
+        graphicImage: (convexVariant as any).graphicImage,
         stock: convexVariant.stock,
         priceUsd: convexVariant.priceUsd,
         isFeatured: convexVariant.isFeatured,
-        tagEn: convexVariant.isFeatured ? "Signature Edition" : undefined,
-        tagEs: convexVariant.isFeatured ? "Edición Insignia" : undefined,
+        fabricEn: (convexVariant as any).fabricEn,
+        fabricEs: (convexVariant as any).fabricEs,
+        fitEn: (convexVariant as any).fitEn,
+        fitEs: (convexVariant as any).fitEs,
+        tagEn: convexVariant.isFeatured ? (convexVariant.silhouette === "tee" ? "Heavyweight Drop" : "Signature Edition") : undefined,
+        tagEs: convexVariant.isFeatured ? (convexVariant.silhouette === "tee" ? "Drop Heavyweight" : "Edición Insignia") : undefined,
       };
     }
   } catch (err: any) {
@@ -66,15 +73,22 @@ export async function generateMetadata({
 
   if (!cap) {
     return {
-      title: "Cap Not Found | Good Luck",
+      title: "Product Not Found | Good Luck",
     };
   }
 
   const name = locale === "es" ? cap.nameEs : cap.nameEn;
-  const description =
-    locale === "es"
-      ? `Gorra oficial Good Luck — Edición 0880 — ${name}. Bordado 3D de alta densidad, diablos laterales y silueta ${cap.silhouette}.`
-      : `Official Good Luck Cap — 0880 Edition — ${name}. High-density 3D puff embroidery, twin pitchfork devil flanks, and ${cap.silhouette} profile.`;
+  const isTee = cap.silhouette === "tee" || (cap as any).category === "apparel";
+  const title = isTee
+    ? `${name} ($160 USD) | Good Luck Heavyweight Streetwear`
+    : `${name} | Good Luck 0880 Edition`;
+  const description = isTee
+    ? (locale === "es"
+        ? `Playera streetwear boxy heavyweight oficial Good Luck — ${name}. Algodón peinado de 280-300 GSM, corte drop-shoulder y serigrafía HD por $160 USD.`
+        : `Official Good Luck Heavyweight Streetwear Boxy Tee — ${name}. 280-300 GSM combed cotton, drop-shoulder cut, and HD screen print for $160 USD.`)
+    : (locale === "es"
+        ? `Gorra oficial Good Luck — Edición 0880 — ${name}. Bordado 3D de alta densidad, diablos laterales y silueta ${cap.silhouette}.`
+        : `Official Good Luck Cap — 0880 Edition — ${name}. High-density 3D puff embroidery, twin pitchfork devil flanks, and ${cap.silhouette} profile.`);
 
   const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://goodluckcaps.com").replace(/\/$/, "");
   const canonicalUrl = `${siteUrl}/${locale}/caps/${id}`;
@@ -83,7 +97,7 @@ export async function generateMetadata({
     : `${siteUrl}${cap.image.startsWith("/") ? "" : "/"}${cap.image}`;
 
   return {
-    title: `${name} | Good Luck 0880 Edition`,
+    title,
     description,
     alternates: {
       canonical: canonicalUrl,

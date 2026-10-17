@@ -29,12 +29,78 @@ import { useStore } from "@/store/useStore";
 import { CAP_VARIANTS, type CapVariant } from "@/data/caps";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 
-const SAMPLE_AVATARS = [
-  { id: "model-gl-black", name: "Devon (Good Luck Black Hoodie)", image: "/avatars/model-goodluck-hoodie-black.jpg" },
-  { id: "model-gl-grey", name: "Maya (Good Luck Grey Hoodie)", image: "/avatars/model-goodluck-hoodie-grey.jpg" },
-  { id: "model-jaden", name: "Jaden (Shaved Head)", image: "/avatars/model-jaden-shaved.jpg" },
-  { id: "model-marcus", name: "Marcus (Buzz Fade)", image: "/avatars/model-marcus-buzz.jpg" },
-  { id: "model-elena", name: "Elena (Close Crop)", image: "/avatars/model-elena-crop.jpg" },
+export interface SampleAvatar {
+  id: string;
+  name: string;
+  nameEs: string;
+  teeNameEn: string;
+  teeNameEs: string;
+  teeColorEn: string;
+  teeColorEs: string;
+  image: string;
+}
+
+const SAMPLE_AVATARS: SampleAvatar[] = [
+  {
+    id: "model-moya",
+    name: "Moya",
+    nameEs: "Moya",
+    teeNameEn: "Knockout Boxing Gloves Tee",
+    teeNameEs: "Playera Boxing Gloves",
+    teeColorEn: "Vintage Washed Black",
+    teeColorEs: "Negro Lavado",
+    image: "/avatars/model-moya-boxing.jpg",
+  },
+  {
+    id: "model-devon",
+    name: "Devon",
+    nameEs: "Devon",
+    teeNameEn: "Street 8-Ball Graffiti Tee",
+    teeNameEs: "Playera 8-Ball Graffiti",
+    teeColorEn: "Crisp Optical White",
+    teeColorEs: "Blanco Óptico",
+    image: "/avatars/model-devon-8ball.jpg",
+  },
+  {
+    id: "model-maya",
+    name: "Maya",
+    nameEs: "Maya",
+    teeNameEn: "Pink Grunge Butterfly Tee",
+    teeNameEs: "Playera Grunge Butterfly",
+    teeColorEn: "Butter Cream Vintage",
+    teeColorEs: "Crema Vintage",
+    image: "/avatars/model-maya-butterfly.jpg",
+  },
+  {
+    id: "model-jaden",
+    name: "Jaden",
+    nameEs: "Jaden",
+    teeNameEn: "Cobalt Lightning Star Tee",
+    teeNameEs: "Playera Lightning Star",
+    teeColorEn: "Athletic Heather Grey",
+    teeColorEs: "Gris Jaspe",
+    image: "/avatars/model-jaden-lightning.jpg",
+  },
+  {
+    id: "model-marcus",
+    name: "Marcus",
+    nameEs: "Marcus",
+    teeNameEn: "Midnight Muscle Car Tee",
+    teeNameEs: "Playera Muscle Car",
+    teeColorEn: "Vintage Washed Black",
+    teeColorEs: "Negro Lavado",
+    image: "/avatars/model-marcus-musclecar.jpg",
+  },
+  {
+    id: "model-elena",
+    name: "Elena",
+    nameEs: "Elena",
+    teeNameEn: "Marble Angel Statue Tee",
+    teeNameEs: "Playera Angel Statue",
+    teeColorEn: "Crisp Optical White",
+    teeColorEs: "Blanco Óptico",
+    image: "/avatars/model-elena-angel.jpg",
+  },
 ];
 
 const FIT_PRESETS = [
@@ -82,6 +148,7 @@ export function VirtualTryOnStudio({
   })();
 
   const [activePortrait, setActivePortrait] = useState<string>(resolvedInitialPortrait);
+  const activeAvatar = SAMPLE_AVATARS.find((a) => a.image === activePortrait);
 
   // Auto-migrate legacy cached avatar paths in localStorage to the new low-hair model
   useEffect(() => {
@@ -768,37 +835,70 @@ export function VirtualTryOnStudio({
               )}
 
               {/* Sample Model Avatars */}
-              <div className="flex items-center gap-2.5">
-                <span className="text-[10px] font-mono text-zinc-400 shrink-0">
-                  {isEs ? "Modelos:" : "Models:"}
-                </span>
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  {SAMPLE_AVATARS.map((avatar) => (
-                    <button
-                      key={avatar.id}
-                      type="button"
-                      onClick={() => {
-                        playClick();
-                        stopCamera();
-                        setActivePortrait(avatar.image);
-                        setTryOnImage(avatar.image);
-                      }}
-                      className={`relative w-9 h-9 rounded-full overflow-hidden border-2 transition-all ${
-                        activePortrait === avatar.image
-                          ? "border-moya-red ring-2 ring-moya-red/20 scale-110"
-                          : "border-zinc-200 dark:border-white/10 opacity-60 hover:opacity-100 hover:scale-105"
-                      }`}
-                      title={avatar.name}
-                    >
-                      <Image
-                        src={avatar.image}
-                        alt={avatar.name}
-                        fill
-                        className="object-cover"
-                      />
-                    </button>
-                  ))}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2.5">
+                  <span className="text-[10px] font-mono text-zinc-400 shrink-0 uppercase tracking-wider font-bold">
+                    {isEs ? "Modelos:" : "Models:"}
+                  </span>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {SAMPLE_AVATARS.map((avatar) => {
+                      const isSelected = activePortrait === avatar.image;
+                      return (
+                        <button
+                          key={avatar.id}
+                          type="button"
+                          onClick={() => {
+                            playClick();
+                            stopCamera();
+                            setActivePortrait(avatar.image);
+                            setTryOnImage(avatar.image);
+                          }}
+                          className={`group relative w-10 h-10 rounded-full overflow-hidden border-2 transition-all ${
+                            isSelected
+                              ? "border-moya-red ring-2 ring-moya-red/30 scale-110 shadow-lg shadow-moya-red/20 z-10"
+                              : "border-zinc-200 dark:border-white/10 opacity-70 hover:opacity-100 hover:scale-105"
+                          }`}
+                          title={`${avatar.name} • ${avatar.teeNameEn}`}
+                        >
+                          <Image
+                            src={avatar.image}
+                            alt={`${avatar.name} - ${avatar.teeNameEn}`}
+                            fill
+                            sizes="40px"
+                            className="object-cover"
+                          />
+                          {isSelected && (
+                            <span className="absolute bottom-0 inset-x-0 h-1 bg-moya-red" />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
+
+                {/* Active Model Streetwear Tee Badge */}
+                {activeAvatar && (
+                  <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-zinc-100/80 dark:bg-white/[0.04] border border-black/[0.06] dark:border-white/[0.06] text-xs">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                      <span className="font-display font-bold text-zinc-900 dark:text-white shrink-0">
+                        {activeAvatar.name}:
+                      </span>
+                      <span className="font-mono text-[11px] text-zinc-500 dark:text-zinc-400 truncate">
+                        {isEs ? "Viste " : "Wearing "}
+                        <strong className="text-zinc-800 dark:text-zinc-200 font-semibold">
+                          {isEs ? activeAvatar.teeNameEs : activeAvatar.teeNameEn}
+                        </strong>
+                        <span className="text-zinc-400 dark:text-zinc-500 text-[10px] ml-1.5 hidden sm:inline">
+                          ({isEs ? activeAvatar.teeColorEs : activeAvatar.teeColorEn})
+                        </span>
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-moya-red bg-moya-red/10 dark:bg-moya-red/20 px-2 py-0.5 rounded-full shrink-0 font-bold">
+                      {isEs ? "Colección" : "Street Tee"}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
 

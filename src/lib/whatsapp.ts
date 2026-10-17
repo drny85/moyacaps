@@ -91,6 +91,9 @@ export interface ProductInquiryParams {
   currency?: string;
   isDrop?: boolean;
   locale?: string;
+  size?: string;
+  colorway?: string;
+  silhouette?: string;
 }
 
 export function getWhatsAppInquiryUrl({
@@ -100,21 +103,30 @@ export function getWhatsAppInquiryUrl({
   currency = "USD",
   isDrop = false,
   locale = "en",
+  size,
+  colorway,
+  silhouette,
 }: ProductInquiryParams): string {
   const phone = WHATSAPP_CONFIG.defaultPhone;
+  const isTee = silhouette === "tee" || name.toLowerCase().includes("tee") || name.toLowerCase().includes("playera");
+  const itemTypeEs = isTee ? "playera" : "gorra";
+  const sizeNoteEn = size ? ` (Size: ${size})` : "";
+  const sizeNoteEs = size ? ` (Talla: ${size})` : "";
+  const colorNoteEn = colorway ? ` • Color: ${colorway}` : "";
+  const colorNoteEs = colorway ? ` • Color: ${colorway}` : "";
 
   let text: string;
   if (isDrop) {
     text =
       locale === "es"
-        ? `¡Hola Good Luck! Deseo información y apartar mi acceso prioritario para el drop de la gorra: ${name} (Edición 0880). ¿Me podrían compartir más detalles? (Envío a EE.UU.)`
-        : `Hi Good Luck! I would like priority access and info regarding the upcoming drop of: ${name} (0880 Edition). Please share details. (US Shipping)`;
+        ? `¡Hola Good Luck! Deseo información y apartar mi acceso prioritario para el drop de la ${itemTypeEs}: ${name}${sizeNoteEs}${colorNoteEs} (Edición 0880). ¿Me podrían compartir más detalles? (Envío a EE.UU.)`
+        : `Hi Good Luck! I would like priority access and info regarding the upcoming drop of: ${name}${sizeNoteEn}${colorNoteEn} (0880 Edition). Please share details. (US Shipping)`;
   } else {
     const totalEstimate = priceSingle ? ` - $${priceSingle * quantity} ${currency}` : "";
     text =
       locale === "es"
-        ? `¡Hola Good Luck! Deseo ordenar ${quantity} pieza(s) de la gorra ${name} (Edición 0880${totalEstimate}). ¿Me podrían compartir los datos de pago y envío en EE.UU.?`
-        : `Hi Good Luck! I would like to order ${quantity} piece(s) of ${name} (0880 Edition${totalEstimate}). Please share payment and US delivery details.`;
+        ? `¡Hola Good Luck! Deseo ordenar ${quantity} pieza(s) de la ${itemTypeEs} ${name}${sizeNoteEs}${colorNoteEs} (Edición 0880${totalEstimate}). ¿Me podrían compartir los datos de pago y envío en EE.UU.?`
+        : `Hi Good Luck! I would like to order ${quantity} piece(s) of ${name}${sizeNoteEn}${colorNoteEn} (0880 Edition${totalEstimate}). Please share payment and US delivery details.`;
   }
 
   return `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
