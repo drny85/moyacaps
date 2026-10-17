@@ -7,10 +7,13 @@ import {
   useInView,
   useMotionTemplate,
   useMotionValue,
+  useMotionValueEvent,
   useSpring,
   useTransform,
+  type MotionValue,
 } from "framer-motion";
 import { useReducedMotionSafe } from "@/hooks/useMotionPrefs";
+import { frameIndexForProgress } from "@/lib/heroMotion";
 import { DURATION, EASE, SPRING } from "@/lib/motion";
 
 export interface TurntableFrame {
@@ -28,6 +31,7 @@ const AUTO_TURN_MS = 2800;
  * angle; dragging (or arrow keys) turns the cap between them, with a
  * directional rotate so the swap reads as the cap spinning. Pointer tilt,
  * a moving sheen and a ground shadow add depth without any 3D model.
+ * With `scrub`, page scroll turns the cap (see heroMotion) until the visitor turns it by hand.
  */
 export function CapTurntable({
   frames,
@@ -36,6 +40,9 @@ export function CapTurntable({
   className = "",
   priority = false,
   onInteract,
+  onFrameChange,
+  scrub,
+  showAngleDots = true,
 }: {
   frames: TurntableFrame[];
   alt: string;
@@ -44,6 +51,12 @@ export function CapTurntable({
   className?: string;
   priority?: boolean;
   onInteract?: () => void;
+  /** Called with the index of the photo on show whenever it changes */
+  onFrameChange?: (index: number) => void;
+  /** 0..1 scroll progress that turns the cap instead of the idle auto-turn */
+  scrub?: MotionValue<number>;
+  /** The angle dots under the cap (off when the parent shows the angle another way) */
+  showAngleDots?: boolean;
 }) {
   const reduceMotion = useReducedMotionSafe();
   const stageRef = useRef<HTMLDivElement>(null);
@@ -66,10 +79,21 @@ export function CapTurntable({
   }, [hasInteracted, onInteract]);
 
   useEffect(() => {
-    if (!canTurn || hasInteracted || reduceMotion || !inView) return;
+    if (!canTurn || hasInteracted || reduceMotion || !inView || scrub) return;
     const id = setInterval(() => turn(1), AUTO_TURN_MS);
     return () => clearInterval(id);
-  }, [canTurn, hasInteracted, reduceMotion, inView, turn]);
+  }, [canTurn, hasInteracted, reduceMotion, inView, turn, scrub]);
+
+  // Scroll-driven turn: the hero's scroll progress picks the photo until the visitor takes over.
+  const idleScrub = useMotionValue(0);
+  useMotionValueEvent(scrub ?? idleScrub, "change", (p) => {
+    if (!scrub || !canTurn || hasInteracted || reduceMotion) return;
+    setIndex(frameIndexForProgress(p, frames.length));
+  });
+
+  useEffect(() => {
+    onFrameChange?.(index);
+  }, [index, onFrameChange]);
 
   const drag = useRef<{ x: number; carried: number } | null>(null);
 
@@ -223,7 +247,7 @@ export function CapTurntable({
       </div>
 
       {/* Angle selector */}
-      {canTurn && (
+      {canTurn && showAngleDots && (
         <div className="absolute bottom-0 left-1/2 flex -translate-x-1/2 items-center gap-1.5">
           {frames.map((frame, i) => (
             <button
