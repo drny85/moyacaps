@@ -79,6 +79,8 @@ export interface CapVariant {
   dropBadgeTextEn?: string;
   dropBadgeTextEs?: string;
   dropStatus?: string;
+  /** Epoch ms the product was added (Convex _creationTime); drives "Newest" sorting */
+  createdAt?: number;
   fabricEn?: string;
   fabricEs?: string;
   fitEn?: string;

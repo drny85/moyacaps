@@ -54,6 +54,16 @@ As built:
 
 ### Phase 3 — Shop page (`feat/shop-page`)
 
+Status: done on `feat/shop-page`.
+
+As built:
+- `src/lib/shop.ts` holds the pure model: colour families come from each product's hexes (cap crown colour, every tee colorway), cap-only and tee-only facets narrow only their own category, and URL state is parsed leniently and serialized without defaults. Covered by `src/__tests__/shop.test.ts` using the real seeded hexes.
+- "Graphic Design" filter replaced by **Tee print (front / back)**: each tee *is* one Graphic Design, so that filter would just pick a single product.
+- On phones, sort lives in the "Filter & sort" sheet; from `sm` up it is a dropdown. The navbar publishes `--navbar-h` so the sticky bar sits flush at every breakpoint.
+- Tee cards swap colorways in place and open the product on the chosen colorway (`?colorway=`, read by the Phase 4 product page). With a colour filter on, tees open on the matching colorway.
+- Nav: Shop / Caps / Tees replace Collection and the studio anchor; the mobile action bar points at Shop. `CapCard` / `CapGrid` remain on the homepage until Phase 5.
+- Tee price changed to $80 in the same branch (`products:setApparelPriceUsd`, run on dev). **Production: run `npx convex run --prod products:setApparelPriceUsd '{"priceUsd": 80}'` after deploy.**
+
 - `src/app/[locale]/products/page.tsx`: category tabs (All / Caps / Tees), filter chips (Colorway family, Silhouette, Graphic Design, In stock), sort (Featured, Newest, Price). State in URL query (`?category=tees&colorway=black&sort=price-asc`).
 - Mobile: sticky tab bar, filters in a bottom sheet, 2-column grid; desktop 3–4 columns with filter sidebar.
 - `ProductCard` (replaces `CapCard`): Catalog Shot, name, price, colorway dots, stock/drop badge; hover swap to Lifestyle Shot on pointer devices only.

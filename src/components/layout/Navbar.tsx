@@ -4,7 +4,7 @@ import { useTranslations, useLocale } from "next-intl";
 import { Link, usePathname, useRouter } from "@/i18n/routing";
 import { useStore } from "@/store/useStore";
 import { ShoppingBag, Globe, Menu, X, Sparkles, User, Package, Shield, Truck, Camera } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { SoundToggle } from "@/components/ui/SoundToggle";
@@ -19,6 +19,18 @@ export function Navbar() {
   const { user, isSignedIn } = useSafeUser();
   const isAdmin = checkIsAdmin(user);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const headerRef = useRef<HTMLElement>(null);
+
+  // Publish the bar's real height so sticky sub-bars (Shop filters) sit flush under it at every breakpoint.
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+    const publish = () => document.documentElement.style.setProperty("--navbar-h", `${el.offsetHeight}px`);
+    publish();
+    const ro = new ResizeObserver(publish);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
@@ -50,7 +62,7 @@ export function Navbar() {
         </div>
       </div>
 
-      <header className="sticky top-0 z-40 w-full glass-dark border-b border-black/[0.06] dark:border-white/[0.06] transition-all duration-300">
+      <header ref={headerRef} className="sticky top-0 z-40 w-full glass-dark border-b border-black/[0.06] dark:border-white/[0.06] transition-all duration-300">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between">
           {/* ── Brand Logo ── */}
           <Link href="/" className="flex items-center gap-2.5 group">
@@ -76,20 +88,28 @@ export function Navbar() {
 
           {/* ── Desktop Nav ── */}
           <nav className="hidden md:flex items-center gap-8 text-sm font-display font-medium text-zinc-600 dark:text-zinc-400">
-            <a
-              href="/#catalog"
-              className="hover:text-zinc-900 dark:hover:text-white transition-colors hover-underline flex items-center gap-1.5"
+            <Link
+              href="/products"
+              className={`transition-colors hover-underline flex items-center gap-1.5 ${pathname === "/products"
+                ? "text-zinc-900 dark:text-white font-semibold"
+                : "hover:text-zinc-900 dark:hover:text-white"
+                }`}
             >
               <Sparkles className="w-3 h-3 text-moya-green" />
-              {t("catalog")}
-            </a>
-            <a
-              href="/#apparel-studio"
-              className="hover:text-zinc-900 dark:hover:text-white transition-colors hover-underline flex items-center gap-1.5 font-semibold text-zinc-800 dark:text-zinc-200"
+              {t("shop")}
+            </Link>
+            <Link
+              href="/products?category=caps"
+              className="transition-colors hover-underline hover:text-zinc-900 dark:hover:text-white"
             >
-              <span className="w-1.5 h-1.5 rounded-full bg-moya-red animate-pulse" />
-              <span>{locale === "es" ? "Playeras" : "Tees"}</span>
-            </a>
+              {t("caps")}
+            </Link>
+            <Link
+              href="/products?category=tees"
+              className="transition-colors hover-underline hover:text-zinc-900 dark:hover:text-white"
+            >
+              {t("tees")}
+            </Link>
             <Link
               href="/try-on"
               className={`transition-colors hover-underline flex items-center gap-1.5 ${pathname.includes("/try-on")
@@ -245,23 +265,22 @@ export function Navbar() {
               exit={{ opacity: 0, height: 0 }}
               className="md:hidden border-t border-black/[0.06] dark:border-white/[0.06] bg-white/95 dark:bg-[#08080c] px-6 py-5 flex flex-col gap-5 shadow-2xl"
             >
-              <a
-                href="#catalog"
-                onClick={() => setMobileMenuOpen(false)}
-                className="text-zinc-900 dark:text-zinc-200 hover:text-moya-red font-display font-semibold text-base transition-colors"
-              >
-                {t("catalog")}
-              </a>
-              <a
-                href="/#apparel-studio"
-                onClick={() => setMobileMenuOpen(false)}
-                className="text-zinc-900 dark:text-zinc-200 hover:text-moya-red font-display font-semibold text-base transition-colors flex items-center justify-between"
-              >
-                <span>{locale === "es" ? "Playeras" : "Tees"}</span>
-                <span className="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded-full bg-moya-red/10 text-moya-red border border-moya-red/30">
-                  Studio
-                </span>
-              </a>
+              {(
+                [
+                  ["/products", t("shop")],
+                  ["/products?category=caps", t("caps")],
+                  ["/products?category=tees", t("tees")],
+                ] as const
+              ).map(([href, label]) => (
+                <Link
+                  key={href}
+                  href={href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="text-zinc-900 dark:text-zinc-200 hover:text-moya-red font-display font-semibold text-base transition-colors"
+                >
+                  {label}
+                </Link>
+              ))}
               <Link
                 href="/try-on"
                 onClick={() => setMobileMenuOpen(false)}

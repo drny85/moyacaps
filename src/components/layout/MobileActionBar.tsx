@@ -42,16 +42,16 @@ export function MobileActionBar() {
   return (
     <div className="md:hidden fixed bottom-0 inset-x-0 z-40 p-3 pointer-events-none">
       <div className="max-w-md mx-auto glass-dark bg-white/90 dark:bg-[#0a0a10]/90 border border-black/[0.08] dark:border-white/[0.08] rounded-2xl p-1.5 sm:p-2 flex items-center justify-between shadow-2xl shadow-black/10 dark:shadow-black/80 pointer-events-auto">
-        {/* Catalog shortcut */}
-        <a
-          href="/#catalog"
+        {/* Shop shortcut */}
+        <Link
+          href="/products"
           className="flex-1 py-1.5 px-2 rounded-xl flex flex-col items-center justify-center text-zinc-600 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors active:scale-95"
         >
           <Compass className="w-5 h-5 text-moya-red" />
           <span className="text-[9px] font-display font-semibold mt-0.5 tracking-tight">
-            {t("catalog")}
+            {t("shop")}
           </span>
-        </a>
+        </Link>
 
         {/* Orders shortcut for signed-in collectors */}
         {isSignedIn && (

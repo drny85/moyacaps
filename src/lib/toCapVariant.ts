@@ -28,6 +28,7 @@ export function toCapVariant(v: Doc<"variants">): CapVariant {
     dropBadgeTextEn: v.dropBadgeTextEn,
     dropBadgeTextEs: v.dropBadgeTextEs,
     dropStatus: v.dropStatus,
+    createdAt: v._creationTime,
     fabricEn: v.fabricEn,
     fabricEs: v.fabricEs,
     fitEn: v.fitEn,
