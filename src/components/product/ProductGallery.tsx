@@ -1,12 +1,18 @@
 "use client";
 
-import Image from "next/image";
+import Image, { type ImageProps } from "next/image";
+import { DeferredImage } from "@/components/media/DeferredImage";
 import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { X } from "lucide-react";
 import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
 import type { GallerySlide } from "@/lib/productOptions";
+
+/** The first slide is the LCP image; the rest load after first load settles (ADR 0019) */
+function GalleryPhoto({ eager, ...props }: ImageProps & { fill: true; eager: boolean }) {
+  return eager ? <Image {...props} /> : <DeferredImage {...props} />;
+}
 
 const tileBg = (s: GallerySlide) => (s.kind === "artwork" ? "bg-white" : "bg-[#ECEAE6]");
 
@@ -63,7 +69,8 @@ export function ProductGallery({ slides, resetKey }: { slides: GallerySlide[]; r
               aria-label={`${t("openImage")}: ${slide.alt}`}
               className="absolute inset-0 cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-moya-red"
             >
-              <Image
+              <GalleryPhoto
+                eager={i === 0}
                 src={slide.src}
                 alt={slide.alt}
                 fill

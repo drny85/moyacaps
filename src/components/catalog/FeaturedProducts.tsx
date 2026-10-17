@@ -35,7 +35,7 @@ export function FeaturedProducts() {
       <ul className="grid grid-cols-2 gap-x-3 gap-y-8 sm:gap-x-5 lg:grid-cols-4">
         {items.map((item) => (
           <li key={item.product.id}>
-            <ProductCard item={item} now={now} />
+            <ProductCard item={item} now={now} defer />
           </li>
         ))}
       </ul>

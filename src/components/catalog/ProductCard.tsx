@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { DeferredImage } from "@/components/media/DeferredImage";
 import { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Link } from "@/i18n/routing";
@@ -16,11 +17,15 @@ export function ProductCard({
   item,
   now,
   priority = false,
+  defer = false,
 }: {
   item: ShopItem;
   now: number;
   priority?: boolean;
+  /** Below the first viewport: load the photo after first load settles (ADR 0019) */
+  defer?: boolean;
 }) {
+  const Photo = defer && !priority ? DeferredImage : Image;
   const t = useTranslations("shop");
   const locale = useLocale();
   const { product } = item;
@@ -42,7 +47,7 @@ export function ProductCard({
         className="relative block aspect-[4/5] overflow-hidden rounded-[14px] bg-[#ECEAE6] outline-none focus-visible:ring-2 focus-visible:ring-moya-red focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-zinc-950"
         onPointerEnter={(e) => e.pointerType === "mouse" && setHovered(true)}
       >
-        <Image
+        <Photo
           src={shot}
           alt={colorway ? `${name} — ${locale === "es" ? colorway.nameEs : colorway.nameEn}` : name}
           fill
