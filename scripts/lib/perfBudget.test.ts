@@ -107,6 +107,7 @@ describe("parseArgs", () => {
       url: null,
       pages: null,
       headers: {},
+      throttling: "simulate",
       budget: { minPerformance: 90, maxLcpMs: 2500 },
     });
   });
@@ -128,6 +129,10 @@ describe("parseArgs", () => {
       "X-Test": "1",
     });
     expect(() => parseArgs(["--header", "nocolon"])).toThrow(/Name: value/);
+  });
+
+  it("switches to applied DevTools throttling", () => {
+    expect(parseArgs(["--devtools"]).throttling).toBe("devtools");
   });
 
   it("rejects unknown flags and bad numbers", () => {

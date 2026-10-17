@@ -123,6 +123,11 @@ export interface PerfBudgetArgs {
   pages: string[] | null;
   /** Extra request headers for every page load (e.g. a Vercel protection cookie) */
   headers: Record<string, string>;
+  /**
+   * "simulate" (Lighthouse's default Lantern model, what PageSpeed Insights reports) or
+   * "devtools" (really throttles the network and CPU and measures the page as it loads)
+   */
+  throttling: "simulate" | "devtools";
   budget: Budget;
 }
 
@@ -134,6 +139,7 @@ export function parseArgs(argv: string[]): PerfBudgetArgs {
     url: null,
     pages: null,
     headers: {},
+    throttling: "simulate",
     budget: { ...DEFAULT_BUDGET },
   };
   for (let i = 0; i < argv.length; i++) {
@@ -161,6 +167,7 @@ export function parseArgs(argv: string[]): PerfBudgetArgs {
         args.headers[raw.slice(0, sep).trim()] = raw.slice(sep + 1).trim();
         break;
       }
+      case "--devtools": args.throttling = "devtools"; break;
       case "--min-performance": args.budget.minPerformance = int(); break;
       case "--max-lcp": args.budget.maxLcpMs = int(); break;
       default: throw new Error(`Unknown flag ${flag}`);

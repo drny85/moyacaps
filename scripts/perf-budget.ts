@@ -6,6 +6,7 @@
  *   bun run perf-budget --url https://…      test a deployed URL (e.g. a Vercel preview)
  *   bun run perf-budget --runs 5 --pages /en,/en/products
  *   bun run perf-budget --url https://… --header "Cookie: _vercel_jwt=…"   protected preview
+ *   bun run perf-budget --devtools           apply real throttling instead of simulating it
  *
  * Fails (exit 1) when the median performance score is below 90 or the median LCP is
  * 2.5 s or more on any page. Lighthouse uses its default mobile emulation (Moto G
@@ -58,7 +59,8 @@ async function lighthouseRun(
   url: string,
   outDir: string,
   index: number,
-  headers: Record<string, string>
+  headers: Record<string, string>,
+  throttling: "simulate" | "devtools"
 ): Promise<RunMetrics> {
   const out = path.join(outDir, `${index}.json`);
   await run(
@@ -70,6 +72,7 @@ async function lighthouseRun(
       `--output-path=${out}`,
       "--quiet",
       "--chrome-flags=--headless=new",
+      `--throttling-method=${throttling}`,
       ...(Object.keys(headers).length ? [`--extra-headers=${JSON.stringify(headers)}`] : []),
     ],
     { quiet: true }
@@ -106,14 +109,14 @@ async function main() {
     for (const page of pages) {
       const runs: RunMetrics[] = [];
       for (let i = 0; i < args.runs; i++) {
-        const metrics = await lighthouseRun(`${base}${page}`, outDir, results.length * 100 + i, args.headers);
+        const metrics = await lighthouseRun(`${base}${page}`, outDir, results.length * 100 + i, args.headers, args.throttling);
         runs.push(metrics);
         console.log(`  ${page} run ${i + 1}/${args.runs}: perf ${metrics.performance}, LCP ${Math.round(metrics.lcpMs)} ms`);
       }
       results.push(evaluatePage(page, runs, args.budget));
     }
 
-    console.log(`\nLighthouse mobile, median of ${args.runs} — ${base}\n`);
+    console.log(`\nLighthouse mobile (${args.throttling} throttling), median of ${args.runs} — ${base}\n`);
     console.log(formatTable(results));
     console.log(`\nReports: ${outDir}`);
 
