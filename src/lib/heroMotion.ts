@@ -32,6 +32,14 @@ export function clamp01(n: number): number {
   return Math.min(1, Math.max(0, n));
 }
 
+/**
+ * Hero scroll progress: page scroll measured in hero heights (0 at the top, 1 once one hero
+ * height has scrolled by). Rests at 0 until the hero has a measured height.
+ */
+export function heroScrollProgress(scrollY: number, heroHeight: number): number {
+  return heroHeight > 0 ? scrollY / heroHeight : 0;
+}
+
 /** Linear scrub of a value across the full scroll of the hero. Disabled returns the rest value. */
 export function scrub(progress: number, [from, to]: Range, enabled = true): number {
   if (!enabled) return from;

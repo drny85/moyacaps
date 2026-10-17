@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { CAP_TURN_WINDOW, HERO_LAYERS, clamp01, frameIndexForProgress, platterAngle, scrub } from "../lib/heroMotion";
+import {
+  CAP_TURN_WINDOW,
+  HERO_LAYERS,
+  clamp01,
+  frameIndexForProgress,
+  heroScrollProgress,
+  platterAngle,
+  scrub,
+} from "../lib/heroMotion";
 
 describe("clamp01", () => {
   it("keeps values inside 0..1 and treats NaN as 0", () => {
@@ -7,6 +15,20 @@ describe("clamp01", () => {
     expect(clamp01(0.4)).toBe(0.4);
     expect(clamp01(7)).toBe(1);
     expect(clamp01(Number.NaN)).toBe(0);
+  });
+});
+
+describe("heroScrollProgress", () => {
+  it("is the page scroll in hero heights", () => {
+    expect(heroScrollProgress(0, 600)).toBe(0);
+    expect(heroScrollProgress(150, 600)).toBe(0.25);
+    expect(heroScrollProgress(1200, 600)).toBe(2);
+  });
+
+  it("rests at 0 until the hero has been measured", () => {
+    expect(heroScrollProgress(300, 0)).toBe(0);
+    expect(heroScrollProgress(300, -10)).toBe(0);
+    expect(heroScrollProgress(300, Number.NaN)).toBe(0);
   });
 });
 
