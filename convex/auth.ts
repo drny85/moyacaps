@@ -4,12 +4,13 @@ import { QueryCtx, MutationCtx } from "./_generated/server";
 export const PRIMARY_ADMIN_EMAIL = "drny85@gmail.com";
 export const PRIMARY_ADMIN_CLERK_ID = "user_3JSsegPcMNMPs5hqmqnpuy8ri6o";
 
-export async function requireAdmin(ctx: QueryCtx | MutationCtx) {
+/**
+ * The caller's identity when they are an Administrator, else null. Never throws, so public
+ * queries can use it to decide whether an admin-only option (e.g. hidden products) applies.
+ */
+export async function getAdminIdentity(ctx: QueryCtx | MutationCtx) {
   const identity = await ctx.auth.getUserIdentity();
-
-  if (!identity) {
-    throw new ConvexError("Unauthorized: Staff authentication required.");
-  }
+  if (!identity) return null;
 
   const email = identity.email?.toLowerCase() || "";
   const tokenIdentifier = identity.tokenIdentifier || "";
@@ -35,6 +36,24 @@ export async function requireAdmin(ctx: QueryCtx | MutationCtx) {
   if (userDoc && userDoc.role === "admin" && !userDoc.deletedAt) {
     return identity;
   }
+  return null;
+}
 
-  throw new ConvexError(`Forbidden: Account ${email || tokenIdentifier} does not have administrator privileges.`);
+export async function isAdmin(ctx: QueryCtx | MutationCtx): Promise<boolean> {
+  return (await getAdminIdentity(ctx)) !== null;
+}
+
+export async function requireAdmin(ctx: QueryCtx | MutationCtx) {
+  const identity = await ctx.auth.getUserIdentity();
+  if (!identity) {
+    throw new ConvexError("Unauthorized: Staff authentication required.");
+  }
+  const admin = await getAdminIdentity(ctx);
+  if (!admin) {
+    const email = identity.email?.toLowerCase() || "";
+    throw new ConvexError(
+      `Forbidden: Account ${email || identity.tokenIdentifier || ""} does not have administrator privileges.`
+    );
+  }
+  return admin;
 }

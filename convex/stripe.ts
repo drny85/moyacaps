@@ -5,6 +5,7 @@ import { v, ConvexError } from "convex/values";
 import { api, internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 import { randomDigitString } from "./ids";
+import { decodeItemsMetadata, encodeItemsMetadata } from "./checkoutMetadata";
 import Stripe from "stripe";
 
 function getStripe(): Stripe {
@@ -95,19 +96,6 @@ function buildShippingOptions(
 /**
  * Compact items representation to stay strictly under Stripe's 500-char metadata limit.
  */
-function compactItemsMetadata(
-  items: Array<{ variantId: string; quantity: number; price: number; colorway?: string; size?: string }>
-): string {
-  return JSON.stringify(
-    items.map((item) => ({
-      v: item.variantId,
-      q: item.quantity,
-      p: item.price,
-      ...(item.colorway ? { c: item.colorway } : {}),
-      ...(item.size ? { s: item.size } : {}),
-    }))
-  );
-}
 
 /** Line name shown on Stripe, receipts and orders: tees append size and the colorway's display name. */
 function lineItemName(
@@ -323,11 +311,10 @@ function extractTaxInfo(
  * Hydrates line items from metadata to guarantee full product information
  * even if compact representation was used to respect Stripe's 500-char metadata limit.
  */
-async function hydrateOrderItems(ctx: any, itemsJson?: string): Promise<any[]> {
-  if (!itemsJson) return [];
+async function hydrateOrderItems(ctx: any, metadata?: Record<string, string> | null): Promise<any[]> {
+  const raw: any[] = decodeItemsMetadata(metadata);
+  if (raw.length === 0) return [];
   try {
-    const raw = JSON.parse(itemsJson);
-    if (!Array.isArray(raw)) return [];
 
     return await Promise.all(
       raw.map(async (i: any) => {
@@ -599,7 +586,7 @@ export const createCheckoutSession = action({
           itemSummary: validatedItems.map((i) => `${i.quantity}x ${i.name}`).slice(0, 3).join(", ").slice(0, 450),
           isWhatsAppOrder: "false",
           brand: "Good Luck 0880",
-          itemsJson: compactItemsMetadata(validatedItems),
+          ...encodeItemsMetadata(validatedItems),
         },
       },
       {
@@ -859,7 +846,7 @@ export const createWhatsAppCheckoutSession = action({
           itemSummary: validatedItems.map((i) => `${i.quantity}x ${i.name}`).slice(0, 3).join(", ").slice(0, 450),
           isWhatsAppOrder: "true",
           brand: "Good Luck 0880",
-          itemsJson: compactItemsMetadata(validatedItems),
+          ...encodeItemsMetadata(validatedItems),
         },
       });
     } catch (err: any) {
@@ -912,7 +899,7 @@ export const createWhatsAppCheckoutSession = action({
           shippingFee: orderLead.shippingFee.toString(),
           total: orderLead.total.toString(),
           isWhatsAppOrder: "true",
-          itemsJson: compactItemsMetadata(orderLead.items),
+          ...encodeItemsMetadata(orderLead.items),
         },
       });
     } catch (err) {
@@ -1108,7 +1095,7 @@ export const generateOrRefreshWhatsAppPaymentLink = action({
         itemSummary: items.map((i) => `${i.quantity}x ${i.name}`).slice(0, 3).join(", ").slice(0, 450),
         isWhatsAppOrder: "true",
         brand: "Good Luck 0880",
-        itemsJson: compactItemsMetadata(items),
+        ...encodeItemsMetadata(items),
       },
     });
 
@@ -1340,7 +1327,7 @@ export const syncCheckoutSession = action({
       const shipping = (session as any).shipping_details || (session as any).shipping_cost;
       const address = shipping?.address || session.customer_details?.address;
 
-      const parsedItems = await hydrateOrderItems(ctx, metadata.itemsJson);
+      const parsedItems = await hydrateOrderItems(ctx, metadata);
       const { taxAmount, taxDetails } = extractTaxInfo(session, address);
       const stripeCustomerId =
         typeof session.customer === "string"
@@ -1490,7 +1477,7 @@ export const fulfillStripeWebhook = internalAction({
       const shipping = (session as any).shipping_details || (session as any).shipping_cost;
       const address = shipping?.address || session.customer_details?.address;
 
-      const parsedItems = await hydrateOrderItems(ctx, metadata.itemsJson);
+      const parsedItems = await hydrateOrderItems(ctx, metadata);
       const { taxAmount, taxDetails } = extractTaxInfo(session, address);
       const stripeCustomerId =
         typeof session.customer === "string"

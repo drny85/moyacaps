@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 import { convexTest } from "convex-test";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { api, internal } from "./_generated/api";
 import schema from "./schema";
 import { PRIMARY_ADMIN_EMAIL } from "./auth";
@@ -223,6 +223,75 @@ describe("Tee SKU inventory (ADR 0015)", () => {
   });
 });
 
+describe("adjustStock edge cases", () => {
+  it("warns instead of silently dropping a deduction for a SKU row that does not exist", async () => {
+    const tt = t();
+    await seedTee(tt, { "washed-black/L": 2, "washed-black/M": 0, "crisp-white/L": 0, "crisp-white/M": 0 });
+    await tt.run(async (ctx) => {
+      const sku = await ctx.db
+        .query("skus")
+        .withIndex("by_variantId_and_colorway_and_size", (q) =>
+          q.eq("variantId", "T1").eq("colorway", "crisp-white").eq("size", "M")
+        )
+        .unique();
+      await ctx.db.delete(sku!._id);
+    });
+
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    await tt.mutation(internal.orders.createOrUpdateStripeOrder, {
+      stripeSessionId: "cs_missing_sku",
+      orderNumber: "GL-MISSING-SKU",
+      customerEmail: "buyer@test.com",
+      items: [
+        { variantId: "T1", name: "Tee T1", quantity: 1, price: 80, image: "/t.jpg", colorway: "crisp-white", size: "M" },
+      ],
+      currency: "USD",
+      subtotal: 80,
+      shippingFee: 0,
+      total: 80,
+      webhookEventId: "evt_missing_sku",
+      isWhatsAppOrder: false,
+    });
+    expect(warn.mock.calls.some(([msg]) => String(msg).includes("no SKU T1 crisp-white/M"))).toBe(true);
+    warn.mockRestore();
+    expect(await teeStock(tt)).toBe(2); // other SKUs untouched
+    await drain(tt);
+  });
+});
+
+describe("hidden products (allowUnavailable)", () => {
+  async function hideTee(tt: T) {
+    await seedTee(tt, { "washed-black/L": 3, "washed-black/M": 0, "crisp-white/L": 0, "crisp-white/M": 0 });
+    await tt.run(async (ctx) => {
+      const v = await ctx.db
+        .query("variants")
+        .withIndex("by_variantId", (q) => q.eq("variantId", "T1"))
+        .first();
+      await ctx.db.patch(v!._id, { isAvailable: false });
+    });
+  }
+
+  it("customers and guests cannot read a hidden product, even when asking for it", async () => {
+    const tt = t();
+    await hideTee(tt);
+    expect(await tt.query(api.products.getProductBySlug, { slug: "T1", allowUnavailable: true })).toBeNull();
+    expect(await tt.query(api.products.getVariantById, { variantId: "T1", allowUnavailable: true })).toBeNull();
+    const customer = tt.withIdentity({ subject: "user_cust", email: "buyer@test.com" });
+    expect(await customer.query(api.products.getProductBySlug, { slug: "T1", allowUnavailable: true })).toBeNull();
+  });
+
+  it("administrators can, with SKU stock", async () => {
+    const tt = t();
+    await hideTee(tt);
+    const product = await admin(tt).query(api.products.getProductBySlug, { slug: "T1", allowUnavailable: true });
+    expect(product?.variantId).toBe("T1");
+    expect(product?.skus.find((s) => s.colorway === "washed-black" && s.size === "L")?.stock).toBe(3);
+    expect(await admin(tt).query(api.products.getVariantById, { variantId: "T1", allowUnavailable: true })).not.toBeNull();
+    // Without the flag even admins get the public answer
+    expect(await admin(tt).query(api.products.getProductBySlug, { slug: "T1" })).toBeNull();
+  });
+});
+
 describe("migrateUnifiedCatalog", () => {
   it("seeds SKUs from current tee stock without changing the total, and is idempotent", async () => {
     const tt = t();
@@ -280,5 +349,70 @@ describe("migrateUnifiedCatalog", () => {
     expect(result.boxing?.stock).toBe(18);
     expect(result.boxing?.colorways?.[0].catalogShot).toMatch(/^\/catalog\/tees\/boxing-gloves-tee\//);
     expect(result.eagle?.image).toBe("/shirts/eagle-clover-black.jpg"); // Lifestyle Shot renamed
+  });
+
+  it("re-running never overwrites an Administrator's edits", async () => {
+    const tt = t();
+    await tt.mutation(internal.products.migrateUnifiedCatalog, {});
+
+    // Admin edits after the first run
+    await tt.run(async (ctx) => {
+      const v = await ctx.db
+        .query("variants")
+        .withIndex("by_variantId", (q) => q.eq("variantId", "boxing-gloves-tee"))
+        .first();
+      await ctx.db.patch(v!._id, {
+        image: "/uploads/boxing-new.jpg",
+        images: ["/uploads/boxing-new.jpg"],
+        fitEn: "Custom fit copy",
+        stock: 5,
+      });
+    });
+
+    const rerun = await tt.mutation(internal.products.migrateUnifiedCatalog, {});
+    expect(rerun.teesUpdated).toBe(0);
+    expect(rerun.skusSeeded).toBe(0);
+
+    const after = await tt.run(async (ctx) =>
+      ctx.db
+        .query("variants")
+        .withIndex("by_variantId", (q) => q.eq("variantId", "boxing-gloves-tee"))
+        .first()
+    );
+    expect(after?.image).toBe("/uploads/boxing-new.jpg");
+    expect(after?.images).toEqual(["/uploads/boxing-new.jpg"]);
+    expect(after?.fitEn).toBe("Custom fit copy");
+  });
+
+  it("fills only missing tee fields on a pre-existing row", async () => {
+    const tt = t();
+    await tt.run(async (ctx) => {
+      await ctx.db.insert("variants", {
+        variantId: "vintage-f1-tee",
+        nameEn: "Admin-renamed F1 Tee",
+        nameEs: "Playera F1",
+        silhouette: "tee",
+        category: "apparel",
+        primaryHex: "#000000",
+        secondaryHex: "#ffffff",
+        image: "/uploads/f1.jpg",
+        stock: 4,
+        priceUsd: 80,
+        isFeatured: false,
+        fitEn: "Admin fit copy",
+      });
+    });
+    await tt.mutation(internal.products.migrateUnifiedCatalog, {});
+    const row = await tt.run(async (ctx) =>
+      ctx.db
+        .query("variants")
+        .withIndex("by_variantId", (q) => q.eq("variantId", "vintage-f1-tee"))
+        .first()
+    );
+    expect(row?.nameEn).toBe("Admin-renamed F1 Tee");
+    expect(row?.image).toBe("/uploads/f1.jpg");
+    expect(row?.fitEn).toBe("Admin fit copy");
+    expect(row?.colorways).toHaveLength(4); // was missing: filled
+    expect(row?.sizes).toEqual(["S", "M", "L", "XL", "2XL"]);
   });
 });

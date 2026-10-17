@@ -9,6 +9,7 @@
  */
 
 import type * as auth from "../auth.js";
+import type * as checkoutMetadata from "../checkoutMetadata.js";
 import type * as crons from "../crons.js";
 import type * as emails from "../emails.js";
 import type * as emails_AdminDisputeAlert from "../emails/AdminDisputeAlert.js";
@@ -33,6 +34,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
+  checkoutMetadata: typeof checkoutMetadata;
   crons: typeof crons;
   emails: typeof emails;
   "emails/AdminDisputeAlert": typeof emails_AdminDisputeAlert;

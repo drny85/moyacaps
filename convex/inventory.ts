@@ -105,6 +105,11 @@ export async function adjustStock(ctx: MutationCtx, line: StockLine, delta: numb
     await ctx.db.patch("skus", sku._id, { stock: Math.max(0, sku.stock + delta) });
   } else if (delta > 0) {
     await ctx.db.insert("skus", { variantId: variant.variantId, colorway: line.colorway, size: line.size, stock: delta });
+  } else {
+    // Sold without a SKU row (e.g. a colorway added without stock rows): nothing to deduct from.
+    console.warn(
+      `adjustStock: no SKU ${line.variantId} ${line.colorway}/${line.size}; deduction of ${Math.abs(delta)} not recorded — reconcile manually.`
+    );
   }
   await syncTeeAggregate(ctx, variant);
 }

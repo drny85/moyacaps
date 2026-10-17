@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { CapVariant } from "@/data/caps";
+import { backfillTeeColorways } from "@/lib/cartMigration";
 
 export interface CartItem {
   id: string;
@@ -15,6 +16,9 @@ export interface CartItem {
   colorway?: string;
   colorwayName?: string;
 }
+
+/** The slice of the store saved to localStorage (see `partialize`). */
+type PersistedState = Pick<StoreState, "cart" | "currency" | "theme" | "soundEnabled" | "tryOnImage" | "tryOnSettings">;
 
 interface StoreState {
   // Cart
@@ -299,6 +303,15 @@ export const useStore = create<StoreState>()(
     }),
     {
       name: "moyacaps-storage",
+      // v1: tee lines need a colorway for per-SKU checkout (ADR 0015)
+      version: 1,
+      migrate: (persisted, version) => {
+        const state = (persisted ?? {}) as PersistedState;
+        if (version < 1 && Array.isArray(state.cart)) {
+          return { ...state, cart: backfillTeeColorways(state.cart) };
+        }
+        return state;
+      },
       partialize: (state) => ({
         cart: state.cart,
         currency: state.currency,

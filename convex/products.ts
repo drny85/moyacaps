@@ -1,6 +1,6 @@
 import { query, mutation, internalMutation, internalQuery } from "./_generated/server";
 import { v, ConvexError } from "convex/values";
-import { requireAdmin } from "./auth";
+import { isAdmin, requireAdmin } from "./auth";
 import { checkStock, getVariant, hasSkus, listSkus, setSkuStock } from "./inventory";
 import { SHIRT_VARIANTS } from "../src/data/caps";
 import catalogShots from "../src/data/catalogShots.json";
@@ -112,7 +112,8 @@ export const getVariantById = query({
       .withIndex("by_variantId", (q) => q.eq("variantId", args.variantId))
       .first();
     if (!variant) return null;
-    if (!args.allowUnavailable && variant.isAvailable === false) {
+    // Hidden products are visible to Administrators only; the flag is ignored for everyone else.
+    if (variant.isAvailable === false && !(args.allowUnavailable && (await isAdmin(ctx)))) {
       return null;
     }
     return await resolveVariantWithStorageUrl(ctx, variant);
@@ -1201,7 +1202,8 @@ export const getProductBySlug = query({
   handler: async (ctx, args) => {
     const variant = await getVariant(ctx, args.slug);
     if (!variant) return null;
-    if (!args.allowUnavailable && variant.isAvailable === false) return null;
+    // Hidden products (and their SKU stock) are visible to Administrators only.
+    if (variant.isAvailable === false && !(args.allowUnavailable && (await isAdmin(ctx)))) return null;
     const resolved = await resolveVariantWithStorageUrl(ctx, variant);
     const skus = hasSkus(variant)
       ? (await listSkus(ctx, variant.variantId)).map((s) => ({ colorway: s.colorway, size: s.size, stock: s.stock }))
@@ -1249,9 +1251,10 @@ function distributeStock(total: number, colorways: string[], defaultColorway: st
  * Idempotent catalog migration (ADR 0015/0016). Run with:
  *   npx convex run products:migrateUnifiedCatalog
  * - Caps: set `catalogShot` from src/data/catalogShots.json.
- * - Tees: copy colorways, sizes, artwork and fit/fabric copy from src/data/caps.ts onto
- *   the variant, rename Lifestyle Shot paths, and seed SKUs from the current stock
- *   (only when the tee has no SKUs yet).
+ * - Tees: fill colorways, sizes, artwork and fit/fabric copy from src/data/caps.ts where the
+ *   variant has none (never overwriting existing values), rewrite Lifestyle Shot paths that
+ *   still use the old file names, and seed SKUs from the current stock (only when the tee
+ *   has no SKUs yet).
  */
 export const migrateUnifiedCatalog = internalMutation({
   args: {},
@@ -1297,8 +1300,21 @@ export const migrateUnifiedCatalog = internalMutation({
 
       let variant = await getVariant(ctx, tee.id);
       if (variant) {
-        await ctx.db.patch("variants", variant._id, teeFields);
-        report.teesUpdated++;
+        // Fill only what is missing: re-running must never undo an Administrator's edits.
+        const patch: Record<string, unknown> = {};
+        for (const [key, value] of Object.entries(teeFields)) {
+          if (value !== undefined && variant[key as keyof typeof variant] === undefined) patch[key] = value;
+        }
+        // Canonical Lifestyle Shot names: rewrite only paths that still point at the old files.
+        if (LIFESTYLE_RENAMES[variant.image]) patch.image = renamed(variant.image);
+        if (variant.images?.some((path) => LIFESTYLE_RENAMES[path])) patch.images = variant.images.map(renamed);
+        if (variant.colorways?.some((c) => LIFESTYLE_RENAMES[c.lifestyleImage])) {
+          patch.colorways = variant.colorways.map((c) => ({ ...c, lifestyleImage: renamed(c.lifestyleImage) }));
+        }
+        if (Object.keys(patch).length > 0) {
+          await ctx.db.patch("variants", variant._id, patch);
+          report.teesUpdated++;
+        }
       } else {
         await ctx.db.insert("variants", {
           variantId: tee.id,
