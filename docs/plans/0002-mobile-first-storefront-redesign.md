@@ -122,6 +122,14 @@ Lighthouse mobile, local `next start`, median of 3, same machine (load average �
 | `/en/products` | 79 | 5.06 s | 88 | 3.83 s | 1.66 s (was 2.35 s) | 16 ms | 0.004 |
 | `/en/products/negro-rojo` | 81 | 4.72 s | 89 | 3.71 s | 1.66 s (was 2.18 s) | 13 ms | 0.003 |
 
+Integration check on the current line: `feat/tee-photo-quality` (new scroll-driven hero, Convex backend modules) alone vs. with this branch merged (`perf/storefront-budget-on-tee-photo-quality`), both local, median of 3, load average 13–24:
+
+| Page | tee-photo-quality | LCP | + perf branch | LCP |
+| --- | --- | --- | --- | --- |
+| `/en` | 75 | 5.83 s | 86 | 4.07 s |
+| `/en/products` | 76 | 5.72 s | 87 | 3.87 s |
+| `/en/products/negro-rojo` | 79 | 5.20 s | 89 | 3.68 s |
+
 **Budget still not met locally.** What blocks it, measured from the Lighthouse traces:
 - On localhost the real LCP happens at ≈ 190 ms, so Lighthouse's simulated slow 4G counts every request started before then as competing with the 15 KB LCP image. That is ≈ 270 KB of JS, 84 KB of fonts and ≈ 100 KB of near-viewport images. On `/en` the image's simulated download takes ≈ 1.9 s for that reason.
 - Most of the remaining JS is the floor: React DOM + the Next router (≈ 200 KB gzip of the ≈ 270 KB). Convex's client (≈ 25 KB gzip) is needed for live stock. Motion hooks (`useScroll`, `useSpring`, `animate`) keep ≈ 35 KB gzip of motion-dom / framer-motion in the first load.
