@@ -21,3 +21,11 @@ export function getCapAngleImages(capId: string): Record<CapAngleKey, string> | 
 export function getCapCatalogShot(capId: string): string | null {
   return (catalogShots.caps as CapShots)[capId]?.catalog ?? null;
 }
+
+/**
+ * The scale-normalised front angle used as the Try-On overlay (ADR 0019), or null when the
+ * cap has no normalised angles: the raw photos have a different framing the fit math does not know.
+ */
+export function getCapFrontOverlay(capId: string): string | null {
+  return (catalogShots.caps as CapShots)[capId]?.angles?.front ?? null;
+}

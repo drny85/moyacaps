@@ -21,6 +21,7 @@ export const STOREFRONT_NAMESPACES = [
   "pdp",
   "cart",
   "share",
+  "tryOn",
 ] as const;
 
 /** Namespaces only used under checkout, account, track and admin */

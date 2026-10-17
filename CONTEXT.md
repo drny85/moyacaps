@@ -28,6 +28,14 @@ _Avoid_: Logo, print, picture
 An interactive shopping interface enabling customers to preview any Graphic Design across different Apparel Colorways on realistic streetwear model photography before selecting a size and adding to cart.
 _Avoid_: Mockup tool, customizer, shirt maker
 
+**Try-On**:
+Previewing a Cap on a photo of the Customer's own head (a selfie or a camera snapshot), placed automatically on the face and fine-tuned by hand, before adding it to the bag. Caps only; a Heavyweight Tee is never tried on.
+_Avoid_: Virtual mirror, AR, fitting room, try-on studio
+
+**Try-On Photo**:
+The Customer's photo used for a Try-On. It stays on the device and in memory only: it is never uploaded or saved, and is gone when the page closes.
+_Avoid_: Selfie (when meaning the stored image), avatar, portrait
+
 **Collection**:
 A themed design release encompassing multiple colorways and silhouettes (e.g., the "0880 Series" for Headwear and "0880 Heavyweight Apparel").
 _Avoid_: Category, department, bundle
