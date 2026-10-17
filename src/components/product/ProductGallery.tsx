@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { X } from "lucide-react";
 import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
+import { useFocusTrap } from "@/hooks/useFocusTrap";
 import type { GallerySlide } from "@/lib/productOptions";
 
 const tileBg = (s: GallerySlide) => (s.kind === "artwork" ? "bg-white" : "bg-[#ECEAE6]");
@@ -97,22 +98,20 @@ export function ProductGallery({ slides, resetKey }: { slides: GallerySlide[]; r
 
 function Lightbox({ slide, onClose }: { slide: GallerySlide; onClose: () => void }) {
   const t = useTranslations("product");
+  const dialogRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   useLockBodyScroll(true);
+  useFocusTrap(dialogRef, true, closeRef);
 
   useEffect(() => {
-    const previous = document.activeElement as HTMLElement | null;
-    closeRef.current?.focus();
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      previous?.focus();
-    };
+    return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
   return (
     <div
+      ref={dialogRef}
       role="dialog"
       aria-modal="true"
       aria-label={slide.alt}

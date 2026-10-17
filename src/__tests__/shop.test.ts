@@ -140,8 +140,19 @@ describe("applyShop", () => {
   });
 
   it("counts colour families within the category", () => {
-    expect(familyCounts(products, "caps")).toEqual({ black: 1, white: 1, pink: 1 });
-    expect(familyCounts(products, "tees").cream).toBe(2);
+    expect(familyCounts(products, state({ category: "caps" }), NOW)).toEqual({ black: 1, white: 1, pink: 1 });
+    expect(familyCounts(products, state({ category: "tees" }), NOW).cream).toBe(2);
+  });
+
+  it("colour counts follow the other active filters but not the colour selection itself", () => {
+    // In stock only: the sold-out pink cap drops out of the pink count
+    expect(familyCounts(products, state({ category: "caps", inStock: true }), NOW)).toEqual({ black: 1, white: 1 });
+    // Trucker fit: only the white trucker cap counts among caps; tees are unaffected by cap fit
+    const trucker = familyCounts(products, state({ silhouettes: ["trucker"] }), NOW);
+    expect(trucker.white).toBe(3); // white trucker cap + 2 tees offered in white
+    expect(trucker.pink).toBeUndefined();
+    // Selecting black leaves the other chips' counts as they were
+    expect(familyCounts(products, state({ category: "caps", colors: ["black"] }), NOW)).toEqual({ black: 1, white: 1, pink: 1 });
   });
 });
 

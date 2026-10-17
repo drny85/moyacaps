@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { AnimatePresence, motion } from "framer-motion";
@@ -9,6 +9,7 @@ import { SlidersHorizontal, X } from "lucide-react";
 import { usePathname, useRouter } from "@/i18n/routing";
 import { useCapVariants } from "@/hooks/useCapVariants";
 import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
+import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { DURATION, EASE } from "@/lib/motion";
 import { ProductCard } from "@/components/catalog/ProductCard";
 import {
@@ -47,7 +48,7 @@ export function ShopView() {
   );
 
   const items = useMemo(() => applyShop(products, state, now), [products, state, now]);
-  const counts = useMemo(() => familyCounts(products, state.category), [products, state.category]);
+  const counts = useMemo(() => familyCounts(products, state, now), [products, state, now]);
   const filterCount = activeFilterCount(state);
   const [sheetOpen, setSheetOpen] = useState(false);
 
@@ -324,6 +325,10 @@ function FilterSheet({
   const t = useTranslations("shop");
   const reduceMotion = useReducedMotionSafe();
   useLockBodyScroll(open);
+  // Focus moves into the sheet, Tab stays inside it, and closing returns focus to the trigger
+  const panelRef = useRef<HTMLDivElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
+  useFocusTrap(panelRef, open, closeRef);
 
   useEffect(() => {
     if (!open) return;
@@ -345,6 +350,7 @@ function FilterSheet({
             onClick={onClose}
           />
           <motion.div
+            ref={panelRef}
             data-lenis-prevent
             className="absolute inset-x-0 bottom-0 flex max-h-[85svh] flex-col rounded-t-[20px] bg-white pb-[env(safe-area-inset-bottom)] dark:bg-zinc-950"
             initial={reduceMotion ? { opacity: 0 } : { y: "100%" }}
@@ -358,6 +364,7 @@ function FilterSheet({
                 <span className="hidden sm:inline">{t("filters")}</span>
               </h2>
               <button
+                ref={closeRef}
                 type="button"
                 onClick={onClose}
                 aria-label={t("closeFilters")}

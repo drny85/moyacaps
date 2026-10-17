@@ -132,17 +132,20 @@ export function isPurchasable(p: CapVariant, now: number): boolean {
   return p.stock > 0 && p.isAvailable !== false && !upcoming;
 }
 
+/** Whether a product passes the current filters; `ignore` leaves one facet out (for its own counts). */
+export function matchesFilters(p: CapVariant, state: ShopState, now: number, ignore?: "colors"): boolean {
+  const tee = isTee(p);
+  if (state.category === "caps" && tee) return false;
+  if (state.category === "tees" && !tee) return false;
+  if (ignore !== "colors" && state.colors.length && !productFamilies(p).some((f) => state.colors.includes(f))) return false;
+  // The cap-only fit facet narrows caps and leaves tees untouched
+  if (state.silhouettes.length && !tee && !state.silhouettes.includes(p.silhouette as Silhouette)) return false;
+  if (state.inStock && !isPurchasable(p, now)) return false;
+  return true;
+}
+
 export function applyShop(products: CapVariant[], state: ShopState, now: number): ShopItem[] {
-  const filtered = products.filter((p) => {
-    const tee = isTee(p);
-    if (state.category === "caps" && tee) return false;
-    if (state.category === "tees" && !tee) return false;
-    if (state.colors.length && !productFamilies(p).some((f) => state.colors.includes(f))) return false;
-    // The cap-only fit facet narrows caps and leaves tees untouched
-    if (state.silhouettes.length && !tee && !state.silhouettes.includes(p.silhouette as Silhouette)) return false;
-    if (state.inStock && !isPurchasable(p, now)) return false;
-    return true;
-  });
+  const filtered = products.filter((p) => matchesFilters(p, state, now));
 
   const indexed = filtered.map((p, i) => ({ p, i }));
   indexed.sort((a, b) => {
@@ -163,12 +166,15 @@ export function applyShop(products: CapVariant[], state: ShopState, now: number)
   return indexed.map(({ p }) => itemFor(p, state.colors));
 }
 
-/** Facet counts for the current category, so chips can show how many products they match. */
-export function familyCounts(products: CapVariant[], category: Category): Partial<Record<ColorFamily, number>> {
+/**
+ * How many products each colour chip would show: every active filter applies except the
+ * colour selection itself (standard faceted counts), so picking "Black" doesn't zero out
+ * "White", while "In stock only" or a cap fit does change every count.
+ */
+export function familyCounts(products: CapVariant[], state: ShopState, now: number): Partial<Record<ColorFamily, number>> {
   const counts: Partial<Record<ColorFamily, number>> = {};
   for (const p of products) {
-    if (category === "caps" && isTee(p)) continue;
-    if (category === "tees" && !isTee(p)) continue;
+    if (!matchesFilters(p, state, now, "colors")) continue;
     for (const f of productFamilies(p)) counts[f] = (counts[f] ?? 0) + 1;
   }
   return counts;
