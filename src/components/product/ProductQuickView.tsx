@@ -4,7 +4,7 @@ import { useStore } from "@/store/useStore";
 import { useTranslations, useLocale } from "next-intl";
 import Image from "next/image";
 import { Link } from "@/i18n/routing";
-import { X, ShoppingBag, MessageCircle, ShieldCheck, Check, ArrowUpRight, Bell, Share2, Sparkles, Camera } from "lucide-react";
+import { X, ShoppingBag, MessageCircle, ShieldCheck, Check, ArrowUpRight, Bell, Share2, Camera } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
 import confetti from "canvas-confetti";
@@ -25,9 +25,7 @@ export function ProductQuickView() {
     openDropAlert,
     addToCart,
     cart,
-    openSneakerMatcher,
     openTryOn,
-    openApparelStudio,
   } = useStore();
   const { playClick, playSuccessChime, playToggle } = useSoundEffects();
   useLockBodyScroll(Boolean(quickViewCap));
@@ -266,16 +264,6 @@ export function ProductQuickView() {
                         {locale === "es" ? activeColorway?.nameEs : activeColorway?.nameEn}
                       </span>
                     </span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        closeQuickView();
-                        openApparelStudio(quickViewCap);
-                      }}
-                      className="text-[10px] font-mono text-moya-red hover:underline"
-                    >
-                      {locale === "es" ? "Abrir en Studio →" : "Open Studio →"}
-                    </button>
                   </div>
                   <div className="grid grid-cols-4 gap-1.5">
                     {quickViewCap.colorways.map((cw) => {
@@ -467,20 +455,6 @@ export function ProductQuickView() {
                   <span>{locale === "es" ? "Probar en Mi Rostro (Try-On)" : "Try On Your Face (Virtual Try-On)"}</span>
                 </button>
 
-                {/* Sneaker & Fit Matcher Trigger */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    playClick();
-                    const cap = quickViewCap;
-                    closeQuickView();
-                    openSneakerMatcher(cap);
-                  }}
-                  className="w-full py-2 rounded-xl bg-gradient-to-r from-zinc-900 to-zinc-800 dark:from-white/10 dark:to-white/5 text-white font-display font-semibold text-xs transition-all flex items-center justify-center gap-1.5 border border-black/10 dark:border-white/10 hover:border-moya-gold/50 shadow-xs"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-moya-gold" />
-                  <span>{locale === "es" ? "Combinar Con Tus Tenis" : "Pair With Your Kicks"}</span>
-                </button>
 
                 <div className="flex items-center gap-2 mt-0.5 min-w-0">
                   <button

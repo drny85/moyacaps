@@ -16,7 +16,7 @@ export function CapCard({ cap, index = 0 }: { cap: CapVariant; index?: number })
   const t = useTranslations("catalog");
   const tShare = useTranslations("share");
   const locale = useLocale();
-  const { addToCart, openQuickView, openDropAlert, openApparelStudio } = useStore();
+  const { addToCart, openQuickView, openDropAlert } = useStore();
   const { shareProduct } = useProductShare();
   const [imageLoaded, setImageLoaded] = useState(false);
   const reduceMotion = useReducedMotion();
@@ -190,17 +190,6 @@ export function CapCard({ cap, index = 0 }: { cap: CapVariant; index?: number })
                 >
                   <Eye className="w-3 h-3" />
                   <span>{t("quickView")}</span>
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    openApparelStudio(cap);
-                  }}
-                  className="py-2 px-2.5 rounded-xl bg-moya-red hover:bg-rose-500 text-white text-[11px] font-display font-semibold flex items-center justify-center gap-1 transition-colors shadow-md"
-                  title="Open in Model Lookbook Studio"
-                >
-                  <Sparkles className="w-3 h-3" />
-                  <span>Studio</span>
                 </button>
               </div>
             ) : (

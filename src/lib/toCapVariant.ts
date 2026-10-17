@@ -34,6 +34,7 @@ export function toCapVariant(v: Doc<"variants">): CapVariant {
     fitEn: v.fitEn,
     fitEs: v.fitEs,
     defaultColorway: v.defaultColorway as CapVariant["defaultColorway"],
+    sizes: v.sizes,
     colorways: v.colorways?.map((c) => ({
       id: c.id as ApparelColorwayOption["id"],
       nameEn: c.nameEn,

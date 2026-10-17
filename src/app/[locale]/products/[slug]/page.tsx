@@ -1,113 +1,59 @@
+import { Suspense, cache } from "react";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { routing } from "@/i18n/routing";
-import { CAP_VARIANTS, type CapVariant } from "@/data/caps";
-import { ProductDetailView } from "@/components/product/ProductDetailView";
-import { toCapVariant } from "@/lib/toCapVariant";
 import { fetchQuery } from "convex/nextjs";
 import { api } from "@convex/_generated/api";
+import { toCapVariant } from "@/lib/toCapVariant";
+import { isTee } from "@/lib/shop";
+import { ProductView } from "@/components/product/ProductView";
+import { ProductJsonLd } from "@/components/seo/ProductJsonLd";
 
-export const dynamicParams = true;
+type Params = Promise<{ locale: string; slug: string }>;
 
-async function getProductBySlug(slug: string): Promise<CapVariant | null> {
-  try {
-    const convexVariant = await fetchQuery(api.products.getProductBySlug, {
-      slug,
-      allowUnavailable: true,
-    });
-    if (convexVariant) {
-      if (convexVariant.isAvailable === false) {
-        return null;
-      }
-      return toCapVariant(convexVariant);
-    }
-  } catch (err: any) {
-    if (err?.digest === "DYNAMIC_SERVER_USAGE" || err?.message?.includes("Dynamic server usage")) {
-      throw err;
-    }
-    console.error(`Failed to fetch product ${slug} from Convex`, err);
-  }
+/** One Convex read per request, shared by metadata and the page (ADR 0015: Convex is the only catalog). */
+const getProduct = cache(async (slug: string) => {
+  const doc = await fetchQuery(api.products.getProductBySlug, { slug });
+  return doc ?? null;
+});
 
-  // Offline fallback while Convex is unreachable; removed with the Phase 4 product page.
-  const staticCap = CAP_VARIANTS.find((c) => c.id === slug);
-  if (staticCap) return staticCap;
-
-  return null;
-}
-
-export function generateStaticParams() {
-  const params: { locale: string; slug: string }[] = [];
-  for (const locale of routing.locales) {
-    for (const cap of CAP_VARIANTS) {
-      params.push({ locale, slug: cap.id });
-    }
-  }
-  return params;
-}
-
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ locale: string; slug: string }>;
-}): Promise<Metadata> {
+export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { locale, slug } = await params;
-  const cap = await getProductBySlug(slug);
+  const doc = await getProduct(slug);
+  if (!doc) return { title: "Product not found | Good Luck" };
 
-  if (!cap) {
-    return {
-      title: "Product Not Found | Good Luck",
-    };
-  }
-
-  const name = locale === "es" ? cap.nameEs : cap.nameEn;
-  const isTee = cap.silhouette === "tee" || (cap as any).category === "apparel";
-  const title = isTee
-    ? `${name} ($${cap.priceUsd} USD) | Good Luck Heavyweight Streetwear`
-    : `${name} | Good Luck 0880 Edition`;
-  const description = isTee
-    ? (locale === "es"
-        ? `Playera streetwear boxy heavyweight oficial Good Luck — ${name}. Algodón peinado de 280-300 GSM, corte drop-shoulder y serigrafía HD por $${cap.priceUsd} USD.`
-        : `Official Good Luck Heavyweight Streetwear Boxy Tee — ${name}. 280-300 GSM combed cotton, drop-shoulder cut, and HD screen print for $${cap.priceUsd} USD.`)
-    : (locale === "es"
-        ? `Gorra oficial Good Luck — Edición 0880 — ${name}. Bordado 3D de alta densidad, diablos laterales y silueta ${cap.silhouette}.`
-        : `Official Good Luck Cap — 0880 Edition — ${name}. High-density 3D puff embroidery, twin pitchfork devil flanks, and ${cap.silhouette} profile.`);
+  const product = toCapVariant(doc);
+  const tee = isTee(product);
+  const name = locale === "es" ? product.nameEs : product.nameEn;
+  const title = tee ? `${name} | Good Luck heavyweight tees` : `${name} | Good Luck 0880 caps`;
+  const description = tee
+    ? locale === "es"
+      ? `${name}: playera heavyweight de 280–300 GSM con corte boxy y serigrafía de alta densidad. $${product.priceUsd} USD.`
+      : `${name}: 280–300 GSM heavyweight tee with a boxy cut and high-density screen print. $${product.priceUsd} USD.`
+    : locale === "es"
+      ? `${name}: gorra Good Luck 0880 con bordado 3D de alta densidad. $${product.priceUsd} USD.`
+      : `${name}: Good Luck 0880 cap with high-density 3D puff embroidery. $${product.priceUsd} USD.`;
 
   const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://goodluckcaps.com").replace(/\/$/, "");
-  const canonicalUrl = `${siteUrl}/${locale}/products/${slug}`;
-  const imageUrl = cap.image.startsWith("http")
-    ? cap.image
-    : `${siteUrl}${cap.image.startsWith("/") ? "" : "/"}${cap.image}`;
+  const url = (l: string) => `${siteUrl}/${l}/products/${slug}`;
+  const shot = product.catalogShot ?? product.image;
+  const imageUrl = shot.startsWith("http") ? shot : `${siteUrl}${shot.startsWith("/") ? "" : "/"}${shot}`;
 
   return {
     title,
     description,
-    alternates: {
-      canonical: canonicalUrl,
-      languages: {
-        en: `${siteUrl}/en/products/${slug}`,
-        es: `${siteUrl}/es/products/${slug}`,
-      },
-    },
+    alternates: { canonical: url(locale), languages: { en: url("en"), es: url("es") } },
     openGraph: {
       type: "website",
       siteName: "Good Luck",
-      title: `${name} | Good Luck 0880 Edition`,
+      title,
       description,
-      url: canonicalUrl,
+      url: url(locale),
       locale: locale === "es" ? "es_ES" : "en_US",
-      images: [
-        {
-          url: imageUrl,
-          width: 800,
-          height: 800,
-          alt: `${name} - Good Luck 0880`,
-          type: "image/png",
-        },
-      ],
+      images: [{ url: imageUrl, width: 1600, height: 2000, alt: name }],
     },
     twitter: {
       card: "summary_large_image",
-      title: `${name} | Good Luck 0880`,
+      title,
       description,
       images: [imageUrl],
       creator: process.env.NEXT_PUBLIC_TWITTER_HANDLE || "@goodluckcaps",
@@ -115,24 +61,17 @@ export async function generateMetadata({
   };
 }
 
-import { ProductJsonLd } from "@/components/seo/ProductJsonLd";
-
-export default async function ProductPage({
-  params,
-}: {
-  params: Promise<{ locale: string; slug: string }>;
-}) {
-  const { slug, locale } = await params;
-  const cap = await getProductBySlug(slug);
-
-  if (!cap) {
-    notFound();
-  }
+export default async function ProductPage({ params }: { params: Params }) {
+  const { locale, slug } = await params;
+  const doc = await getProduct(slug);
+  if (!doc) notFound();
 
   return (
-    <main className="min-h-screen pt-4 pb-20">
-      <ProductJsonLd cap={cap} locale={locale} />
-      <ProductDetailView cap={cap} allCaps={CAP_VARIANTS} />
+    <main className="min-h-screen">
+      <ProductJsonLd cap={toCapVariant(doc)} locale={locale} />
+      <Suspense>
+        <ProductView initial={doc} />
+      </Suspense>
     </main>
   );
 }

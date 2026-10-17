@@ -9,9 +9,9 @@ interface ProductJsonLdProps {
 export function ProductJsonLd({ cap, locale }: ProductJsonLdProps) {
   const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://goodluckcaps.com").replace(/\/$/, "");
   const canonicalUrl = `${siteUrl}/${locale}/products/${cap.id}`;
-  const imageUrl = cap.image.startsWith("http")
-    ? cap.image
-    : `${siteUrl}${cap.image.startsWith("/") ? "" : "/"}${cap.image}`;
+  // The Catalog Shot is the canonical product image (ADR 0016)
+  const shot = cap.catalogShot ?? cap.image;
+  const imageUrl = shot.startsWith("http") ? shot : `${siteUrl}${shot.startsWith("/") ? "" : "/"}${shot}`;
 
   const name = locale === "es" ? cap.nameEs : cap.nameEn;
   const isTee = cap.silhouette === "tee" || (cap as any).category === "apparel";

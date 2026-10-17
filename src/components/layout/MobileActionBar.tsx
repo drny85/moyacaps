@@ -24,7 +24,8 @@ export function MobileActionBar() {
     setIsMounted(true);
   }, []);
 
-  if (pathname.startsWith("/admin")) {
+  // Product pages carry their own sticky add-to-bag bar.
+  if (pathname.startsWith("/admin") || /^\/products\/[^/]+$/.test(pathname)) {
     return null;
   }
 

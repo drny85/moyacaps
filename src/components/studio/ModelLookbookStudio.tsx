@@ -47,12 +47,12 @@ export function ModelLookbookStudio({
   onClose,
 }: ModelLookbookStudioProps) {
   const locale = useLocale();
-  const { addToCart, apparelStudioTargetTee, closeApparelStudio } = useStore();
+  const { addToCart } = useStore();
   const { playClick, playSuccessChime, playToggle } = useSoundEffects();
 
   // Selected Shirt Design
   const [selectedTeeId, setSelectedTeeId] = useState<string>(
-    initialTeeId || apparelStudioTargetTee?.id || SHIRT_VARIANTS[0].id
+    initialTeeId || SHIRT_VARIANTS[0].id
   );
 
   const activeTee = useMemo(() => {
@@ -73,13 +73,6 @@ export function ModelLookbookStudio({
   const [isZoomOpen, setIsZoomOpen] = useState(false);
   const [addedSuccess, setAddedSuccess] = useState(false);
   const [imageError, setImageError] = useState(false);
-
-  useEffect(() => {
-    if (apparelStudioTargetTee) {
-      setSelectedTeeId(apparelStudioTargetTee.id);
-      setSelectedColorwayId(apparelStudioTargetTee.defaultColorway || "washed-black");
-    }
-  }, [apparelStudioTargetTee]);
 
   useEffect(() => {
     setImageError(false);

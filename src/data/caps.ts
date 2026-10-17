@@ -87,6 +87,8 @@ export interface CapVariant {
   fitEs?: string;
   defaultColorway?: ApparelColorwayId;
   colorways?: ApparelColorwayOption[];
+  /** Tee sizes offered (ADR 0015) */
+  sizes?: string[];
 }
 
 export const SHIRT_VARIANTS: CapVariant[] = [

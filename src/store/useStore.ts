@@ -72,18 +72,6 @@ interface StoreState {
   toggleSound: () => void;
   setSoundEnabled: (enabled: boolean) => void;
 
-  // Sneaker & Fit Matcher Modal
-  isSneakerMatcherOpen: boolean;
-  sneakerMatcherTargetCap: CapVariant | null;
-  openSneakerMatcher: (cap?: CapVariant | null) => void;
-  closeSneakerMatcher: () => void;
-
-  // Model Lookbook Studio (Heavyweight Streetwear Apparel)
-  isApparelStudioOpen: boolean;
-  apparelStudioTargetTee: CapVariant | null;
-  openApparelStudio: (tee?: CapVariant | null) => void;
-  closeApparelStudio: () => void;
-
   // Virtual Try-On Fitting Room
   isTryOnOpen: boolean;
   tryOnTargetCap: CapVariant | null;
@@ -286,20 +274,6 @@ export const useStore = create<StoreState>()(
       },
       setSoundEnabled: (enabled) => set({ soundEnabled: enabled }),
 
-      isSneakerMatcherOpen: false,
-      sneakerMatcherTargetCap: null,
-      openSneakerMatcher: (cap = null) =>
-        set({ isSneakerMatcherOpen: true, sneakerMatcherTargetCap: cap }),
-      closeSneakerMatcher: () =>
-        set({ isSneakerMatcherOpen: false, sneakerMatcherTargetCap: null }),
-
-      // Model Lookbook Studio
-      isApparelStudioOpen: false,
-      apparelStudioTargetTee: null,
-      openApparelStudio: (tee = null) =>
-        set({ isApparelStudioOpen: true, apparelStudioTargetTee: tee }),
-      closeApparelStudio: () =>
-        set({ isApparelStudioOpen: false, apparelStudioTargetTee: null }),
 
       // Virtual Try-On
       isTryOnOpen: false,

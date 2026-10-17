@@ -72,6 +72,17 @@ As built:
 
 ### Phase 4 — Product page (`feat/product-page`)
 
+Status: done on `feat/product-page`.
+
+As built:
+- `src/lib/productOptions.ts` is the pure purchase model (selection from the URL, per-SKU stock, one call-to-action state, gallery slides), tested in `src/__tests__/productOptions.test.ts`. Size is never preselected; sold-out sizes are disabled; sizes with 3 or fewer left say so.
+- `ProductView` = `ProductGallery` + `ProductPurchase` + details (native `<details>`) + related products. The server renders from Convex only (`getProductBySlug`, cached per request); the live query keeps price and SKU stock current. The `CAP_VARIANTS` fallback and static params are gone from the product route.
+- **Deviation:** cap angles are swipe slides on the shared backdrop instead of `CapTurntable`. A drag turntable inside a swipe strip fights the gesture on phones; the hero keeps the turntable.
+- **Deviation:** `ProductQuickView` was not moved onto the shared option components, because Phase 5 replaces the homepage cards that open it; only its studio and matcher launchers were removed.
+- Removed: old `ProductDetailView`, `EmbroideryLoupe`, `SneakerFitMatcherModal`, `ModelLookbookStudioModal`, their layout mounts and store state. The homepage studio section stays (standalone) until Phase 5 swaps in the lookbook strip. Confetti on add is gone; the button confirms instead.
+- The global mobile action bar hides on product pages, which carry their own sticky add bar.
+- The static catalog fallback now carries Catalog Shots, which fixed a hydration mismatch on the Shop (review finding 2).
+
 - One `ProductDetailView` for both categories (split the current 1016-line file into gallery, options, purchase panel).
 - Gallery: Catalog Shot first (LCP, `priority`), then Lifestyle Shots; swipeable on mobile, thumbnails on desktop. Caps with angle photos use `CapTurntable`.
 - Tees: Graphic Design artwork view + Apparel Colorway swatches (from Lookbook Studio), size picker driven by `skus` stock; selected colorway/size in URL query.
