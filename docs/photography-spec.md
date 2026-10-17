@@ -2,7 +2,38 @@
 
 The standard every new product photo must meet. It implements the two image roles from ADR 0016 (**Catalog Shot** and **Lifestyle Shot**, see `CONTEXT.md`). Photos that miss the spec make the grid look inconsistent, so they are re-shot rather than used.
 
-## 1. Heavyweight Tee blank flat-lays (next shoot: 8 photos)
+## 1. Model shoot: real printed tees (priority)
+
+Real photos of models wearing the **printed** tees replace the composited on-model shots. Real photos always win: the build never overwrites them.
+
+### Casting and styling
+- **Models:** several different men, so each Graphic Design is worn by a different model. Tall, deep dark skin, heavily tattooed (forearms, hands, neck). Get a signed model release from each.
+- **Fit:** size 2XL in every shot. It should read oversized and boxy, with dropped shoulders and the hem just below the hips (not dress-length).
+- **Look:** urban street style, Bronx NY, such as elevated subway tracks, bodega corners, brownstone stoops, courts behind chain-link, and graffiti walls. Use cargo pants, baggy denim and sneakers. Show no other brands' logos.
+
+### Shots per Graphic Design
+- **Colours:** every design is a front print. Shoot it in each colourway sold (washed black, crisp white, heather grey, butter cream), or at least the default colourway first.
+- **Front view (required):** facing the camera, arms relaxed and away from the chest. Nothing covers the print: no chains, straps or hands.
+- **Detail (optional):** a close-up of the print on the fabric, for the product gallery.
+
+### Technical
+- **Format:** vertical 4:5, minimum 2000 px wide, sharp on the print.
+- **Framing:** head to mid-shin, model centred. The site crops chin-to-knees for the grid, so leave room around the shirt.
+- **Retouching:** consistent colour grading across the set. Keep tattoos and skin texture natural.
+
+### Delivery and going live
+1. Export as sRGB JPEG and name each file `{design}-{colour}.jpg`, e.g. `boxing-gloves-black.jpg`. Colour names are `black`, `white`, `grey` and `cream`; design names match `public/shirts/graphics/`.
+2. Put the files in `public/shirts/`, replacing the composited ones.
+3. Add each file's path to `SHOOT_PHOTOS` in `scripts/build-catalog-shots.ts`, so the build treats it as a real photo and never reprints it.
+4. Run:
+
+   ```bash
+   bun run build-catalog-shots
+   ```
+
+   This rebuilds the 4:5 grid crops from the new photos.
+
+## 2. Heavyweight Tee blank flat-lays (8 photos)
 
 Tee Catalog Shots are currently **illustrated** (`scripts/lib/flatTee.ts`). They are replaced automatically by real photos once these 8 blanks exist. The artwork is printed digitally by `scripts/build-catalog-shots.ts`. Only blank garments are photographed, so one shoot covers all 11 Graphic Designs.
 
@@ -52,7 +83,7 @@ Final files go in `public/shirts/flatlay/`.
 
   The build log reports `photo` instead of `illustrated` for each tee that uses a real blank.
 
-## 2. Cap Catalog Shots
+## 3. Cap Catalog Shots
 
 Caps already meet the Catalog Shot standard through `scripts/build-catalog-shots.ts`. New cap colorways need:
 
@@ -63,7 +94,7 @@ Caps already meet the Catalog Shot standard through `scripts/build-catalog-shots
 
 The script trims each photo, scales every angle to the same crown height, and places the front angle on the shared backdrop. Framing does not need to be pixel-exact, but the cap must be fully in frame and in sharp focus edge to edge.
 
-## 3. On-model blank templates (how tee photos are made today)
+## 4. On-model blank templates (interim, until the model shoot)
 
 Every tee Lifestyle Shot, and until flat-lays exist every tee Catalog Shot, is printed onto a real photo of the model wearing a **blank** tee: `public/shirts/templates/{front|back}-{black|white|grey|cream}.jpg`.
 
@@ -83,7 +114,7 @@ Every tee Lifestyle Shot, and until flat-lays exist every tee Catalog Shot, is p
   This regenerates every on-model shot and its 4:5 crop. Photos listed in `SHOOT_PHOTOS` (real printed-garment shots) are never overwritten.
 - **Template quality:** at least 1200 px wide; a frontal or back pose with arms away from the chest and back; even light, and no hands or straps across the print area.
 
-## 4. Lifestyle Shots
+## 5. Lifestyle Shots
 
 Used on product pages and in editorial sections only, never in grids.
 
@@ -93,7 +124,7 @@ Used on product pages and in editorial sections only, never in grids.
 - **Size and format:** minimum 2000 px on the long edge, sRGB JPEG.
 - **Look:** keep the current night-street look so the lookbook reads as one series.
 
-## 5. Shared rules
+## 6. Shared rules
 
 - **Backdrop colour:** `#ECEAE6`. Exported as `BACKDROP` from the build script, and the only grid background.
 - **Catalog Shot size:** 1600 × 2000 (4:5) WebP. `next/image` serves the smaller sizes.

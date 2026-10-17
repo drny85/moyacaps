@@ -159,8 +159,9 @@ const TEMPLATE_COLOR: Record<FabricId, string> = {
 };
 
 /**
- * Lifestyle Shots from the real photo shoot (printed garments). They are never regenerated;
- * every other on-model shot is printed from the blank templates by printOnModel.
+ * Lifestyle Shots from a real photo shoot (printed garments, see docs/photography-spec.md §1).
+ * They are never regenerated and get a proportional grid crop; every other on-model shot is
+ * printed from the blank templates by printOnModel. Add each delivered shoot photo here.
  */
 // (The eagle-clover black/grey shoot photos show a back print; every design is front-only now.)
 const SHOOT_PHOTOS = new Set(["/shirts/angel-clover-white.jpg"]);
@@ -175,15 +176,29 @@ const TEE_SHOT = { width: 800, height: 1000 };
  * 4:5 crop of an on-model photo around the tee: the print centred, chin to knees, so the
  * garment fills the frame while staying a real photograph.
  */
-async function onModelCatalogShot(lifestyleFile: string, template: TeeTemplates[string], out: string) {
+async function onModelCatalogShot(lifestyleFile: string, template: TeeTemplates[string] | null, out: string) {
   const meta = await sharp(lifestyleFile).metadata();
   const W = meta.width!;
   const H = meta.height!;
-  const torso = template.measure.hemY - template.measure.collarY;
-  const cropH = Math.min(H, Math.round(torso * 1.75));
+  let cropH: number;
+  let top: number;
+  let centerX: number;
+  if (template) {
+    // Composited shot: frame from the template's measured collar and hem
+    const torso = template.measure.hemY - template.measure.collarY;
+    cropH = Math.round(torso * 1.75);
+    top = Math.round(template.measure.collarY - torso * 0.3);
+    centerX = template.box.cx;
+  } else {
+    // Real shoot photo, framed head to mid-shin and centred (photography spec §1)
+    cropH = Math.round(H * 0.78);
+    top = Math.round(H * 0.08);
+    centerX = W / 2;
+  }
+  cropH = Math.min(H, cropH);
   const cropW = Math.min(W, Math.round(cropH * 0.8));
-  const top = Math.max(0, Math.min(H - cropH, Math.round(template.measure.collarY - torso * 0.3)));
-  const left = Math.max(0, Math.min(W - cropW, Math.round(template.box.cx - cropW / 2)));
+  top = Math.max(0, Math.min(H - cropH, top));
+  const left = Math.max(0, Math.min(W - cropW, Math.round(centerX - cropW / 2)));
   await sharp(lifestyleFile)
     .extract({ left, top, width: cropW, height: cropH })
     .resize(TEE_SHOT.width, TEE_SHOT.height, { kernel: "lanczos3" })
@@ -234,8 +249,9 @@ async function buildTeeColorway(teeId: string, colorway: FabricId, side: PrintSi
   const blank = path.join(FLATLAY_DIR, `${side}-${colorway}.png`);
   let source: string;
   if (!(await exists(blank)) && template && (await exists(lifestyleFile))) {
-    await onModelCatalogShot(lifestyleFile, template, out);
-    source = SHOOT_PHOTOS.has(lifestyle) ? "shoot photo" : "on-model";
+    const shoot = SHOOT_PHOTOS.has(lifestyle);
+    await onModelCatalogShot(lifestyleFile, shoot ? null : template, out);
+    source = shoot ? "shoot photo" : "on-model";
   } else {
     source = await flatLayCatalogShot(colorway, side, artPath, out);
   }
