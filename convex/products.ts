@@ -344,7 +344,7 @@ export const seedAll = mutation({
         priceUsd: 125,
         isFeatured: false,
       },
-      // ── Heavyweight Streetwear Shirts ($160 USD) ──
+      // ── Heavyweight Streetwear Shirts ($80 USD) ──
       {
         variantId: "boxing-gloves-tee",
         nameEn: "Good Luck Knockout Boxing Gloves Tee",
@@ -357,7 +357,7 @@ export const seedAll = mutation({
         image: "/shirts/boxing-gloves-black.jpg",
         images: ["/shirts/boxing-gloves-black.jpg", "/shirts/graphics/boxing-gloves.jpg"],
         stock: 18,
-        priceUsd: 160,
+        priceUsd: 80,
         isFeatured: true,
       },
       {
@@ -372,7 +372,7 @@ export const seedAll = mutation({
         image: "/shirts/butterfly-cream.jpg",
         images: ["/shirts/butterfly-cream.jpg", "/shirts/graphics/butterfly.jpg"],
         stock: 15,
-        priceUsd: 160,
+        priceUsd: 80,
         isFeatured: true,
       },
       {
@@ -387,7 +387,7 @@ export const seedAll = mutation({
         image: "/shirts/eagle-clover-black.jpg",
         images: ["/shirts/eagle-clover-black.jpg", "/shirts/eagle-clover-grey.jpg", "/shirts/graphics/eagle-clover.jpg"],
         stock: 22,
-        priceUsd: 160,
+        priceUsd: 80,
         isFeatured: true,
       },
       {
@@ -402,7 +402,7 @@ export const seedAll = mutation({
         image: "/shirts/gothic-skull-black.jpg",
         images: ["/shirts/gothic-skull-black.jpg", "/shirts/graphics/gothic-skull.jpg"],
         stock: 14,
-        priceUsd: 160,
+        priceUsd: 80,
         isFeatured: false,
       },
       {
@@ -417,7 +417,7 @@ export const seedAll = mutation({
         image: "/shirts/eight-ball-white.jpg",
         images: ["/shirts/eight-ball-white.jpg", "/shirts/graphics/eight-ball.jpg"],
         stock: 16,
-        priceUsd: 160,
+        priceUsd: 80,
         isFeatured: true,
       },
       {
@@ -432,7 +432,7 @@ export const seedAll = mutation({
         image: "/shirts/snake-horseshoe-black.jpg",
         images: ["/shirts/snake-horseshoe-black.jpg", "/shirts/graphics/snake-horseshoe.jpg"],
         stock: 20,
-        priceUsd: 160,
+        priceUsd: 80,
         isFeatured: false,
       },
       {
@@ -447,7 +447,7 @@ export const seedAll = mutation({
         image: "/shirts/vintage-f1-cream.jpg",
         images: ["/shirts/vintage-f1-cream.jpg", "/shirts/graphics/vintage-f1.jpg"],
         stock: 12,
-        priceUsd: 160,
+        priceUsd: 80,
         isFeatured: true,
       },
       {
@@ -462,7 +462,7 @@ export const seedAll = mutation({
         image: "/shirts/retro-soul-black.jpg",
         images: ["/shirts/retro-soul-black.jpg", "/shirts/graphics/retro-soul.jpg"],
         stock: 15,
-        priceUsd: 160,
+        priceUsd: 80,
         isFeatured: false,
       },
       {
@@ -477,7 +477,7 @@ export const seedAll = mutation({
         image: "/shirts/lightning-star-grey.jpg",
         images: ["/shirts/lightning-star-grey.jpg", "/shirts/graphics/lightning-star.jpg"],
         stock: 16,
-        priceUsd: 160,
+        priceUsd: 80,
         isFeatured: false,
       },
       {
@@ -492,7 +492,7 @@ export const seedAll = mutation({
         image: "/shirts/angel-clover-white.jpg",
         images: ["/shirts/angel-clover-white.jpg", "/shirts/graphics/angel-clover.jpg"],
         stock: 14,
-        priceUsd: 160,
+        priceUsd: 80,
         isFeatured: true,
       },
       {
@@ -507,7 +507,7 @@ export const seedAll = mutation({
         image: "/shirts/muscle-car-black.jpg",
         images: ["/shirts/muscle-car-black.jpg", "/shirts/graphics/muscle-car.jpg"],
         stock: 15,
-        priceUsd: 160,
+        priceUsd: 80,
         isFeatured: false,
       },
     ];
@@ -1328,5 +1328,29 @@ export const migrateUnifiedCatalog = internalMutation({
     }
 
     return report;
+  },
+});
+
+/**
+ * One-shot repricing of every Heavyweight Tee (e.g. the $160 → $80 change). Existing orders
+ * keep the price they were sold at. Run with:
+ *   npx convex run products:setApparelPriceUsd '{"priceUsd": 80}'
+ */
+export const setApparelPriceUsd = internalMutation({
+  args: { priceUsd: v.number() },
+  handler: async (ctx, args) => {
+    if (!Number.isFinite(args.priceUsd) || args.priceUsd <= 0) {
+      throw new ConvexError("priceUsd must be a positive number");
+    }
+    const variants = await ctx.db.query("variants").take(500);
+    let updated = 0;
+    for (const variant of variants) {
+      const isTee = variant.category === "apparel" || variant.silhouette === "tee";
+      if (isTee && variant.priceUsd !== args.priceUsd) {
+        await ctx.db.patch("variants", variant._id, { priceUsd: args.priceUsd });
+        updated++;
+      }
+    }
+    return { updated };
   },
 });

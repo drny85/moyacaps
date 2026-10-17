@@ -62,12 +62,12 @@ export async function generateMetadata({
   const name = locale === "es" ? cap.nameEs : cap.nameEn;
   const isTee = cap.silhouette === "tee" || (cap as any).category === "apparel";
   const title = isTee
-    ? `${name} ($160 USD) | Good Luck Heavyweight Streetwear`
+    ? `${name} ($${cap.priceUsd} USD) | Good Luck Heavyweight Streetwear`
     : `${name} | Good Luck 0880 Edition`;
   const description = isTee
     ? (locale === "es"
-        ? `Playera streetwear boxy heavyweight oficial Good Luck — ${name}. Algodón peinado de 280-300 GSM, corte drop-shoulder y serigrafía HD por $160 USD.`
-        : `Official Good Luck Heavyweight Streetwear Boxy Tee — ${name}. 280-300 GSM combed cotton, drop-shoulder cut, and HD screen print for $160 USD.`)
+        ? `Playera streetwear boxy heavyweight oficial Good Luck — ${name}. Algodón peinado de 280-300 GSM, corte drop-shoulder y serigrafía HD por $${cap.priceUsd} USD.`
+        : `Official Good Luck Heavyweight Streetwear Boxy Tee — ${name}. 280-300 GSM combed cotton, drop-shoulder cut, and HD screen print for $${cap.priceUsd} USD.`)
     : (locale === "es"
         ? `Gorra oficial Good Luck — Edición 0880 — ${name}. Bordado 3D de alta densidad, diablos laterales y silueta ${cap.silhouette}.`
         : `Official Good Luck Cap — 0880 Edition — ${name}. High-density 3D puff embroidery, twin pitchfork devil flanks, and ${cap.silhouette} profile.`);

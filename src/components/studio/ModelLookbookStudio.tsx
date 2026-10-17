@@ -613,7 +613,7 @@ export function ModelLookbookStudio({
                   </p>
                   <div className="flex items-center justify-between mt-1">
                     <span className="text-[11px] font-mono font-bold text-emerald-600 dark:text-moya-green-light">
-                      $160 USD
+                      ${activeTee.priceUsd} USD
                     </span>
                     {isSelected && (
                       <span className="w-2 h-2 rounded-full bg-moya-red animate-pulse" />
@@ -658,7 +658,7 @@ export function ModelLookbookStudio({
                 <div>
                   <h4 className="font-display font-bold text-base">{teeName}</h4>
                   <p className="text-xs text-zinc-400 font-mono">
-                    {colorwayName} • {selectedSize} • $160 USD
+                    {colorwayName} • {selectedSize} • ${activeTee.priceUsd} USD
                   </p>
                 </div>
                 <button

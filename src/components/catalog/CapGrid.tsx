@@ -52,7 +52,7 @@ export function CapGrid() {
 
   const filters: { key: FilterKey; label: string }[] = [
     { key: "all", label: locale === "es" ? `Todo (${caps.length})` : `All Releases (${caps.length})` },
-    { key: "tee", label: locale === "es" ? `Playeras Boxy ($160) (${teeCount})` : `Heavyweight Tees ($160) (${teeCount})` },
+    { key: "tee", label: locale === "es" ? `Playeras Boxy (${teeCount})` : `Heavyweight Tees (${teeCount})` },
     { key: "caps", label: locale === "es" ? `Gorras ($120) (${capsCount})` : `Caps ($120) (${capsCount})` },
     { key: "snapback", label: t("filterSnapback", { count: snapbackCount }) },
     { key: "trucker", label: t("filterTrucker", { count: truckerCount }) },
@@ -83,8 +83,8 @@ export function CapGrid() {
             <p className="text-zinc-600 dark:text-zinc-400 text-sm sm:text-lg mt-3 max-w-xl">
               {activeFilter === "tee"
                 ? (locale === "es"
-                    ? "Algodón peinado de 280-300 GSM, corte boxy drop-shoulder y serigrafía de alta definición a $160 USD."
-                    : "Heavyweight 280-300 GSM combed cotton, boxy drop-shoulder silhouette, and high-density screen prints at $160 USD.")
+                    ? "Algodón peinado de 280-300 GSM, corte boxy drop-shoulder y serigrafía de alta definición."
+                    : "Heavyweight 280-300 GSM combed cotton, boxy drop-shoulder silhouette, and high-density screen prints.")
                 : t("subtitle")}
             </p>
           </Reveal>

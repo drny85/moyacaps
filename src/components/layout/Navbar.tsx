@@ -88,7 +88,7 @@ export function Navbar() {
               className="hover:text-zinc-900 dark:hover:text-white transition-colors hover-underline flex items-center gap-1.5 font-semibold text-zinc-800 dark:text-zinc-200"
             >
               <span className="w-1.5 h-1.5 rounded-full bg-moya-red animate-pulse" />
-              <span>{locale === "es" ? "Playeras ($160)" : "Tees ($160)"}</span>
+              <span>{locale === "es" ? "Playeras" : "Tees"}</span>
             </a>
             <Link
               href="/try-on"
@@ -257,7 +257,7 @@ export function Navbar() {
                 onClick={() => setMobileMenuOpen(false)}
                 className="text-zinc-900 dark:text-zinc-200 hover:text-moya-red font-display font-semibold text-base transition-colors flex items-center justify-between"
               >
-                <span>{locale === "es" ? "Playeras en Modelo ($160)" : "Model Lookbook Tees ($160)"}</span>
+                <span>{locale === "es" ? "Playeras" : "Tees"}</span>
                 <span className="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded-full bg-moya-red/10 text-moya-red border border-moya-red/30">
                   Studio
                 </span>
