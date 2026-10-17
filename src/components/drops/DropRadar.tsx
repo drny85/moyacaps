@@ -6,7 +6,8 @@ import { useTranslations, useLocale } from "next-intl";
 import { Link } from "@/i18n/routing";
 import { useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
-import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { useReducedMotionSafe } from "@/hooks/useMotionPrefs";
 import {
   Radio,
   Bell,
@@ -53,7 +54,7 @@ function calculateTimeRemaining(targetTimestamp: number): TimeRemaining {
 
 /** Odometer digit: the new value rolls in from below as the old one rolls out */
 function RollingDigit({ digit }: { digit: string }) {
-  const reduceMotion = useReducedMotion();
+  const reduceMotion = useReducedMotionSafe();
   return (
     <span className="relative inline-block h-[1.1em] w-[0.62em] overflow-hidden align-bottom">
       <AnimatePresence initial={false} mode="popLayout">

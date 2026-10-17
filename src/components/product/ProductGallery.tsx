@@ -67,6 +67,7 @@ export function ProductGallery({ slides, resetKey }: { slides: GallerySlide[]; r
                 alt={slide.alt}
                 fill
                 priority={i === 0}
+                fetchPriority={i === 0 ? "high" : undefined}
                 sizes={i === 0 ? "(min-width: 1024px) 58vw, 88vw" : "(min-width: 1024px) 29vw, 88vw"}
                 className={slide.fit === "contain" ? "object-contain p-[8%]" : "object-cover"}
               />

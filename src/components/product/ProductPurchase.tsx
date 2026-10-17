@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
+import { useReducedMotionSafe } from "@/hooks/useMotionPrefs";
 import { Bell, Camera, Check, MessageCircle, Share2 } from "lucide-react";
 import type { CapVariant } from "@/data/caps";
 import { useStore } from "@/store/useStore";
@@ -41,7 +42,7 @@ export function ProductPurchase({
 }) {
   const t = useTranslations("product");
   const locale = useLocale();
-  const reduceMotion = useReducedMotion() ?? false;
+  const reduceMotion = useReducedMotionSafe();
   const { addToCart, openCart, openDropAlert, openTryOn, currency } = useStore();
   const cart = useStore((s) => s.cart);
   const { playSuccessChime } = useSoundEffects();

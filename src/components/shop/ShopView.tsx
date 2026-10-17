@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
+import { useReducedMotionSafe } from "@/hooks/useMotionPrefs";
 import { SlidersHorizontal, X } from "lucide-react";
 import { usePathname, useRouter } from "@/i18n/routing";
 import { useCapVariants } from "@/hooks/useCapVariants";
@@ -34,7 +35,7 @@ export function ShopView() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const reduceMotion = useReducedMotion() ?? false;
+  const reduceMotion = useReducedMotionSafe();
   const { caps: products } = useCapVariants();
   const [now] = useState(() => Date.now());
 
@@ -334,7 +335,7 @@ function FilterSheet({
   resultCount: number;
 }) {
   const t = useTranslations("shop");
-  const reduceMotion = useReducedMotion() ?? false;
+  const reduceMotion = useReducedMotionSafe();
   useLockBodyScroll(open);
 
   useEffect(() => {

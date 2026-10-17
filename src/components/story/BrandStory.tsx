@@ -6,11 +6,11 @@ import {
   animate,
   motion,
   useInView,
-  useReducedMotion,
   useScroll,
   useTransform,
   type MotionValue,
 } from "framer-motion";
+import { useReducedMotionSafe } from "@/hooks/useMotionPrefs";
 import { useRef, useEffect, useState } from "react";
 import { Reveal } from "@/components/motion/Reveal";
 import { DURATION, EASE } from "@/lib/motion";
@@ -33,7 +33,7 @@ function AnimatedStat({ value, label, description, delay = 0 }: {
   const locale = useLocale();
   const ref = useRef<HTMLDivElement>(null);
   const isInView = useInView(ref, { once: true, margin: "-80px" });
-  const reduceMotion = useReducedMotion();
+  const reduceMotion = useReducedMotionSafe();
   const parsed = parseStat(value);
   const [count, setCount] = useState(0);
 
@@ -85,7 +85,7 @@ function ScrollWord({ word, progress, range }: { word: string; progress: MotionV
 /** Headline whose words light up one by one as it scrolls through the viewport */
 function ScrollHeadline({ text }: { text: string }) {
   const ref = useRef<HTMLHeadingElement>(null);
-  const reduceMotion = useReducedMotion();
+  const reduceMotion = useReducedMotionSafe();
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start 0.9", "start 0.35"] });
   const words = text.split(" ");
 

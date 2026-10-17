@@ -1,6 +1,7 @@
 "use client";
 
-import { motion, useReducedMotion } from "framer-motion";
+import { motion } from "framer-motion";
+import { useReducedMotionSafe } from "@/hooks/useMotionPrefs";
 import type { ReactNode } from "react";
 import { DURATION, EASE } from "@/lib/motion";
 
@@ -19,7 +20,7 @@ export function Reveal({
   y?: number;
   className?: string;
 }) {
-  const reduceMotion = useReducedMotion();
+  const reduceMotion = useReducedMotionSafe();
 
   return (
     <motion.div

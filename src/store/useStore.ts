@@ -61,11 +61,6 @@ interface StoreState {
   setTheme: (theme: "dark" | "light") => void;
   toggleTheme: () => void;
 
-  // Quick View Modal
-  quickViewCap: CapVariant | null;
-  openQuickView: (cap: CapVariant) => void;
-  closeQuickView: () => void;
-
   // Drop Alert Modal
   dropAlertCap: CapVariant | null;
   openDropAlert: (cap: CapVariant) => void;
@@ -263,9 +258,6 @@ export const useStore = create<StoreState>()(
         get().setTheme(nextTheme);
       },
 
-      quickViewCap: null,
-      openQuickView: (cap) => set({ quickViewCap: cap }),
-      closeQuickView: () => set({ quickViewCap: null }),
 
       dropAlertCap: null,
       openDropAlert: (cap) => set({ dropAlertCap: cap }),

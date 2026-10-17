@@ -48,6 +48,7 @@ export function ProductCard({
           fill
           sizes="(min-width: 1280px) 22vw, (min-width: 768px) 30vw, 50vw"
           priority={priority}
+          fetchPriority={priority ? "high" : undefined}
           className="object-cover transition-transform duration-500 ease-out motion-safe:group-hover:scale-[1.03]"
         />
         {lifestyle && hovered && (

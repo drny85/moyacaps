@@ -398,3 +398,38 @@ html.light .skeleton {
   }
 }
 
+/* Hero intro (ADR 0016): CSS so it plays from the first paint, before JavaScript loads,
+   and never hides the LCP image. Delay per element via --intro-delay. */
+@keyframes intro-rise {
+  from { transform: translateY(105%); }
+  to { transform: none; }
+}
+@keyframes intro-fade {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes intro-pop {
+  from { opacity: 0; transform: scale(0.6); }
+  to { opacity: 1; }
+}
+@keyframes intro-drop {
+  from { transform: translateY(-70px) scale(0.92); }
+  to { transform: none; }
+}
+.intro-rise { animation: intro-rise 0.8s cubic-bezier(0.16, 1, 0.3, 1) var(--intro-delay, 0s) both; }
+.intro-fade { animation: intro-fade 0.5s cubic-bezier(0.16, 1, 0.3, 1) var(--intro-delay, 0s) both; }
+.intro-pop { animation: intro-pop 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) var(--intro-delay, 0s) backwards; }
+.intro-drop { animation: intro-drop 0.9s cubic-bezier(0.34, 1.4, 0.64, 1) both; }
+
+/* Motion budget (ADR 0016): visitors who ask for less motion get none from CSS loops
+   (banner marquee, shimmer, pulses). Framer Motion follows MotionProvider + useReducedMotionSafe. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

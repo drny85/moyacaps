@@ -7,13 +7,14 @@ import {
   AnimatePresence,
   motion,
   useMotionValueEvent,
-  useReducedMotion,
   useScroll,
   useSpring,
   useTransform,
   type MotionValue,
 } from "framer-motion";
 import { Reveal } from "@/components/motion/Reveal";
+import { useMotionPrefs } from "@/hooks/useMotionPrefs";
+import { useParallax } from "@/hooks/useParallax";
 import { DURATION, EASE, SPRING, STAGGER } from "@/lib/motion";
 
 /** One entry per craft detail, each shown with the real photo of that angle */
@@ -207,9 +208,34 @@ function AnatomyScene() {
   );
 }
 
-/** Static version for reduced motion */
-function AnatomyPanels() {
+/** One craft detail as a card; its photo drifts gently as the card crosses the viewport. */
+function AnatomyPanel({ index }: { index: number }) {
   const t = useTranslations("anatomy");
+  const step = STEPS[index];
+  const ref = useRef<HTMLElement>(null);
+  const y = useParallax(ref, 36);
+  return (
+    <article ref={ref} className="h-full rounded-2xl border border-black/[0.08] p-4 dark:border-white/[0.08]">
+      <div className="relative mb-4 aspect-square overflow-hidden drop-shadow-[0_20px_30px_rgba(0,0,0,0.35)]">
+        <motion.div style={{ y }} className="absolute inset-0">
+          <Image
+            src={step.image}
+            alt={t(step.title)}
+            fill
+            sizes="(max-width: 640px) 90vw, (max-width: 1024px) 45vw, 22vw"
+            className="object-contain"
+          />
+        </motion.div>
+      </div>
+      <StepLabel index={index} />
+      <h3 className="mt-1.5 font-display text-xl font-bold text-zinc-950 dark:text-white">{t(step.title)}</h3>
+      <p className="mt-1 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">{t(step.desc)}</p>
+    </article>
+  );
+}
+
+/** Touch screens, small screens and reduced motion: stacked cards, no pinning (ADR 0016). */
+function AnatomyPanels() {
   return (
     <section id="anatomy" className="border-y border-black/[0.06] px-4 py-16 dark:border-white/[0.06] sm:px-6 sm:py-24 lg:px-8">
       <div className="mx-auto max-w-7xl">
@@ -217,20 +243,7 @@ function AnatomyPanels() {
         <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {STEPS.map((s, i) => (
             <Reveal key={s.key} delay={i * STAGGER}>
-              <article className="h-full rounded-2xl border border-black/[0.08] p-4 dark:border-white/[0.08]">
-                <div className="relative mb-4 aspect-square drop-shadow-[0_20px_30px_rgba(0,0,0,0.35)]">
-                  <Image
-                    src={s.image}
-                    alt={t(s.title)}
-                    fill
-                    sizes="(max-width: 640px) 90vw, (max-width: 1024px) 45vw, 22vw"
-                    className="object-contain"
-                  />
-                </div>
-                <StepLabel index={i} />
-                <h3 className="mt-1.5 font-display text-xl font-bold text-zinc-950 dark:text-white">{t(s.title)}</h3>
-                <p className="mt-1 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">{t(s.desc)}</p>
-              </article>
+              <AnatomyPanel index={i} />
             </Reveal>
           ))}
         </div>
@@ -239,7 +252,11 @@ function AnatomyPanels() {
   );
 }
 
+/**
+ * The pinned, scroll-scrubbed walkthrough runs only with a mouse or trackpad on a desktop-width
+ * screen; everywhere else (and on first render, so SSR and hydration agree) it is stacked cards.
+ */
 export function AnatomyScroll() {
-  const reduceMotion = useReducedMotion();
-  return reduceMotion ? <AnatomyPanels /> : <AnatomyScene />;
+  const { allowPinned } = useMotionPrefs();
+  return allowPinned ? <AnatomyScene /> : <AnatomyPanels />;
 }

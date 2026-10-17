@@ -38,7 +38,7 @@ export async function generateMetadata({
       siteName: "Good Luck",
       images: [
         {
-          url: `${siteUrl}/caps/negro-rojo.png`,
+          url: `${siteUrl}/og/home.jpg`,
           width: 1200,
           height: 630,
           alt: "Good Luck Virtual Try-On",

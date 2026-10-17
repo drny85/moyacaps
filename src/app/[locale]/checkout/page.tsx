@@ -175,7 +175,7 @@ export default function CheckoutPage() {
             </div>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5 pt-2">
               <Link
-                href="/#catalog"
+                href="/products"
                 className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-moya-red hover:bg-rose-500 text-white font-display font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg shadow-moya-red/30"
               >
                 <span>{t("exploreCta")}</span>

@@ -9,6 +9,9 @@
  *   public/catalog/caps/{id}/{angle}.webp    1200×1200 transparent turntable angle
  *   public/catalog/tees/{id}/{colorway}.webp 1600×2000 Catalog Shot on #ECEAE6
  *   src/data/catalogShots.json               manifest of everything written
+ *   src/app/icon.png, src/app/apple-icon.png site icons (Next app/ file convention)
+ *   public/brand/logo-512.png                organization logo (JSON-LD)
+ *   public/og/home.jpg                       1200×630 share image
  */
 import sharp from "sharp";
 import fs from "node:fs/promises";
@@ -184,10 +187,46 @@ async function buildTees() {
   return result;
 }
 
+/**
+ * Brand images from the flagship cap: small site icons (the full photo was a 389 KB favicon
+ * fetched at high priority on every page), the JSON-LD logo and the 1200×630 share image.
+ */
+async function buildBrandImages() {
+  const flagship = path.join(OUT, "caps", "negro-rojo", "front.webp");
+  const cap = await trimmed(flagship);
+  const square = async (size: number, pad: number, background: sharp.Color) => {
+    const inner = Math.round(size * (1 - pad * 2));
+    const resized = await sharp(cap.data).resize(inner, inner, { fit: "inside" }).png().toBuffer({ resolveWithObject: true });
+    return sharp({ create: { width: size, height: size, channels: 4, background } })
+      .composite([{ input: resized.data, left: Math.round((size - resized.info.width) / 2), top: Math.round((size - resized.info.height) / 2) }])
+      .png();
+  };
+  const transparent = { r: 0, g: 0, b: 0, alpha: 0 };
+  await (await square(64, 0.04, transparent)).toFile(path.join(ROOT, "src", "app", "icon.png"));
+  await (await square(180, 0.1, BACKDROP)).toFile(path.join(ROOT, "src", "app", "apple-icon.png"));
+  await fs.mkdir(path.join(PUBLIC, "brand"), { recursive: true });
+  await (await square(512, 0.08, BACKDROP)).toFile(path.join(PUBLIC, "brand", "logo-512.png"));
+
+  const og = { width: 1200, height: 630 };
+  const capH = Math.round(og.height * 0.62);
+  const ogCap = await sharp(cap.data).resize({ height: capH }).png().toBuffer({ resolveWithObject: true });
+  const shadow = await groundShadow(ogCap.info.width);
+  await fs.mkdir(path.join(PUBLIC, "og"), { recursive: true });
+  await sharp({ create: { ...og, channels: 3, background: BACKDROP } })
+    .composite([
+      { input: shadow.buf, left: Math.round((og.width - shadow.width) / 2), top: Math.round(og.height * 0.2 + capH - shadow.height / 2) },
+      { input: ogCap.data, left: Math.round((og.width - ogCap.info.width) / 2), top: Math.round(og.height * 0.2) },
+    ])
+    .jpeg({ quality: 86, mozjpeg: true })
+    .toFile(path.join(PUBLIC, "og", "home.jpg"));
+  console.log("✅ brand images: icon, apple-icon, logo-512, og/home.jpg");
+}
+
 async function main() {
   await fs.mkdir(path.join(OUT, "caps"), { recursive: true });
   const caps = await buildCaps();
   const tees = await buildTees();
+  await buildBrandImages();
   const manifestPath = path.join(ROOT, "src", "data", "catalogShots.json");
   await fs.writeFile(manifestPath, JSON.stringify({ backdrop: BACKDROP, caps, tees }, null, 2) + "\n");
   console.log(`📝 ${path.relative(ROOT, manifestPath)}: ${Object.keys(caps).length} caps, ${Object.keys(tees).length} tees`);

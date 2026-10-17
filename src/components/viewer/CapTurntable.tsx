@@ -7,10 +7,10 @@ import {
   useInView,
   useMotionTemplate,
   useMotionValue,
-  useReducedMotion,
   useSpring,
   useTransform,
 } from "framer-motion";
+import { useReducedMotionSafe } from "@/hooks/useMotionPrefs";
 import { DURATION, EASE, SPRING } from "@/lib/motion";
 
 export interface TurntableFrame {
@@ -45,7 +45,7 @@ export function CapTurntable({
   priority?: boolean;
   onInteract?: () => void;
 }) {
-  const reduceMotion = useReducedMotion() ?? false;
+  const reduceMotion = useReducedMotionSafe();
   const stageRef = useRef<HTMLDivElement>(null);
   const inView = useInView(stageRef, { margin: "-20% 0px" });
   const [index, setIndex] = useState(0);
@@ -158,8 +158,8 @@ export function CapTurntable({
         {/* Colorway glow + ground shadow */}
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-x-[10%] bottom-[8%] h-[30%] rounded-full blur-[70px] opacity-50 transition-colors duration-700"
-          style={{ backgroundColor: glowHex }}
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-[45%] opacity-60"
+          style={{ background: `radial-gradient(closest-side, ${glowHex}, transparent)` }}
         />
         <motion.div
           aria-hidden
@@ -167,15 +167,13 @@ export function CapTurntable({
           className="pointer-events-none absolute inset-x-[18%] bottom-[9%] h-[7%] rounded-[50%] bg-black/35 blur-xl dark:bg-black/70"
         />
 
-        {/* Floating, tilting photo stack */}
-        <motion.div
-          initial={{ opacity: 0, y: reduceMotion ? 0 : -70, scale: reduceMotion ? 1 : 0.92 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ type: "spring", stiffness: 120, damping: 14, mass: 0.9 }}
-          className="absolute inset-0"
-        >
+        {/* Floating, tilting photo stack. The drop-in is CSS (globals.css .intro-drop): it plays
+            from the first paint without waiting for JavaScript, and the photo is never hidden,
+            so it counts as the LCP immediately. */}
+        <div className="intro-drop absolute inset-0">
           <motion.div
-            animate={reduceMotion ? undefined : { y: [0, -10, 0] }}
+            // Idle bob only while on screen: no work for a hero scrolled out of view
+            animate={reduceMotion || !inView ? { y: 0 } : { y: [0, -10, 0] }}
             transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
             className="absolute inset-0"
           >
@@ -202,6 +200,7 @@ export function CapTurntable({
                       alt={rel === 0 ? `${alt} — ${frame.label}` : ""}
                       fill
                       priority={priority && i === 0}
+                      fetchPriority={priority && i === 0 ? "high" : undefined}
                       sizes="(max-width: 1024px) 90vw, 640px"
                       draggable={false}
                       className="object-contain"
@@ -220,7 +219,7 @@ export function CapTurntable({
               )}
             </motion.div>
           </motion.div>
-        </motion.div>
+        </div>
       </div>
 
       {/* Angle selector */}
