@@ -19,7 +19,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { ALL_CAPS_MANIFEST_MAP, type CapAngleKey } from "../src/data/capsManifest";
 import { SHIRT_VARIANTS } from "../src/data/caps";
-import { renderFlatTee, type FabricId, type PrintSide } from "./lib/flatTee";
+import { renderFlatTee, type FabricId, type InkMode, type PrintSide } from "./lib/flatTee";
 import { printOnModel } from "./lib/printOnModel";
 import type { PrintBox, TeeMeasure } from "./lib/teeCalibration";
 import teeTemplates from "./data/teeTemplates.json";
@@ -166,6 +166,19 @@ const TEMPLATE_COLOR: Record<FabricId, string> = {
 // (The eagle-clover black/grey shoot photos show a back print; every design is front-only now.)
 const SHOOT_PHOTOS = new Set(["/shirts/angel-clover-white.jpg"]);
 
+/**
+ * Graphic Designs drawn as photographs or tonal renders. They print full-colour on a white
+ * underbase, so a dark tee keeps their midtones and colour. Every other design is line art,
+ * whose black ink prints off-white on dark fabric (scripts/lib/inkModel.ts).
+ */
+const UNDERBASE_PRINTS = new Set([
+  "/shirts/graphics/retro-soul.jpg",
+  "/shirts/graphics/vintage-f1.jpg",
+  "/shirts/graphics/muscle-car.jpg",
+  "/shirts/graphics/angel-clover.jpg",
+  "/shirts/graphics/snake-horseshoe.jpg",
+]);
+
 type TeeTemplates = Record<string, { file: string; measure: TeeMeasure; box: PrintBox; width: number; height: number }>;
 const TEE_TEMPLATES = teeTemplates as TeeTemplates;
 
@@ -208,10 +221,10 @@ async function onModelCatalogShot(lifestyleFile: string, template: TeeTemplates[
 }
 
 /** The illustrated flat-lay (or a real blank flat-lay photo when one exists), on the backdrop. */
-async function flatLayCatalogShot(colorway: FabricId, side: PrintSide, artPath: string, out: string) {
+async function flatLayCatalogShot(colorway: FabricId, side: PrintSide, artPath: string, ink: InkMode, out: string) {
   const blank = path.join(FLATLAY_DIR, `${side}-${colorway}.png`);
   const blankPhoto = (await exists(blank)) ? blank : undefined;
-  const tee = await renderFlatTee({ size: TEE_SIZE, fabric: colorway, side, artPath, blankPhoto });
+  const tee = await renderFlatTee({ size: TEE_SIZE, fabric: colorway, side, artPath, ink, blankPhoto });
   const shadow = await liftShadow(tee, TEE_SIZE);
   const left = Math.round((SHOT.width - TEE_SIZE) / 2);
   const top = Math.round(SHOT.height * TEE_CENTER_Y - TEE_SIZE * TEE_BODY_CENTER);
@@ -230,7 +243,7 @@ async function flatLayCatalogShot(colorway: FabricId, side: PrintSide, artPath: 
  * shoot photo) and its Catalog Shot. Catalog source, best first: real blank flat-lay photo →
  * crop of the on-model photo → illustrated flat-lay.
  */
-async function buildTeeColorway(teeId: string, colorway: FabricId, side: PrintSide, artPath: string, lifestyle: string) {
+async function buildTeeColorway(teeId: string, colorway: FabricId, side: PrintSide, artPath: string, ink: InkMode, lifestyle: string) {
   const out = path.join(OUT, "tees", teeId, `${colorway}.webp`);
   await fs.mkdir(path.dirname(out), { recursive: true });
   const template = TEE_TEMPLATES[`${side}-${TEMPLATE_COLOR[colorway]}`];
@@ -242,6 +255,7 @@ async function buildTeeColorway(teeId: string, colorway: FabricId, side: PrintSi
       artPath,
       box: template.box,
       darkFabric: colorway === "washed-black",
+      ink,
     });
     await fs.writeFile(lifestyleFile, jpg);
   }
@@ -253,7 +267,7 @@ async function buildTeeColorway(teeId: string, colorway: FabricId, side: PrintSi
     await onModelCatalogShot(lifestyleFile, shoot ? null : template, out);
     source = shoot ? "shoot photo" : "on-model";
   } else {
-    source = await flatLayCatalogShot(colorway, side, artPath, out);
+    source = await flatLayCatalogShot(colorway, side, artPath, ink, out);
   }
   return { path: `/catalog/tees/${teeId}/${colorway}.webp`, source };
 }
@@ -267,10 +281,11 @@ async function buildTees() {
     }
     const side: PrintSide = tee.printPosition === "back" ? "back" : "front";
     const art = path.join(PUBLIC, tee.graphicImage);
+    const ink: InkMode = UNDERBASE_PRINTS.has(tee.graphicImage) ? "underbase" : "invert";
     const colorways: Record<string, string> = {};
     const sources = new Set<string>();
     for (const cw of tee.colorways) {
-      const shot = await buildTeeColorway(tee.id, cw.id as FabricId, side, art, cw.modelImage);
+      const shot = await buildTeeColorway(tee.id, cw.id as FabricId, side, art, ink, cw.modelImage);
       colorways[cw.id] = shot.path;
       sources.add(shot.source);
     }
