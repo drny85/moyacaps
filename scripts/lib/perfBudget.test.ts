@@ -106,6 +106,7 @@ describe("parseArgs", () => {
       build: true,
       url: null,
       pages: null,
+      headers: {},
       budget: { minPerformance: 90, maxLcpMs: 2500 },
     });
   });
@@ -119,6 +120,14 @@ describe("parseArgs", () => {
 
   it("splits a page list", () => {
     expect(parseArgs(["--pages", "/en, /en/products"]).pages).toEqual(["/en", "/en/products"]);
+  });
+
+  it("collects request headers, keeping colons in the value", () => {
+    expect(parseArgs(["--header", "Cookie: _vercel_jwt=a:b", "--header", "X-Test:1"]).headers).toEqual({
+      Cookie: "_vercel_jwt=a:b",
+      "X-Test": "1",
+    });
+    expect(() => parseArgs(["--header", "nocolon"])).toThrow(/Name: value/);
   });
 
   it("rejects unknown flags and bad numbers", () => {

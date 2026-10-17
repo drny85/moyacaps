@@ -121,6 +121,8 @@ export interface PerfBudgetArgs {
   /** Base URL to test instead of building and serving locally (e.g. a Vercel preview) */
   url: string | null;
   pages: string[] | null;
+  /** Extra request headers for every page load (e.g. a Vercel protection cookie) */
+  headers: Record<string, string>;
   budget: Budget;
 }
 
@@ -131,6 +133,7 @@ export function parseArgs(argv: string[]): PerfBudgetArgs {
     build: true,
     url: null,
     pages: null,
+    headers: {},
     budget: { ...DEFAULT_BUDGET },
   };
   for (let i = 0; i < argv.length; i++) {
@@ -151,6 +154,13 @@ export function parseArgs(argv: string[]): PerfBudgetArgs {
       case "--skip-build": args.build = false; break;
       case "--url": args.url = value().replace(/\/+$/, ""); args.build = false; break;
       case "--pages": args.pages = value().split(",").map((p) => p.trim()).filter(Boolean); break;
+      case "--header": {
+        const raw = value();
+        const sep = raw.indexOf(":");
+        if (sep <= 0) throw new Error(`--header needs "Name: value", got "${raw}"`);
+        args.headers[raw.slice(0, sep).trim()] = raw.slice(sep + 1).trim();
+        break;
+      }
       case "--min-performance": args.budget.minPerformance = int(); break;
       case "--max-lcp": args.budget.maxLcpMs = int(); break;
       default: throw new Error(`Unknown flag ${flag}`);
