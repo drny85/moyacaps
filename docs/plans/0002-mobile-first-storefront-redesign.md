@@ -130,6 +130,16 @@ Integration check on the current line: `feat/tee-photo-quality` (new scroll-driv
 | `/en/products` | 76 | 5.72 s | 87 | 3.87 s |
 | `/en/products/negro-rojo` | 79 | 5.20 s | 89 | 3.68 s |
 
+Vercel preview of `perf/storefront-budget-on-tee-photo-quality` (`bun run perf-budget --url <preview> --header "Cookie: _vercel_jwt=…"`, Lighthouse from a local machine, median of 3, 2026-10-17):
+
+| Page | Perf | LCP | FCP | TBT | CLS | Runs (perf) |
+| --- | --- | --- | --- | --- | --- | --- |
+| `/en` | 94 | 3.03 s | 1.41 s | 29 ms | 0.004 | 95 / 94 / 88 |
+| `/en/products` | 96 | 2.76 s | 1.40 s | 10 ms | 0.004 | 95 / 96 / 96 |
+| `/en/products/[slug]` | 96 | 2.62 s | 1.38 s | 14 ms | 0.003 | 91 / 98 / 96 |
+
+**Performance ≥ 90 is met on the preview; LCP < 2.5 s is not yet** (2.6–3.0 s). The biggest lever left is server response time: the `[locale]` routes render dynamically on every request (simulated TTFB ≈ 650 ms on the preview). Making them static/ISR (`setRequestLocale` + `generateStaticParams`, revalidated catalog reads) should take most of the remaining gap.
+
 **Budget still not met locally.** What blocks it, measured from the Lighthouse traces:
 - On localhost the real LCP happens at ≈ 190 ms, so Lighthouse's simulated slow 4G counts every request started before then as competing with the 15 KB LCP image. That is ≈ 270 KB of JS, 84 KB of fonts and ≈ 100 KB of near-viewport images. On `/en` the image's simulated download takes ≈ 1.9 s for that reason.
 - Most of the remaining JS is the floor: React DOM + the Next router (≈ 200 KB gzip of the ≈ 270 KB). Convex's client (≈ 25 KB gzip) is needed for live stock. Motion hooks (`useScroll`, `useSpring`, `animate`) keep ≈ 35 KB gzip of motion-dom / framer-motion in the first load.
