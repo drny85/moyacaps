@@ -2,15 +2,20 @@ import type { Metadata } from "next";
 import { Anton, Inter, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 
+// Fonts load with display: swap. Only the poster face (hero / page headlines) is
+// preloaded; body and UI text paint in the metric-matched fallback first, so the other
+// two files never compete with the LCP image for bandwidth.
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-sans",
+  preload: false,
 });
 
 const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
   variable: "--font-display",
   weight: ["400", "500", "600", "700"],
+  preload: false,
 });
 
 // Condensed poster face — homepage headlines only
@@ -18,6 +23,7 @@ const anton = Anton({
   subsets: ["latin"],
   variable: "--font-poster",
   weight: "400",
+  preload: true,
 });
 
 export const metadata: Metadata = {

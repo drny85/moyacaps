@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useMemo, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { motion, useMotionValueEvent, useScroll, useTransform, type MotionValue } from "framer-motion";
+import { m, useMotionValueEvent, useScroll, useTransform, type MotionValue } from "framer-motion";
 import { NYC_LOOKBOOK, type LookbookScene } from "@/data/lookbook";
 import { sceneKeyframes, shoppableHotspots, valueAt, type ShoppableHotspot } from "@/lib/lookbook";
 import { useCapVariants } from "@/hooks/useCapVariants";
@@ -127,7 +127,7 @@ function ScenePhoto({
   // Slow push-in while the scene is on screen
   const scale = useTransform(progress, (p) => valueAt(p, [index / count, (index + 1) / count], [1.08, 1]));
   return (
-    <motion.div style={{ opacity, scale }} className="absolute inset-0">
+    <m.div style={{ opacity, scale }} className="absolute inset-0">
       <Image
         src={scene.src}
         alt={locale === "es" ? scene.alt.es : scene.alt.en}
@@ -135,7 +135,7 @@ function ScenePhoto({
         sizes="(min-width: 1280px) 34vw, 40vw"
         className="object-cover"
       />
-    </motion.div>
+    </m.div>
   );
 }
 
@@ -144,13 +144,13 @@ function PlaceName({ text, index, count, progress }: { text: string; index: numb
   const opacity = useTransform(progress, (p) => valueAt(p, k.input, k.opacity));
   const y = useTransform(progress, (p) => valueAt(p, k.input, k.y));
   return (
-    <motion.p
+    <m.p
       style={{ opacity, y }}
       aria-hidden
       className="absolute inset-x-0 top-0 font-poster text-[clamp(4rem,9vw,8.5rem)] uppercase leading-[0.85] tracking-tight text-zinc-950 dark:text-white"
     >
       {text}
-    </motion.p>
+    </m.p>
   );
 }
 
@@ -175,7 +175,7 @@ function ScenePanel({ scene }: { scene: Scene }) {
   const drift = useParallax(ref, 40);
   return (
     <li ref={ref} className="relative aspect-[3/4] overflow-hidden rounded-[18px] bg-zinc-900">
-      <motion.div style={{ y: drift }} className="absolute inset-[-4%_0]">
+      <m.div style={{ y: drift }} className="absolute inset-[-4%_0]">
         <Image
           src={scene.src}
           alt={locale === "es" ? scene.alt.es : scene.alt.en}
@@ -183,7 +183,7 @@ function ScenePanel({ scene }: { scene: Scene }) {
           sizes="(min-width: 1024px) 31vw, (min-width: 640px) 46vw, 92vw"
           className="object-cover"
         />
-      </motion.div>
+      </m.div>
       <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-4 pt-20">
         <p className="font-poster text-4xl uppercase leading-none text-white">{locale === "es" ? scene.place.es : scene.place.en}</p>
       </div>

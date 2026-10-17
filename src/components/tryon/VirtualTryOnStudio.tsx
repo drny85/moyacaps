@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import Image from "next/image";
 import { useLocale, useTranslations } from "next-intl";
-import { motion, AnimatePresence } from "framer-motion";
+import { m, AnimatePresence } from "framer-motion";
 import {
   Camera,
   Upload,
@@ -528,7 +528,7 @@ export function VirtualTryOnStudio({
 
             {/* Cap A Overlay — anchored so brim sits at forehead */}
             {showCapOverlay && (
-              <motion.div
+              <m.div
                 key={selectedCap.id}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -574,7 +574,7 @@ export function VirtualTryOnStudio({
                     {isEs ? "↔ ↕ Arrastra la gorra" : "↔ ↕ Drag cap to move"}
                   </div>
                 </div>
-              </motion.div>
+              </m.div>
             )}
 
             {/* Split Screen Second Cap (if compare mode active) */}
@@ -603,7 +603,7 @@ export function VirtualTryOnStudio({
 
             {/* Floating Live Mirror Snap Action */}
             {isCameraActive && (
-              <motion.button
+              <m.button
                 type="button"
                 onClick={captureSnapshot}
                 initial={{ opacity: 0, y: 20 }}
@@ -612,7 +612,7 @@ export function VirtualTryOnStudio({
               >
                 <Camera className="w-4 h-4 text-moya-red" />
                 <span>{isEs ? "Capturar Foto" : "Take Snapshot"}</span>
-              </motion.button>
+              </m.button>
             )}
 
             {/* Fit Preset Badge */}
@@ -678,7 +678,7 @@ export function VirtualTryOnStudio({
           {/* ── Collapsible Precision Micro-Tuning Sliders ── */}
           <AnimatePresence>
             {showTuningHud && (
-              <motion.div
+              <m.div
                 initial={{ height: 0, opacity: 0 }}
                 animate={{ height: "auto", opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
@@ -788,7 +788,7 @@ export function VirtualTryOnStudio({
                     </div>
                   </div>
                 </div>
-              </motion.div>
+              </m.div>
             )}
           </AnimatePresence>
         </div>

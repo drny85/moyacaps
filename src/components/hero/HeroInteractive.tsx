@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { motion, useMotionValueEvent, useScroll, useTransform, type MotionValue } from "framer-motion";
+import { m, useMotionValueEvent, useScroll, useTransform, type MotionValue } from "framer-motion";
 import { ArrowRight, Rotate3d } from "lucide-react";
 import { useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
@@ -136,7 +136,7 @@ export function HeroInteractive() {
         {/* ── Stage: headline + cap, stacked by depth ── */}
         <div className="relative sm:[--cap:min(68vw,52svh)] lg:[--cap:min(42vw,52svh)]">
           {/* Far background: colorway glow, then the outlined series number. Both move slowest. */}
-          <motion.div
+          <m.div
             aria-hidden
             style={{
               y: glowY,
@@ -154,39 +154,39 @@ export function HeroInteractive() {
             style={delay(0.35)}
             className="intro-fade pointer-events-none absolute inset-x-0 top-[calc(var(--cap)*0.08)] z-0 flex justify-center"
           >
-            <motion.p
+            <m.p
               style={{ y: ghostY, rotate: ghostRotate, scale: ghostScale, opacity: ghostOpacity }}
               className="ghost-type select-none whitespace-nowrap font-poster text-[calc(var(--cap)*0.62)] leading-none"
             >
               0880
-            </motion.p>
+            </m.p>
           </div>
 
           <h1 className="relative text-center font-poster uppercase tracking-tight text-zinc-950 dark:text-white">
             {/* Line 1 waits behind the cap */}
-            <motion.span
+            <m.span
               style={{ y: line1Y, x: line1X }}
               className="relative z-10 block overflow-hidden pb-[0.06em] text-[length:var(--l1)] leading-[0.86]"
             >
               <span className="intro-rise block" style={delay(0.12)}>
                 {t("titlePrefix")}
               </span>
-            </motion.span>
+            </m.span>
             {/* Room for the cap: it overlaps both lines */}
             <span aria-hidden className="block" style={{ height: "calc(var(--cap) * 0.68 - var(--l1) * 0.42 - var(--l2) * 0.3)" }} />
             {/* Line 2 rides in front of the brim */}
-            <motion.span
+            <m.span
               style={{ y: line2Y, x: line2X }}
               className="relative z-30 block overflow-hidden pb-[0.06em] text-[length:var(--l2)] leading-[0.86] text-moya-red"
             >
               <span className="intro-rise block" style={delay(0.24)}>
                 {t("titleHighlight")}
               </span>
-            </motion.span>
+            </m.span>
           </h1>
 
           {/* The cap, between the lines */}
-          <motion.div
+          <m.div
             style={{
               y: capY,
               scale: capScale,
@@ -201,7 +201,7 @@ export function HeroInteractive() {
             {/* Platter: a dial under the cap that spins with the angle on show */}
             {/* Its centre sits at brim height: the square collapses to an ellipse around that line */}
             <div aria-hidden className="pointer-events-none absolute inset-x-[14%] bottom-[-24%] aspect-square [perspective:600px]">
-              <motion.div
+              <m.div
                 animate={{ rotateX: 74, rotateZ: platterAngle(frameIndex, Math.max(frames.length, 1)) }}
                 initial={false}
                 transition={reduceMotion ? { duration: 0 } : SPRING.scroll}
@@ -211,7 +211,7 @@ export function HeroInteractive() {
                 <span className="absolute left-1/2 bottom-0 h-1.5 w-1.5 -translate-x-1/2 translate-y-1/2 rounded-full bg-zinc-900/30 dark:bg-white/30" />
                 <span className="absolute left-0 top-1/2 h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-zinc-900/30 dark:bg-white/30" />
                 <span className="absolute right-0 top-1/2 h-1.5 w-1.5 translate-x-1/2 -translate-y-1/2 rounded-full bg-zinc-900/30 dark:bg-white/30" />
-              </motion.div>
+              </m.div>
             </div>
 
             <CapTurntable
@@ -227,7 +227,7 @@ export function HeroInteractive() {
               onFrameChange={setFrameIndex}
             />
 
-            <motion.div
+            <m.div
               initial={{ opacity: 0 }}
               animate={{ opacity: showHint ? 1 : 0 }}
               transition={{ duration: DURATION.base, delay: showHint ? 1.4 : 0, ease: EASE.out }}
@@ -235,8 +235,8 @@ export function HeroInteractive() {
             >
               <Rotate3d className="h-3.5 w-3.5" />
               <span>{t("dragHint")}</span>
-            </motion.div>
-          </motion.div>
+            </m.div>
+          </m.div>
         </div>
 
         {/* ── Colorway, name, price, calls to action ── */}

@@ -3,7 +3,7 @@
 import { useTranslations } from "next-intl";
 import Image from "next/image";
 import { useCallback, useRef, useState } from "react";
-import { AnimatePresence, motion, useMotionValueEvent, useScroll, useTransform, type MotionValue } from "framer-motion";
+import { AnimatePresence, m, useMotionValueEvent, useScroll, useTransform, type MotionValue } from "framer-motion";
 import { Reveal } from "@/components/motion/Reveal";
 import { ANATOMY_STEPS, type AnatomyCallout, type AnatomyStep } from "@/data/anatomy";
 import { useMotionPrefs } from "@/hooks/useMotionPrefs";
@@ -36,7 +36,7 @@ function Callout({ callout, index, animate }: { callout: AnatomyCallout; index: 
 
   return (
     <>
-      <motion.span
+      <m.span
         aria-hidden
         className="absolute h-2.5 w-2.5 rounded-full bg-moya-red ring-2 ring-white shadow-[0_0_0_4px_rgba(225,29,72,0.25)]"
         style={{ left: `${callout.x}%`, top: `${callout.y}%`, x: "-50%", y: "-50%" }}
@@ -44,7 +44,7 @@ function Callout({ callout, index, animate }: { callout: AnatomyCallout; index: 
         animate={{ scale: 1 }}
         transition={{ duration: DURATION.fast, delay, ease: EASE.pop }}
       />
-      <motion.span
+      <m.span
         aria-hidden
         className="absolute h-px bg-zinc-950/40 dark:bg-white/40"
         style={{ left: `${lineLeft}%`, top: `${callout.y}%`, width: `${lineWidth}%`, transformOrigin: left ? "right" : "left" }}
@@ -56,7 +56,7 @@ function Callout({ callout, index, animate }: { callout: AnatomyCallout; index: 
         className={`absolute flex max-w-[42%] -translate-y-full pb-1.5 ${left ? "justify-start" : "justify-end"}`}
         style={left ? { left: `${lineLeft}%`, top: `${callout.y}%` } : { right: `${100 - lineLeft - lineWidth}%`, top: `${callout.y}%` }}
       >
-        <motion.span
+        <m.span
           className={`font-display text-[11px] font-semibold leading-tight tracking-wide text-zinc-950 dark:text-white sm:text-xs ${
             left ? "text-left" : "text-right"
           }`}
@@ -65,7 +65,7 @@ function Callout({ callout, index, animate }: { callout: AnatomyCallout; index: 
           transition={{ duration: DURATION.fast, delay: delay + 0.2, ease: EASE.out }}
         >
           {t(callout.label)}
-        </motion.span>
+        </m.span>
       </span>
     </>
   );
@@ -97,9 +97,9 @@ function StageLayer({ progress, index }: { progress: MotionValue<number>; index:
     first ? [1, 0] : last ? [0, 1] : [0, 1, 1, 0]
   );
   return (
-    <motion.div style={{ opacity }} className="absolute inset-0">
+    <m.div style={{ opacity }} className="absolute inset-0">
       <AnglePhoto step={STEPS[index]} priority={first} />
-    </motion.div>
+    </m.div>
   );
 }
 
@@ -147,7 +147,7 @@ function SpecRow({
       } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-moya-red`}
     >
       <span aria-hidden className="absolute -top-px left-0 h-px w-full overflow-hidden">
-        <motion.span className="block h-full bg-moya-red" style={{ width: active ? fill : "0%" }} />
+        <m.span className="block h-full bg-moya-red" style={{ width: active ? fill : "0%" }} />
       </span>
       <span className="flex items-baseline gap-4">
         <span className="w-6 shrink-0 font-display text-xs tabular-nums text-zinc-500">{String(index + 1).padStart(2, "0")}</span>
@@ -158,7 +158,7 @@ function SpecRow({
       </span>
       <AnimatePresence initial={false}>
         {active && (
-          <motion.p
+          <m.p
             key="desc"
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
@@ -167,7 +167,7 @@ function SpecRow({
             className="overflow-hidden pl-10 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400"
           >
             <span className="block pt-2">{t(step.desc)}</span>
-          </motion.p>
+          </m.p>
         )}
       </AnimatePresence>
     </Tag>
@@ -247,11 +247,11 @@ function AnatomyScene() {
                 ))}
                 <div className="absolute inset-0" aria-hidden>
                   <AnimatePresence mode="wait">
-                    <motion.div key={step} className="absolute inset-0" exit={{ opacity: 0, transition: { duration: 0.12 } }}>
+                    <m.div key={step} className="absolute inset-0" exit={{ opacity: 0, transition: { duration: 0.12 } }}>
                       {STEPS[step].callouts.map((c, i) => (
                         <Callout key={c.label} callout={c} index={i} animate />
                       ))}
-                    </motion.div>
+                    </m.div>
                   </AnimatePresence>
                 </div>
               </div>

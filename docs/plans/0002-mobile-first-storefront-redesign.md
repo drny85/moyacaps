@@ -105,6 +105,38 @@ As built:
 
 Lighthouse mobile (local `next start`, median of 3, machine under load): home 75 (LCP ≈ 5.8 s, was 66 / 9.4 s), Shop 75, product page 73; CLS ≈ 0, TBT < 100 ms. **Budget not met.** JavaScript is ~705 KB of the ~1.4 MB page, and Clerk alone is ~344 KB loaded on every storefront page; images are ~141 KB. Next step is a performance pass: keep Clerk off the storefront's critical path (load it only for sign-in/account/checkout), trim framer-motion with `LazyMotion`, then re-measure on a Vercel preview (CDN-cached images, no local CPU contention).
 
+#### Performance pass (`perf/storefront-budget`, ADR 0018)
+
+As built:
+- Clerk loads lazily beside the page (`ClerkRuntime`): immediately on account/checkout/admin, after idle when a `__client_uat` cookie says the visitor is probably signed in, otherwise on the first sign-in hover, focus or click. `clerkMiddleware` runs only on those auth routes, which removes a 3-redirect Clerk handshake (+≈550 ms) from every cold storefront visit.
+- Framer Motion uses `LazyMotion` + `m` with async `domAnimation`; the Shop loads `domMax` for its layout animations. Cart drawer, drop alert, try-on modal, share toast and admin bar load as separate chunks (`DeferredOverlays`). Lenis loads only on fine-pointer devices. next-intl precompiles messages (no ICU parser in the browser). Storefront pages get only storefront message namespaces. The hero turntable paints only its front photo until idle. Only the poster font (Anton) is preloaded.
+- `bun run perf-budget` builds, serves on :3210, runs Lighthouse mobile 3× on `/en`, `/en/products` and the first product page, prints a markdown table and exits 1 if a median misses the budget (`--skip-build`, `--url <preview>`, `--runs`, `--pages`). **Local results are noisy under CPU load** (±3 points run to run at load average ≈ 6.5); compare medians taken in the same machine state, and prefer a preview deployment.
+
+Initial JavaScript (modern browsers, gzip): `/en` 381 KB → 262 KB, `/en/products` → 229 KB in our bundle, and clerk-js + `@clerk/ui` (≈ 350 KB from Clerk's CDN) no longer load for anonymous visitors.
+
+Lighthouse mobile, local `next start`, median of 3, same machine (load average ≈ 6.5):
+
+| Page | Before perf | Before LCP | After perf | After LCP | After FCP | TBT | CLS |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `/en` | 74 | 5.71 s | 87 | 3.99 s | 1.66 s (was 2.58 s) | 11 ms | 0.005 |
+| `/en/products` | 79 | 5.06 s | 88 | 3.83 s | 1.66 s (was 2.35 s) | 16 ms | 0.004 |
+| `/en/products/negro-rojo` | 81 | 4.72 s | 89 | 3.71 s | 1.66 s (was 2.18 s) | 13 ms | 0.003 |
+
+Integration check on the current line: `feat/tee-photo-quality` (new scroll-driven hero, Convex backend modules) alone vs. with this branch merged (`perf/storefront-budget-on-tee-photo-quality`), both local, median of 3, load average 13–24:
+
+| Page | tee-photo-quality | LCP | + perf branch | LCP |
+| --- | --- | --- | --- | --- |
+| `/en` | 75 | 5.83 s | 86 | 4.07 s |
+| `/en/products` | 76 | 5.72 s | 87 | 3.87 s |
+| `/en/products/negro-rojo` | 79 | 5.20 s | 89 | 3.68 s |
+
+**Budget still not met locally.** What blocks it, measured from the Lighthouse traces:
+- On localhost the real LCP happens at ≈ 190 ms, so Lighthouse's simulated slow 4G counts every request started before then as competing with the 15 KB LCP image. That is ≈ 270 KB of JS, 84 KB of fonts and ≈ 100 KB of near-viewport images. On `/en` the image's simulated download takes ≈ 1.9 s for that reason.
+- Most of the remaining JS is the floor: React DOM + the Next router (≈ 200 KB gzip of the ≈ 270 KB). Convex's client (≈ 25 KB gzip) is needed for live stock. Motion hooks (`useScroll`, `useSpring`, `animate`) keep ≈ 35 KB gzip of motion-dom / framer-motion in the first load.
+- The fonts are fetched at VeryHigh priority for visible text, so they count against FCP and LCP. Experiment: dropping Inter (49 KB) and using the system UI stack for body text gave FCP 1.22 s, `/en` 89 (LCP 3.74 s) and the product page 92 (LCP 3.39 s). That changes the brand's body typography, so it was **not** applied; it is a decision for the owner.
+- The static catalog (`src/data/caps.ts` + `catalogShots.json` + `capsManifest.ts`, ≈ 5 KB gzip) stays in the first load as `useCapVariants`' server-render fallback. Removing it needs the server to pass the catalog in as props (follow-up).
+- Not yet measured on a Vercel preview (HTTP/2, CDN images, no local CPU contention).
+
 - Order: Hero (turntable + Caps / Tees entry tiles) → Featured Products → Anatomy → Drop Radar → Tee Lookbook strip → Brand Story. Remove `ColorwayMarquee`.
 - `AnatomyScroll`: keep pinned scroll on fine-pointer desktop only; on touch render stacked panels with light parallax (`useScroll` + `useTransform` on `transform` only).
 - Tee Lookbook strip: horizontal scroll-snap of Lifestyle Shots linking to products, light parallax on images.

@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import Image from "next/image";
 import { useTranslations, useLocale } from "next-intl";
 import { useStore } from "@/store/useStore";
-import { motion, AnimatePresence } from "framer-motion";
+import { m, AnimatePresence } from "framer-motion";
 import { Check, X, MessageCircle, Copy, Sparkles, ExternalLink } from "lucide-react";
 
 export function ProductShareToast() {
@@ -51,7 +51,7 @@ export function ProductShareToast() {
   return (
     <AnimatePresence>
       {shareToast?.isOpen && (
-        <motion.div
+        <m.div
           key="share-toast"
           initial={{ opacity: 0, y: 40, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -141,7 +141,7 @@ export function ProductShareToast() {
               </button>
             </div>
           </div>
-        </motion.div>
+        </m.div>
       )}
     </AnimatePresence>
   );

@@ -3,7 +3,7 @@
 import { useStore } from "@/store/useStore";
 import { soundFx } from "@/lib/audio";
 import { Volume2, VolumeX } from "lucide-react";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 
 interface SoundToggleProps {
   compact?: boolean;
@@ -32,7 +32,7 @@ export function SoundToggle({ compact = false }: SoundToggleProps) {
       title={soundEnabled ? "Mute Haptic Soundscapes" : "Enable Haptic Soundscapes"}
       aria-label={soundEnabled ? "Mute audio" : "Enable audio"}
     >
-      <motion.div
+      <m.div
         key={soundEnabled ? "sound-on" : "sound-off"}
         initial={{ scale: 0.8, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
@@ -51,7 +51,7 @@ export function SoundToggle({ compact = false }: SoundToggleProps) {
             {!compact && <span>Audio Off</span>}
           </>
         )}
-      </motion.div>
+      </m.div>
     </button>
   );
 }
