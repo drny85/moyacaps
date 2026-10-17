@@ -163,7 +163,7 @@ export function HeroInteractive() {
           <div
             aria-hidden
             style={delay(0.35)}
-            className="intro-fade pointer-events-none absolute inset-x-0 top-[calc(var(--cap)*0.08)] z-0 flex justify-center"
+            className="intro-settle pointer-events-none absolute inset-x-0 top-[calc(var(--cap)*0.08)] z-0 flex justify-center"
           >
             <m.p
               style={{ y: ghostY, rotate: ghostRotate, scale: ghostScale, opacity: ghostOpacity }}
