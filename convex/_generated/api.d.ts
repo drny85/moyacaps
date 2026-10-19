@@ -20,6 +20,7 @@ import type * as catalog_images_functions from "../catalog/images/functions.js";
 import type * as catalog_images_header from "../catalog/images/header.js";
 import type * as catalog_images_rules from "../catalog/images/rules.js";
 import type * as catalog_images_slots from "../catalog/images/slots.js";
+import type * as catalog_images_validators from "../catalog/images/validators.js";
 import type * as catalog_inventory from "../catalog/inventory.js";
 import type * as catalog_migrations from "../catalog/migrations.js";
 import type * as catalog_model from "../catalog/model.js";
@@ -84,6 +85,7 @@ declare const fullApi: ApiFromModules<{
   "catalog/images/header": typeof catalog_images_header;
   "catalog/images/rules": typeof catalog_images_rules;
   "catalog/images/slots": typeof catalog_images_slots;
+  "catalog/images/validators": typeof catalog_images_validators;
   "catalog/inventory": typeof catalog_inventory;
   "catalog/migrations": typeof catalog_migrations;
   "catalog/model": typeof catalog_model;

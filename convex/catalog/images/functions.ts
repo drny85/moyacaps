@@ -2,26 +2,23 @@
  * Admin product images in Convex storage (ADR 0021): replace, remove, reorder, list.
  * Upload validation lives in attach.ts; the write that follows is `insertOrReplaceImage`.
  */
-import { v, ConvexError } from "convex/values";
+import { v } from "convex/values";
 import { internal } from "../../_generated/api";
 import type { Doc, Id } from "../../_generated/dataModel";
 import { internalMutation, mutation, query } from "../../_generated/server";
 import type { MutationCtx, QueryCtx } from "../../_generated/server";
 import { requireAdmin } from "../../lib/auth";
 import { actorEmail, recordCatalogEvent } from "../audit";
-import { deleteStorageQuietly, requireActiveVariant } from "../shared";
+import { deleteStorageQuietly, listCatalogVariants, requireActiveVariant } from "../shared";
+import { capAngleValidator, imageRoleValidator, imageRuleError } from "./validators";
 import { isValidSlot, sameSlot, type ImageSlot } from "./slots";
 
 /** A replaced or removed file outlives the 5-minute ISR window that may still serve its URL. */
 export const REPLACED_FILE_GRACE_MS = 15 * 60 * 1000;
 
 /** Upper bound for one product's images in a single role. */
-const MAX_IMAGES_PER_ROLE = 200;
+export const MAX_IMAGES_PER_ROLE = 200;
 
-export const imageRoleValidator = v.union(v.literal("catalog"), v.literal("lifestyle"), v.literal("angle"));
-export const capAngleValidator = v.union(v.literal("front"), v.literal("left"), v.literal("back"), v.literal("right"));
-
-const imageRuleError = (code: string) => new ConvexError({ kind: "image_rule", code });
 
 async function imagesForRole(ctx: QueryCtx, variantId: string, role: Doc<"productImages">["role"]) {
   return await ctx.db
@@ -80,6 +77,7 @@ export const insertOrReplaceImage = internalMutation({
       return { imageId: target._id };
     }
 
+    if (rows.length >= MAX_IMAGES_PER_ROLE) throw imageRuleError("too_many");
     const order = rows.reduce((max, r) => Math.max(max, r.order), -1) + 1;
     const imageId = await ctx.db.insert("productImages", {
       variantId: variant.variantId,
@@ -116,7 +114,7 @@ export const removeImage = mutation({
   handler: async (ctx, args) => {
     const actor = actorEmail(await requireAdmin(ctx));
     const image = await ctx.db.get("productImages", args.imageId);
-    if (!image) throw new ConvexError("Image not found");
+    if (!image) throw imageRuleError("not_found");
     await requireActiveVariant(ctx, image.variantId);
     await ctx.db.delete("productImages", image._id);
     await scheduleFileDelete(ctx, image.storageId);
@@ -195,7 +193,7 @@ export const listProductImages = query({
   },
 });
 
-/** Delete a replaced or removed file unless a row points at it again (e.g. the same file re-attached). */
+/** Delete a replaced or removed file unless a row or a variant still points at it. */
 export const deleteStorageFile = internalMutation({
   args: { storageId: v.id("_storage") },
   returns: v.null(),
@@ -204,7 +202,9 @@ export const deleteStorageFile = internalMutation({
       .query("productImages")
       .withIndex("by_storageId", (q) => q.eq("storageId", args.storageId))
       .first();
-    if (!stillUsed) await deleteStorageQuietly(ctx, args.storageId);
+    // Legacy single-image field (dropped in a later task); catalog-sized scan.
+    const legacyUse = stillUsed ? null : (await listCatalogVariants(ctx)).some((x) => x.storageId === args.storageId);
+    if (!stillUsed && !legacyUse) await deleteStorageQuietly(ctx, args.storageId);
     return null;
   },
 });

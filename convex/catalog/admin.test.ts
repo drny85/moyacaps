@@ -410,6 +410,8 @@ describe("archive, restore and purge", () => {
     expect(await t.run((ctx) => ctx.db.query("skus").take(5))).toEqual([]);
     expect(await t.run((ctx) => ctx.db.query("drop_alerts").take(5))).toEqual([]);
     expect(await t.run((ctx) => ctx.db.query("productImages").take(5))).toEqual([]);
+    const scheduled = await t.run((ctx) => ctx.db.system.query("_scheduled_functions").take(10));
+    expect(scheduled.filter((f) => f.name.endsWith("deleteStorageFile"))).toHaveLength(1);
     expect((await history(admin))[0]).toMatchObject({ type: "purged" });
   });
 

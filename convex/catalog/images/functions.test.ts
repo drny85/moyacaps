@@ -2,11 +2,11 @@
 import { convexTest } from "convex-test";
 import { ConvexError } from "convex/values";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { api } from "../../_generated/api";
+import { api, internal } from "../../_generated/api";
 import type { Id } from "../../_generated/dataModel";
 import schema from "../../schema";
 import { PRIMARY_ADMIN_EMAIL } from "../../lib/auth";
-import { REPLACED_FILE_GRACE_MS } from "./functions";
+import { MAX_IMAGES_PER_ROLE, REPLACED_FILE_GRACE_MS } from "./functions";
 
 const modules = import.meta.glob("/convex/**/*.ts");
 
@@ -174,6 +174,30 @@ describe("attachImage", () => {
     });
     const storageId = await store(t, png(2000, 2500, 2));
     expect(await errorData(admin.action(api.catalog.images.attach.attachImage, { variantId: "tee-1", storageId, role: "catalog", colorway: "black" }))).toEqual({ kind: "archived" });
+    expect(await readable(t, storageId)).toBe(false);
+  });
+
+  it("a failed attach never deletes a file that a row still uses", async () => {
+    const { t, admin } = setup();
+    await seed(t);
+    const storageId = await store(t, png(2000, 2500, 2));
+    await admin.action(api.catalog.images.attach.attachImage, { variantId: "tee-1", storageId, role: "catalog", colorway: "black" });
+    expect(await errorData(admin.action(api.catalog.images.attach.attachImage, { variantId: "tee-1", storageId, role: "catalog", colorway: "red" }))).toEqual({ kind: "image_rule", code: "invalid_slot" });
+    expect(await readable(t, storageId)).toBe(true);
+  });
+
+  it("rejects an insert past the per-role cap", async () => {
+    const { t, admin } = setup();
+    await seed(t);
+    await t.run(async (ctx) => {
+      const storageId = await ctx.storage.store(new Blob(["x"]));
+      for (let i = 0; i < MAX_IMAGES_PER_ROLE; i++) {
+        await ctx.db.insert("productImages", { variantId: "tee-1", role: "lifestyle", colorway: "black", order: i, storageId, sha256: "a", width: 2000, height: 2500, createdAt: 1 });
+      }
+    });
+    const storageId = await store(t, png(2000, 2500, 2));
+    expect(await errorData(admin.action(api.catalog.images.attach.attachImage, { variantId: "tee-1", storageId, role: "lifestyle", colorway: "black" }))).toEqual({ kind: "image_rule", code: "too_many" });
+    expect(await readable(t, storageId)).toBe(false);
   });
 
   it("rejects a non-admin", async () => {
@@ -181,8 +205,10 @@ describe("attachImage", () => {
     await seed(t);
     const storageId = await store(t, png(2000, 2500, 2));
     const user = t.withIdentity({ subject: "user_x", email: "x@example.com" });
-    await expect(user.action(api.catalog.images.attach.attachImage, { variantId: "tee-1", storageId, role: "catalog", colorway: "black" })).rejects.toThrow();
-    await expect(t.action(api.catalog.images.attach.attachImage, { variantId: "tee-1", storageId, role: "catalog", colorway: "black" })).rejects.toThrow();
+    const args = { variantId: "tee-1", storageId, role: "catalog" as const, colorway: "black" };
+    await expect(user.action(api.catalog.images.attach.attachImage, args)).rejects.toThrow(/Forbidden/);
+    await expect(t.action(api.catalog.images.attach.attachImage, args)).rejects.toThrow(/Unauthorized/);
+    expect(await readable(t, storageId)).toBe(true);
   });
 });
 
@@ -231,6 +257,29 @@ describe("removeImage and reorderImages", () => {
     expect(await readable(t, row!.storageId)).toBe(false);
     const events = await t.run((ctx) => ctx.db.query("catalog_events").order("desc").take(1));
     expect(events[0].type).toBe("image_removed");
+  });
+
+  it("remove of a missing image is a structured error", async () => {
+    const { t, admin } = setup();
+    await seed(t);
+    const [a] = await addLifestyle(t, admin, 1);
+    await admin.mutation(api.catalog.images.functions.removeImage, { imageId: a });
+    expect(await errorData(admin.mutation(api.catalog.images.functions.removeImage, { imageId: a }))).toEqual({ kind: "image_rule", code: "not_found" });
+  });
+
+  it("deleteStorageFile skips a file a variant's legacy storageId uses", async () => {
+    const { t } = setup();
+    await seed(t);
+    const kept = await store(t, png(10, 10, 2, 1));
+    const orphan = await store(t, png(10, 10, 2, 2));
+    await t.run(async (ctx) => {
+      const v = await ctx.db.query("variants").withIndex("by_variantId", (q) => q.eq("variantId", "oro-negro")).unique();
+      await ctx.db.patch("variants", v!._id, { storageId: kept });
+    });
+    await t.mutation(internal.catalog.images.functions.deleteStorageFile, { storageId: kept });
+    await t.mutation(internal.catalog.images.functions.deleteStorageFile, { storageId: orphan });
+    expect(await readable(t, kept)).toBe(true);
+    expect(await readable(t, orphan)).toBe(false);
   });
 
   it("non-admin cannot remove, reorder or list", async () => {

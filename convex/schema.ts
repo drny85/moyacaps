@@ -1,4 +1,5 @@
 import { defineSchema, defineTable } from "convex/server";
+import { capAngleValidator, imageRoleValidator } from "./catalog/images/validators";
 import { v } from "convex/values";
 
 export default defineSchema({
@@ -245,10 +246,8 @@ export default defineSchema({
   productImages: defineTable({
     variantId: v.string(),
     colorway: v.optional(v.string()),
-    role: v.union(v.literal("catalog"), v.literal("lifestyle"), v.literal("angle")),
-    angle: v.optional(
-      v.union(v.literal("front"), v.literal("left"), v.literal("back"), v.literal("right")),
-    ),
+    role: imageRoleValidator,
+    angle: v.optional(capAngleValidator),
     order: v.number(),
     storageId: v.id("_storage"),
     sha256: v.string(),

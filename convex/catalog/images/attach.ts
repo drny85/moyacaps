@@ -1,4 +1,4 @@
-import { v, ConvexError } from "convex/values";
+import { v } from "convex/values";
 import { internal } from "../../_generated/api";
 import type { Id } from "../../_generated/dataModel";
 import { action } from "../../_generated/server";
@@ -6,11 +6,9 @@ import { actorEmail } from "../audit";
 import { requireAdminInAction } from "../../lib/auth";
 import { readImageHeader } from "./header";
 import { checkImageUpload } from "./rules";
-import { capAngleValidator, imageRoleValidator } from "./functions";
+import { capAngleValidator, imageRoleValidator, imageRuleError } from "./validators";
 
 const HEADER_BYTES = 64 * 1024;
-
-const imageRuleError = (code: string) => new ConvexError({ kind: "image_rule", code });
 
 async function sha256Hex(buffer: ArrayBuffer): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", buffer);
@@ -48,10 +46,11 @@ export const attachImage = action({
         height: header.height,
       });
     } catch (e) {
+      // Goes through the mutation so a file that a row or product still references survives.
       try {
-        await ctx.storage.delete(args.storageId);
+        await ctx.runMutation(internal.catalog.images.functions.deleteStorageFile, { storageId: args.storageId });
       } catch {
-        // already gone
+        // cleanup failure must not mask the original error
       }
       throw e;
     }
