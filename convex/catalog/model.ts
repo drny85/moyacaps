@@ -86,7 +86,8 @@ export function isPurchaseBlockedByDrop(variant: DropFields, now: number): boole
 
 /** Toggle visibility, or set it outright when the Administrator passes a value. */
 export function nextAvailability(current: boolean | undefined, requested: boolean | undefined): boolean {
-  return requested !== undefined ? requested : !(current !== false);
+  // A row without the flag counts as hidden (ADR 0022), so toggling it shows it.
+  return requested ?? current !== true;
 }
 
 /** Fields `catalog/admin:updateVariant` may change. Absent means "leave as stored". */

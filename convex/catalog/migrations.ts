@@ -213,3 +213,23 @@ export const backfillBadges = internalMutation({
     return { updated };
   },
 });
+
+/**
+ * ADR 0022: a product is listed only when `isAvailable === true`. Rows created before that
+ * rule without the flag were visible, so this marks them visible to keep the storefront as
+ * it was. Idempotent; run on each deployment before the strict check ships.
+ */
+export const backfillAvailability = internalMutation({
+  args: {},
+  returns: v.object({ patched: v.number(), isDone: v.boolean() }),
+  handler: async (ctx) => {
+    const variants = await ctx.db.query("variants").take(MAX_CATALOG_VARIANTS);
+    let patched = 0;
+    for (const variant of variants) {
+      if (variant.isAvailable !== undefined) continue;
+      await ctx.db.patch("variants", variant._id, { isAvailable: true });
+      patched++;
+    }
+    return { patched, isDone: variants.length < MAX_CATALOG_VARIANTS };
+  },
+});

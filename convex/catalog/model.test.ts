@@ -132,8 +132,8 @@ describe("drop rules", () => {
 });
 
 describe("nextAvailability", () => {
-  it("toggles when no value is given; legacy rows without the flag count as visible", () => {
-    expect(nextAvailability(undefined, undefined)).toBe(false);
+  it("toggles when no value is given; rows without the flag count as hidden (ADR 0022)", () => {
+    expect(nextAvailability(undefined, undefined)).toBe(true);
     expect(nextAvailability(false, undefined)).toBe(true);
     expect(nextAvailability(true, undefined)).toBe(false);
   });
@@ -141,6 +141,7 @@ describe("nextAvailability", () => {
   it("sets the requested value outright", () => {
     expect(nextAvailability(false, false)).toBe(false);
     expect(nextAvailability(true, true)).toBe(true);
+    expect(nextAvailability(undefined, false)).toBe(false);
   });
 });
 

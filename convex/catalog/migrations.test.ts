@@ -84,3 +84,21 @@ describe("backfillBadges", () => {
     });
   });
 });
+
+describe("backfillAvailability", () => {
+  it("sets a missing isAvailable to true and leaves explicit values", async () => {
+    const { t } = setup();
+    await t.run(async (ctx) => {
+      await ctx.db.insert("variants", { ...cap, variantId: "unset" });
+      await ctx.db.insert("variants", { ...cap, variantId: "hidden", isAvailable: false });
+      await ctx.db.insert("variants", { ...cap, variantId: "shown", isAvailable: true });
+    });
+
+    const result = await t.mutation(internal.catalog.migrations.backfillAvailability, {});
+
+    expect(result).toEqual({ patched: 1, isDone: true });
+    const rows = await t.run((ctx) => ctx.db.query("variants").collect());
+    const byId = Object.fromEntries(rows.map((r) => [r.variantId, r.isAvailable]));
+    expect(byId).toEqual({ unset: true, hidden: false, shown: true });
+  });
+});
