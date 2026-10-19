@@ -5,6 +5,7 @@ import {
   resolveTaxCode,
   throwIfInvalid,
   validateProductFields,
+  validateTeeOptions,
   type ProductFieldsInput,
 } from "./rules";
 
@@ -103,5 +104,39 @@ describe("throwIfInvalid", () => {
       const data: unknown = e.data;
       expect(data).toEqual({ kind: "validation", errors });
     }
+  });
+});
+
+describe("validateTeeOptions", () => {
+  const cw = (id: string) => ({ id, nameEn: "Black", nameEs: "Negro", hex: "#000", borderHex: "#111111" });
+  const ok = { colorways: [cw("black"), cw("lime")], sizes: ["S", "3XL"], defaultColorway: "lime" };
+
+  it("accepts valid options", () => {
+    expect(validateTeeOptions(ok)).toEqual([]);
+  });
+
+  it("flags empty, duplicate and malformed entries with indexed fields", () => {
+    expect(validateTeeOptions({ colorways: [], sizes: [] })).toEqual([
+      { field: "colorways", code: "required" },
+      { field: "sizes", code: "required" },
+    ]);
+    const errors = validateTeeOptions({
+      colorways: [cw("black"), cw("black"), { ...cw("Bad Id"), hex: "red", nameEn: " " }],
+      sizes: ["S", "S", "XXL"],
+      defaultColorway: "none",
+      fitEn: "x".repeat(201),
+    });
+    expect(errors).toEqual(
+      expect.arrayContaining([
+        { field: "colorways[1].id", code: "taken" },
+        { field: "colorways[2].id", code: "format" },
+        { field: "colorways[2].nameEn", code: "required" },
+        { field: "colorways[2].hex", code: "format" },
+        { field: "sizes[1]", code: "taken" },
+        { field: "sizes[2]", code: "format" },
+        { field: "defaultColorway", code: "mismatch" },
+        { field: "fitEn", code: "too_long" },
+      ])
+    );
   });
 });

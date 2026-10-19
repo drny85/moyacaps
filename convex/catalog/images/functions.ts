@@ -109,6 +109,18 @@ export async function deleteAllProductImages(ctx: MutationCtx, variantId: string
   }
 }
 
+/** Delete the image rows of removed Apparel Colorways and schedule their files. */
+export async function deleteColorwayImages(ctx: MutationCtx, variantId: string, colorways: string[]) {
+  if (colorways.length === 0) return;
+  for (const role of ["catalog", "lifestyle", "angle"] as const) {
+    for (const row of await imagesForRole(ctx, variantId, role)) {
+      if (!row.colorway || !colorways.includes(row.colorway)) continue;
+      await ctx.db.delete("productImages", row._id);
+      await scheduleFileDelete(ctx, row.storageId);
+    }
+  }
+}
+
 export const removeImage = mutation({
   args: { imageId: v.id("productImages") },
   returns: v.null(),

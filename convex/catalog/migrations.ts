@@ -9,7 +9,7 @@ import { getVariant, listSkus } from "./inventory";
 import { SHIRT_VARIANTS } from "../../src/data/caps";
 import catalogShots from "../../src/data/catalogShots.json";
 import { SEED_PRODUCT, SEED_VARIANTS } from "./data";
-import { distributeStock, renamedLifestyleShot as renamed, teeFieldsPatch, TEE_SIZES } from "./model";
+import { distributeStock, renamedLifestyleShot as renamed, teeFieldsPatch, TEE_SIZES, variantCategory } from "./model";
 import { deleteStorageQuietly, MAX_CATALOG_VARIANTS } from "./shared";
 
 /** Dev/fresh-deployment seed: wipes the catalog and inserts catalog/data.ts. */
@@ -158,6 +158,29 @@ export const setApparelPriceUsd = internalMutation({
         await ctx.db.patch("variants", variant._id, { priceUsd: args.priceUsd });
         updated++;
       }
+    }
+    return { updated };
+  },
+});
+
+/**
+ * Fill the storefront badge text on featured products that have none, from the copy that
+ * was hardcoded in `toCapVariant`. Idempotent: rows with a badge or not featured are left alone.
+ */
+export const backfillBadges = internalMutation({
+  args: {},
+  returns: v.object({ updated: v.number() }),
+  handler: async (ctx) => {
+    const variants = await ctx.db.query("variants").take(MAX_CATALOG_VARIANTS);
+    let updated = 0;
+    for (const variant of variants) {
+      if (!variant.isFeatured || variant.badgeTextEn || variant.badgeTextEs) continue;
+      const isTee = variantCategory(variant) === "apparel";
+      await ctx.db.patch("variants", variant._id, {
+        badgeTextEn: isTee ? "Heavyweight Drop" : "Signature Edition",
+        badgeTextEs: isTee ? "Drop Heavyweight" : "Edición Insignia",
+      });
+      updated++;
     }
     return { updated };
   },

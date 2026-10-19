@@ -77,7 +77,14 @@ describe("createVariant", () => {
 
   it("defaults the tax code from the category", async () => {
     const { t, admin } = setup();
-    await admin.mutation(api.catalog.admin.createVariant, { ...cap, variantId: "tee-one", category: "apparel", silhouette: "tee" });
+    await admin.mutation(api.catalog.admin.createVariant, {
+      ...cap,
+      variantId: "tee-one",
+      category: "apparel",
+      silhouette: "tee",
+      colorways: [{ id: "black", nameEn: "Black", nameEs: "Negro", hex: "#000000", borderHex: "#111111" }],
+      sizes: ["M"],
+    });
     expect((await row(t, "tee-one"))?.taxCode).toBe("txcd_30011000");
   });
 

@@ -32,6 +32,7 @@ import type * as catalog_queries from "../catalog/queries.js";
 import type * as catalog_reservations from "../catalog/reservations.js";
 import type * as catalog_rules from "../catalog/rules.js";
 import type * as catalog_shared from "../catalog/shared.js";
+import type * as catalog_skuPlan from "../catalog/skuPlan.js";
 import type * as catalog_validators from "../catalog/validators.js";
 import type * as crons from "../crons.js";
 import type * as drops from "../drops.js";
@@ -101,6 +102,7 @@ declare const fullApi: ApiFromModules<{
   "catalog/reservations": typeof catalog_reservations;
   "catalog/rules": typeof catalog_rules;
   "catalog/shared": typeof catalog_shared;
+  "catalog/skuPlan": typeof catalog_skuPlan;
   "catalog/validators": typeof catalog_validators;
   crons: typeof crons;
   drops: typeof drops;

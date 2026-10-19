@@ -70,7 +70,7 @@ export async function checkStock(ctx: QueryCtx, line: StockLine): Promise<StockC
 }
 
 /** Re-derive a tee variant's aggregate stock from its SKUs. */
-async function syncTeeAggregate(ctx: MutationCtx, variant: Doc<"variants">) {
+export async function syncTeeAggregate(ctx: MutationCtx, variant: Doc<"variants">) {
   const skus = await listSkus(ctx, variant.variantId);
   const total = skus.reduce((sum, s) => sum + s.stock, 0);
   if (total !== variant.stock) await ctx.db.patch("variants", variant._id, { stock: total });

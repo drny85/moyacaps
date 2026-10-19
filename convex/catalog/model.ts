@@ -5,7 +5,7 @@
  */
 import type { Doc, Id } from "../_generated/dataModel";
 import { resolveTaxCode, validateProductFields } from "./rules";
-import type { Category, FieldError } from "./rules";
+import type { Category, FieldError, TeeColorwayInput } from "./rules";
 
 export const TEE_SIZES = ["S", "M", "L", "XL", "2XL"] as const;
 
@@ -114,6 +114,14 @@ export type VariantPatch = {
   descriptionEs?: string;
   badgeTextEn?: string;
   badgeTextEs?: string;
+  fabricEn?: string;
+  fabricEs?: string;
+  fitEn?: string;
+  fitEs?: string;
+  printPosition?: "front" | "back";
+  defaultColorway?: string;
+  colorways?: Doc<"variants">["colorways"];
+  sizes?: string[];
 };
 
 /** Payload of `catalog/admin:createVariant`. */
@@ -185,6 +193,14 @@ export function buildNewVariant(input: NewVariantInput, now: number) {
     descriptionEs: input.descriptionEs,
     badgeTextEn: input.badgeTextEn,
     badgeTextEs: input.badgeTextEs,
+    fabricEn: input.fabricEn,
+    fabricEs: input.fabricEs,
+    fitEn: input.fitEn,
+    fitEs: input.fitEs,
+    printPosition: input.printPosition,
+    defaultColorway: input.defaultColorway,
+    colorways: input.colorways,
+    sizes: input.sizes,
     updatedAt: now,
   };
 }
@@ -276,4 +292,15 @@ export function distributeStock(total: number, colorways: string[], defaultColor
     ...cell,
     stock: base + (remainder-- > 0 ? 1 : 0),
   }));
+}
+
+/**
+ * Stored colorways for admin input: a kept colorway (same id) keeps its stored shot paths,
+ * a new one starts blank because its images come from `productImages` rows.
+ */
+export function fillColorwayShots(input: TeeColorwayInput[], stored: Doc<"variants">["colorways"]) {
+  return input.map((c) => {
+    const kept = stored?.find((s) => s.id === c.id);
+    return { ...c, lifestyleImage: kept?.lifestyleImage ?? "", catalogShot: kept?.catalogShot ?? "" };
+  });
 }

@@ -130,3 +130,64 @@ export function validateProductFields(input: ProductFieldsInput): FieldError[] {
 
   return errors;
 }
+
+export const ALLOWED_SIZES = ["XS", "S", "M", "L", "XL", "2XL", "3XL"] as const;
+
+const COLORWAY_ID_MIN = 2;
+const COLORWAY_ID_MAX = 40;
+const COLORWAY_NAME_MAX = 40;
+const TEE_COPY_MAX = 200;
+
+/** Colorway fields an Administrator edits; the server fills the shot paths. */
+export type TeeColorwayInput = { id: string; nameEn: string; nameEs: string; hex: string; borderHex: string };
+
+export type TeeOptionsInput = {
+  colorways: TeeColorwayInput[];
+  sizes: string[];
+  defaultColorway?: string;
+  fabricEn?: string;
+  fabricEs?: string;
+  fitEn?: string;
+  fitEs?: string;
+};
+
+/** Validate a tee's Apparel Colorways, sizes, default colorway and fabric/fit copy. */
+export function validateTeeOptions(input: TeeOptionsInput): FieldError[] {
+  const errors: FieldError[] = [];
+  const add = (field: string, code: FieldError["code"]) => errors.push({ field, code });
+
+  if (input.colorways.length === 0) add("colorways", "required");
+  const seen = new Set<string>();
+  input.colorways.forEach((c, i) => {
+    const at = `colorways[${i}]`;
+    if (c.id.length < COLORWAY_ID_MIN || c.id.length > COLORWAY_ID_MAX || !SLUG_RE.test(c.id)) add(`${at}.id`, "format");
+    else if (seen.has(c.id)) add(`${at}.id`, "taken");
+    seen.add(c.id);
+    for (const field of ["nameEn", "nameEs"] as const) {
+      const name = c[field].trim();
+      if (name.length === 0) add(`${at}.${field}`, "required");
+      else if (name.length > COLORWAY_NAME_MAX) add(`${at}.${field}`, "too_long");
+    }
+    for (const field of ["hex", "borderHex"] as const) {
+      if (!HEX_RE.test(c[field])) add(`${at}.${field}`, "format");
+    }
+  });
+
+  if (input.sizes.length === 0) add("sizes", "required");
+  const sizeSeen = new Set<string>();
+  input.sizes.forEach((size, i) => {
+    if (!(ALLOWED_SIZES as readonly string[]).includes(size)) add(`sizes[${i}]`, "format");
+    else if (sizeSeen.has(size)) add(`sizes[${i}]`, "taken");
+    sizeSeen.add(size);
+  });
+
+  if (input.defaultColorway !== undefined && !input.colorways.some((c) => c.id === input.defaultColorway)) {
+    add("defaultColorway", "mismatch");
+  }
+
+  for (const field of ["fabricEn", "fabricEs", "fitEn", "fitEs"] as const) {
+    const value = input[field];
+    if (value !== undefined && value.length > TEE_COPY_MAX) add(field, "too_long");
+  }
+  return errors;
+}

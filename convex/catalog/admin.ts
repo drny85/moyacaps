@@ -4,26 +4,30 @@
  */
 import { query, mutation, internalMutation } from "../_generated/server";
 import type { MutationCtx } from "../_generated/server";
-import type { Id } from "../_generated/dataModel";
+import type { Doc, Id } from "../_generated/dataModel";
 import { v, ConvexError } from "convex/values";
 import { internal } from "../_generated/api";
 import { requireAdmin } from "../lib/auth";
 import schema from "../schema";
 import { dropStatusValidator, successResult, variantWithSubscribers } from "./validators";
-import { getVariant, hasSkus, listSkus, setSkuStock } from "./inventory";
+import { getSku, getVariant, hasSkus, listSkus, setSkuStock, syncTeeAggregate } from "./inventory";
 import { deleteAlertBatch } from "./drops";
-import { deleteAllProductImages } from "./images/functions";
+import { deleteAllProductImages, deleteColorwayImages } from "./images/functions";
 import {
   buildNewVariant,
   blankImageWhileVisible,
   buildVariantPatch,
+  fillColorwayShots,
   nextAvailability,
   nextUpdatedAt,
   TEE_STOCK_EDIT_ERROR,
   validateMerged,
+  variantCategory,
   versionOf,
 } from "./model";
-import { throwIfInvalid, validateProductFields } from "./rules";
+import { throwIfInvalid, validateProductFields, validateTeeOptions } from "./rules";
+import type { FieldError } from "./rules";
+import { planSkuChanges } from "./skuPlan";
 import { actorEmail, diffFields, recordCatalogEvent } from "./audit";
 import {
   countDropAlerts,
@@ -35,6 +39,17 @@ import {
   hasCatalogImageRow,
   resolveProduct,
 } from "./shared";
+
+const teeColorwayValidator = v.object({
+  id: v.string(),
+  nameEn: v.string(),
+  nameEs: v.string(),
+  hex: v.string(),
+  borderHex: v.string(),
+});
+
+/** Tee-only fields; a headwear product that sends any of them is rejected. */
+const TEE_FIELD_KEYS = ["colorways", "sizes", "defaultColorway", "fabricEn", "fabricEs", "fitEn", "fitEs", "printPosition"] as const;
 
 const categoryValidator = v.union(v.literal("headwear"), v.literal("apparel"));
 
@@ -231,7 +246,20 @@ const editableFields = {
   descriptionEs: v.string(),
   badgeTextEn: v.string(),
   badgeTextEs: v.string(),
+  colorways: v.array(teeColorwayValidator),
+  sizes: v.array(v.string()),
+  defaultColorway: v.string(),
+  fabricEn: v.string(),
+  fabricEs: v.string(),
+  fitEn: v.string(),
+  fitEs: v.string(),
+  printPosition: v.union(v.literal("front"), v.literal("back")),
 };
+
+/** Tee fields supplied on a headwear product are `mismatch` errors. */
+function teeFieldMismatches(input: Partial<Record<(typeof TEE_FIELD_KEYS)[number], unknown>>): FieldError[] {
+  return TEE_FIELD_KEYS.filter((key) => input[key] !== undefined).map((field) => ({ field, code: "mismatch" as const }));
+}
 
 /** Uploaded Catalog Shots arrive as a storage id; the row keeps their URL as `image`. */
 async function withUploadedImage<T extends { storageId?: Id<"_storage">; image?: string }>(ctx: MutationCtx, input: T): Promise<T> {
@@ -266,16 +294,43 @@ export const createVariant = mutation({
     descriptionEs: v.optional(editableFields.descriptionEs),
     badgeTextEn: v.optional(editableFields.badgeTextEn),
     badgeTextEs: v.optional(editableFields.badgeTextEs),
+    colorways: v.optional(editableFields.colorways),
+    sizes: v.optional(editableFields.sizes),
+    defaultColorway: v.optional(editableFields.defaultColorway),
+    fabricEn: v.optional(editableFields.fabricEn),
+    fabricEs: v.optional(editableFields.fabricEs),
+    fitEn: v.optional(editableFields.fitEn),
+    fitEs: v.optional(editableFields.fitEs),
+    printPosition: v.optional(editableFields.printPosition),
   },
   returns: v.object({ id: v.id("variants"), variantId: v.string() }),
   handler: async (ctx, args) => {
     const actor = actorEmail(await requireAdmin(ctx));
     const errors = validateProductFields(args);
     if (await getVariant(ctx, args.variantId)) errors.push({ field: "variantId", code: "taken" });
+    const isTee = args.category === "apparel";
+    if (isTee) {
+      errors.push(...validateTeeOptions({ ...args, colorways: args.colorways ?? [], sizes: args.sizes ?? [] }));
+    } else {
+      errors.push(...teeFieldMismatches(args));
+    }
     throwIfInvalid(errors);
 
-    const input = await withUploadedImage(ctx, args);
+    const { colorways: _colorwayInput, ...rest } = args;
+    const base = await withUploadedImage(ctx, rest);
+    const colorways = isTee ? fillColorwayShots(args.colorways!, undefined) : undefined;
+    // A tee's stock lives on its SKUs, all created at zero.
+    const input = isTee
+      ? { ...base, colorways, defaultColorway: args.defaultColorway ?? colorways![0].id, stock: 0 }
+      : base;
     const id = await ctx.db.insert("variants", buildNewVariant(input, Date.now()));
+    if (isTee) {
+      for (const colorway of colorways!) {
+        for (const size of args.sizes!) {
+          await ctx.db.insert("skus", { variantId: args.variantId, colorway: colorway.id, size, stock: 0 });
+        }
+      }
+    }
     await recordCatalogEvent(ctx, {
       variantId: args.variantId,
       type: "created",
@@ -313,6 +368,14 @@ export const updateVariant = mutation({
       descriptionEs: v.optional(editableFields.descriptionEs),
       badgeTextEn: v.optional(editableFields.badgeTextEn),
       badgeTextEs: v.optional(editableFields.badgeTextEs),
+      colorways: v.optional(editableFields.colorways),
+      sizes: v.optional(editableFields.sizes),
+      defaultColorway: v.optional(editableFields.defaultColorway),
+      fabricEn: v.optional(editableFields.fabricEn),
+      fabricEs: v.optional(editableFields.fabricEs),
+      fitEn: v.optional(editableFields.fitEn),
+      fitEs: v.optional(editableFields.fitEs),
+      printPosition: v.optional(editableFields.printPosition),
     }),
   },
   returns: v.object({ updatedAt: v.number() }),
@@ -325,12 +388,39 @@ export const updateVariant = mutation({
     if (args.patch.stock !== undefined && hasSkus(existing)) {
       throw new ConvexError(TEE_STOCK_EDIT_ERROR);
     }
-    throwIfInvalid(validateMerged(existing, args.patch));
-    if (blankImageWhileVisible(existing, args.patch, await hasCatalogImageRow(ctx, existing.variantId))) {
+    const { colorways: colorwayInput, ...patchRest } = args.patch;
+    const teeTouched = TEE_FIELD_KEYS.some((key) => args.patch[key] !== undefined);
+    const errors = validateMerged(existing, patchRest);
+    let teePatch: { colorways?: Doc<"variants">["colorways"]; defaultColorway?: string } = {};
+    let skuPlan: ReturnType<typeof planSkuChanges> | undefined;
+    let removedColorways: string[] = [];
+    if (teeTouched) {
+      if ((args.patch.category ?? variantCategory(existing)) !== "apparel") {
+        errors.push(...teeFieldMismatches(args.patch));
+      } else {
+        const colorways = colorwayInput ? fillColorwayShots(colorwayInput, existing.colorways) : (existing.colorways ?? []);
+        const sizes = args.patch.sizes ?? existing.sizes ?? [];
+        const defaultColorway = args.patch.defaultColorway ?? existing.defaultColorway ?? colorways[0]?.id;
+        errors.push(...validateTeeOptions({ ...existing, ...args.patch, colorways, sizes, defaultColorway }));
+        if (colorwayInput) teePatch = { colorways };
+        if (defaultColorway !== existing.defaultColorway) teePatch.defaultColorway = defaultColorway;
+        if (colorwayInput || args.patch.sizes) {
+          const before = { colorways: (existing.colorways ?? []).map((c) => c.id), sizes: existing.sizes ?? [] };
+          const after = { colorways: colorways.map((c) => c.id), sizes };
+          skuPlan = planSkuChanges(before, after, await listSkus(ctx, existing.variantId));
+          removedColorways = before.colorways.filter((id) => !after.colorways.includes(id));
+        }
+      }
+    }
+    throwIfInvalid(errors);
+    if (skuPlan && skuPlan.blocked.length > 0) {
+      throw new ConvexError({ kind: "sku_in_stock", cells: skuPlan.blocked });
+    }
+    if (blankImageWhileVisible(existing, patchRest, await hasCatalogImageRow(ctx, existing.variantId))) {
       throw new ConvexError({ kind: "needs_image" });
     }
 
-    const input = await withUploadedImage(ctx, args.patch);
+    const input = await withUploadedImage(ctx, { ...patchRest, ...teePatch });
     const { updatedAt, ...fields } = buildVariantPatch(existing, input, nextUpdatedAt(existing, Date.now()));
     const before: Record<string, unknown> = {};
     for (const key of Object.keys(fields)) before[key] = (existing as Record<string, unknown>)[key];
@@ -341,6 +431,18 @@ export const updateVariant = mutation({
       await deleteStorageQuietly(ctx, existing.storageId);
     }
     await ctx.db.patch("variants", existing._id, { ...fields, updatedAt });
+    if (skuPlan) {
+      for (const cell of skuPlan.insert) {
+        await ctx.db.insert("skus", { variantId: existing.variantId, ...cell, stock: 0 });
+      }
+      for (const cell of skuPlan.remove) {
+        const sku = await getSku(ctx, existing.variantId, cell.colorway, cell.size);
+        if (sku) await ctx.db.delete("skus", sku._id);
+      }
+      await deleteColorwayImages(ctx, existing.variantId, removedColorways);
+      const fresh = await ctx.db.get("variants", existing._id);
+      if (fresh) await syncTeeAggregate(ctx, fresh);
+    }
     await recordCatalogEvent(ctx, {
       variantId: existing.variantId,
       type: "updated",

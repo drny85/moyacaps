@@ -3,7 +3,6 @@ import type { ApparelColorwayOption, CapVariant } from "@/data/caps";
 
 /** A Convex variant row (image already resolved by the query) in the client `CapVariant` shape. */
 export function toCapVariant(v: Doc<"variants"> & { angles?: CapVariant["angles"] }): CapVariant {
-  const isTee = v.silhouette === "tee" || v.category === "apparel";
   return {
     id: v.variantId,
     nameEn: v.nameEn,
@@ -22,8 +21,8 @@ export function toCapVariant(v: Doc<"variants"> & { angles?: CapVariant["angles"
     priceUsd: v.priceUsd,
     isFeatured: v.isFeatured,
     isAvailable: v.isAvailable !== false,
-    tagEn: v.isFeatured ? (isTee ? "Heavyweight Drop" : "Signature Edition") : undefined,
-    tagEs: v.isFeatured ? (isTee ? "Drop Heavyweight" : "Edición Insignia") : undefined,
+    tagEn: v.badgeTextEn,
+    tagEs: v.badgeTextEs,
     isDrop: v.isDrop,
     dropDate: v.dropDate,
     dropBadgeTextEn: v.dropBadgeTextEn,
