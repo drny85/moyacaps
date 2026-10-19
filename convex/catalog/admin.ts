@@ -12,6 +12,7 @@ import schema from "../schema";
 import { dropStatusValidator, successResult, variantWithSubscribers } from "./validators";
 import { getVariant, hasSkus, listSkus, setSkuStock } from "./inventory";
 import { deleteAlertBatch } from "./drops";
+import { deleteAllProductImages } from "./images/functions";
 import {
   buildNewVariant,
   blankImageWhileVisible,
@@ -399,7 +400,7 @@ export const purgeVariant = internalMutation({
       await ctx.scheduler.runAfter(0, internal.catalog.drops.deleteDropAlertsBatch, { variantId: variant.variantId });
     }
 
-    // PR 3: delete productImages rows and schedule their files
+    await deleteAllProductImages(ctx, variant.variantId);
 
     if (variant.storageId) {
       await deleteStorageQuietly(ctx, variant.storageId);

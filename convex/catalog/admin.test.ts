@@ -402,11 +402,14 @@ describe("archive, restore and purge", () => {
     await t.run(async (ctx) => {
       await ctx.db.insert("skus", { variantId: cap.variantId, colorway: "black", size: "M", stock: 3 });
       await ctx.db.insert("drop_alerts", { variantId: cap.variantId, contact: "a@b.co", channel: "email", locale: "en", createdAt: 1 });
+      const storageId = await ctx.storage.store(new Blob(["x"]));
+      await ctx.db.insert("productImages", { variantId: cap.variantId, role: "catalog", order: 0, storageId, sha256: "a", width: 2000, height: 2500, createdAt: 1 });
     });
     await t.mutation(internal.catalog.admin.purgeVariant, { variantId: cap.variantId });
     expect(await row(t)).toBeNull();
     expect(await t.run((ctx) => ctx.db.query("skus").take(5))).toEqual([]);
     expect(await t.run((ctx) => ctx.db.query("drop_alerts").take(5))).toEqual([]);
+    expect(await t.run((ctx) => ctx.db.query("productImages").take(5))).toEqual([]);
     expect((await history(admin))[0]).toMatchObject({ type: "purged" });
   });
 
