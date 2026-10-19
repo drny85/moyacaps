@@ -20,10 +20,33 @@ export const getVariants = query({
   },
   returns: v.array(resolvedVariant),
   handler: async (ctx, args) => {
-    const variants = filterCatalogVariants(await listCatalogVariants(ctx), args);
+    // Hidden drafts (copy, storage URLs) are for Administrators only; everyone else gets the listed catalog.
+    const includeUnavailable = args.includeUnavailable === true && (await isAdmin(ctx));
+    const variants = filterCatalogVariants(await listCatalogVariants(ctx), { ...args, includeUnavailable });
     return await Promise.all(
       variants.map((v) => resolveProduct(ctx, v))
     );
+  },
+});
+
+/** Upper bound of distinct products one cart lookup reads. */
+export const MAX_CART_VARIANT_IDS = 50;
+
+/**
+ * The cart's products by id, hidden-but-not-archived ones included so the cart and checkout
+ * can mark a line unavailable. Only the first `MAX_CART_VARIANT_IDS` distinct ids are read.
+ */
+export const getCartVariants = query({
+  args: { variantIds: v.array(v.string()) },
+  returns: v.array(resolvedVariant),
+  handler: async (ctx, args) => {
+    const wanted = [...new Set(args.variantIds)].slice(0, MAX_CART_VARIANT_IDS);
+    const out = [];
+    for (const variantId of wanted) {
+      const variant = await getVariant(ctx, variantId);
+      if (variant && variant.archivedAt === undefined) out.push(await resolveProduct(ctx, variant));
+    }
+    return out;
   },
 });
 

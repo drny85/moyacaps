@@ -15,6 +15,7 @@ import { api } from "../../../convex/_generated/api";
 import { getWhatsAppOrderUrl, formatUsd } from "@/lib/whatsapp";
 import { capitalizeWords } from "@/lib/usStates";
 import { useStoreSettings } from "@/hooks/useStoreSettings";
+import { cartVariantIds } from "@/lib/cartVariantIds";
 
 export function CartDrawer() {
   const { cart, isCartOpen, closeCart, updateQuantity, removeFromCart, clearCart, currency, clampCartToStock } = useStore();
@@ -25,9 +26,8 @@ export function CartDrawer() {
   const { user, isSignedIn } = useSafeUser();
   const createCheckoutSession = useAction(api.payments.checkout.createCheckoutSession);
   const createWhatsAppCheckoutSession = useAction(api.payments.checkout.createWhatsAppCheckoutSession);
-  const convexVariants = useQuery(api.catalog.queries.getVariants, {
-    includeUnavailable: true,
-  });
+  // Only the cart's own products, hidden ones included so a line can show as unavailable.
+  const convexVariants = useQuery(api.catalog.queries.getCartVariants, { variantIds: cartVariantIds(cart) });
 
   const [checkoutStep, setCheckoutStep] = useState<"idle" | "processing" | "success">("idle");
   const [checkoutError, setCheckoutError] = useState<string | null>(null);

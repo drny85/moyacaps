@@ -6,6 +6,7 @@ import { Link } from "@/i18n/routing";
 import { useTranslations, useLocale } from "next-intl";
 import { useStore } from "@/store/useStore";
 import { useStoreSettings } from "@/hooks/useStoreSettings";
+import { cartVariantIds } from "@/lib/cartVariantIds";
 import { formatUsd } from "@/lib/whatsapp";
 import { useSafeUser, SafeSignInButton } from "@/lib/useSafeUser";
 import { useAction, useQuery } from "convex/react";
@@ -28,7 +29,7 @@ export default function CheckoutPage() {
   const { user, isLoaded, isSignedIn } = useSafeUser();
   const { cart, currency } = useStore();
   const createCheckoutSession = useAction(api.payments.checkout.createCheckoutSession);
-  const convexVariants = useQuery(api.catalog.queries.getVariants, { includeUnavailable: true });
+  const convexVariants = useQuery(api.catalog.queries.getCartVariants, { variantIds: cartVariantIds(cart) });
 
   const [status, setStatus] = useState<"idle" | "connecting" | "redirecting" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -39,7 +40,7 @@ export default function CheckoutPage() {
   const hasUnreleasedDrop = Boolean(
     convexVariants &&
       cart.some((item) => {
-        const variant = convexVariants.find((v) => v.variantId === item.id);
+        const variant = convexVariants.find((v) => v.variantId === (item.variantId || item.id));
         if (!variant) return false;
         return Boolean(
           variant.isDrop &&
