@@ -27,11 +27,12 @@ export type CatalogFilter = {
 };
 
 /** Storefront filters for `catalog/queries:getVariants`; "all" means no filter. */
-export function filterCatalogVariants<T extends Pick<Doc<"variants">, "isAvailable" | "silhouette" | "category" | "stock">>(
+export function filterCatalogVariants<T extends Pick<Doc<"variants">, "isAvailable" | "archivedAt" | "silhouette" | "category" | "stock">>(
   variants: T[],
   filter: CatalogFilter
 ): T[] {
-  let result = variants;
+  // Archived products are never storefront-visible, even to `includeUnavailable` callers.
+  let result = variants.filter((v) => v.archivedAt === undefined);
   if (!filter.includeUnavailable) {
     result = result.filter((v) => v.isAvailable !== false);
   }

@@ -35,7 +35,7 @@ export const getVariantById = query({
   returns: v.union(resolvedVariant, v.null()),
   handler: async (ctx, args) => {
     const variant = await getVariant(ctx, args.variantId);
-    if (!variant) return null;
+    if (!variant || variant.archivedAt !== undefined) return null;
     // Hidden products are visible to Administrators only; the flag is ignored for everyone else.
     if (variant.isAvailable === false && !(args.allowUnavailable && (await isAdmin(ctx)))) {
       return null;
@@ -50,7 +50,7 @@ export const getProductBySlug = query({
   returns: v.union(productPage, v.null()),
   handler: async (ctx, args) => {
     const variant = await getVariant(ctx, args.slug);
-    if (!variant) return null;
+    if (!variant || variant.archivedAt !== undefined) return null;
     // Hidden products (and their SKU stock) are visible to Administrators only.
     if (variant.isAvailable === false && !(args.allowUnavailable && (await isAdmin(ctx)))) return null;
     const resolved = await resolveVariantWithStorageUrl(ctx, variant);

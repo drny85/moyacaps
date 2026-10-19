@@ -2,7 +2,7 @@
 import { convexTest } from "convex-test";
 import { ConvexError } from "convex/values";
 import { describe, expect, it } from "vitest";
-import { api } from "../_generated/api";
+import { api, internal } from "../_generated/api";
 import schema from "../schema";
 import { PRIMARY_ADMIN_EMAIL } from "../lib/auth";
 import { TEE_STOCK_EDIT_ERROR } from "./model";
@@ -261,11 +261,11 @@ describe("single-field mutations", () => {
   });
 
   it("audits drop changes and purges", async () => {
-    const { admin } = setup();
+    const { t, admin } = setup();
     await admin.mutation(api.catalog.admin.createVariant, cap);
     await admin.mutation(api.catalog.drops.scheduleDrop, { variantId: cap.variantId, dropDate: 4_000_000_000_000 });
     expect((await history(admin))[0]).toMatchObject({ type: "drop_changed" });
-    await admin.mutation(api.catalog.admin.deleteVariant, { variantId: cap.variantId });
+    await t.mutation(internal.catalog.admin.purgeVariant, { variantId: cap.variantId });
     expect((await history(admin))[0]).toMatchObject({ type: "purged" });
   });
 });
@@ -314,5 +314,99 @@ describe("stock mutations", () => {
     const tee = await row(t, "tee-sku");
     expect(tee?.updatedAt).toBeGreaterThan(1000);
     expect(tee?.stock).toBe(7);
+  });
+});
+
+describe("archive, restore and purge", () => {
+  const archive = (admin: Admin) => admin.mutation(api.catalog.admin.archiveVariant, { variantId: cap.variantId });
+  const adminList = (admin: Admin, includeArchived?: boolean) =>
+    admin.query(api.catalog.admin.getAllProductsAdmin, includeArchived === undefined ? {} : { includeArchived });
+
+  it("archive hides the product and marks it unavailable", async () => {
+    const { t, admin } = setup();
+    await admin.mutation(api.catalog.admin.createVariant, cap);
+    expect(await archive(admin)).toEqual({ success: true });
+    const stored = await row(t);
+    expect(stored?.archivedAt).toBeTypeOf("number");
+    expect(stored?.isAvailable).toBe(false);
+    expect((await history(admin))[0]).toMatchObject({ type: "archived" });
+  });
+
+  it("archived products leave every storefront and admin read", async () => {
+    const { t, admin } = setup();
+    await admin.mutation(api.catalog.admin.createVariant, cap);
+    await archive(admin);
+    expect(await admin.query(api.catalog.queries.getVariants, { includeUnavailable: true })).toEqual([]);
+    expect(await admin.query(api.catalog.queries.getProductBySlug, { slug: cap.variantId, allowUnavailable: true })).toBeNull();
+    expect(await admin.query(api.catalog.queries.getVariantById, { variantId: cap.variantId, allowUnavailable: true })).toBeNull();
+    expect((await adminList(admin)).variants).toEqual([]);
+    expect((await adminList(admin, true)).variants.map((x) => x.variantId)).toEqual([cap.variantId]);
+    expect(await t.query(api.catalog.drops.getUpcomingDrops, { clientTime: 1 })).toEqual([]);
+  });
+
+  it("an archived upcoming drop is not on the Drop Radar", async () => {
+    const { t, admin } = setup();
+    await admin.mutation(api.catalog.admin.createVariant, cap);
+    await admin.mutation(api.catalog.drops.scheduleDrop, { variantId: cap.variantId, dropDate: 4_000_000_000_000 });
+    await archive(admin);
+    // Force the row visible: the archive flag alone must keep it off the radar.
+    await t.run(async (ctx) => {
+      const stored = await ctx.db.query("variants").first();
+      if (stored) await ctx.db.patch("variants", stored._id, { isAvailable: true });
+    });
+    expect(await t.query(api.catalog.drops.getUpcomingDrops, { clientTime: 1 })).toEqual([]);
+  });
+
+  it("restore brings it back to the admin list, still hidden", async () => {
+    const { t, admin } = setup();
+    await admin.mutation(api.catalog.admin.createVariant, cap);
+    await archive(admin);
+    expect(await admin.mutation(api.catalog.admin.restoreVariant, { variantId: cap.variantId })).toEqual({ success: true });
+    const stored = await row(t);
+    expect(stored && "archivedAt" in stored).toBe(false);
+    expect(stored?.isAvailable).toBe(false);
+    expect((await adminList(admin)).variants).toMatchObject([{ variantId: cap.variantId, isAvailable: false }]);
+    expect((await history(admin))[0]).toMatchObject({ type: "restored" });
+  });
+
+  it("archiving twice or restoring a live product adds no audit event", async () => {
+    const { admin } = setup();
+    await admin.mutation(api.catalog.admin.createVariant, cap);
+    await admin.mutation(api.catalog.admin.restoreVariant, { variantId: cap.variantId });
+    await archive(admin);
+    await archive(admin);
+    expect((await history(admin)).map((e) => e.type)).toEqual(["archived", "created"]);
+  });
+
+  it("keeps the slug reserved while archived", async () => {
+    const { admin } = setup();
+    await admin.mutation(api.catalog.admin.createVariant, cap);
+    await archive(admin);
+    expect(await errorData(admin.mutation(api.catalog.admin.createVariant, cap))).toMatchObject({
+      kind: "validation",
+      errors: [{ field: "variantId", code: "taken" }],
+    });
+  });
+
+  it("checkout stock check refuses an archived product and leaves stock unchanged", async () => {
+    const { t, admin } = setup();
+    await admin.mutation(api.catalog.admin.createVariant, cap);
+    await archive(admin);
+    expect(await t.query(internal.catalog.queries.getLineStock, { variantId: cap.variantId })).toEqual({ ok: false, reason: "unavailable" });
+    expect((await row(t))?.stock).toBe(cap.stock);
+  });
+
+  it("purge removes the row, its SKUs and its drop alerts", async () => {
+    const { t, admin } = setup();
+    await admin.mutation(api.catalog.admin.createVariant, cap);
+    await t.run(async (ctx) => {
+      await ctx.db.insert("skus", { variantId: cap.variantId, colorway: "black", size: "M", stock: 3 });
+      await ctx.db.insert("drop_alerts", { variantId: cap.variantId, contact: "a@b.co", channel: "email", locale: "en", createdAt: 1 });
+    });
+    await t.mutation(internal.catalog.admin.purgeVariant, { variantId: cap.variantId });
+    expect(await row(t)).toBeNull();
+    expect(await t.run((ctx) => ctx.db.query("skus").take(5))).toEqual([]);
+    expect(await t.run((ctx) => ctx.db.query("drop_alerts").take(5))).toEqual([]);
+    expect((await history(admin))[0]).toMatchObject({ type: "purged" });
   });
 });

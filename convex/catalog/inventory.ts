@@ -57,7 +57,7 @@ export type StockCheck =
 export async function checkStock(ctx: QueryCtx, line: StockLine): Promise<StockCheck> {
   const variant = await getVariant(ctx, line.variantId);
   if (!variant) return { ok: false, reason: "not_found" };
-  if (variant.isAvailable === false) return { ok: false, reason: "unavailable", variant };
+  if (variant.isAvailable === false || variant.archivedAt !== undefined) return { ok: false, reason: "unavailable", variant };
   if (!hasSkus(variant)) return { ok: true, variant, available: Math.max(0, variant.stock) };
 
   if (!line.colorway || !line.size) return { ok: false, reason: "option_required", variant };

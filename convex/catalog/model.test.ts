@@ -80,6 +80,12 @@ describe("filterCatalogVariants", () => {
     expect(ids(filterCatalogVariants(all, { includeUnavailable: true }))).toEqual(["cap", "hidden", "sold-out", "tee"]);
   });
 
+  it("never returns archived products, even when including unavailable ones", () => {
+    const archived = variant({ variantId: "archived", isAvailable: false, archivedAt: NOW });
+    expect(ids(filterCatalogVariants([...all, archived], { includeUnavailable: true }))).toEqual(["cap", "hidden", "sold-out", "tee"]);
+    expect(ids(filterCatalogVariants([...all, archived], {}))).toEqual(["cap", "sold-out", "tee"]);
+  });
+
   it("treats 'all' as no silhouette or category filter", () => {
     expect(ids(filterCatalogVariants(all, { silhouette: "all", category: "all" }))).toEqual(["cap", "sold-out", "tee"]);
   });

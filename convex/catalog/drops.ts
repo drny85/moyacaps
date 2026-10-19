@@ -23,7 +23,7 @@ const MAX_SUBSCRIBERS_LISTED = 1000;
 const ALERT_DELETE_BATCH = 500;
 
 /** Delete one batch of a variant's alerts; true when more may remain. */
-async function deleteAlertBatch(ctx: MutationCtx, variantId: string): Promise<boolean> {
+export async function deleteAlertBatch(ctx: MutationCtx, variantId: string): Promise<boolean> {
   const alerts = await ctx.db
     .query("drop_alerts")
     .withIndex("by_variantId", (q) => q.eq("variantId", variantId))
@@ -43,7 +43,7 @@ export const getUpcomingDrops = query({
   returns: v.array(variantWithSubscribers),
   handler: async (ctx, args) => {
     const rawVariants = await listCatalogVariants(ctx);
-    const dropVariants = rawVariants.filter((v) => isUpcomingDrop(v, args.clientTime));
+    const dropVariants = rawVariants.filter((v) => v.archivedAt === undefined && isUpcomingDrop(v, args.clientTime));
 
     // Sort by earliest dropDate
     dropVariants.sort((a, b) => (a.dropDate || 0) - (b.dropDate || 0));

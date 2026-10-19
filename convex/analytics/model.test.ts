@@ -101,3 +101,18 @@ describe("computeAttentionStats", () => {
     });
   });
 });
+
+describe("archived products", () => {
+  const archived = { ...variant("old-cap", 0), archivedAt: NOW };
+
+  it("computeAnalytics ignores them in stock totals and low-stock", () => {
+    const result = computeAnalytics([], [variant("cap", 3), archived], NOW);
+    expect(result.lowStockVariants.map((v) => v.variantId)).toEqual(["cap"]);
+    expect(result.inventorySummary).toMatchObject({ totalVariantsCount: 1, totalInventoryUnits: 3, outOfStockCount: 0 });
+  });
+
+  it("computeAttentionStats ignores them in the low-stock list", () => {
+    const result = computeAttentionStats([], [], 0, [variant("cap", 1), archived], NOW);
+    expect(result.lowStockVariants.map((v) => v.variantId)).toEqual(["cap"]);
+  });
+});

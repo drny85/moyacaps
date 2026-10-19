@@ -15,7 +15,6 @@ import {
   Layers,
   Sparkles,
   Edit2,
-  Trash2,
   Check,
   RotateCw,
   ExternalLink,
@@ -36,6 +35,8 @@ import {
   Clock,
   Calendar,
   Flame,
+  Archive,
+  ArchiveRestore,
 } from "lucide-react";
 import StockConfirmDialog, { StockConfirmTarget } from "@/components/admin/StockConfirmDialog";
 import { TeeSkuStockDialog } from "@/components/admin/TeeSkuStockDialog";
@@ -65,7 +66,8 @@ export default function AdminProductsPage() {
   useLockBodyScroll(Boolean(editingVariant));
   const [isNewVariant, setIsNewVariant] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [archiveConfirmId, setArchiveConfirmId] = useState<string | null>(null);
+  const [showArchived, setShowArchived] = useState(false);
 
   // Stock Confirmation Safeguard State
   const [stockConfirmTarget, setStockConfirmTarget] = useState<StockConfirmTarget | null>(null);
@@ -85,13 +87,14 @@ export default function AdminProductsPage() {
   const [feedbackStockId, setFeedbackStockId] = useState<string | null>(null);
 
   // Convex data & mutations
-  const data = useQuery(api.catalog.admin.getAllProductsAdmin);
+  const data = useQuery(api.catalog.admin.getAllProductsAdmin, { includeArchived: showArchived });
   const adjustStock = useMutation(api.catalog.admin.adjustVariantStock);
   const toggleFeatured = useMutation(api.catalog.admin.toggleVariantFeatured);
   const toggleAvailable = useMutation(api.catalog.admin.toggleVariantAvailable);
   const createVariant = useMutation(api.catalog.admin.createVariant);
   const updateVariant = useMutation(api.catalog.admin.updateVariant);
-  const deleteVariant = useMutation(api.catalog.admin.deleteVariant);
+  const archiveVariant = useMutation(api.catalog.admin.archiveVariant);
+  const restoreVariant = useMutation(api.catalog.admin.restoreVariant);
   const generateUploadUrl = useMutation(api.catalog.admin.generateUploadUrl);
   const updateVariantDropStatus = useMutation(api.catalog.drops.updateVariantDropStatus);
 
@@ -439,12 +442,20 @@ export default function AdminProductsPage() {
     await executeSaveVariant();
   };
 
-  const handleDeleteVariant = async (variantId: string) => {
+  const handleArchiveVariant = async (variantId: string) => {
     try {
-      await deleteVariant({ variantId });
-      setDeleteConfirmId(null);
+      await archiveVariant({ variantId });
+      setArchiveConfirmId(null);
     } catch (err) {
-      console.error("Failed to delete variant", err);
+      console.error("Failed to archive variant", err);
+    }
+  };
+
+  const handleRestoreVariant = async (variantId: string) => {
+    try {
+      await restoreVariant({ variantId });
+    } catch (err) {
+      console.error("Failed to restore variant", err);
     }
   };
 
@@ -586,6 +597,11 @@ export default function AdminProductsPage() {
             </button>
           </div>
 
+          <label className="flex items-center gap-2 text-xs font-medium text-zinc-600 dark:text-zinc-400 cursor-pointer">
+            <input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} />
+            <span>{t("showArchived")}</span>
+          </label>
+
           {/* Availability Filter Buttons */}
           <div className="flex items-center gap-1.5 p-1 rounded-xl bg-zinc-100/80 dark:bg-white/[0.04]">
             <button
@@ -655,6 +671,7 @@ export default function AdminProductsPage() {
                 {filteredVariants.map((variant) => {
                   const isUpdating = updatingStockId === variant.variantId;
                   const isSuccess = feedbackStockId === variant.variantId;
+                  const isArchived = variant.archivedAt !== undefined;
 
                   return (
                     <tr
@@ -687,6 +704,11 @@ export default function AdminProductsPage() {
                       <td className="py-3 px-4">
                         <span className="font-semibold text-zinc-900 dark:text-white block">
                           {variant.nameEn}
+                          {isArchived && (
+                            <span className="ml-2 px-1.5 py-0.5 rounded-md bg-zinc-500/15 text-zinc-600 dark:text-zinc-400 border border-zinc-500/20 text-[10px] font-mono font-bold uppercase align-middle">
+                              {t("archivedBadge")}
+                            </span>
+                          )}
                         </span>
                         <span className="text-[11px] text-zinc-600 dark:text-zinc-400 block">
                           {variant.nameEs}
@@ -739,7 +761,7 @@ export default function AdminProductsPage() {
                             {variant.stock} left
                           </span>
 
-                          {variant.colorways?.length ? (
+                          {isArchived ? null : variant.colorways?.length ? (
                             <button
                               type="button"
                               onClick={() => setSkuEditorVariantId(variant.variantId)}
@@ -789,6 +811,9 @@ export default function AdminProductsPage() {
 
                       {/* Availability Toggle */}
                       <td className="py-3 px-4 text-center">
+                        {isArchived ? (
+                          <span className="text-zinc-400">—</span>
+                        ) : (
                         <button
                           type="button"
                           onClick={() => requestToggleAvailability(variant)}
@@ -811,10 +836,14 @@ export default function AdminProductsPage() {
                             </>
                           )}
                         </button>
+                        )}
                       </td>
 
                       {/* Featured Toggle */}
                       <td className="py-3 px-4 text-center">
+                        {isArchived ? (
+                          <span className="text-zinc-400">—</span>
+                        ) : (
                         <button
                           onClick={() => handleToggleFeatured(variant.variantId)}
                           className={`p-1.5 rounded-lg transition-colors ${
@@ -826,6 +855,7 @@ export default function AdminProductsPage() {
                         >
                           <Star className={`w-4 h-4 ${variant.isFeatured ? "fill-amber-500" : ""}`} />
                         </button>
+                        )}
                       </td>
 
                       {/* VIP Drop Status */}
@@ -885,13 +915,24 @@ export default function AdminProductsPage() {
                             <Eye className="w-3.5 h-3.5" />
                           </Link>
 
-                          <button
-                            onClick={() => setDeleteConfirmId(variant.variantId)}
-                            className="p-1.5 rounded-lg text-zinc-600 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
-                            title="Delete"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          {isArchived ? (
+                            <button
+                              onClick={() => handleRestoreVariant(variant.variantId)}
+                              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/[0.06] transition-colors"
+                              title={t("restore")}
+                            >
+                              <ArchiveRestore className="w-3.5 h-3.5" />
+                              <span>{t("restore")}</span>
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => setArchiveConfirmId(variant.variantId)}
+                              className="p-1.5 rounded-lg text-zinc-600 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
+                              title={t("archive")}
+                            >
+                              <Archive className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -1421,8 +1462,8 @@ export default function AdminProductsPage() {
         isProcessing={isSavingDropSchedule}
       />
 
-      {/* ── Modal: Delete Confirmation ── */}
-      {deleteConfirmId && (
+      {/* ── Modal: Archive Confirmation ── */}
+      {archiveConfirmId && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="max-w-md w-full bg-white dark:bg-[#0c0c14] border border-red-500/20 rounded-2xl p-6 shadow-2xl space-y-4 text-center">
             <div className="w-12 h-12 rounded-2xl bg-red-500/10 text-red-500 flex items-center justify-center mx-auto">
@@ -1430,24 +1471,24 @@ export default function AdminProductsPage() {
             </div>
 
             <h3 className="font-display font-bold text-lg text-zinc-900 dark:text-white">
-              Delete Colorway
+              {t("archiveTitle")}
             </h3>
             <p className="text-xs text-zinc-600 dark:text-zinc-400">
-              {t("deleteConfirm")} Colorway slug: <span className="font-mono font-bold text-zinc-900 dark:text-white">{deleteConfirmId}</span>
+              {t("archiveConfirm")} <span className="font-mono font-bold text-zinc-900 dark:text-white">{archiveConfirmId}</span>
             </p>
 
             <div className="flex items-center gap-3 pt-2">
               <button
-                onClick={() => setDeleteConfirmId(null)}
+                onClick={() => setArchiveConfirmId(null)}
                 className="flex-1 py-2 px-3 rounded-xl border border-zinc-200 dark:border-white/10 text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-white/5 transition-colors"
               >
-                Keep Colorway
+                {t("archiveKeep")}
               </button>
               <button
-                onClick={() => handleDeleteVariant(deleteConfirmId)}
+                onClick={() => handleArchiveVariant(archiveConfirmId)}
                 className="flex-1 py-2 px-3 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-semibold transition-colors shadow-md shadow-red-600/20"
               >
-                Yes, Delete
+                {t("archiveAction")}
               </button>
             </div>
           </div>

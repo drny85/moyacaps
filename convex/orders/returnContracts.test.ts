@@ -171,7 +171,8 @@ describe("catalog and drop reads match their return validators", () => {
     ).toMatchObject({ alreadySubscribed: false });
     expect(await admin.mutation(api.catalog.drops.deleteDrop, { variantId: "drop-cap" })).toEqual({ success: true, variantId: "drop-cap" });
     expect(await admin.query(api.catalog.drops.getDropSubscribers, { variantId: "drop-cap" })).toEqual([]);
-    expect(await admin.mutation(api.catalog.admin.deleteVariant, { variantId: "new-cap" })).toEqual({ success: true });
+    expect(await admin.mutation(api.catalog.admin.archiveVariant, { variantId: "new-cap" })).toEqual({ success: true });
+    expect(await admin.mutation(api.catalog.admin.restoreVariant, { variantId: "new-cap" })).toEqual({ success: true });
   });
 });
 

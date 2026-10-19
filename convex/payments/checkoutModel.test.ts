@@ -121,6 +121,15 @@ describe("validateCartLines", () => {
     ).toBe("Producto no disponible: gone");
   });
 
+  it("rejects an archived product: no variant is returned, and a stock check says unavailable", () => {
+    expect(errorOf(() => validateCartLines([{ variantId: "negro-rojo", quantity: 1 }], [null], [{ ok: false, reason: "unavailable" }], opts))).toBe(
+      "Product not found or unavailable: negro-rojo"
+    );
+    expect(errorOf(() => validateCartLines([{ variantId: "negro-rojo", quantity: 1 }], [cap], [{ ok: false, reason: "unavailable" }], opts))).toBe(
+      lineStockError("unavailable", "Black / Red", false)
+    );
+  });
+
   it("rejects failed SKU checks, sold-out lines and oversells", () => {
     expect(errorOf(() => validateCartLines([{ variantId: "eagle-clover-tee", quantity: 1 }], [tee], [{ ok: false, reason: "option_required" }], opts))).toBe(
       'Choose a valid colorway and size for "Eagle Clover Tee".'

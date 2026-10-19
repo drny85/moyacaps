@@ -6,10 +6,12 @@ import { query, mutation, internalMutation } from "../_generated/server";
 import type { MutationCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 import { v, ConvexError } from "convex/values";
+import { internal } from "../_generated/api";
 import { requireAdmin } from "../lib/auth";
 import schema from "../schema";
 import { dropStatusValidator, successResult, variantWithSubscribers } from "./validators";
-import { getVariant, hasSkus, setSkuStock } from "./inventory";
+import { getVariant, hasSkus, listSkus, setSkuStock } from "./inventory";
+import { deleteAlertBatch } from "./drops";
 import {
   buildNewVariant,
   blankImageWhileVisible,
@@ -76,13 +78,13 @@ export const setVariantStorageId = internalMutation({
 });
 
 export const getAllProductsAdmin = query({
-  args: {},
+  args: { includeArchived: v.optional(v.boolean()) },
   returns: v.object({ products: v.array(schema.doc("products")), variants: v.array(variantWithSubscribers) }),
-  handler: async (ctx) => {
+  handler: async (ctx, args) => {
     await requireAdmin(ctx);
     // The products table holds the single collection record seeded by seedAll.
     const products = await ctx.db.query("products").take(50);
-    const rawVariants = await listCatalogVariants(ctx);
+    const rawVariants = (await listCatalogVariants(ctx)).filter((v) => args.includeArchived || v.archivedAt === undefined);
     const variants = await Promise.all(
       rawVariants.map(async (v) => {
         const resolved = await resolveVariantWithStorageUrl(ctx, v);
@@ -343,26 +345,68 @@ export const updateVariant = mutation({
   },
 });
 
-export const deleteVariant = mutation({
-  args: {
-    variantId: v.string(),
-  },
+/**
+ * Archive replaces delete: the product leaves the storefront, checkout and the default
+ * admin list, but its slug stays reserved and its history stays intact.
+ */
+export const archiveVariant = mutation({
+  args: { variantId: v.string() },
   returns: successResult,
   handler: async (ctx, args) => {
     const actor = actorEmail(await requireAdmin(ctx));
     const variant = await requireVariant(ctx, args.variantId);
+    if (variant.archivedAt !== undefined) return { success: true };
+    await patchVariantAudited(ctx, variant, { archivedAt: Date.now(), isAvailable: false }, "archived", actor);
+    return { success: true };
+  },
+});
+
+/** Un-archive a product. It stays hidden (`isAvailable: false`) until an Administrator shows it. */
+export const restoreVariant = mutation({
+  args: { variantId: v.string() },
+  returns: successResult,
+  handler: async (ctx, args) => {
+    const actor = actorEmail(await requireAdmin(ctx));
+    const variant = await requireVariant(ctx, args.variantId);
+    await patchVariantAudited(ctx, variant, { archivedAt: undefined }, "restored", actor);
+    return { success: true };
+  },
+});
+
+/** Drop-alert batches one purge deletes inline before it hands the rest to the scheduler. */
+const PURGE_ALERT_BATCHES = 10;
+
+/**
+ * INTERNAL, never exposed in the UI: permanently delete a product with its SKUs, drop
+ * alerts and uploaded image. The audit event outlives the row.
+ */
+export const purgeVariant = internalMutation({
+  args: { variantId: v.string() },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const variant = await requireVariant(ctx, args.variantId);
+
+    for (const sku of await listSkus(ctx, variant.variantId)) {
+      await ctx.db.delete("skus", sku._id);
+    }
+
+    let moreAlerts = true;
+    for (let i = 0; i < PURGE_ALERT_BATCHES && moreAlerts; i++) {
+      moreAlerts = await deleteAlertBatch(ctx, variant.variantId);
+    }
+    if (moreAlerts) {
+      await ctx.scheduler.runAfter(0, internal.catalog.drops.deleteDropAlertsBatch, { variantId: variant.variantId });
+    }
+
+    // PR 3: delete productImages rows and schedule their files
 
     if (variant.storageId) {
       await deleteStorageQuietly(ctx, variant.storageId);
     }
 
-    await ctx.db.delete(variant._id);
-    await recordCatalogEvent(ctx, {
-      variantId: args.variantId,
-      type: "purged",
-      actor,
-    });
-    return { success: true };
+    await ctx.db.delete("variants", variant._id);
+    await recordCatalogEvent(ctx, { variantId: variant.variantId, type: "purged", actor: "system" });
+    return null;
   },
 });
 

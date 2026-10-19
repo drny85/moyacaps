@@ -106,7 +106,7 @@ export default function AdminDropsPage() {
   // Queries
   const clientTime = useMinuteClock();
   const dropsData = useQuery(api.catalog.drops.getAllDropsAdmin, { clientTime });
-  const productsData = useQuery(api.catalog.admin.getAllProductsAdmin);
+  const productsData = useQuery(api.catalog.admin.getAllProductsAdmin, {});
   const subscribersData = useQuery(api.catalog.drops.getDropSubscribersList, {});
 
   // Mutations
