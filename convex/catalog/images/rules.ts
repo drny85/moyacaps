@@ -5,7 +5,7 @@ export type CapAngle = "front" | "left" | "back" | "right";
 export type ImageRuleError = "unsupported_format" | "too_large" | "too_small" | "needs_transparency";
 
 export const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
-export const MIN_SHORT_SIDE = 1600;
+export const MIN_SHORT_SIDE = 800;
 
 /** `bytes` is the full file size, not the length of the header slice. */
 export function checkImageUpload(input: {

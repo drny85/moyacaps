@@ -443,7 +443,7 @@
         "errors": {
           "unsupported_format": "Archivo no compatible. Usa una imagen PNG, JPEG o WebP.",
           "too_large": "El archivo es muy grande. El máximo es 10 MB.",
-          "too_small": "La imagen es muy pequeña. El lado corto debe medir al menos 1600 px.",
+          "too_small": "La imagen es muy pequeña. El lado corto debe medir al menos 800 px.",
           "needs_transparency": "Las fotos de ángulo necesitan fondo transparente (PNG o WebP con alfa).",
           "invalid_slot": "Ese espacio de imagen no es válido para este producto.",
           "too_many": "Esta sección llegó a su límite de imágenes.",

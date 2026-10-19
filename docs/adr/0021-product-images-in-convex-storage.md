@@ -5,7 +5,7 @@ Product photos lived in `public/` and in string fields on `variants` (`catalogSh
 ## Decisions
 
 1. **`productImages` rows.** Each row holds `variantId`, `colorway?`, `role` (`catalog | lifestyle | angle`), `angle?` (`front | left | back | right`), `order`, `storageId`, `sha256`, `width`, `height` and `createdAt`.
-2. **Upload rules.** Administrator only. JPEG, PNG or WebP, at most 10 MB. Catalog and lifestyle images need a short side of at least 1600 px. Angle images must be PNG or WebP with alpha. The client checks the rules and the server checks them again by reading the file header.
+2. **Upload rules.** Administrator only. JPEG, PNG or WebP, at most 10 MB. Catalog and lifestyle images need a short side of at least 800 px (lowered from 1600 px on 2026-10-19: most of the store's exported product photos are 896–1200 px on the short side). Angle images must be PNG or WebP with alpha. The client checks the rules and the server checks them again by reading the file header.
 3. **Deferred deletion.** Replacing or removing an image deletes the old file 15 minutes later, after the 5-minute ISR window (ADR 0020). A daily cron deletes unreferenced storage files older than 24 h.
 4. **Reads prefer rows, then legacy fields.** Reads use `productImages` first and fall back to the legacy string fields and `catalogShots.json` angles, so the migration can run incrementally.
 5. **Angles gate Try-On.** A cap without angle images is left out of Try-On and the turntable.

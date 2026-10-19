@@ -2,7 +2,7 @@
  * One-off import of existing product images into `productImages` (ADR 0021, decision 7),
  * driven by scripts/migrate-product-images.ts. Everything here is idempotent and never
  * overwrites an image an Administrator uploaded. Grandfathered assets are not held to the
- * upload rules (1600px short side, alpha): only their real dimensions are recorded.
+ * upload rules (800px short side, alpha): only their real dimensions are recorded.
  */
 import { ConvexError, v } from "convex/values";
 import { internal } from "../../_generated/api";

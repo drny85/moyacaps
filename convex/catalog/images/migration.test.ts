@@ -46,7 +46,7 @@ const rows = (t: Awaited<ReturnType<typeof setup>>["t"]) => t.run((ctx) => ctx.d
 const base = { width: 800, height: 1000 };
 
 describe("importImage", () => {
-  it("inserts a row, even below the 1600px upload rule", async () => {
+  it("inserts a row without applying the upload rules", async () => {
     const { t, file } = await setup();
     const storageId = await file("a");
     const r = await t.mutation(internal.catalog.images.migration.importImage, {

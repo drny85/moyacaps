@@ -27,7 +27,7 @@ describe("preflightImage", () => {
     expect(await preflightImage(file(new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8, 9])), "catalog")).toBe("unsupported_format");
   });
   it("rejects a small photo as too_small", async () => {
-    expect(await preflightImage(file(jpegSOF(800, 1000)), "lifestyle")).toBe("too_small");
+    expect(await preflightImage(file(jpegSOF(600, 750)), "lifestyle")).toBe("too_small");
   });
   it("uses the file size, not the slice, for too_large", async () => {
     const big = new Uint8Array(10 * 1024 * 1024 + 1);
@@ -61,7 +61,7 @@ describe("preflightSummary", () => {
 
   it("checks type, size and short side for a Catalog Shot", () => {
     expect(ids(preflightSummary({ role: "catalog", bytes: 1000, header: header(2000, 2500) }))).toEqual(["type:pass", "size:pass", "shortSide:pass"]);
-    expect(ids(preflightSummary({ role: "lifestyle", bytes: 11 * 1024 * 1024, header: header(1000, 2500) }))).toEqual(["type:pass", "size:fail", "shortSide:fail"]);
+    expect(ids(preflightSummary({ role: "lifestyle", bytes: 11 * 1024 * 1024, header: header(700, 2500) }))).toEqual(["type:pass", "size:fail", "shortSide:fail"]);
   });
 
   it("checks transparency instead of the short side for an Angle Shot", () => {
