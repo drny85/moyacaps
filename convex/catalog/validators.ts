@@ -5,7 +5,10 @@ import schema from "../schema";
 export const variantDoc = schema.doc("variants");
 
 /** A variant with its uploaded image resolved to a URL and `isAvailable` always set. */
-export const resolvedVariant = variantDoc.extend({ isAvailable: v.boolean() });
+export const resolvedVariant = variantDoc.extend({
+  isAvailable: v.boolean(),
+  angles: v.optional(v.object({ front: v.string(), left: v.string(), back: v.string(), right: v.string() })),
+});
 
 export const variantWithSubscribers = resolvedVariant.extend({ subscribersCount: v.number() });
 

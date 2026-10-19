@@ -13,7 +13,9 @@ export const ANALYTICS_LOW_STOCK_UNITS = 5;
 /** Order-desk attention low-stock threshold (units). */
 export const ATTENTION_LOW_STOCK_UNITS = 2;
 
-export function computeAnalytics(orders: Doc<"orders">[], variants: Doc<"variants">[], now: number) {
+export function computeAnalytics(orders: Doc<"orders">[], allVariants: Doc<"variants">[], now: number) {
+  // Archived products are out of the catalog: they do not count toward stock or low-stock views.
+  const variants = allVariants.filter((v) => v.archivedAt === undefined);
   let totalRevenue = 0;
   let completedOrdersCount = 0;
   let stripeRevenue = 0;
@@ -127,9 +129,10 @@ export function computeAttentionStats(
   paidOrders: Array<{ createdAt?: number }>,
   whatsappOrders: unknown[],
   latestOrderTimestamp: number,
-  variants: Doc<"variants">[],
+  allVariants: Doc<"variants">[],
   now: number
 ) {
+  const variants = allVariants.filter((v) => v.archivedAt === undefined);
   const twentyFourHoursAgo = now - ONE_DAY_MS;
   const unfulfilledPaid = paidOrders.length;
   const pendingWhatsApp = whatsappOrders.length;

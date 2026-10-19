@@ -9,7 +9,8 @@ import { internal } from "../_generated/api";
 import schema from "../schema";
 import { requireAdmin } from "../lib/auth";
 import { computedDropStatus, hasDropHistory, isUpcomingDrop } from "./model";
-import { countDropAlerts, listCatalogVariants, requireVariant, resolveVariantWithStorageUrl } from "./shared";
+import { actorEmail } from "./audit";
+import { countDropAlerts, listCatalogVariants, patchVariantAudited, requireActiveVariant, requireVariant, requireVersion, resolveProduct } from "./shared";
 import { adminDropRow, dropStatusValidator, dropSubscriberRow, variantWithSubscribers } from "./validators";
 
 /**
@@ -22,7 +23,7 @@ const MAX_SUBSCRIBERS_LISTED = 1000;
 const ALERT_DELETE_BATCH = 500;
 
 /** Delete one batch of a variant's alerts; true when more may remain. */
-async function deleteAlertBatch(ctx: MutationCtx, variantId: string): Promise<boolean> {
+export async function deleteAlertBatch(ctx: MutationCtx, variantId: string): Promise<boolean> {
   const alerts = await ctx.db
     .query("drop_alerts")
     .withIndex("by_variantId", (q) => q.eq("variantId", variantId))
@@ -42,14 +43,14 @@ export const getUpcomingDrops = query({
   returns: v.array(variantWithSubscribers),
   handler: async (ctx, args) => {
     const rawVariants = await listCatalogVariants(ctx);
-    const dropVariants = rawVariants.filter((v) => isUpcomingDrop(v, args.clientTime));
+    const dropVariants = rawVariants.filter((v) => v.archivedAt === undefined && isUpcomingDrop(v, args.clientTime));
 
     // Sort by earliest dropDate
     dropVariants.sort((a, b) => (a.dropDate || 0) - (b.dropDate || 0));
 
     return await Promise.all(
       dropVariants.map(async (v) => {
-        const withUrl = await resolveVariantWithStorageUrl(ctx, v);
+        const withUrl = await resolveProduct(ctx, v);
         return {
           ...withUrl,
           subscribersCount: await countDropAlerts(ctx, v.variantId),
@@ -111,23 +112,38 @@ export const updateVariantDropStatus = mutation({
     dropBadgeTextEn: v.optional(v.string()),
     dropBadgeTextEs: v.optional(v.string()),
     dropStatus: v.optional(dropStatusValidator),
+    /** The editor's row version; when given, a newer row is rejected as `stale`. */
+    expectedUpdatedAt: v.optional(v.number()),
   },
-  returns: v.object({ success: v.boolean(), variantId: v.string(), isDrop: v.boolean(), dropStatus: dropStatusValidator }),
+  returns: v.object({
+    success: v.boolean(),
+    variantId: v.string(),
+    isDrop: v.boolean(),
+    dropStatus: dropStatusValidator,
+    updatedAt: v.number(),
+  }),
   handler: async (ctx, args) => {
-    await requireAdmin(ctx);
-    const variant = await requireVariant(ctx, args.variantId);
+    const actor = actorEmail(await requireAdmin(ctx));
+    const variant = await requireActiveVariant(ctx, args.variantId);
+    if (args.expectedUpdatedAt !== undefined) requireVersion(variant, args.expectedUpdatedAt);
 
     const nextStatus: "scheduled" | "live" | "archived" = args.dropStatus || (args.isDrop ? "scheduled" : "archived");
 
-    await ctx.db.patch(variant._id, {
-      isDrop: args.isDrop,
-      dropDate: args.isDrop ? (args.dropDate || Date.now() + 86400000 * 2) : undefined,
-      dropBadgeTextEn: args.dropBadgeTextEn,
-      dropBadgeTextEs: args.dropBadgeTextEs,
-      dropStatus: nextStatus,
-    });
+    const updatedAt = await patchVariantAudited(
+      ctx,
+      variant,
+      {
+        isDrop: args.isDrop,
+        dropDate: args.isDrop ? (args.dropDate || Date.now() + 86400000 * 2) : undefined,
+        dropBadgeTextEn: args.dropBadgeTextEn,
+        dropBadgeTextEs: args.dropBadgeTextEs,
+        dropStatus: nextStatus,
+      },
+      "drop_changed",
+      actor
+    );
 
-    return { success: true, variantId: args.variantId, isDrop: args.isDrop, dropStatus: nextStatus };
+    return { success: true, variantId: args.variantId, isDrop: args.isDrop, dropStatus: nextStatus, updatedAt };
   },
 });
 
@@ -140,16 +156,22 @@ export const scheduleDrop = mutation({
   },
   returns: v.object({ success: v.boolean(), variantId: v.string(), dropDate: v.number(), dropStatus: v.literal("scheduled") }),
   handler: async (ctx, args) => {
-    await requireAdmin(ctx);
-    const variant = await requireVariant(ctx, args.variantId);
+    const actor = actorEmail(await requireAdmin(ctx));
+    const variant = await requireActiveVariant(ctx, args.variantId);
 
-    await ctx.db.patch(variant._id, {
-      isDrop: true,
-      dropDate: args.dropDate,
-      dropBadgeTextEn: args.dropBadgeTextEn?.trim() || "VIP Exclusive Drop",
-      dropBadgeTextEs: args.dropBadgeTextEs?.trim() || "Drop Exclusivo VIP",
-      dropStatus: "scheduled",
-    });
+    await patchVariantAudited(
+      ctx,
+      variant,
+      {
+        isDrop: true,
+        dropDate: args.dropDate,
+        dropBadgeTextEn: args.dropBadgeTextEn?.trim() || "VIP Exclusive Drop",
+        dropBadgeTextEs: args.dropBadgeTextEs?.trim() || "Drop Exclusivo VIP",
+        dropStatus: "scheduled",
+      },
+      "drop_changed",
+      actor
+    );
 
     return { success: true, variantId: args.variantId, dropDate: args.dropDate, dropStatus: "scheduled" as const };
   },
@@ -162,15 +184,21 @@ export const releaseDropNow = mutation({
   },
   returns: v.object({ success: v.boolean(), variantId: v.string(), dropStatus: v.literal("live") }),
   handler: async (ctx, args) => {
-    await requireAdmin(ctx);
-    const variant = await requireVariant(ctx, args.variantId);
+    const actor = actorEmail(await requireAdmin(ctx));
+    const variant = await requireActiveVariant(ctx, args.variantId);
 
-    await ctx.db.patch(variant._id, {
-      dropDate: Date.now() - 1000,
-      dropStatus: "live",
-      dropBadgeTextEn: args.keepBadge ? variant.dropBadgeTextEn : "Released Drop",
-      dropBadgeTextEs: args.keepBadge ? variant.dropBadgeTextEs : "Drop Lanzado",
-    });
+    await patchVariantAudited(
+      ctx,
+      variant,
+      {
+        dropDate: Date.now() - 1000,
+        dropStatus: "live",
+        dropBadgeTextEn: args.keepBadge ? variant.dropBadgeTextEn : "Released Drop",
+        dropBadgeTextEs: args.keepBadge ? variant.dropBadgeTextEs : "Drop Lanzado",
+      },
+      "drop_changed",
+      actor
+    );
 
     return { success: true, variantId: args.variantId, dropStatus: "live" as const };
   },
@@ -183,13 +211,19 @@ export const postponeDrop = mutation({
   },
   returns: v.object({ success: v.boolean(), variantId: v.string(), dropDate: v.number() }),
   handler: async (ctx, args) => {
-    await requireAdmin(ctx);
-    const variant = await requireVariant(ctx, args.variantId);
+    const actor = actorEmail(await requireAdmin(ctx));
+    const variant = await requireActiveVariant(ctx, args.variantId);
 
-    await ctx.db.patch(variant._id, {
-      dropDate: args.newDropDate,
-      dropStatus: "scheduled",
-    });
+    await patchVariantAudited(
+      ctx,
+      variant,
+      {
+        dropDate: args.newDropDate,
+        dropStatus: "scheduled",
+      },
+      "drop_changed",
+      actor
+    );
 
     return { success: true, variantId: args.variantId, dropDate: args.newDropDate };
   },
@@ -201,16 +235,22 @@ export const cancelDrop = mutation({
   },
   returns: v.object({ success: v.boolean(), variantId: v.string() }),
   handler: async (ctx, args) => {
-    await requireAdmin(ctx);
+    const actor = actorEmail(await requireAdmin(ctx));
     const variant = await requireVariant(ctx, args.variantId);
 
-    await ctx.db.patch(variant._id, {
-      isDrop: false,
-      dropDate: undefined,
-      dropBadgeTextEn: undefined,
-      dropBadgeTextEs: undefined,
-      dropStatus: "archived",
-    });
+    await patchVariantAudited(
+      ctx,
+      variant,
+      {
+        isDrop: false,
+        dropDate: undefined,
+        dropBadgeTextEn: undefined,
+        dropBadgeTextEs: undefined,
+        dropStatus: "archived",
+      },
+      "drop_changed",
+      actor
+    );
 
     return { success: true, variantId: args.variantId };
   },
@@ -223,17 +263,23 @@ export const deleteDrop = mutation({
   },
   returns: v.object({ success: v.boolean(), variantId: v.string() }),
   handler: async (ctx, args) => {
-    await requireAdmin(ctx);
+    const actor = actorEmail(await requireAdmin(ctx));
     const variant = await requireVariant(ctx, args.variantId);
 
     // Completely clear all drop attributes from the variant
-    await ctx.db.patch(variant._id, {
-      isDrop: false,
-      dropDate: undefined,
-      dropBadgeTextEn: undefined,
-      dropBadgeTextEs: undefined,
-      dropStatus: undefined,
-    });
+    await patchVariantAudited(
+      ctx,
+      variant,
+      {
+        isDrop: false,
+        dropDate: undefined,
+        dropBadgeTextEn: undefined,
+        dropBadgeTextEs: undefined,
+        dropStatus: undefined,
+      },
+      "drop_changed",
+      actor
+    );
 
     // Delete any registered drop alerts/waitlist entries for this variant
     if (args.deleteSubscribers !== false && (await deleteAlertBatch(ctx, args.variantId))) {
@@ -263,14 +309,14 @@ export const getAllDropsAdmin = query({
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
     const rawVariants = await listCatalogVariants(ctx);
-    const dropVariants = rawVariants.filter(hasDropHistory);
+    const dropVariants = rawVariants.filter((row) => row.archivedAt === undefined && hasDropHistory(row));
 
     // Sort by dropDate or variantId
     dropVariants.sort((a, b) => (b.dropDate || 0) - (a.dropDate || 0));
 
     return await Promise.all(
       dropVariants.map(async (v) => {
-        const withUrl = await resolveVariantWithStorageUrl(ctx, v);
+        const withUrl = await resolveProduct(ctx, v);
         return {
           ...withUrl,
           subscribersCount: await countDropAlerts(ctx, v.variantId),

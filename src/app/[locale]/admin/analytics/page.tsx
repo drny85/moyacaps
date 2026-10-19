@@ -22,6 +22,7 @@ import {
   Check,
   RotateCw,
 } from "lucide-react";
+import { StoreSettingsCard } from "@/components/admin/StoreSettingsCard";
 import StockConfirmDialog, { StockConfirmTarget } from "@/components/admin/StockConfirmDialog";
 
 export default function AdminAnalyticsPage() {
@@ -141,6 +142,8 @@ export default function AdminAnalyticsPage() {
           </Link>
         </div>
       </div>
+
+      <StoreSettingsCard />
 
       {/* ── Top 4 Key Metric Cards ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

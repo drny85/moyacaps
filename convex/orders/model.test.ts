@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Doc, Id } from "../_generated/dataModel";
+import { DEFAULT_SHIPPING_SETTINGS } from "../settings/model";
 import {
   appendBoundedId,
   appendNote,
@@ -163,9 +164,16 @@ describe("appendNote and tracking numbers", () => {
 
 describe("computeShipping", () => {
   it("one item pays the flat $8; two or more ship free", () => {
-    expect(computeShipping(1)).toEqual({ freeShipping: false, shippingFee: 8 });
-    expect(computeShipping(2)).toEqual({ freeShipping: true, shippingFee: 0 });
-    expect(computeShipping(5)).toEqual({ freeShipping: true, shippingFee: 0 });
+    expect(computeShipping(1, DEFAULT_SHIPPING_SETTINGS)).toEqual({ freeShipping: false, shippingFee: 8 });
+    expect(computeShipping(2, DEFAULT_SHIPPING_SETTINGS)).toEqual({ freeShipping: true, shippingFee: 0 });
+    expect(computeShipping(5, DEFAULT_SHIPPING_SETTINGS)).toEqual({ freeShipping: true, shippingFee: 0 });
+  });
+
+  it("follows the configured fee and threshold", () => {
+    const settings = { flatShippingFeeUsd: 5, freeShippingThresholdUnits: 3 };
+    expect(computeShipping(1, settings)).toEqual({ freeShipping: false, shippingFee: 5 });
+    expect(computeShipping(2, settings)).toEqual({ freeShipping: false, shippingFee: 5 });
+    expect(computeShipping(3, settings)).toEqual({ freeShipping: true, shippingFee: 0 });
   });
 });
 

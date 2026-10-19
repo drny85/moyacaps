@@ -6,6 +6,7 @@ import { useTranslations, useLocale } from "next-intl";
 import { Radio, Users, Bell, Trash2, Calendar, Sparkles, Check, Loader2, X } from "lucide-react";
 import { AdminModal } from "./AdminModal";
 import { DateTimePicker } from "./DateTimePicker";
+import { errorLine, type ErrorLine } from "@/lib/admin/editorErrors";
 
 export interface DropScheduleTarget {
   variantId: string;
@@ -43,12 +44,13 @@ export function DropScheduleDialog({
   isProcessing,
 }: DropScheduleDialogProps) {
   const locale = useLocale();
+  const t = useTranslations("admin.products");
 
   const [isDropActive, setIsDropActive] = useState(false);
   const [dropTimestamp, setDropTimestamp] = useState<number>(Date.now() + 86400000 * 3);
   const [badgeEn, setBadgeEn] = useState("");
   const [badgeEs, setBadgeEs] = useState("");
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<ErrorLine | null>(null);
 
   // Sync state when target opens
   useEffect(() => {
@@ -74,8 +76,8 @@ export function DropScheduleDialog({
         dropBadgeTextEs: badgeEs.trim() || undefined,
       });
       onClose();
-    } catch (err: any) {
-      setErrorMsg(err?.message || "Failed to update drop schedule.");
+    } catch (err: unknown) {
+      setErrorMsg(errorLine(err));
     }
   };
 
@@ -90,8 +92,8 @@ export function DropScheduleDialog({
         dropBadgeTextEs: undefined,
       });
       onClose();
-    } catch (err: any) {
-      setErrorMsg(err?.message || "Failed to deactivate drop schedule.");
+    } catch (err: unknown) {
+      setErrorMsg(errorLine(err));
     }
   };
 
@@ -245,8 +247,8 @@ export function DropScheduleDialog({
       )}
 
       {errorMsg && (
-        <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-mono">
-          {errorMsg}
+        <div role="alert" className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-mono">
+          {"text" in errorMsg ? errorMsg.text : t(errorMsg.key, errorMsg.values)}
         </div>
       )}
 

@@ -18,12 +18,12 @@ export interface TryOnCap {
 export function tryOnCaps(
   products: CapVariant[],
   now: number,
-  overlayFor: (id: string) => string | null
+  overlayFor: (cap: CapVariant) => string | null
 ): TryOnCap[] {
   const out: TryOnCap[] = [];
   for (const product of products) {
     if (isTee(product) || product.isAvailable === false) continue;
-    const overlay = overlayFor(product.id);
+    const overlay = overlayFor(product);
     if (!overlay) continue;
     out.push({ product, overlay, thumb: product.catalogShot ?? product.image, purchasable: isPurchasable(product, now) });
   }

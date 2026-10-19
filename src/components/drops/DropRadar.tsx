@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
 import { useTranslations, useLocale } from "next-intl";
+import { useStoreSettings } from "@/hooks/useStoreSettings";
 import { Link } from "@/i18n/routing";
 import { useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
@@ -88,6 +89,7 @@ function RollingNumber({ value }: { value: number }) {
 export function DropRadar() {
   const t = useTranslations("dropRadar");
   const locale = useLocale();
+  const { freeShippingThresholdUnits } = useStoreSettings();
   const { openDropAlert, addToCart } = useStore();
   const { playRadarPing, playClick, playSuccessChime } = useSoundEffects();
 
@@ -380,7 +382,7 @@ export function DropRadar() {
               <span>{locale === "es" ? "ENVÍO EXPRESS EE. UU." : "US DOMESTIC EXPRESS"}</span>
             </div>
             <div className="font-display font-bold text-sm text-zinc-900 dark:text-white">
-              {locale === "es" ? "Gratis en 2+ Gorras" : "Free On 2+ Caps"}
+              {t("freeShippingOn", { threshold: freeShippingThresholdUnits })}
             </div>
             <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
               {locale === "es"

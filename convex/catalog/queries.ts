@@ -8,7 +8,7 @@ import { isAdmin } from "../lib/auth";
 import { lineStockResult, productPage, resolvedVariant } from "./validators";
 import { checkStock, getVariant, hasSkus, listSkus } from "./inventory";
 import { filterCatalogVariants } from "./model";
-import { listCatalogVariants, resolveVariantWithStorageUrl } from "./shared";
+import { listCatalogVariants, resolveProduct } from "./shared";
 
 export const getVariants = query({
   args: {
@@ -20,10 +20,33 @@ export const getVariants = query({
   },
   returns: v.array(resolvedVariant),
   handler: async (ctx, args) => {
-    const variants = filterCatalogVariants(await listCatalogVariants(ctx), args);
+    // Hidden drafts (copy, storage URLs) are for Administrators only; everyone else gets the listed catalog.
+    const includeUnavailable = args.includeUnavailable === true && (await isAdmin(ctx));
+    const variants = filterCatalogVariants(await listCatalogVariants(ctx), { ...args, includeUnavailable });
     return await Promise.all(
-      variants.map((v) => resolveVariantWithStorageUrl(ctx, v))
+      variants.map((v) => resolveProduct(ctx, v))
     );
+  },
+});
+
+/** Upper bound of distinct products one cart lookup reads. */
+export const MAX_CART_VARIANT_IDS = 50;
+
+/**
+ * The cart's products by id, hidden-but-not-archived ones included so the cart and checkout
+ * can mark a line unavailable. Only the first `MAX_CART_VARIANT_IDS` distinct ids are read.
+ */
+export const getCartVariants = query({
+  args: { variantIds: v.array(v.string()) },
+  returns: v.array(resolvedVariant),
+  handler: async (ctx, args) => {
+    const wanted = [...new Set(args.variantIds)].slice(0, MAX_CART_VARIANT_IDS);
+    const out = [];
+    for (const variantId of wanted) {
+      const variant = await getVariant(ctx, variantId);
+      if (variant && variant.archivedAt === undefined) out.push(await resolveProduct(ctx, variant));
+    }
+    return out;
   },
 });
 
@@ -35,12 +58,12 @@ export const getVariantById = query({
   returns: v.union(resolvedVariant, v.null()),
   handler: async (ctx, args) => {
     const variant = await getVariant(ctx, args.variantId);
-    if (!variant) return null;
+    if (!variant || variant.archivedAt !== undefined) return null;
     // Hidden products are visible to Administrators only; the flag is ignored for everyone else.
     if (variant.isAvailable === false && !(args.allowUnavailable && (await isAdmin(ctx)))) {
       return null;
     }
-    return await resolveVariantWithStorageUrl(ctx, variant);
+    return await resolveProduct(ctx, variant);
   },
 });
 
@@ -50,10 +73,10 @@ export const getProductBySlug = query({
   returns: v.union(productPage, v.null()),
   handler: async (ctx, args) => {
     const variant = await getVariant(ctx, args.slug);
-    if (!variant) return null;
+    if (!variant || variant.archivedAt !== undefined) return null;
     // Hidden products (and their SKU stock) are visible to Administrators only.
     if (variant.isAvailable === false && !(args.allowUnavailable && (await isAdmin(ctx)))) return null;
-    const resolved = await resolveVariantWithStorageUrl(ctx, variant);
+    const resolved = await resolveProduct(ctx, variant);
     const skus = hasSkus(variant)
       ? (await listSkus(ctx, variant.variantId)).map((s) => ({ colorway: s.colorway, size: s.size, stock: s.stock }))
       : [];

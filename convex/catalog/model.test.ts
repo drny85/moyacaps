@@ -7,13 +7,17 @@ import {
   hasDropHistory,
   isPurchaseBlockedByDrop,
   isUpcomingDrop,
-  mergeVariantUpdate,
-  newVariantDoc,
+  blankImageWhileVisible,
+  buildNewVariant,
+  buildVariantPatch,
+  nextUpdatedAt,
+  validateMerged,
+  versionOf,
   nextAvailability,
   renamedLifestyleShot,
   teeFieldsPatch,
   variantCategory,
-  type VariantInput,
+  type NewVariantInput,
 } from "./model";
 
 const NOW = 1_800_000_000_000;
@@ -37,14 +41,14 @@ function variant(overrides: Partial<Doc<"variants">> = {}): Doc<"variants"> {
   };
 }
 
-const input = (overrides: Partial<VariantInput> = {}): VariantInput => ({
+const input = (overrides: Partial<NewVariantInput> = {}): NewVariantInput => ({
   variantId: "negro-rojo",
   nameEn: "Black / Red v2",
   nameEs: "Negro / Rojo v2",
+  category: "headwear",
   silhouette: "snapback",
-  primaryHex: "#111",
-  secondaryHex: "#e00",
-  image: "/caps/new.png",
+  primaryHex: "#111111",
+  secondaryHex: "#ee0000",
   stock: 9,
   priceUsd: 130,
   isFeatured: true,
@@ -73,6 +77,12 @@ describe("filterCatalogVariants", () => {
   it("hides unavailable products unless asked to include them", () => {
     expect(ids(filterCatalogVariants(all, {}))).toEqual(["cap", "sold-out", "tee"]);
     expect(ids(filterCatalogVariants(all, { includeUnavailable: true }))).toEqual(["cap", "hidden", "sold-out", "tee"]);
+  });
+
+  it("never returns archived products, even when including unavailable ones", () => {
+    const archived = variant({ variantId: "archived", isAvailable: false, archivedAt: NOW });
+    expect(ids(filterCatalogVariants([...all, archived], { includeUnavailable: true }))).toEqual(["cap", "hidden", "sold-out", "tee"]);
+    expect(ids(filterCatalogVariants([...all, archived], {}))).toEqual(["cap", "sold-out", "tee"]);
   });
 
   it("treats 'all' as no silhouette or category filter", () => {
@@ -134,45 +144,78 @@ describe("nextAvailability", () => {
   });
 });
 
-describe("mergeVariantUpdate", () => {
-  it("keeps stored optional fields the editor omitted", () => {
-    const existing = variant({ category: "headwear", taxCode: "txcd_30060006", isDrop: true, dropDate: NOW, images: ["/a.png"] });
-    const patch = mergeVariantUpdate(existing, input(), "/caps/new.png", false);
-    expect(patch).toMatchObject({
-      nameEn: "Black / Red v2",
-      category: "headwear",
-      taxCode: "txcd_30060006",
-      images: ["/a.png"],
-      isDrop: true,
-      dropDate: NOW,
-      stock: 9,
-      priceUsd: 130,
-      isAvailable: true,
-    });
+describe("versionOf / nextUpdatedAt", () => {
+  it("falls back to the creation time for rows without updatedAt", () => {
+    expect(versionOf(variant({ _creationTime: 500 }))).toBe(500);
+    expect(versionOf(variant({ _creationTime: 500, updatedAt: 900 }))).toBe(900);
   });
 
-  it("applies provided optional fields", () => {
-    const patch = mergeVariantUpdate(variant({ category: "headwear" }), input({ category: "apparel", isAvailable: false }), "/x", false);
-    expect(patch.category).toBe("apparel");
-    expect(patch.isAvailable).toBe(false);
-  });
-
-  it("never overwrites a tee's SKU aggregate stock from the editor", () => {
-    const patch = mergeVariantUpdate(variant({ stock: 40 }), input({ stock: 3 }), "/x", true);
-    expect(patch.stock).toBe(40);
-  });
-
-  it("keeps a hidden product hidden when the editor omits isAvailable", () => {
-    expect(mergeVariantUpdate(variant({ isAvailable: false }), input(), "/x", false).isAvailable).toBe(false);
+  it("always moves past the current version, even on a stalled clock", () => {
+    expect(nextUpdatedAt(variant({ updatedAt: 900 }), 100)).toBe(901);
+    expect(nextUpdatedAt(variant({ updatedAt: 900 }), 2000)).toBe(2000);
   });
 });
 
-describe("newVariantDoc", () => {
-  it("defaults new products to visible and not a drop", () => {
-    const doc = newVariantDoc(input(), "/caps/new.png");
-    expect(doc.isAvailable).toBe(true);
-    expect(doc.isDrop).toBe(false);
-    expect(doc.image).toBe("/caps/new.png");
+describe("buildVariantPatch", () => {
+  it("carries only the fields sent, stamped with now", () => {
+    expect(buildVariantPatch(variant(), { nameEn: "Renamed", isDrop: undefined }, NOW)).toEqual({ nameEn: "Renamed", updatedAt: NOW });
+  });
+
+  it("resets the tax code when the category changes without one", () => {
+    const patch = buildVariantPatch(variant({ category: "headwear", taxCode: "txcd_30060006" }), { category: "apparel" }, NOW);
+    expect(patch).toMatchObject({ category: "apparel", taxCode: "txcd_30011000" });
+  });
+
+  it("keeps a sent tax code and leaves the code alone when the category is unchanged", () => {
+    const existing = variant({ category: "headwear" });
+    expect(buildVariantPatch(existing, { category: "apparel", taxCode: "txcd_99999999" }, NOW).taxCode).toBe("txcd_99999999");
+    expect(buildVariantPatch(existing, { category: "headwear" }, NOW)).not.toHaveProperty("taxCode");
+  });
+});
+
+describe("buildNewVariant", () => {
+  it("defaults to not a drop, with a blank image, the category's tax code and a stamp", () => {
+    const doc = buildNewVariant(input(), NOW);
+    expect(doc).toMatchObject({ isDrop: false, image: "", taxCode: "txcd_30060006", updatedAt: NOW });
+    expect(doc).not.toHaveProperty("storageId");
+    expect(doc).not.toHaveProperty("images");
+  });
+
+  it("keeps a sent tax code", () => {
+    expect(buildNewVariant(input({ category: "apparel", silhouette: "tee", taxCode: "txcd_11111111" }), NOW).taxCode).toBe("txcd_11111111");
+  });
+
+  it("saves a new product hidden, whatever isAvailable says: its images are attached afterwards", () => {
+    expect(buildNewVariant(input({ isAvailable: true }), NOW)).toMatchObject({ image: "", isAvailable: false });
+  });
+});
+
+describe("blankImageWhileVisible", () => {
+  it("flags a visible product left without an image or upload", () => {
+    expect(blankImageWhileVisible(variant({ image: " " }), {})).toBe(true);
+    expect(blankImageWhileVisible(variant({ image: "" }), { isAvailable: false })).toBe(false);
+    expect(blankImageWhileVisible(variant({ image: "", storageId: "s1" as Id<"_storage"> }), {})).toBe(false);
+    expect(blankImageWhileVisible(variant(), { priceUsd: 5 })).toBe(false);
+  });
+
+  it("counts a catalog image row as an image", () => {
+    expect(blankImageWhileVisible(variant({ image: "" }), {}, true)).toBe(false);
+    expect(blankImageWhileVisible(variant({ image: "" }), {}, false)).toBe(true);
+  });
+});
+
+describe("validateMerged", () => {
+  it("validates the stored row with the patch applied", () => {
+    expect(validateMerged(variant(), { priceUsd: 0 })).toEqual([{ field: "priceUsd", code: "range" }]);
+    expect(validateMerged(variant(), { priceUsd: 99.5 })).toEqual([]);
+  });
+
+  it("checks the silhouette against the patched category", () => {
+    expect(validateMerged(variant(), { category: "apparel" })).toEqual([{ field: "silhouette", code: "mismatch" }]);
+  });
+
+  it("limits errors to the fields a single-field mutation touches", () => {
+    expect(validateMerged(variant({ primaryHex: "bad" }), { priceUsd: 10 }, ["priceUsd"])).toEqual([]);
   });
 });
 

@@ -10,6 +10,8 @@ import type { Doc } from "../_generated/dataModel";
 import { requireAdmin } from "../lib/auth";
 import { randomDigitString } from "../lib/ids";
 import { adjustStock, checkStock } from "../catalog/inventory";
+import { resolveProductImage } from "../catalog/shared";
+import { getShippingSettings } from "../settings/model";
 import { appendBoundedId, appendNote, computeShipping, isPaidLike, newTrackingNumber, orderSessionIds } from "./model";
 import { hasEmail, releaseStock, scheduleSessionExpiry } from "./shared";
 import { orderDoc, orderItemValidator, shippingAddressValidator, successResult } from "./validators";
@@ -159,14 +161,14 @@ export const createWhatsAppOrderLead = internalMutation({
         name: item.colorway || item.size ? item.name : variant.nameEn,
         quantity: item.quantity,
         price: unitPrice,
-        image: variant.image,
+        image: await resolveProductImage(ctx, variant),
         ...(item.colorway ? { colorway: item.colorway } : {}),
         ...(item.size ? { size: item.size } : {}),
       });
     }
 
-    // Domestic US Free Express Shipping threshold: 2+ items ($0), otherwise $8
-    const verifiedShippingFee = computeShipping(totalCaps).shippingFee;
+    // Free-shipping threshold and flat fee come from store_settings (Administrator-controlled).
+    const verifiedShippingFee = computeShipping(totalCaps, await getShippingSettings(ctx)).shippingFee;
     const verifiedTotal = verifiedSubtotal + verifiedShippingFee;
 
     const cleanAddress = sanitizeReservationAddress(args.shippingAddress);

@@ -1,9 +1,9 @@
 import type { Doc } from "@convex/_generated/dataModel";
 import type { ApparelColorwayOption, CapVariant } from "@/data/caps";
+import { nonBlank } from "./productCopy";
 
 /** A Convex variant row (image already resolved by the query) in the client `CapVariant` shape. */
-export function toCapVariant(v: Doc<"variants">): CapVariant {
-  const isTee = v.silhouette === "tee" || v.category === "apparel";
+export function toCapVariant(v: Doc<"variants"> & { angles?: CapVariant["angles"] }): CapVariant {
   return {
     id: v.variantId,
     nameEn: v.nameEn,
@@ -15,14 +15,17 @@ export function toCapVariant(v: Doc<"variants">): CapVariant {
     image: v.image,
     images: v.images,
     catalogShot: v.catalogShot,
+    angles: v.angles,
     graphicImage: v.graphicImage,
     printPosition: v.printPosition,
     stock: v.stock,
     priceUsd: v.priceUsd,
     isFeatured: v.isFeatured,
     isAvailable: v.isAvailable !== false,
-    tagEn: v.isFeatured ? (isTee ? "Heavyweight Drop" : "Signature Edition") : undefined,
-    tagEs: v.isFeatured ? (isTee ? "Drop Heavyweight" : "Edición Insignia") : undefined,
+    tagEn: nonBlank(v.badgeTextEn),
+    tagEs: nonBlank(v.badgeTextEs),
+    descriptionEn: v.descriptionEn,
+    descriptionEs: v.descriptionEs,
     isDrop: v.isDrop,
     dropDate: v.dropDate,
     dropBadgeTextEn: v.dropBadgeTextEn,

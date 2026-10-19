@@ -9,10 +9,12 @@ import type { Doc } from "@convex/_generated/dataModel";
 import { Link } from "@/i18n/routing";
 import { useUrlQuery } from "@/components/routing/useUrlQuery";
 import { toCapVariant } from "@/lib/toCapVariant";
+import { customDescription } from "@/lib/productCopy";
 import { getCapAngleImages } from "@/lib/capAngles";
 import { applyShop, DEFAULT_STATE, isTee } from "@/lib/shop";
 import { gallerySlides, initialSelection, type Selection, type SkuStock } from "@/lib/productOptions";
 import { useCapVariants } from "@/hooks/useCapVariants";
+import { useStoreSettings } from "@/hooks/useStoreSettings";
 import { ProductGallery } from "@/components/product/ProductGallery";
 import { ProductPurchase } from "@/components/product/ProductPurchase";
 import { ProductCard } from "@/components/catalog/ProductCard";
@@ -28,6 +30,7 @@ export function ProductView({ initial }: { initial: ProductWithSkus }) {
   const t = useTranslations("product");
   const tPdp = useTranslations("pdp");
   const locale = useLocale();
+  const { freeShippingThresholdUnits } = useStoreSettings();
   const [query, setQuery, querySync] = useUrlQuery();
   const [now] = useState(() => Date.now());
 
@@ -37,6 +40,7 @@ export function ProductView({ initial }: { initial: ProductWithSkus }) {
   const skus: SkuStock[] = doc.skus;
   const tee = isTee(product);
   const name = locale === "es" ? product.nameEs : product.nameEn;
+  const description = customDescription(product, locale);
 
   // The choice lives in the URL; the static page renders the default until it is read (ADR 0020)
   const selection = useMemo<Selection>(() => {
@@ -53,7 +57,7 @@ export function ProductView({ initial }: { initial: ProductWithSkus }) {
   const colorway = product.colorways?.find((c) => c.id === selection.colorway);
   const slides = useMemo(
     () =>
-      gallerySlides(product, selection, name, tee ? null : getCapAngleImages(product.id), {
+      gallerySlides(product, selection, name, tee ? null : getCapAngleImages(product), {
         lifestyle: t("onModel"),
         artwork: t("artwork"),
         angle: (a) => (a === "left" ? t("angleLeft") : a === "back" ? t("angleBack") : t("angleRight")),
@@ -103,6 +107,11 @@ export function ProductView({ initial }: { initial: ProductWithSkus }) {
                 ${product.priceUsd}
                 <span className="ml-1.5 text-sm font-medium text-zinc-500">USD</span>
               </p>
+              {description && (
+                <p className="mt-4 whitespace-pre-line text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
+                  {description}
+                </p>
+              )}
             </header>
 
             <ProductPurchase product={product} skus={skus} selection={selection} onSelect={select} now={now} />
@@ -154,7 +163,7 @@ export function ProductView({ initial }: { initial: ProductWithSkus }) {
                 </>
               )}
               <Detail title={t("detailsShipping")}>
-                <p>{t("shippingBody")}</p>
+                <p>{t("shippingBody", { threshold: freeShippingThresholdUnits })}</p>
               </Detail>
             </div>
           </div>

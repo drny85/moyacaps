@@ -3,6 +3,7 @@
  * site origin and clock so output is deterministic in tests.
  */
 import type { CapVariant } from "../../data/caps";
+import { customDescription } from "../productCopy";
 import { isTee } from "../shop";
 import { absoluteUrl, localizedUrl, SITE_NAME, siteUrl } from "./site";
 
@@ -39,7 +40,10 @@ export function websiteJsonLd(base: string): JsonLd {
   };
 }
 
+/** Administrator's description when set, else the generated copy. */
 export function productDescription(product: CapVariant, locale: string): string {
+  const custom = customDescription(product, locale);
+  if (custom) return custom;
   const name = locale === "es" ? product.nameEs : product.nameEn;
   const price = `$${product.priceUsd} USD`;
   if (isTee(product)) {

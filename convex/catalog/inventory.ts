@@ -57,7 +57,7 @@ export type StockCheck =
 export async function checkStock(ctx: QueryCtx, line: StockLine): Promise<StockCheck> {
   const variant = await getVariant(ctx, line.variantId);
   if (!variant) return { ok: false, reason: "not_found" };
-  if (variant.isAvailable === false) return { ok: false, reason: "unavailable", variant };
+  if (variant.isAvailable === false || variant.archivedAt !== undefined) return { ok: false, reason: "unavailable", variant };
   if (!hasSkus(variant)) return { ok: true, variant, available: Math.max(0, variant.stock) };
 
   if (!line.colorway || !line.size) return { ok: false, reason: "option_required", variant };
@@ -70,7 +70,7 @@ export async function checkStock(ctx: QueryCtx, line: StockLine): Promise<StockC
 }
 
 /** Re-derive a tee variant's aggregate stock from its SKUs. */
-async function syncTeeAggregate(ctx: MutationCtx, variant: Doc<"variants">) {
+export async function syncTeeAggregate(ctx: MutationCtx, variant: Doc<"variants">) {
   const skus = await listSkus(ctx, variant.variantId);
   const total = skus.reduce((sum, s) => sum + s.stock, 0);
   if (total !== variant.stock) await ctx.db.patch("variants", variant._id, { stock: total });
@@ -121,10 +121,12 @@ export async function setSkuStock(
   colorway: string,
   size: string,
   stock: number
-) {
+): Promise<{ previous: number; next: number }> {
   const sku = await getSku(ctx, variant.variantId, colorway, size);
+  const previous = sku?.stock ?? 0;
   const next = Math.max(0, Math.floor(stock));
   if (sku) await ctx.db.patch("skus", sku._id, { stock: next });
   else await ctx.db.insert("skus", { variantId: variant.variantId, colorway, size, stock: next });
   await syncTeeAggregate(ctx, variant);
+  return { previous, next };
 }

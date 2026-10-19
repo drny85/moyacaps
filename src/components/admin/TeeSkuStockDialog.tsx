@@ -4,7 +4,11 @@ import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
 import { Check, Loader2, X } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { AdminModal } from "@/components/admin/AdminModal";
+import { errorLine, type ErrorLine } from "@/lib/admin/editorErrors";
+import { clampSkuStockInput } from "@/lib/admin/teeOptions";
+import { STOCK_MAX } from "@convex/catalog/rules";
 
 interface TeeSkuStockDialogProps {
   variantId: string | null;
@@ -18,6 +22,7 @@ const key = (colorway: string, size: string) => `${colorway}/${size}`;
  * stock is the sum of these cells and is never edited directly.
  */
 export function TeeSkuStockDialog({ variantId, onClose }: TeeSkuStockDialogProps) {
+  const t = useTranslations("admin.products");
   const product = useQuery(
     api.catalog.queries.getProductBySlug,
     variantId ? { slug: variantId, allowUnavailable: true } : "skip"
@@ -32,7 +37,7 @@ export function TeeSkuStockDialog({ variantId, onClose }: TeeSkuStockDialogProps
 
   const [draft, setDraft] = useState<Record<string, number>>({});
   const [isSaving, setIsSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ErrorLine | null>(null);
 
   useEffect(() => {
     setDraft({});
@@ -56,8 +61,8 @@ export function TeeSkuStockDialog({ variantId, onClose }: TeeSkuStockDialogProps
         await setSkuStock({ variantId, colorway, size, stock });
       }
       setDraft({});
-    } catch (err: any) {
-      setError(err?.data || err?.message || "Failed to save stock");
+    } catch (err: unknown) {
+      setError(errorLine(err));
     } finally {
       setIsSaving(false);
     }
@@ -119,10 +124,11 @@ export function TeeSkuStockDialog({ variantId, onClose }: TeeSkuStockDialogProps
                           <input
                             type="number"
                             min={0}
+                            max={STOCK_MAX}
                             inputMode="numeric"
                             aria-label={`${c.nameEn} ${size} stock`}
                             value={value(k)}
-                            onChange={(e) => setDraft((d) => ({ ...d, [k]: Math.max(0, Math.floor(Number(e.target.value) || 0)) }))}
+                            onChange={(e) => setDraft((d) => ({ ...d, [k]: clampSkuStockInput(e.target.value) }))}
                             className={`w-16 py-1.5 px-2 rounded-lg font-mono text-center bg-zinc-50 dark:bg-white/[0.03] border focus:outline-none focus:ring-1 focus:ring-moya-red ${
                               dirty ? "border-amber-500" : "border-zinc-200 dark:border-white/10"
                             } ${value(k) === 0 ? "text-red-600 dark:text-red-400" : "text-zinc-900 dark:text-white"}`}
@@ -137,7 +143,11 @@ export function TeeSkuStockDialog({ variantId, onClose }: TeeSkuStockDialogProps
           </div>
         )}
 
-        {error && <p className="mt-3 text-sm text-red-600 dark:text-red-400">{error}</p>}
+        {error && (
+          <p role="alert" className="mt-3 text-sm text-red-600 dark:text-red-400">
+            {"text" in error ? error.text : t(error.key, error.values)}
+          </p>
+        )}
 
         <div className="mt-5 flex items-center justify-end gap-2">
           <button

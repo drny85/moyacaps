@@ -1,4 +1,5 @@
 import { defineSchema, defineTable } from "convex/server";
+import { capAngleValidator, imageRoleValidator } from "./catalog/images/validators";
 import { v } from "convex/values";
 
 export default defineSchema({
@@ -57,6 +58,13 @@ export default defineSchema({
       )
     ),
     sizes: v.optional(v.array(v.string())),
+    // Admin catalog (plan 0004)
+    archivedAt: v.optional(v.number()),
+    updatedAt: v.optional(v.number()),
+    descriptionEn: v.optional(v.string()),
+    descriptionEs: v.optional(v.string()),
+    badgeTextEn: v.optional(v.string()),
+    badgeTextEs: v.optional(v.string()),
   }).index("by_variantId", ["variantId"]),
   // One purchasable Heavyweight Tee combination: Graphic Design × Apparel Colorway × size (CONTEXT.md "SKU").
   skus: defineTable({
@@ -217,4 +225,37 @@ export default defineSchema({
     .index("by_variantId", ["variantId"])
     .index("by_variant_contact", ["variantId", "contact"])
     .index("by_createdAt", ["createdAt"]),
+  // Append-only audit trail of admin catalog writes. `changes` is a JSON string of FieldChange[].
+  catalog_events: defineTable({
+    variantId: v.optional(v.string()),
+    type: v.string(),
+    actor: v.string(),
+    changes: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_variantId_and_createdAt", ["variantId", "createdAt"])
+    .index("by_createdAt", ["createdAt"]),
+  // Single-row (key "default") store-wide shipping rules; absent row means the built-in defaults.
+  store_settings: defineTable({
+    key: v.literal("default"),
+    flatShippingFeeUsd: v.number(),
+    freeShippingThresholdUnits: v.number(),
+    updatedAt: v.number(),
+  }).index("by_key", ["key"]),
+  // Admin-managed product photos in Convex storage (ADR 0021). Reads fall back to legacy string fields.
+  productImages: defineTable({
+    variantId: v.string(),
+    colorway: v.optional(v.string()),
+    role: imageRoleValidator,
+    angle: v.optional(capAngleValidator),
+    order: v.number(),
+    storageId: v.id("_storage"),
+    sha256: v.string(),
+    width: v.number(),
+    height: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_variantId_and_role_and_order", ["variantId", "role", "order"])
+    .index("by_storageId", ["storageId"])
+    .index("by_sha256", ["sha256"]),
 });
