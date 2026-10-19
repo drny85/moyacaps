@@ -36,3 +36,17 @@ describe("toCapVariant admin fields", () => {
     expect(cap.tagEs).toBeUndefined();
   });
 });
+
+describe("toCapVariant lifestyle shots", () => {
+  const colorway = { id: "washed-black", nameEn: "Black", nameEs: "Negro", hex: "#000", borderHex: "#000", lifestyleImage: "/a.jpg", catalogShot: "/c.webp" };
+
+  it("maps every Lifestyle Shot of a colorway", () => {
+    const tee = toCapVariant({ ...row({ silhouette: "tee" }), colorways: [{ ...colorway, lifestyleImages: ["/a.jpg", "/b.jpg"] }] });
+    expect(tee.colorways?.[0]).toMatchObject({ modelImage: "/a.jpg", modelImages: ["/a.jpg", "/b.jpg"] });
+  });
+
+  it("falls back to the single lifestyleImage when the list is absent", () => {
+    const tee = toCapVariant(row({ silhouette: "tee", colorways: [colorway] }));
+    expect(tee.colorways?.[0].modelImages).toEqual(["/a.jpg"]);
+  });
+});

@@ -9,8 +9,10 @@ export interface ApparelColorwayOption {
   nameEs: string;
   hex: string;
   borderHex: string;
-  /** Lifestyle Shot of this colorway */
+  /** Lifestyle Shot of this colorway (the first, for cards) */
   modelImage: string;
+  /** Every Lifestyle Shot of this colorway, in order; absent means just `modelImage` */
+  modelImages?: string[];
   /** 4:5 Catalog Shot of this colorway (ADR 0016) */
   catalogShot?: string;
   /**

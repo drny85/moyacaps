@@ -119,8 +119,10 @@ export function gallerySlides(
     const slides: GallerySlide[] = [];
     const catalog = cw?.catalogShot ?? p.catalogShot;
     if (catalog) slides.push({ src: catalog, alt: withColor, fit: "cover", kind: "catalog" });
-    const lifestyle = cw?.modelImage ?? p.image;
-    if (lifestyle) slides.push({ src: lifestyle, alt: `${withColor} — ${labels.lifestyle}`, fit: "cover", kind: "lifestyle" });
+    const lifestyle = cw ? (cw.modelImages ?? [cw.modelImage]) : [p.image];
+    for (const src of lifestyle.filter(Boolean)) {
+      slides.push({ src, alt: `${withColor} — ${labels.lifestyle}`, fit: "cover", kind: "lifestyle" });
+    }
     if (p.graphicImage) slides.push({ src: p.graphicImage, alt: `${name} — ${labels.artwork}`, fit: "contain", kind: "artwork" });
     return slides;
   }
@@ -133,5 +135,12 @@ export function gallerySlides(
     }
   }
   if (slides.length === 0) slides.push({ src: p.image, alt: name, fit: "contain", kind: "catalog" });
+  // Lifestyle Shots last; `images` may also hold the product photo or Catalog Shot, which already show.
+  const seen = new Set([p.image, p.catalogShot, ...slides.map((s) => s.src)]);
+  for (const src of p.images ?? []) {
+    if (!src || seen.has(src)) continue;
+    seen.add(src);
+    slides.push({ src, alt: `${name} — ${labels.lifestyle}`, fit: "cover", kind: "lifestyle" });
+  }
   return slides;
 }

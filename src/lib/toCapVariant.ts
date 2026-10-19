@@ -3,7 +3,11 @@ import type { ApparelColorwayOption, CapVariant } from "@/data/caps";
 import { nonBlank } from "./productCopy";
 
 /** A Convex variant row (image already resolved by the query) in the client `CapVariant` shape. */
-export function toCapVariant(v: Doc<"variants"> & { angles?: CapVariant["angles"] }): CapVariant {
+type ResolvedColorway = NonNullable<Doc<"variants">["colorways"]>[number] & { lifestyleImages?: string[] };
+
+export function toCapVariant(
+  v: Omit<Doc<"variants">, "colorways"> & { angles?: CapVariant["angles"]; colorways?: ResolvedColorway[] }
+): CapVariant {
   return {
     id: v.variantId,
     nameEn: v.nameEn,
@@ -45,6 +49,7 @@ export function toCapVariant(v: Doc<"variants"> & { angles?: CapVariant["angles"
       hex: c.hex,
       borderHex: c.borderHex,
       modelImage: c.lifestyleImage,
+      modelImages: c.lifestyleImages ?? (c.lifestyleImage ? [c.lifestyleImage] : []),
       catalogShot: c.catalogShot,
     })),
   };
