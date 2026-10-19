@@ -12,6 +12,7 @@
     "extract-caps": "bun run scripts/extract-caps.ts",
     "process-caps": "bun run scripts/process-cap-assets.ts",
     "build-catalog-shots": "bun run scripts/build-catalog-shots.ts",
+    "build-brand-icons": "bun run scripts/build-brand-icons.ts",
     "calibrate-tee-templates": "bun run scripts/calibrate-tee-templates.ts",
     "migrate:product-images": "bun run scripts/migrate-product-images.ts",
     "test": "vitest run",

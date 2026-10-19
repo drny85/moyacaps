@@ -3,6 +3,7 @@
 import { useTranslations, useLocale } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { Link, usePathname, useRouter } from "@/i18n/routing";
+import { BrandMark } from "./BrandMark";
 import { useStore } from "@/store/useStore";
 import { useStoreSettings } from "@/hooks/useStoreSettings";
 import { ShoppingBag, Globe, Menu, X, User, Package, Shield, Search } from "lucide-react";
@@ -83,11 +84,7 @@ export function Navbar() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between gap-3">
           {/* ── Brand Logo ── */}
           <Link href="/" className="flex min-w-0 items-center gap-2.5 group">
-            <div className="w-9 h-9 sm:w-10 sm:h-10 shrink-0 rounded-xl bg-gradient-to-br from-moya-red to-moya-red-deep p-0.5 shadow-lg shadow-moya-red-deep/30 flex items-center justify-center">
-              <div className="w-full h-full bg-[#09090c] rounded-[10px] flex items-center justify-center font-display font-bold text-moya-red text-base sm:text-lg group-hover:scale-105 transition-transform">
-                ☘
-              </div>
-            </div>
+            <BrandMark priority className="w-9 h-9 sm:w-10 sm:h-10 shrink-0 shadow-lg shadow-moya-red-deep/30 rounded-[22%] group-hover:scale-105 transition-transform" />
             <div className="min-w-0">
               <div className="flex items-center gap-1.5">
                 <span className="font-display font-bold text-lg sm:text-xl tracking-tight text-zinc-900 dark:text-white group-hover:text-moya-red transition-colors">
