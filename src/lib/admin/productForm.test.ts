@@ -6,6 +6,7 @@ import {
   formToPatch,
   validateForm,
   withCategory,
+  withNameEn,
 } from "./productForm";
 import type { ProductFormState, ResolvedVariant } from "./productForm";
 
@@ -188,5 +189,24 @@ describe("formToCreateArgs", () => {
     expect(args.sizes).toEqual(["S", "M"]);
     expect(args.fabricEn).toBe("Cotton");
     expect(args).not.toHaveProperty("fitEn");
+  });
+});
+
+describe("withNameEn", () => {
+  it("suggests the product id from the English name while it follows the name", () => {
+    let form = withNameEn(emptyForm("headwear"), "Negro Oro", true);
+    expect(form.variantId).toBe("negro-oro");
+    form = withNameEn(form, "Negro Oro Flare", true);
+    expect(form.variantId).toBe("negro-oro-flare");
+  });
+
+  it("keeps an id typed by hand", () => {
+    const form = withNameEn({ ...emptyForm("headwear"), nameEn: "Negro", variantId: "custom-id" }, "Negro Oro", true);
+    expect(form).toMatchObject({ nameEn: "Negro Oro", variantId: "custom-id" });
+  });
+
+  it("never suggests for a saved product", () => {
+    const form = withNameEn({ ...emptyForm("headwear"), nameEn: "Negro", variantId: "negro" }, "Negro Oro", false);
+    expect(form).toMatchObject({ nameEn: "Negro Oro", variantId: "negro" });
   });
 });

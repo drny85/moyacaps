@@ -84,7 +84,7 @@ export function emptyForm(category: Category): ProductFormState {
 }
 
 /** Same fallback the server uses for rows saved before `category` existed. */
-function categoryOf(v: ResolvedVariant): Category {
+export function categoryOf(v: Pick<ResolvedVariant, "category" | "silhouette">): Category {
   if (v.category === "apparel" || v.category === "headwear") return v.category;
   return v.silhouette === "tee" ? "apparel" : "headwear";
 }
@@ -198,6 +198,12 @@ export function validateForm(form: ProductFormState): FieldError[] {
 /** Slug a typed name into a product id suggestion. */
 export function suggestVariantId(name: string): string {
   return normalizeSlug(name);
+}
+
+/** Set the English name; a new product's id follows it until the id is edited by hand. */
+export function withNameEn(form: ProductFormState, nameEn: string, suggestId: boolean): ProductFormState {
+  const followsName = form.variantId === "" || form.variantId === suggestVariantId(form.nameEn);
+  return { ...form, nameEn, variantId: suggestId && followsName ? suggestVariantId(nameEn) : form.variantId };
 }
 
 /** Create args for a valid form. Empty optional text is omitted; a tee's stock is the server's. */
