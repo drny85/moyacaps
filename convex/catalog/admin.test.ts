@@ -409,4 +409,23 @@ describe("archive, restore and purge", () => {
     expect(await t.run((ctx) => ctx.db.query("drop_alerts").take(5))).toEqual([]);
     expect((await history(admin))[0]).toMatchObject({ type: "purged" });
   });
+
+  it("blocks edits and drop releases on an archived product", async () => {
+    const { admin } = setup();
+    await admin.mutation(api.catalog.admin.createVariant, cap);
+    await archive(admin);
+    const archived = { kind: "archived" };
+    expect(await errorData(admin.mutation(api.catalog.admin.toggleVariantAvailable, { variantId: cap.variantId, isAvailable: true }))).toEqual(archived);
+    expect(await errorData(admin.mutation(api.catalog.drops.releaseDropNow, { variantId: cap.variantId }))).toEqual(archived);
+    expect(await errorData(admin.mutation(api.catalog.admin.updateVariantPrice, { variantId: cap.variantId, priceUsd: 50 }))).toEqual(archived);
+  });
+
+  it("the drops desk omits an archived drop", async () => {
+    const { admin } = setup();
+    await admin.mutation(api.catalog.admin.createVariant, cap);
+    await admin.mutation(api.catalog.drops.scheduleDrop, { variantId: cap.variantId, dropDate: 4_000_000_000_000 });
+    expect(await admin.query(api.catalog.drops.getAllDropsAdmin, { clientTime: 1 })).toHaveLength(1);
+    await archive(admin);
+    expect(await admin.query(api.catalog.drops.getAllDropsAdmin, { clientTime: 1 })).toEqual([]);
+  });
 });

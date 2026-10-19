@@ -29,6 +29,7 @@ import {
   deleteStorageQuietly,
   listCatalogVariants,
   patchVariantAudited,
+  requireActiveVariant,
   requireVariant,
   resolveVariantWithStorageUrl,
 } from "./shared";
@@ -84,7 +85,7 @@ export const getAllProductsAdmin = query({
     await requireAdmin(ctx);
     // The products table holds the single collection record seeded by seedAll.
     const products = await ctx.db.query("products").take(50);
-    const rawVariants = (await listCatalogVariants(ctx)).filter((v) => args.includeArchived || v.archivedAt === undefined);
+    const rawVariants = (await listCatalogVariants(ctx)).filter((row) => args.includeArchived || row.archivedAt === undefined);
     const variants = await Promise.all(
       rawVariants.map(async (v) => {
         const resolved = await resolveVariantWithStorageUrl(ctx, v);
@@ -151,7 +152,7 @@ export const updateVariantPrice = mutation({
   returns: v.object({ success: v.boolean(), variantId: v.string(), priceUsd: v.number() }),
   handler: async (ctx, args) => {
     const actor = actorEmail(await requireAdmin(ctx));
-    const variant = await requireVariant(ctx, args.variantId);
+    const variant = await requireActiveVariant(ctx, args.variantId);
     throwIfInvalid(validateMerged(variant, { priceUsd: args.priceUsd }, ["priceUsd"]));
 
     await patchVariantAudited(ctx, variant, { priceUsd: args.priceUsd }, "price_set", actor);
@@ -171,7 +172,7 @@ export const toggleVariantFeatured = mutation({
   returns: v.object({ success: v.boolean(), isFeatured: v.boolean() }),
   handler: async (ctx, args) => {
     const actor = actorEmail(await requireAdmin(ctx));
-    const variant = await requireVariant(ctx, args.variantId);
+    const variant = await requireActiveVariant(ctx, args.variantId);
 
     await patchVariantAudited(ctx, variant, { isFeatured: !variant.isFeatured }, "featured_toggled", actor);
 
@@ -187,7 +188,7 @@ export const toggleVariantAvailable = mutation({
   returns: v.object({ success: v.boolean(), variantId: v.string(), isAvailable: v.boolean() }),
   handler: async (ctx, args) => {
     const actor = actorEmail(await requireAdmin(ctx));
-    const variant = await requireVariant(ctx, args.variantId);
+    const variant = await requireActiveVariant(ctx, args.variantId);
     const nextAvailable = nextAvailability(variant.isAvailable, args.isAvailable);
 
     await patchVariantAudited(ctx, variant, { isAvailable: nextAvailable }, "visibility_set", actor);
@@ -312,7 +313,7 @@ export const updateVariant = mutation({
   returns: v.object({ updatedAt: v.number() }),
   handler: async (ctx, args) => {
     const actor = actorEmail(await requireAdmin(ctx));
-    const existing = await requireVariant(ctx, args.variantId);
+    const existing = await requireActiveVariant(ctx, args.variantId);
     if (versionOf(existing) !== args.expectedUpdatedAt) {
       throw new ConvexError({ kind: "stale" });
     }

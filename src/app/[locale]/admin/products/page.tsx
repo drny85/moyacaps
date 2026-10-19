@@ -402,6 +402,8 @@ export default function AdminProductsPage() {
         if (unmapped.length > 0) setFormError(unmapped.map((e) => `${e.field}: ${tErrors(e.code)}`).join(" "));
       } else if (typeof data === "object" && data.kind === "stale") {
         setIsStale(true);
+      } else if (typeof data === "object" && data.kind === "archived") {
+        setFormError(tErrors("archived"));
       } else if (typeof data === "object" && data.kind === "needs_image") {
         setFormError(tErrors("needs_image"));
       } else {
@@ -860,7 +862,9 @@ export default function AdminProductsPage() {
 
                       {/* VIP Drop Status */}
                       <td className="py-3 px-4 text-center">
-                        {variant.isDrop ? (
+                        {isArchived ? (
+                          <span className="text-zinc-400">—</span>
+                        ) : variant.isDrop ? (
                           <div className="inline-flex flex-col items-center gap-0.5">
                             <Link
                               href="/admin/drops"
@@ -898,13 +902,15 @@ export default function AdminProductsPage() {
                       {/* Actions */}
                       <td className="py-3 px-4 text-right">
                         <div className="flex items-center justify-end gap-1.5">
-                          <button
+                          {!isArchived && (
+<button
                             onClick={() => openEditModal(variant)}
                             className="p-1.5 rounded-lg text-zinc-600 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/[0.06] transition-colors"
                             title="Edit details"
                           >
                             <Edit2 className="w-3.5 h-3.5" />
                           </button>
+)}
 
                           <Link
                             href={`/products/${variant.variantId}`}

@@ -10,7 +10,7 @@ import schema from "../schema";
 import { requireAdmin } from "../lib/auth";
 import { computedDropStatus, hasDropHistory, isUpcomingDrop } from "./model";
 import { actorEmail } from "./audit";
-import { countDropAlerts, listCatalogVariants, patchVariantAudited, requireVariant, resolveVariantWithStorageUrl } from "./shared";
+import { countDropAlerts, listCatalogVariants, patchVariantAudited, requireActiveVariant, requireVariant, resolveVariantWithStorageUrl } from "./shared";
 import { adminDropRow, dropStatusValidator, dropSubscriberRow, variantWithSubscribers } from "./validators";
 
 /**
@@ -116,7 +116,7 @@ export const updateVariantDropStatus = mutation({
   returns: v.object({ success: v.boolean(), variantId: v.string(), isDrop: v.boolean(), dropStatus: dropStatusValidator }),
   handler: async (ctx, args) => {
     const actor = actorEmail(await requireAdmin(ctx));
-    const variant = await requireVariant(ctx, args.variantId);
+    const variant = await requireActiveVariant(ctx, args.variantId);
 
     const nextStatus: "scheduled" | "live" | "archived" = args.dropStatus || (args.isDrop ? "scheduled" : "archived");
 
@@ -148,7 +148,7 @@ export const scheduleDrop = mutation({
   returns: v.object({ success: v.boolean(), variantId: v.string(), dropDate: v.number(), dropStatus: v.literal("scheduled") }),
   handler: async (ctx, args) => {
     const actor = actorEmail(await requireAdmin(ctx));
-    const variant = await requireVariant(ctx, args.variantId);
+    const variant = await requireActiveVariant(ctx, args.variantId);
 
     await patchVariantAudited(
       ctx,
@@ -176,7 +176,7 @@ export const releaseDropNow = mutation({
   returns: v.object({ success: v.boolean(), variantId: v.string(), dropStatus: v.literal("live") }),
   handler: async (ctx, args) => {
     const actor = actorEmail(await requireAdmin(ctx));
-    const variant = await requireVariant(ctx, args.variantId);
+    const variant = await requireActiveVariant(ctx, args.variantId);
 
     await patchVariantAudited(
       ctx,
@@ -203,7 +203,7 @@ export const postponeDrop = mutation({
   returns: v.object({ success: v.boolean(), variantId: v.string(), dropDate: v.number() }),
   handler: async (ctx, args) => {
     const actor = actorEmail(await requireAdmin(ctx));
-    const variant = await requireVariant(ctx, args.variantId);
+    const variant = await requireActiveVariant(ctx, args.variantId);
 
     await patchVariantAudited(
       ctx,
@@ -300,7 +300,7 @@ export const getAllDropsAdmin = query({
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
     const rawVariants = await listCatalogVariants(ctx);
-    const dropVariants = rawVariants.filter(hasDropHistory);
+    const dropVariants = rawVariants.filter((row) => row.archivedAt === undefined && hasDropHistory(row));
 
     // Sort by dropDate or variantId
     dropVariants.sort((a, b) => (b.dropDate || 0) - (a.dropDate || 0));

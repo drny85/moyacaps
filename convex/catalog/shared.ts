@@ -89,3 +89,10 @@ export async function patchVariantAudited(
   await ctx.db.patch("variants", variant._id, { ...fields, updatedAt: nextUpdatedAt(variant, Date.now()) });
   await recordCatalogEvent(ctx, { variantId: variant.variantId, type, actor, changes });
 }
+
+/** Like `requireVariant`, but rejects archived products: they must be restored before they are edited. */
+export async function requireActiveVariant(ctx: QueryCtx, variantId: string) {
+  const variant = await requireVariant(ctx, variantId);
+  if (variant.archivedAt !== undefined) throw new ConvexError({ kind: "archived" });
+  return variant;
+}
