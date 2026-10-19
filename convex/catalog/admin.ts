@@ -37,6 +37,7 @@ import {
   patchVariantAudited,
   requireActiveVariant,
   requireVariant,
+  requireVersion,
   hasCatalogImageRow,
   resolveProduct,
 } from "./shared";
@@ -380,9 +381,7 @@ export const updateVariant = mutation({
   handler: async (ctx, args) => {
     const actor = actorEmail(await requireAdmin(ctx));
     const existing = await requireActiveVariant(ctx, args.variantId);
-    if (versionOf(existing) !== args.expectedUpdatedAt) {
-      throw new ConvexError({ kind: "stale" });
-    }
+    requireVersion(existing, args.expectedUpdatedAt);
     if (args.patch.stock !== undefined && hasSkus(existing)) {
       throw new ConvexError(TEE_STOCK_EDIT_ERROR);
     }

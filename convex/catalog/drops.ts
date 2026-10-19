@@ -10,7 +10,7 @@ import schema from "../schema";
 import { requireAdmin } from "../lib/auth";
 import { computedDropStatus, hasDropHistory, isUpcomingDrop } from "./model";
 import { actorEmail } from "./audit";
-import { countDropAlerts, listCatalogVariants, patchVariantAudited, requireActiveVariant, requireVariant, resolveProduct } from "./shared";
+import { countDropAlerts, listCatalogVariants, patchVariantAudited, requireActiveVariant, requireVariant, requireVersion, resolveProduct } from "./shared";
 import { adminDropRow, dropStatusValidator, dropSubscriberRow, variantWithSubscribers } from "./validators";
 
 /**
@@ -112,15 +112,24 @@ export const updateVariantDropStatus = mutation({
     dropBadgeTextEn: v.optional(v.string()),
     dropBadgeTextEs: v.optional(v.string()),
     dropStatus: v.optional(dropStatusValidator),
+    /** The editor's row version; when given, a newer row is rejected as `stale`. */
+    expectedUpdatedAt: v.optional(v.number()),
   },
-  returns: v.object({ success: v.boolean(), variantId: v.string(), isDrop: v.boolean(), dropStatus: dropStatusValidator }),
+  returns: v.object({
+    success: v.boolean(),
+    variantId: v.string(),
+    isDrop: v.boolean(),
+    dropStatus: dropStatusValidator,
+    updatedAt: v.number(),
+  }),
   handler: async (ctx, args) => {
     const actor = actorEmail(await requireAdmin(ctx));
     const variant = await requireActiveVariant(ctx, args.variantId);
+    if (args.expectedUpdatedAt !== undefined) requireVersion(variant, args.expectedUpdatedAt);
 
     const nextStatus: "scheduled" | "live" | "archived" = args.dropStatus || (args.isDrop ? "scheduled" : "archived");
 
-    await patchVariantAudited(
+    const updatedAt = await patchVariantAudited(
       ctx,
       variant,
       {
@@ -134,7 +143,7 @@ export const updateVariantDropStatus = mutation({
       actor
     );
 
-    return { success: true, variantId: args.variantId, isDrop: args.isDrop, dropStatus: nextStatus };
+    return { success: true, variantId: args.variantId, isDrop: args.isDrop, dropStatus: nextStatus, updatedAt };
   },
 });
 

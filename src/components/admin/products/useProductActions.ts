@@ -19,13 +19,23 @@ type DropScheduleArgs = {
   dropBadgeTextEs?: string;
 };
 
+/**
+ * Ties a drop change to an open editor: the save is checked against the
+ * editor's row version, and the editor learns the new version or the conflict.
+ */
+export type EditorDropLink = {
+  expectedUpdatedAt: number;
+  onSaved: (updatedAt: number) => void;
+  onStale: () => void;
+};
+
 function bannerOf(err: unknown): EditorBanner | null {
   if (!(err instanceof ConvexError)) console.error("Product action failed", err);
   return editorFeedback(err instanceof ConvexError ? (err.data as unknown) : undefined).banner;
 }
 
 /** Quick row actions on the product list and the confirm dialogs that guard them. */
-export function useProductActions(locale: string, { onDropSaved }: { onDropSaved?: (variantId: string) => void } = {}) {
+export function useProductActions(locale: string) {
   const adjustStock = useMutation(api.catalog.admin.adjustVariantStock);
   const toggleFeatured = useMutation(api.catalog.admin.toggleVariantFeatured);
   const toggleAvailable = useMutation(api.catalog.admin.toggleVariantAvailable);
@@ -36,6 +46,7 @@ export function useProductActions(locale: string, { onDropSaved }: { onDropSaved
   const [stockTarget, setStockTarget] = useState<StockConfirmTarget | null>(null);
   const [availabilityTarget, setAvailabilityTarget] = useState<AvailabilityConfirmTarget | null>(null);
   const [dropTarget, setDropTarget] = useState<DropScheduleTarget | null>(null);
+  const [dropLink, setDropLink] = useState<EditorDropLink | null>(null);
   const [archiveId, setArchiveId] = useState<string | null>(null);
   const [skuVariantId, setSkuVariantId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -102,7 +113,8 @@ export function useProductActions(locale: string, { onDropSaved }: { onDropSaved
     setAvailabilityTarget(null);
   };
 
-  const openDropSchedule = (row: ResolvedVariant) =>
+  const openDropSchedule = (row: ResolvedVariant, link: EditorDropLink | null = null) => {
+    setDropLink(link);
     setDropTarget({
       variantId: row.variantId,
       name: nameOf(row),
@@ -116,14 +128,28 @@ export function useProductActions(locale: string, { onDropSaved }: { onDropSaved
       dropBadgeTextEs: row.dropBadgeTextEs,
       subscribersCount: row.subscribersCount,
     });
+  };
 
-  /** The dialog shows its own error, so a failure is rethrown to it. */
+  const closeDropSchedule = () => {
+    setDropTarget(null);
+    setDropLink(null);
+  };
+
+  /**
+   * The dialog shows its own error, so a failure is rethrown to it, except a
+   * stale save from the editor: the editor shows its stale banner instead.
+   */
   const saveDropSchedule = async (args: DropScheduleArgs) => {
     setBusy(true);
     try {
-      await updateDropStatus(args);
-      onDropSaved?.(args.variantId);
-      setDropTarget(null);
+      const result = await updateDropStatus(dropLink ? { ...args, expectedUpdatedAt: dropLink.expectedUpdatedAt } : args);
+      dropLink?.onSaved(result.updatedAt);
+      closeDropSchedule();
+    } catch (err: unknown) {
+      const isStale = err instanceof ConvexError && editorFeedback(err.data as unknown).banner?.kind === "stale";
+      if (!dropLink || !isStale) throw err;
+      dropLink.onStale();
+      closeDropSchedule();
     } finally {
       setBusy(false);
     }
@@ -156,7 +182,7 @@ export function useProductActions(locale: string, { onDropSaved }: { onDropSaved
     toggleFeatured: (variantId: string) => void run(() => toggleFeatured({ variantId })),
     openDropSchedule,
     saveDropSchedule,
-    closeDropSchedule: () => setDropTarget(null),
+    closeDropSchedule,
     requestArchive: setArchiveId,
     confirmArchive,
     cancelArchive: () => setArchiveId(null),

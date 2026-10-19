@@ -15,6 +15,7 @@ import { ProductPricingFields } from "./ProductPricingFields";
 import { TeeOptionsEditor } from "./TeeOptionsEditor";
 import { sectionClass } from "./editorFields";
 import type { ProductEditorState } from "./useProductEditor";
+import type { EditorDropLink } from "./useProductActions";
 
 /** Create/edit modal: Details · Pricing & Stock · Tee Options · Images · Drop · History. */
 export function ProductEditor({
@@ -27,7 +28,8 @@ export function ProductEditor({
   locale: string;
   /** True while a dialog opened from the editor sits on top of it. */
   blockClose: boolean;
-  onScheduleDrop: (row: ResolvedVariant) => void;
+  /** Opens the drop dialog; `link` checks the save against this session and reports back. */
+  onScheduleDrop: (row: ResolvedVariant, link: EditorDropLink | null) => void;
 }) {
   const t = useTranslations("admin.products");
   const { form, feedback, liveRow, isNew } = editor;
@@ -90,7 +92,7 @@ export function ProductEditor({
           ) : (
             <p className={`${sectionClass} text-[11px] text-zinc-500`}>{t("imagesAfterCreate")}</p>
           )}
-          <ProductDropSection row={liveRow} locale={locale} onSchedule={onScheduleDrop} />
+          <ProductDropSection row={editor.canSave ? liveRow : undefined} locale={locale} onSchedule={(row) => onScheduleDrop(row, editor.dropLink())} />
           {liveRow && <ProductHistory variantId={liveRow.variantId} />}
 
           <div className="flex items-center gap-3 pt-3 border-t border-zinc-100 dark:border-white/[0.06]">

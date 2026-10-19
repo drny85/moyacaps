@@ -21,7 +21,7 @@ export default function AdminProductsPage() {
   const [showArchived, setShowArchived] = useState(false);
   const data = useQuery(api.catalog.admin.getAllProductsAdmin, { includeArchived: showArchived });
   const editor = useProductEditor(data?.variants);
-  const actions = useProductActions(locale, { onDropSaved: editor.markDropSaved });
+  const actions = useProductActions(locale);
 
   const handlers: ProductRowHandlers = {
     onStock: actions.requestStock,

@@ -11,6 +11,7 @@ import type { ProductFormState, ResolvedVariant } from "@/lib/admin/productForm"
 import { editorFeedback, NO_FEEDBACK, splitFieldErrors } from "@/lib/admin/editorErrors";
 import type { EditorFeedback } from "@/lib/admin/editorErrors";
 import { canSave, closeDecision, editorReducer, initialEditorState } from "@/lib/admin/editorSession";
+import type { EditorDropLink } from "./useProductActions";
 
 export type StockChange = { current: number; next: number };
 
@@ -35,7 +36,7 @@ export function useProductEditor(rows: ResolvedVariant[] | undefined) {
   const liveRow = session?.mode === "edit" ? rows?.find((r) => r.variantId === session.variantId) : undefined;
   const isNew = session?.mode === "create";
 
-  // Seeds a just-created product and adopts the version bump of a drop change.
+  // Seeds a just-created product once its row arrives.
   useEffect(() => {
     if (liveRow) dispatch({ type: "rowUpdated", row: liveRow });
   }, [liveRow, session]);
@@ -79,8 +80,20 @@ export function useProductEditor(rows: ResolvedVariant[] | undefined) {
     dispatch({ type: "reload", row: liveRow });
   }, [liveRow]);
 
-  /** Call after a drop change for this product succeeds (it bumps the row version). */
-  const markDropSaved = useCallback((variantId: string) => dispatch({ type: "dropSaved", variantId }), []);
+  /**
+   * Links a drop change made from the editor to this session: checked against
+   * the session's version, adopting exactly the version the save returns.
+   * Null until the row version is known.
+   */
+  const dropLink = (): EditorDropLink | null => {
+    if (session?.mode !== "edit" || session.version === null) return null;
+    const { variantId, version } = session;
+    return {
+      expectedUpdatedAt: version,
+      onSaved: (updatedAt) => dispatch({ type: "dropSaved", variantId, updatedAt }),
+      onStale: () => setFeedback(editorFeedback({ kind: "stale" })),
+    };
+  };
 
   const commit = async () => {
     if (!session || !canSave(session)) return;
@@ -154,7 +167,7 @@ export function useProductEditor(rows: ResolvedVariant[] | undefined) {
     setCategory,
     setNameEn,
     reloadLatest,
-    markDropSaved,
+    dropLink,
     dismissFeedback: () => setFeedback(NO_FEEDBACK),
     requestSave,
     confirmStock,

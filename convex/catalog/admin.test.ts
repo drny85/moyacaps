@@ -277,6 +277,56 @@ describe("single-field mutations", () => {
   });
 });
 
+describe("updateVariantDropStatus with expectedUpdatedAt", () => {
+  async function created() {
+    const ctx = setup();
+    await ctx.admin.mutation(api.catalog.admin.createVariant, cap);
+    const existing = await row(ctx.t);
+    return { ...ctx, updatedAt: existing!.updatedAt! };
+  }
+
+  it("returns the new updatedAt, which a following updateVariant accepts", async () => {
+    const { t, admin, updatedAt } = await created();
+    const result = await admin.mutation(api.catalog.drops.updateVariantDropStatus, {
+      variantId: cap.variantId,
+      isDrop: true,
+      dropDate: 4_000_000_000_000,
+      expectedUpdatedAt: updatedAt,
+    });
+    expect(result.updatedAt).toBeGreaterThan(updatedAt);
+    expect((await row(t))!.updatedAt).toBe(result.updatedAt);
+    await admin.mutation(api.catalog.admin.updateVariant, {
+      variantId: cap.variantId,
+      expectedUpdatedAt: result.updatedAt,
+      patch: { priceUsd: 50 },
+    });
+    expect(await row(t)).toMatchObject({ priceUsd: 50, isDrop: true });
+  });
+
+  it("rejects a stale version and leaves the row alone", async () => {
+    const { t, admin, updatedAt } = await created();
+    await admin.mutation(api.catalog.admin.updateVariantPrice, { variantId: cap.variantId, priceUsd: 55 });
+    expect(
+      await errorData(
+        admin.mutation(api.catalog.drops.updateVariantDropStatus, {
+          variantId: cap.variantId,
+          isDrop: true,
+          dropDate: 4_000_000_000_000,
+          expectedUpdatedAt: updatedAt,
+        })
+      )
+    ).toEqual({ kind: "stale" });
+    expect(await row(t)).toMatchObject({ priceUsd: 55, isDrop: false });
+  });
+
+  it("skips the check when no version is given", async () => {
+    const { admin } = await created();
+    await admin.mutation(api.catalog.admin.updateVariantPrice, { variantId: cap.variantId, priceUsd: 55 });
+    const result = await admin.mutation(api.catalog.drops.updateVariantDropStatus, { variantId: cap.variantId, isDrop: false });
+    expect(result).toMatchObject({ success: true, isDrop: false });
+  });
+});
+
 describe("catalog image rows count as an image", () => {
   const blankCap = { ...cap, image: undefined };
   const addCatalogRow = (t: ReturnType<typeof setup>["t"]) =>

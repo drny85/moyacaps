@@ -36,7 +36,7 @@ describe("editorReducer", () => {
 
   it("opens an edit session seeded from the row", () => {
     const state = editing();
-    expect(state.session).toEqual({ mode: "edit", variantId: "moya-snap", version: 200, rebasePending: false });
+    expect(state.session).toEqual({ mode: "edit", variantId: "moya-snap", version: 200 });
     expect(state.form.nameEn).toBe("Moya Snap");
     expect(state.initial).toBe(state.form);
   });
@@ -56,7 +56,7 @@ describe("editorReducer", () => {
     let state = editorReducer(initialEditorState(), { type: "openCreate" });
     state = editorReducer(state, { type: "edit", fn: (f) => ({ ...f, nameEn: "Typed" }) });
     state = editorReducer(state, { type: "created", variantId: "typed" });
-    expect(state.session).toEqual({ mode: "edit", variantId: "typed", version: null, rebasePending: false });
+    expect(state.session).toEqual({ mode: "edit", variantId: "typed", version: null });
     expect(state.form.nameEn).toBe("Typed");
     expect(canSave(state.session)).toBe(false);
   });
@@ -75,27 +75,35 @@ describe("editorReducer", () => {
     expect(editorReducer(state, { type: "rowUpdated", row: row({ variantId: "other", updatedAt: 999 }) })).toBe(state);
   });
 
-  it("does not adopt a newer version without a drop change (stale stays stale)", () => {
+  it("does not adopt a newer version from the live row (stale stays stale)", () => {
     const state = editing();
     expect(editorReducer(state, { type: "rowUpdated", row: row({ updatedAt: 250 }) })).toBe(state);
   });
 
-  it("rebases the version after a drop change without touching the form", () => {
+  it("adopts exactly the version its own drop save returned, keeping the form", () => {
     let state = editing();
     state = editorReducer(state, { type: "edit", fn: (f) => ({ ...f, priceUsd: "99" }) });
-    state = editorReducer(state, { type: "dropSaved", variantId: "moya-snap" });
-    // The same version again (row not refreshed yet) keeps the rebase pending.
-    state = editorReducer(state, { type: "rowUpdated", row: row() });
-    expect(state.session).toMatchObject({ version: 200, rebasePending: true });
-    state = editorReducer(state, { type: "rowUpdated", row: row({ updatedAt: 260, nameEn: "Changed elsewhere" }) });
-    expect(state.session).toMatchObject({ version: 260, rebasePending: false });
+    state = editorReducer(state, { type: "dropSaved", variantId: "moya-snap", updatedAt: 260 });
+    expect(state.session).toMatchObject({ version: 260 });
     expect(state.form.priceUsd).toBe("99");
+    expect(state.initial.priceUsd).toBe("45");
+  });
+
+  it("never adopts a version other than the drop save's", () => {
+    // Another admin edits (V1 = 250), then this editor's drop save returns V2 = 260.
+    let state = editorReducer(editing(), { type: "rowUpdated", row: row({ updatedAt: 250, priceUsd: 70 }) });
+    state = editorReducer(state, { type: "dropSaved", variantId: "moya-snap", updatedAt: 260 });
+    state = editorReducer(state, { type: "rowUpdated", row: row({ updatedAt: 270, nameEn: "Changed elsewhere" }) });
+    expect(state.session).toMatchObject({ version: 260 });
     expect(state.form.nameEn).toBe("Moya Snap");
   });
 
-  it("ignores a drop change for another product", () => {
+  it("ignores a drop save for another product or before the row version is known", () => {
     const state = editing();
-    expect(editorReducer(state, { type: "dropSaved", variantId: "other" })).toBe(state);
+    expect(editorReducer(state, { type: "dropSaved", variantId: "other", updatedAt: 999 })).toBe(state);
+    let pending = editorReducer(initialEditorState(), { type: "openCreate" });
+    pending = editorReducer(pending, { type: "created", variantId: "moya-snap" });
+    expect(editorReducer(pending, { type: "dropSaved", variantId: "moya-snap", updatedAt: 999 })).toBe(pending);
   });
 
   it("reloads the latest row, dropping edits", () => {
@@ -120,6 +128,14 @@ describe("closeDecision", () => {
   it("asks before discarding edits", () => {
     const dirty = editorReducer(editing(), { type: "edit", fn: (f) => ({ ...f, nameEs: "Otro" }) });
     expect(closeDecision(dirty, { saving: false, blocked: false })).toBe("confirm");
+  });
+
+  it("closes without asking while a created product waits for its row", () => {
+    let state = editorReducer(initialEditorState(), { type: "openCreate" });
+    state = editorReducer(state, { type: "edit", fn: (f) => ({ ...f, nameEn: "Typed" }) });
+    expect(closeDecision(state, { saving: false, blocked: false })).toBe("confirm");
+    state = editorReducer(state, { type: "created", variantId: "typed" });
+    expect(closeDecision(state, { saving: false, blocked: false })).toBe("close");
   });
 
   it("blocks while saving or while a dialog sits on top", () => {

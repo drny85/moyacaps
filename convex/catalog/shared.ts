@@ -7,7 +7,7 @@ import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { ConvexError } from "convex/values";
 import { diffFields, recordCatalogEvent, type CatalogEventType } from "./audit";
 import { getVariant } from "./inventory";
-import { nextUpdatedAt } from "./model";
+import { nextUpdatedAt, versionOf } from "./model";
 import { overlayProductImages, type CapAngles, type ResolvedImageRow } from "./images/overlay";
 
 /**
@@ -112,9 +112,16 @@ export async function patchVariantAudited(
   const before: Record<string, unknown> = {};
   for (const key of Object.keys(fields)) before[key] = (variant as Record<string, unknown>)[key];
   const changes = diffFields(before, { ...before, ...fields });
-  if (changes.length === 0) return;
-  await ctx.db.patch("variants", variant._id, { ...fields, updatedAt: nextUpdatedAt(variant, Date.now()) });
+  if (changes.length === 0) return versionOf(variant);
+  const updatedAt = nextUpdatedAt(variant, Date.now());
+  await ctx.db.patch("variants", variant._id, { ...fields, updatedAt });
   await recordCatalogEvent(ctx, { variantId: variant.variantId, type, actor, changes });
+  return updatedAt;
+}
+
+/** Optimistic concurrency: the caller edited `expectedUpdatedAt`; anything newer is a concurrent edit. */
+export function requireVersion(variant: Doc<"variants">, expectedUpdatedAt: number) {
+  if (versionOf(variant) !== expectedUpdatedAt) throw new ConvexError({ kind: "stale" });
 }
 
 /** Like `requireVariant`, but rejects archived products: they must be restored before they are edited. */
