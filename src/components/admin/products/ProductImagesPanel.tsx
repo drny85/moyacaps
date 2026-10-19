@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { ConvexError } from "convex/values";
 import { useTranslations } from "next-intl";
@@ -35,6 +35,14 @@ function useSlotUpload(variantId: string, slot: Slot, onError: (code: string) =>
     if (pending) URL.revokeObjectURL(pending.url);
     setPending(null);
   };
+
+  const pendingUrl = useRef<string | null>(null);
+  useEffect(() => {
+    pendingUrl.current = pending?.url ?? null;
+  }, [pending]);
+  useEffect(() => () => {
+    if (pendingUrl.current) URL.revokeObjectURL(pendingUrl.current);
+  }, []);
 
   const pick = async (file: File) => {
     onError("");
@@ -109,7 +117,7 @@ function ImageCard({
       )}
       {image && onRemove && (
         <button type="button" className={btn} disabled={busy} onClick={onRemove}>
-          <Trash2 className="w-3 h-3" /> {t("remove")}
+          <Trash2 className="w-3 h-3" /> {busy ? t("removing") : t("remove")}
         </button>
       )}
     </div>
@@ -125,6 +133,7 @@ function SlotUploader({
   onRemove,
   onMove,
   addLabelKey,
+  locked = false,
 }: {
   variantId: string;
   slot: Slot;
@@ -133,6 +142,8 @@ function SlotUploader({
   onRemove?: () => void;
   onMove?: { up?: () => void; down?: () => void };
   addLabelKey?: "add";
+  /** A remove or reorder is in flight for this section. */
+  locked?: boolean;
 }) {
   const t = useTranslations("admin.products.images");
   const [error, setError] = useState("");
@@ -165,8 +176,8 @@ function SlotUploader({
         </div>
       ) : (
         <>
-          <ImageCard image={image} alt={label} label={label} busy={busy} onRemove={onRemove} onMove={onMove} tall={!isAngle} />
-          <button type="button" className={btn} onClick={() => input.current?.click()}>
+          <ImageCard image={image} alt={label} label={label} busy={busy || locked} onRemove={onRemove} onMove={onMove} tall={!isAngle} />
+          <button type="button" className={btn} disabled={locked} onClick={() => input.current?.click()}>
             <Upload className="w-3 h-3" /> {addLabelKey ? t(addLabelKey) : image ? t("replace") : t("upload")}
           </button>
         </>
@@ -247,6 +258,7 @@ function ColorwaySection({
       <div className="space-y-1">
         <h5 className="text-[11px] uppercase tracking-wide text-zinc-500">{t("catalogShot")}</h5>
         <SlotUploader
+            locked={working}
           variantId={variantId}
           slot={{ role: "catalog", colorway }}
           image={catalog}
@@ -259,6 +271,7 @@ function ColorwaySection({
         <div className="flex flex-wrap gap-3 items-start">
           {lifestyle.map((image, i) => (
             <SlotUploader
+            locked={working}
               key={image._id}
               variantId={variantId}
               slot={{ role: "lifestyle", colorway }}
@@ -272,6 +285,7 @@ function ColorwaySection({
             />
           ))}
           <SlotUploader
+            locked={working}
             variantId={variantId}
             slot={{ role: "lifestyle", colorway }}
             label={t("lifestyleShots")}
@@ -287,6 +301,7 @@ function ColorwaySection({
               const image = mine.find((i) => i.role === "angle" && i.angle === angle);
               return (
                 <SlotUploader
+            locked={working}
                   key={angle}
                   variantId={variantId}
                   slot={{ role: "angle", colorway, angle }}

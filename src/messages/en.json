@@ -460,7 +460,6 @@
         "add": "Add Lifestyle Shot",
         "cropHint": "The storefront crops this photo to 4:5. Keep the subject inside the frame.",
         "loading": "Loading images...",
-        "saveFirst": "Save the product first to add images.",
         "errors": {
           "unsupported_format": "Unsupported file. Use a PNG, JPEG or WebP image.",
           "too_large": "File is too large. The maximum is 10 MB.",

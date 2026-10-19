@@ -460,7 +460,6 @@
         "add": "Agregar foto lifestyle",
         "cropHint": "La tienda recorta esta foto a 4:5. Mantén el sujeto dentro del marco.",
         "loading": "Cargando imágenes...",
-        "saveFirst": "Guarda el producto primero para agregar imágenes.",
         "errors": {
           "unsupported_format": "Archivo no compatible. Usa una imagen PNG, JPEG o WebP.",
           "too_large": "El archivo es muy grande. El máximo es 10 MB.",
