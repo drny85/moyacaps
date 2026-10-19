@@ -32,6 +32,20 @@ describe("buildSkuMatrix", () => {
   });
 });
 
+describe("colorway swatches", () => {
+  it("carries each colorway's hex and border hex onto its row, removed rows included", () => {
+    const m = formSkuMatrix(
+      { colorways: [{ id: "black", name: "Black", hex: "#111111", borderHex: "#333333" }], sizes: ["M"] },
+      { colorways: [{ id: "white", name: "White", hex: "#fafafa", borderHex: "#dddddd" }], sizes: ["M"] },
+      []
+    );
+    expect(m.rows.map((r) => [r.colorway, r.hex, r.borderHex, r.removed])).toEqual([
+      ["black", "#111111", "#333333", false],
+      ["white", "#fafafa", "#dddddd", true],
+    ]);
+  });
+});
+
 describe("markBlocked", () => {
   it("flags the cells a sku_in_stock error names", () => {
     const m = markBlocked(buildSkuMatrix(colorways, ["M"], [{ colorway: "white", size: "M", stock: 2 }]), [{ colorway: "white", size: "M" }]);

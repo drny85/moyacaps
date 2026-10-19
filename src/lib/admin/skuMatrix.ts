@@ -8,22 +8,22 @@ import { ALLOWED_SIZES } from "../../../convex/catalog/rules";
 
 export type SkuStock = { colorway: string; size: string; stock: number };
 export type SkuCellVM = { size: string; stock: number; saved: boolean; blocked: boolean; removed: boolean };
-export type SkuRowVM = { colorway: string; name: string; cells: SkuCellVM[]; total: number; removed: boolean };
+export type SkuRowVM = { colorway: string; name: string; hex?: string; borderHex?: string; cells: SkuCellVM[]; total: number; removed: boolean };
 export type SkuMatrix = { sizes: string[]; removedSizes: string[]; rows: SkuRowVM[]; total: number };
 
-type Colorway = { id: string; name: string; removed?: boolean };
+type Colorway = { id: string; name: string; hex?: string; borderHex?: string; removed?: boolean };
 
 const key = (colorway: string, size: string) => `${colorway}\u0000${size}`;
 
 /** `removedSizes` are columns the form dropped but the saved tee still has. */
 export function buildSkuMatrix(colorways: Colorway[], sizes: string[], skus: SkuStock[], removedSizes: string[] = []): SkuMatrix {
   const stock = new Map(skus.map((s) => [key(s.colorway, s.size), s.stock]));
-  const rows = colorways.map(({ id, name, removed = false }) => {
+  const rows = colorways.map(({ id, name, hex, borderHex, removed = false }) => {
     const cells = sizes.map((size) => {
       const saved = stock.get(key(id, size));
       return { size, stock: saved ?? 0, saved: saved !== undefined, blocked: false, removed: removed || removedSizes.includes(size) };
     });
-    return { colorway: id, name, cells, total: cells.reduce((sum, c) => sum + c.stock, 0), removed };
+    return { colorway: id, name, hex, borderHex, cells, total: cells.reduce((sum, c) => sum + c.stock, 0), removed };
   });
   return { sizes, removedSizes, rows, total: rows.reduce((sum, r) => sum + r.total, 0) };
 }

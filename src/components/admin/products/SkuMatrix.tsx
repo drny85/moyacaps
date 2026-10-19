@@ -85,7 +85,16 @@ export function SkuMatrix({ variantId, productName, matrix }: { variantId: strin
             {matrix.rows.map((row) => (
               <tr key={row.colorway}>
                 <th scope="row" className={`text-left font-medium text-zinc-800 dark:text-zinc-200 pr-2 whitespace-nowrap ${row.removed ? "line-through opacity-60" : ""}`}>
-                  {row.name}
+                  <span className="inline-flex items-center gap-2">
+                    {row.hex && (
+                      <span
+                        aria-hidden
+                        className="w-4 h-4 rounded-full shrink-0 border-2"
+                        style={{ backgroundColor: row.hex, borderColor: row.borderHex ?? row.hex }}
+                      />
+                    )}
+                    {row.name}
+                  </span>
                 </th>
                 {row.cells.map((cell) => {
                   const key = cellKey(row.colorway, cell.size);
@@ -107,7 +116,7 @@ export function SkuMatrix({ variantId, productName, matrix }: { variantId: strin
                           e.preventDefault();
                           commitCell(row.colorway, row.name, cell.size, cell.stock);
                         }}
-                        className={`w-14 py-1.5 px-2 rounded-lg border text-center font-mono disabled:opacity-50 ${
+                        className={`w-11 py-1.5 px-1 rounded-lg border text-center font-mono disabled:opacity-50 ${
                           cell.blocked
                             ? "border-red-500 bg-red-500/10 text-red-700 dark:text-red-300 ring-1 ring-red-500"
                             : "border-zinc-200 dark:border-white/10 bg-zinc-50 dark:bg-white/[0.03] text-zinc-900 dark:text-white"

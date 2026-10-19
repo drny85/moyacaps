@@ -1,20 +1,24 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import type { ProductFormState } from "@/lib/admin/productForm";
 import { fieldErrorFor } from "@/lib/admin/editorErrors";
 import type { EditorFeedback } from "@/lib/admin/editorErrors";
 import { TextField, sectionClass, sectionTitleClass } from "./editorFields";
 
-/** Price, stock, tax code, storefront visibility and featured flag. */
+/** Price, stock (per SKU for tees), tax code, storefront visibility and featured flag. */
 export function PricingStockSection({
   form,
   feedback,
   onChange,
+  skuStock,
 }: {
   form: ProductFormState;
   feedback: EditorFeedback;
   onChange: (changes: Partial<ProductFormState>) => void;
+  /** A tee's per-SKU stock grid, shown in place of the single stock field. */
+  skuStock?: ReactNode;
 }) {
   const t = useTranslations("admin.products");
   const err = (field: string) => fieldErrorFor(feedback, field);
@@ -23,20 +27,21 @@ export function PricingStockSection({
   return (
     <section className={sectionClass}>
       <h3 className={sectionTitleClass}>{t("sections.pricing")}</h3>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-start">
+      <div className={`grid grid-cols-1 gap-3 items-start ${isTee ? "sm:grid-cols-2" : "sm:grid-cols-3"}`}>
         <TextField label={t("priceUsd")} type="number" mono value={form.priceUsd} onChange={(priceUsd) => onChange({ priceUsd })} error={err("priceUsd")} />
-        <TextField
-          label={t("stock")}
-          type="number"
-          mono
-          value={form.stock}
-          disabled={isTee}
-          hint={isTee ? t("teeStockHint") : undefined}
-          onChange={(stock) => onChange({ stock })}
-          error={err("stock")}
-        />
+        {!isTee && (
+          <TextField label={t("stock")} type="number" mono value={form.stock} onChange={(stock) => onChange({ stock })} error={err("stock")} />
+        )}
         <TextField label={t("taxCode")} mono value={form.taxCode} onChange={(taxCode) => onChange({ taxCode })} error={err("taxCode")} />
       </div>
+
+      {isTee && (
+        <div>
+          <span className="font-medium text-zinc-700 dark:text-zinc-300 block mb-1">{t("teeOptions.skuStock")}</span>
+          <p className="text-[11px] text-zinc-500 mb-2">{t("teeStockHint")}</p>
+          {skuStock}
+        </div>
+      )}
 
       <div className="flex items-center gap-3 p-3 rounded-xl bg-zinc-50 dark:bg-white/[0.02] border border-zinc-200 dark:border-white/10">
         <input

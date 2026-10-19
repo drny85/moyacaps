@@ -6,29 +6,16 @@ import { ALLOWED_SIZES } from "@convex/catalog/rules";
 import type { ColorwayDraft, ProductFormState } from "@/lib/admin/productForm";
 import { fieldErrorFor } from "@/lib/admin/editorErrors";
 import type { EditorFeedback } from "@/lib/admin/editorErrors";
-import { formSkuMatrix, markBlocked } from "@/lib/admin/skuMatrix";
-import type { SkuStock } from "@/lib/admin/skuMatrix";
 import { addColorway, isColorwayLocked, removeColorway, toggleSize, updateColorway } from "@/lib/admin/teeOptions";
-import { SkuMatrix } from "./SkuMatrix";
 import { Field, FieldErrorText, HexField, TextField, inputClass, sectionClass, sectionTitleClass } from "./editorFields";
 
-/** The saved tee behind the SKU matrix; absent for a Product not created yet. */
-export type SavedTee = {
-  variantId: string;
-  productName: string;
-  skus: SkuStock[];
-  colorways: { id: string; nameEn: string; nameEs: string }[];
-  sizes: string[];
-};
-
-/** Apparel Colorways, sizes, the SKU stock matrix, default colorway and fabric/fit copy of a tee. */
+/** Apparel Colorways, sizes, default colorway and fabric/fit copy of a tee. Stock per SKU lives in Pricing & Stock. */
 export function TeeOptionsEditor({
   form,
   feedback,
   savedColorwayIds,
   printPosition,
   locale,
-  saved,
   onChange,
 }: {
   form: ProductFormState;
@@ -36,26 +23,11 @@ export function TeeOptionsEditor({
   savedColorwayIds: ReadonlySet<string>;
   printPosition?: "front" | "back";
   locale: string;
-  saved?: SavedTee;
   onChange: (edit: (f: ProductFormState) => ProductFormState) => void;
 }) {
   const t = useTranslations("admin.products.teeOptions");
   const tSections = useTranslations("admin.products.sections");
   const nameOf = (c: { id: string; nameEn: string; nameEs: string }) => (locale === "es" ? c.nameEs : c.nameEn) || c.id;
-  const formColorways = form.colorways
-    .filter((c, i) => c.id !== "" && form.colorways.findIndex((x) => x.id === c.id) === i)
-    .map((c) => ({ id: c.id, name: nameOf(c) }));
-  const banner = feedback.banner;
-  const matrix =
-    saved &&
-    markBlocked(
-      formSkuMatrix(
-        { colorways: formColorways, sizes: form.sizes },
-        { colorways: saved.colorways.map((c) => ({ id: c.id, name: nameOf(c) })), sizes: saved.sizes },
-        saved.skus
-      ),
-      banner?.kind === "sku_in_stock" ? banner.cells : []
-    );
   const err = (field: string) => fieldErrorFor(feedback, field);
   const setColorway = (index: number, changes: Partial<ColorwayDraft>) =>
     onChange((f) => updateColorway(f, index, changes, savedColorwayIds));
@@ -137,16 +109,9 @@ export function TeeOptionsEditor({
           })}
         </div>
         <FieldErrorText error={err("sizes")} />
+        <p className="mt-1 text-[11px] text-zinc-500">{t("skuStockInPricing")}</p>
       </div>
 
-      <div>
-        <span className="font-medium text-zinc-700 dark:text-zinc-300 block mb-1">{t("skuStock")}</span>
-        {matrix && saved ? (
-          <SkuMatrix variantId={saved.variantId} productName={saved.productName} matrix={matrix} />
-        ) : (
-          <p className="text-[11px] text-zinc-500">{t("skuAfterCreate")}</p>
-        )}
-      </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Field label={t("defaultColorway")} error={err("defaultColorway")}>

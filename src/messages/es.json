@@ -485,7 +485,7 @@
       "descriptionEs": "Descripción (Español)",
       "badgeTextEn": "Texto de Insignia (Inglés)",
       "badgeTextEs": "Texto de Insignia (Español)",
-      "teeStockHint": "El stock de playeras se define por color y talla con el botón SKUs.",
+      "teeStockHint": "Edita las existencias por colorway y talla. Cada celda se guarda sola al confirmar.",
       "sections": {
         "details": "Detalles",
         "pricing": "Precio y Existencias",
@@ -521,7 +521,8 @@
           "back": "Espalda"
         },
         "skuStock": "Stock por SKU",
-        "skuAfterCreate": "Guarda el producto primero para fijar el stock por SKU."
+        "skuAfterCreate": "Guarda el producto primero para fijar el stock por SKU.",
+        "skuStockInPricing": "Las existencias por SKU se ajustan en Precio y Existencias."
       },
       "discardConfirm": "¿Descartar los cambios sin guardar de este producto?",
       "grid": {

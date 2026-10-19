@@ -17,6 +17,7 @@ import { ProductHistory } from "./ProductHistory";
 import { ProductImagesPanel } from "./ProductImagesPanel";
 import { StaleValuesPanel } from "./StaleValuesPanel";
 import { TeeOptionsEditor } from "./TeeOptionsEditor";
+import { TeeSkuStock } from "./TeeSkuStock";
 import { sectionClass, sectionTitleClass } from "./editorFields";
 import { useAdminShortcuts } from "./useAdminShortcuts";
 import { useProductActions } from "./useProductActions";
@@ -161,7 +162,29 @@ export function ProductEditorPage({ target }: { target: EditorTarget }) {
         <form id={FORM_ID} onSubmit={onSubmit} noValidate className="min-w-0">
           <fieldset disabled={isArchived || editor.saving} className="space-y-4 min-w-0">
             <DetailsSection form={form} feedback={feedback} isNew={isNew} onChange={editor.update} onCategory={editor.setCategory} onNameEn={editor.setNameEn} />
-            <PricingStockSection form={form} feedback={feedback} onChange={editor.update} />
+            <PricingStockSection
+              form={form}
+              feedback={feedback}
+              onChange={editor.update}
+              skuStock={
+                <TeeSkuStock
+                  form={form}
+                  feedback={feedback}
+                  locale={locale}
+                  saved={
+                    liveRow && !isNew
+                      ? {
+                          variantId: liveRow.variantId,
+                          productName: locale === "es" ? liveRow.nameEs : liveRow.nameEn,
+                          skus: liveRow.skus,
+                          colorways: liveRow.colorways ?? [],
+                          sizes: liveRow.sizes ?? [],
+                        }
+                      : undefined
+                  }
+                />
+              }
+            />
             {form.category === "apparel" && (
               <TeeOptionsEditor
                 form={form}
@@ -169,17 +192,6 @@ export function ProductEditorPage({ target }: { target: EditorTarget }) {
                 savedColorwayIds={editor.savedColorwayIds}
                 printPosition={liveRow?.printPosition}
                 locale={locale}
-                saved={
-                  liveRow && !isNew
-                    ? {
-                        variantId: liveRow.variantId,
-                        productName: locale === "es" ? liveRow.nameEs : liveRow.nameEn,
-                        skus: liveRow.skus,
-                        colorways: liveRow.colorways ?? [],
-                        sizes: liveRow.sizes ?? [],
-                      }
-                    : undefined
-                }
                 onChange={editor.edit}
               />
             )}

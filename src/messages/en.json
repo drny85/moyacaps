@@ -485,7 +485,7 @@
       "descriptionEs": "Description (Spanish)",
       "badgeTextEn": "Badge Text (English)",
       "badgeTextEs": "Badge Text (Spanish)",
-      "teeStockHint": "Tee stock is set per colorway and size with the SKUs button.",
+      "teeStockHint": "Edit stock per Apparel Colorway and size. Each cell saves on its own after you confirm.",
       "sections": {
         "details": "Details",
         "pricing": "Pricing & Stock",
@@ -521,7 +521,8 @@
           "back": "Back"
         },
         "skuStock": "Stock per SKU",
-        "skuAfterCreate": "Save the Product first to set stock per SKU."
+        "skuAfterCreate": "Save the Product first to set stock per SKU.",
+        "skuStockInPricing": "Stock per SKU is set in Pricing & Stock."
       },
       "discardConfirm": "Discard your unsaved changes to this product?",
       "grid": {
