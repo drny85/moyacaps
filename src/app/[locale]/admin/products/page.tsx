@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useTranslations, useLocale } from "next-intl";
 import { Link } from "@/i18n/routing";
 import { useQuery, useMutation } from "convex/react";
+import type { FunctionReturnType } from "convex/server";
 import { ConvexError } from "convex/values";
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
@@ -43,6 +44,11 @@ import { DropScheduleDialog, DropScheduleTarget } from "@/components/admin/DropS
 import { DateTimePicker } from "@/components/admin/DateTimePicker";
 import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
 
+type AdminVariant = FunctionReturnType<typeof api.catalog.admin.getAllProductsAdmin>["variants"][number];
+
+/** Fields the product form shows an error under; any other field error goes to the form-level message. */
+const FORM_FIELDS = ["variantId", "nameEn", "nameEs", "silhouette", "primaryHex", "secondaryHex", "priceUsd", "stock"];
+
 export default function AdminProductsPage() {
   const t = useTranslations("admin.products");
   const tErrors = useTranslations("admin.products.errors");
@@ -54,7 +60,8 @@ export default function AdminProductsPage() {
   const [availabilityFilter, setAvailabilityFilter] = useState<"all" | "available" | "unavailable">("all");
 
   // Modal state
-  const [editingVariant, setEditingVariant] = useState<any | null>(null);
+  const [editingVariant, setEditingVariant] = useState<AdminVariant | "new" | null>(null);
+  const editingRow = typeof editingVariant === "object" ? editingVariant : null;
   useLockBodyScroll(Boolean(editingVariant));
   const [isNewVariant, setIsNewVariant] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -156,10 +163,10 @@ export default function AdminProductsPage() {
     setFormError(null);
     setFieldErrors([]);
     setIsStale(false);
-    setEditingVariant(true);
+    setEditingVariant("new");
   };
 
-  const openEditModal = (variant: any) => {
+  const openEditModal = (variant: AdminVariant) => {
     setIsNewVariant(false);
     setFormVariantId(variant.variantId);
     setFormNameEn(variant.nameEn);
@@ -354,7 +361,8 @@ export default function AdminProductsPage() {
           dropBadgeTextEs: formDropBadgeTextEs.trim() || undefined,
         });
       } else {
-        const original = editingVariant;
+        const original = editingRow;
+        if (!original) return;
         const changed = <T,>(next: T, prev: T) => (next !== prev ? next : undefined);
         const isTee = Boolean(original.colorways?.length);
         await updateVariant({
@@ -381,15 +389,20 @@ export default function AdminProductsPage() {
       }
 
       setEditingVariant(null);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Failed to save variant", err);
       const data: { kind?: string; errors?: FieldError[] } | string | undefined = err instanceof ConvexError ? err.data : undefined;
       if (typeof data === "object" && data.kind === "validation") {
-        setFieldErrors(data.errors ?? []);
+        const errors = data.errors ?? [];
+        setFieldErrors(errors);
+        const unmapped = errors.filter((e) => !FORM_FIELDS.includes(e.field));
+        if (unmapped.length > 0) setFormError(unmapped.map((e) => `${e.field}: ${tErrors(e.code)}`).join(" "));
       } else if (typeof data === "object" && data.kind === "stale") {
         setIsStale(true);
+      } else if (typeof data === "object" && data.kind === "needs_image") {
+        setFormError(tErrors("needs_image"));
       } else {
-        setFormError(typeof data === "string" ? data : err?.message || "Failed to save variant. Please check inputs.");
+        setFormError(typeof data === "string" ? data : err instanceof Error ? err.message : "Failed to save variant. Please check inputs.");
       }
     } finally {
       setIsSaving(false);
@@ -407,16 +420,16 @@ export default function AdminProductsPage() {
     if (!formVariantId.trim()) return;
 
     // High-Friction Safeguard: If stock is changing in the edit modal, prompt confirmation first
-    if (!isNewVariant && editingVariant && !editingVariant.colorways?.length && editingVariant.stock !== Number(formStock)) {
-      const delta = Number(formStock) - editingVariant.stock;
+    if (!isNewVariant && editingRow && !editingRow.colorways?.length && editingRow.stock !== Number(formStock)) {
+      const delta = Number(formStock) - editingRow.stock;
       setStockConfirmTarget({
-        variantId: editingVariant.variantId,
+        variantId: editingRow.variantId,
         name: locale === "es" ? formNameEs : formNameEn,
         silhouette: formSilhouette,
-        image: previewUrl || formImage || editingVariant.image,
+        image: previewUrl || formImage || editingRow.image,
         primaryHex: formPrimaryHex,
         secondaryHex: formSecondaryHex,
-        currentStock: editingVariant.stock,
+        currentStock: editingRow.stock,
         newStock: Number(formStock),
         delta,
       });
@@ -1233,8 +1246,8 @@ export default function AdminProductsPage() {
                     required
                     value={formStock}
                     onChange={(e) => setFormStock(Number(e.target.value))}
-                    disabled={Boolean(editingVariant?.colorways?.length)}
-                    title={editingVariant?.colorways?.length ? "Tee stock is edited per colorway and size (SKUs button)" : undefined}
+                    disabled={Boolean(editingRow?.colorways?.length)}
+                    title={editingRow?.colorways?.length ? "Tee stock is edited per colorway and size (SKUs button)" : undefined}
                     className="w-full py-2 px-3 rounded-xl bg-zinc-50 dark:bg-white/[0.03] border border-zinc-200 dark:border-white/10 text-zinc-900 dark:text-white font-mono focus:outline-none focus:ring-1 focus:ring-moya-red disabled:opacity-50"
                   />
                 {fieldError("stock")}

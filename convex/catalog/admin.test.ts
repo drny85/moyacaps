@@ -91,7 +91,9 @@ describe("createVariant", () => {
 
   it("requires an administrator", async () => {
     const { t } = setup();
-    await expect(t.mutation(api.catalog.admin.createVariant, cap)).rejects.toThrow();
+    expect(await errorData(t.mutation(api.catalog.admin.createVariant, cap))).toMatch(/^Unauthorized/);
+    const outsider = t.withIdentity({ subject: "user_x", email: "nobody@example.com" });
+    expect(await errorData(outsider.mutation(api.catalog.admin.createVariant, cap))).toMatch(/^Forbidden/);
   });
 });
 
@@ -188,6 +190,19 @@ describe("updateVariant", () => {
     expect(await history(admin)).toHaveLength(1);
   });
 
+  it("refuses to leave a visible product without an image", async () => {
+    const { admin, updatedAt } = await created();
+    expect(
+      await errorData(admin.mutation(api.catalog.admin.updateVariant, { variantId: cap.variantId, expectedUpdatedAt: updatedAt, patch: { image: "" } }))
+    ).toEqual({ kind: "needs_image" });
+    const hidden = await admin.mutation(api.catalog.admin.updateVariant, {
+      variantId: cap.variantId,
+      expectedUpdatedAt: updatedAt,
+      patch: { image: "", isAvailable: false },
+    });
+    expect(hidden.updatedAt).toBeGreaterThan(updatedAt);
+  });
+
   it("never edits tee stock through the patch", async () => {
     const { t, admin } = setup();
     await t.run((ctx) =>
@@ -252,5 +267,52 @@ describe("single-field mutations", () => {
     expect((await history(admin))[0]).toMatchObject({ type: "drop_changed" });
     await admin.mutation(api.catalog.admin.deleteVariant, { variantId: cap.variantId });
     expect((await history(admin))[0]).toMatchObject({ type: "purged" });
+  });
+});
+
+describe("stock mutations", () => {
+  it("updateVariantStock validates and audits", async () => {
+    const { admin } = setup();
+    await admin.mutation(api.catalog.admin.createVariant, cap);
+    expect(await errorData(admin.mutation(api.catalog.admin.updateVariantStock, { variantId: cap.variantId, stock: -1 }))).toEqual({
+      kind: "validation",
+      errors: [{ field: "stock", code: "range" }],
+    });
+    await admin.mutation(api.catalog.admin.updateVariantStock, { variantId: cap.variantId, stock: 4 });
+    expect((await history(admin))[0]).toMatchObject({ type: "stock_adjusted", changes: [{ field: "stock", from: 10, to: 4 }] });
+  });
+
+  it("a no-change single-field write adds no event and keeps updatedAt", async () => {
+    const { t, admin } = setup();
+    await admin.mutation(api.catalog.admin.createVariant, cap);
+    const before = await row(t);
+    await admin.mutation(api.catalog.admin.updateVariantPrice, { variantId: cap.variantId, priceUsd: cap.priceUsd });
+    expect((await row(t))?.updatedAt).toBe(before?.updatedAt);
+    expect(await history(admin)).toHaveLength(1);
+  });
+
+  it("setTeeSkuStock validates, audits the SKU change and stamps the tee", async () => {
+    const { t, admin } = setup();
+    await t.run((ctx) =>
+      ctx.db.insert("variants", {
+        ...cap,
+        variantId: "tee-sku",
+        category: "apparel",
+        silhouette: "tee",
+        colorways: [{ id: "black", nameEn: "Black", nameEs: "Negro", hex: "#000000", borderHex: "#111111", lifestyleImage: "/l.jpg", catalogShot: "/c.jpg" }],
+        sizes: ["M"],
+        updatedAt: 1000,
+      })
+    );
+    const args = { variantId: "tee-sku", colorway: "black", size: "M" };
+    expect(await errorData(admin.mutation(api.catalog.admin.setTeeSkuStock, { ...args, stock: 1.5 }))).toEqual({
+      kind: "validation",
+      errors: [{ field: "stock", code: "range" }],
+    });
+    await admin.mutation(api.catalog.admin.setTeeSkuStock, { ...args, stock: 7 });
+    expect((await history(admin, "tee-sku"))[0]).toMatchObject({ type: "sku_stock_set", changes: [{ field: "stock:black/M", from: 0, to: 7 }] });
+    const tee = await row(t, "tee-sku");
+    expect(tee?.updatedAt).toBeGreaterThan(1000);
+    expect(tee?.stock).toBe(7);
   });
 });

@@ -121,10 +121,12 @@ export async function setSkuStock(
   colorway: string,
   size: string,
   stock: number
-) {
+): Promise<{ previous: number; next: number }> {
   const sku = await getSku(ctx, variant.variantId, colorway, size);
+  const previous = sku?.stock ?? 0;
   const next = Math.max(0, Math.floor(stock));
   if (sku) await ctx.db.patch("skus", sku._id, { stock: next });
   else await ctx.db.insert("skus", { variantId: variant.variantId, colorway, size, stock: next });
   await syncTeeAggregate(ctx, variant);
+  return { previous, next };
 }

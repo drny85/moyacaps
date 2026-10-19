@@ -9,9 +9,10 @@ import { v, ConvexError } from "convex/values";
 import { requireAdmin } from "../lib/auth";
 import schema from "../schema";
 import { dropStatusValidator, successResult, variantWithSubscribers } from "./validators";
-import { getSku, getVariant, hasSkus, setSkuStock } from "./inventory";
+import { getVariant, hasSkus, setSkuStock } from "./inventory";
 import {
   buildNewVariant,
+  blankImageWhileVisible,
   buildVariantPatch,
   nextAvailability,
   nextUpdatedAt,
@@ -317,6 +318,9 @@ export const updateVariant = mutation({
       throw new ConvexError(TEE_STOCK_EDIT_ERROR);
     }
     throwIfInvalid(validateMerged(existing, args.patch));
+    if (blankImageWhileVisible(existing, args.patch)) {
+      throw new ConvexError({ kind: "needs_image" });
+    }
 
     const input = await withUploadedImage(ctx, args.patch);
     const { updatedAt, ...fields } = buildVariantPatch(existing, input, nextUpdatedAt(existing, Date.now()));
@@ -378,25 +382,18 @@ export const setTeeSkuStock = mutation({
     if (!variant.colorways!.some((c) => c.id === args.colorway) || !variant.sizes!.includes(args.size)) {
       throw new ConvexError(`${args.colorway} / ${args.size} is not offered for ${args.variantId}`);
     }
-    if (!Number.isFinite(args.stock) || args.stock < 0) throw new ConvexError("Stock must be zero or more");
-    const previous = (await getSku(ctx, variant.variantId, args.colorway, args.size))?.stock ?? 0;
-    await setSkuStock(ctx, variant, args.colorway, args.size, args.stock);
-    // The tee row's aggregate changed too; stamp it so an open full edit goes stale.
-    await ctx.db.patch("variants", variant._id, {
-      updatedAt: nextUpdatedAt(variant, Date.now()),
-    });
-    await recordCatalogEvent(ctx, {
-      variantId: variant.variantId,
-      type: "sku_stock_set",
-      actor,
-      changes: [
-        {
-          field: `stock:${args.colorway}/${args.size}`,
-          from: previous,
-          to: Math.max(0, Math.floor(args.stock)),
-        },
-      ],
-    });
+    throwIfInvalid(validateMerged(variant, { stock: args.stock }, ["stock"]));
+    const { previous, next } = await setSkuStock(ctx, variant, args.colorway, args.size, args.stock);
+    if (previous !== next) {
+      // The tee row's aggregate changed too; stamp it so an open full edit goes stale.
+      await ctx.db.patch("variants", variant._id, { updatedAt: nextUpdatedAt(variant, Date.now()) });
+      await recordCatalogEvent(ctx, {
+        variantId: variant.variantId,
+        type: "sku_stock_set",
+        actor,
+        changes: [{ field: `stock:${args.colorway}/${args.size}`, from: previous, to: next }],
+      });
+    }
     return { success: true };
   },
 });

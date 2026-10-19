@@ -73,7 +73,7 @@ export async function deleteStorageQuietly(ctx: MutationCtx, storageId: Id<"_sto
 
 /**
  * Patch a variant, stamp `updatedAt` (so a concurrent full edit is detected as stale)
- * and record the audit event for the fields that changed.
+ * and record the audit event for the fields that changed. Writes nothing when no field differs.
  */
 export async function patchVariantAudited(
   ctx: MutationCtx,
@@ -84,11 +84,8 @@ export async function patchVariantAudited(
 ) {
   const before: Record<string, unknown> = {};
   for (const key of Object.keys(fields)) before[key] = (variant as Record<string, unknown>)[key];
+  const changes = diffFields(before, { ...before, ...fields });
+  if (changes.length === 0) return;
   await ctx.db.patch("variants", variant._id, { ...fields, updatedAt: nextUpdatedAt(variant, Date.now()) });
-  await recordCatalogEvent(ctx, {
-    variantId: variant.variantId,
-    type,
-    actor,
-    changes: diffFields(before, { ...before, ...fields }),
-  });
+  await recordCatalogEvent(ctx, { variantId: variant.variantId, type, actor, changes });
 }

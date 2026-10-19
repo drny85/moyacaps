@@ -389,7 +389,8 @@
         "too_long": "Este valor es demasiado largo.",
         "mismatch": "No coincide con la categoría seleccionada.",
         "taken": "Este nombre de URL ya lo usa otro producto.",
-        "stale": "Este producto cambió mientras lo editabas. Cierra esta ventana y vuelve a abrir el producto para ver la versión más reciente."
+        "stale": "Este producto cambió mientras lo editabas. Cierra esta ventana y vuelve a abrir el producto para ver la versión más reciente.",
+        "needs_image": "Agrega una imagen del producto antes de guardar, o oculta el producto."
       }
     },
     "drops": {

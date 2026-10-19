@@ -7,6 +7,7 @@ import {
   hasDropHistory,
   isPurchaseBlockedByDrop,
   isUpcomingDrop,
+  blankImageWhileVisible,
   buildNewVariant,
   buildVariantPatch,
   nextUpdatedAt,
@@ -180,6 +181,15 @@ describe("buildNewVariant", () => {
   it("saves a product with no image hidden, whatever isAvailable says", () => {
     expect(buildNewVariant(input({ image: undefined, isAvailable: true }), NOW)).toMatchObject({ image: "", isAvailable: false });
     expect(buildNewVariant(input({ image: "   ", isAvailable: true }), NOW)).toMatchObject({ image: "", isAvailable: false });
+  });
+});
+
+describe("blankImageWhileVisible", () => {
+  it("flags a visible product left without an image or upload", () => {
+    expect(blankImageWhileVisible(variant(), { image: " " })).toBe(true);
+    expect(blankImageWhileVisible(variant(), { image: "", isAvailable: false })).toBe(false);
+    expect(blankImageWhileVisible(variant({ storageId: "s1" as Id<"_storage"> }), { image: "" })).toBe(false);
+    expect(blankImageWhileVisible(variant(), { priceUsd: 5 })).toBe(false);
   });
 });
 
