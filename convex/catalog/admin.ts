@@ -333,6 +333,11 @@ export const updateVariant = mutation({
       fitEn: v.optional(editableFields.fitEn),
       fitEs: v.optional(editableFields.fitEs),
       }),
+    /**
+     * Remove a colorway or size even when its SKUs still hold stock: those units are
+     * dropped from Available Inventory (each audited as `stock:<colorway>/<size>` → 0).
+     */
+    discardStock: v.optional(v.boolean()),
   },
   returns: v.object({ updatedAt: v.number() }),
   handler: async (ctx, args) => {
@@ -381,9 +386,10 @@ export const updateVariant = mutation({
       }
     }
     throwIfInvalid(errors);
-    if (skuPlan && skuPlan.blocked.length > 0) {
+    if (skuPlan && skuPlan.blocked.length > 0 && !args.discardStock) {
       throw new ConvexError({ kind: "sku_in_stock", cells: skuPlan.blocked });
     }
+    const discarded = skuPlan?.blocked ?? [];
     // Rows of removed colorways are deleted below, so they no longer count as the product's image.
     const keepsCatalogRow = await hasCatalogImageRow(
       ctx,
@@ -399,7 +405,10 @@ export const updateVariant = mutation({
     const { updatedAt, ...fields } = buildVariantPatch(existing, input, nextUpdatedAt(existing, Date.now()));
     const before: Record<string, unknown> = {};
     for (const key of Object.keys(fields)) before[key] = (existing as Record<string, unknown>)[key];
-    const changes = diffFields(before, { ...before, ...fields });
+    const changes = [
+      ...diffFields(before, { ...before, ...fields }),
+      ...discarded.map((c) => ({ field: `stock:${c.colorway}/${c.size}`, from: c.stock, to: 0 })),
+    ];
     if (changes.length === 0) return { updatedAt: versionOf(existing) };
 
     await ctx.db.patch("variants", existing._id, { ...fields, updatedAt });
@@ -408,7 +417,7 @@ export const updateVariant = mutation({
         const seeded = legacySeed?.find((c) => c.colorway === cell.colorway && c.size === cell.size);
         await ctx.db.insert("skus", { variantId: existing.variantId, ...cell, stock: seeded?.stock ?? 0 });
       }
-      for (const cell of skuPlan.remove) {
+      for (const cell of [...skuPlan.remove, ...discarded]) {
         const sku = await getSku(ctx, existing.variantId, cell.colorway, cell.size);
         if (sku) await ctx.db.delete("skus", sku._id);
       }

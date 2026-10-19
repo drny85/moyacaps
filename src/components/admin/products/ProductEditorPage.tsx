@@ -143,6 +143,7 @@ export function ProductEditorPage({ target }: { target: EditorTarget }) {
         colorwayName={colorwayName}
         onDismiss={editor.dismissFeedback}
         onReload={liveRow ? editor.reloadLatest : undefined}
+        onDiscardStock={editor.saveDiscardingStock}
       />
       <FeedbackBanner banner={actions.error} onDismiss={actions.clearError} />
       {editor.unsaved && <StaleValuesPanel form={form} unsaved={editor.unsaved} onApply={editor.reapply} onDismiss={editor.dismissUnsaved} />}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ConvexError } from "convex/values";
-import { editorFeedback, editorFieldKey, errorLine, fieldErrorFor, formatSkuCells, isEditorField, splitFieldErrors } from "./editorErrors";
+import { editorFeedback, editorFieldKey, errorLine, fieldErrorFor, formatSkuCells, isEditorField, splitFieldErrors, stockUnits } from "./editorErrors";
 
 describe("editorFieldKey", () => {
   it("folds per-size errors onto the sizes input", () => {
@@ -140,5 +140,12 @@ describe("errorLine", () => {
     expect(errorLine(new ConvexError({ kind: "not_found", variantId: "x" }))).toEqual({ key: "errors.unknown" });
     expect(errorLine(new Error("network down"))).toEqual({ key: "errors.unknown" });
     expect(errorLine(new ConvexError({ kind: "validation", errors: [] }))).toEqual({ key: "errors.unknown" });
+  });
+});
+
+describe("stockUnits", () => {
+  it("sums the units a sku_in_stock removal would drop", () => {
+    expect(stockUnits([{ colorway: "blue", size: "L", stock: 2 }, { colorway: "blue", size: "M", stock: 1 }])).toBe(3);
+    expect(stockUnits([])).toBe(0);
   });
 });

@@ -497,6 +497,8 @@
       "dropNone": "No está programado como drop.",
       "dropScheduled": "Drop programado para {date} · {count} alertas",
       "dropEdit": "Programar Drop",
+      "discardStockAndSave": "Quitar y descartar {units, plural, one {# unidad} other {# unidades}}",
+      "discardStockConfirm": "¿Descartar {units, plural, one {# unidad} other {# unidades}} de existencias y quitar estos SKU: {cells}? No se puede deshacer.",
       "reloadLatest": "Cargar lo más reciente",
       "teeOptions": {
         "colorways": "Colores de playera",

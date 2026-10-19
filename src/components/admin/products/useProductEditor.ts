@@ -104,7 +104,7 @@ export function useProductEditor(target: EditorTarget, rows: ResolvedVariant[] |
     };
   };
 
-  const commit = async () => {
+  const commit = async ({ discardStock = false }: { discardStock?: boolean } = {}) => {
     if (!session || !canSave(session) || isArchived) return;
     setSaving(true);
     setFeedback(NO_FEEDBACK);
@@ -118,7 +118,7 @@ export function useProductEditor(target: EditorTarget, rows: ResolvedVariant[] |
       const patch = formToPatch(initial, form);
       const { updatedAt } =
         Object.keys(patch).length > 0
-          ? await updateVariant({ variantId: session.variantId, expectedUpdatedAt: session.version, patch })
+          ? await updateVariant({ variantId: session.variantId, expectedUpdatedAt: session.version, patch, ...(discardStock ? { discardStock } : {}) })
           : { updatedAt: session.version };
       dispatch({ type: "saved", updatedAt });
     } catch (err: unknown) {
@@ -146,6 +146,12 @@ export function useProductEditor(target: EditorTarget, rows: ResolvedVariant[] |
       }
     }
     void commit();
+  };
+
+  /** Save again after a `sku_in_stock` refusal, dropping the stock those SKUs hold. */
+  const saveDiscardingStock = async () => {
+    if (!canSave(session) || saving || isArchived) return;
+    await commit({ discardStock: true });
   };
 
   const confirmStock = async () => {
@@ -197,6 +203,7 @@ export function useProductEditor(target: EditorTarget, rows: ResolvedVariant[] |
     dropLink,
     dismissFeedback: () => setFeedback(NO_FEEDBACK),
     requestSave,
+    saveDiscardingStock,
     confirmStock,
     cancelStock: () => setPendingStock(null),
     restore,

@@ -116,6 +116,11 @@ export function fieldErrorFor(feedback: EditorFeedback, field: string): FieldErr
 }
 
 /** "black / M (3), sand / XL (1)": the cells that still hold stock. */
+/** Units a `sku_in_stock` removal would drop if the Administrator discards them. */
+export function stockUnits(cells: SkuCellStock[]): number {
+  return cells.reduce((sum, c) => sum + c.stock, 0);
+}
+
 export function formatSkuCells(cells: SkuCellStock[], nameOf: (colorwayId: string) => string = (id) => id): string {
   return cells.map((c) => `${nameOf(c.colorway)} / ${c.size} (${c.stock})`).join(", ");
 }

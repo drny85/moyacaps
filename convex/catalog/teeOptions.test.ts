@@ -247,4 +247,19 @@ describe("tee option edge cases", () => {
     expect(data).toEqual({ kind: "sku_in_stock", cells: [{ colorway: "black", size: "2XL", stock: 3 }] });
     expect(await skusOf(t)).toHaveLength(10);
   });
+
+  it("discardStock removes a stocked size, drops its units and audits them", async () => {
+    const { t, admin } = await createdTee();
+    await admin.mutation(api.catalog.admin.setTeeSkuStock, { variantId: tee.variantId, colorway: "black", size: "2XL", stock: 3 });
+    await admin.mutation(api.catalog.admin.setTeeSkuStock, { variantId: tee.variantId, colorway: "black", size: "M", stock: 4 });
+    const row = await rowOf(t);
+    await admin.mutation(api.catalog.admin.updateVariant, {
+      variantId: tee.variantId, expectedUpdatedAt: row!.updatedAt!, patch: { sizes: ["S", "M", "L", "XL"] }, discardStock: true,
+    });
+    expect(await skusOf(t)).toHaveLength(8);
+    expect((await rowOf(t))?.stock).toBe(4);
+    const [latest] = await admin.query(api.catalog.history.getVariantHistory, { variantId: tee.variantId });
+    expect(latest.type).toBe("updated");
+    expect(latest.changes).toContainEqual({ field: "stock:black/2XL", from: 3, to: 0 });
+  });
 });

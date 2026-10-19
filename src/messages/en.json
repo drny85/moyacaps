@@ -497,6 +497,8 @@
       "dropNone": "Not scheduled as a drop.",
       "dropScheduled": "Drop scheduled for {date} · {count} alerts",
       "dropEdit": "Schedule Drop",
+      "discardStockAndSave": "Remove and discard {units, plural, one {# unit} other {# units}}",
+      "discardStockConfirm": "Discard {units, plural, one {# unit} other {# units}} of stock and remove these SKUs: {cells}? This cannot be undone.",
       "reloadLatest": "Reload latest",
       "teeOptions": {
         "colorways": "Apparel Colorways",

@@ -3,7 +3,7 @@
 import { useTranslations } from "next-intl";
 import { RotateCw, X } from "lucide-react";
 import type { FieldError } from "@convex/catalog/rules";
-import { formatSkuCells } from "@/lib/admin/editorErrors";
+import { formatSkuCells, stockUnits } from "@/lib/admin/editorErrors";
 import type { EditorBanner } from "@/lib/admin/editorErrors";
 
 /** One save/action failure, worded from `admin.products.errors`. */
@@ -13,12 +13,15 @@ export function FeedbackBanner({
   colorwayName,
   onDismiss,
   onReload,
+  onDiscardStock,
 }: {
   banner: EditorBanner | null;
   formErrors?: FieldError[];
   colorwayName?: (id: string) => string;
   onDismiss: () => void;
   onReload?: () => void;
+  /** Offered on a `sku_in_stock` refusal: save again and drop the stock those SKUs hold. */
+  onDiscardStock?: () => void;
 }) {
   const t = useTranslations("admin.products");
   if (!banner && formErrors.length === 0) return null;
@@ -63,10 +66,22 @@ export function FeedbackBanner({
 
   return (
     <div role="alert" className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-600 dark:text-red-400 flex items-start justify-between gap-3 text-xs">
-      <div className="space-y-1">
+      <div className="space-y-2">
         {lines.map((line, i) => (
           <p key={i}>{line}</p>
         ))}
+        {banner?.kind === "sku_in_stock" && onDiscardStock && banner.cells.length > 0 && (
+          <button
+            type="button"
+            onClick={() => {
+              const units = stockUnits(banner.cells);
+              if (window.confirm(t("discardStockConfirm", { units, cells: formatSkuCells(banner.cells, colorwayName) }))) onDiscardStock();
+            }}
+            className="inline-flex items-center px-2.5 py-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/30 font-semibold text-red-700 dark:text-red-300"
+          >
+            {t("discardStockAndSave", { units: stockUnits(banner.cells) })}
+          </button>
+        )}
       </div>
       <button type="button" onClick={onDismiss} className="p-1 rounded hover:bg-red-500/20 text-red-500 shrink-0">
         <X className="w-3.5 h-3.5" />
