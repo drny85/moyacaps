@@ -5,7 +5,8 @@ import { api, internal } from "../_generated/api";
 import { validateCartLines } from "../payments/checkoutModel";
 import schema from "../schema";
 import { PRIMARY_ADMIN_EMAIL } from "../lib/auth";
-import { resolveProduct } from "./shared";
+import { ConvexError } from "convex/values";
+import { requireVariant, resolveProduct } from "./shared";
 
 const modules = import.meta.glob("/convex/**/*.ts");
 
@@ -112,5 +113,26 @@ describe("derived product image", () => {
     expect(lead.items[0].image).toBe(url);
     const order = await t.run((ctx) => ctx.db.get("orders", lead.orderId));
     expect(order?.items[0].image).toBe(url);
+  });
+});
+
+describe("requireVariant", () => {
+  it("throws a structured not_found error for an unknown product", async () => {
+    const t = convexTest(schema, modules);
+    const data = await t.run(async (ctx) => {
+      try {
+        await requireVariant(ctx, "missing");
+      } catch (e) {
+        return e instanceof ConvexError ? e.data : "not a ConvexError";
+      }
+      return "did not throw";
+    });
+    expect(data).toEqual({ kind: "not_found", variantId: "missing" });
+  });
+
+  it("surfaces through admin mutations", async () => {
+    const t = convexTest(schema, modules);
+    const admin = t.withIdentity({ subject: "user_admin", email: PRIMARY_ADMIN_EMAIL });
+    await expect(admin.mutation(api.catalog.admin.archiveVariant, { variantId: "missing" })).rejects.toThrow(/not_found/);
   });
 });

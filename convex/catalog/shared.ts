@@ -31,7 +31,7 @@ export async function listCatalogVariants(ctx: QueryCtx) {
 export async function requireVariant(ctx: QueryCtx, variantId: string) {
   const variant = await getVariant(ctx, variantId);
   if (!variant) {
-    throw new ConvexError(`Variant ${variantId} not found`);
+    throw new ConvexError({ kind: "not_found", variantId });
   }
   return variant;
 }
