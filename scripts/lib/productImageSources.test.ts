@@ -81,4 +81,18 @@ describe("collectImageSources", () => {
   it("ignores products that are not in the variants list", () => {
     expect(at(out, "cap-gone")).toEqual([]);
   });
+
+  it("dedupes repeated paths", () => {
+    const dup = collectImageSources(
+      { caps: {}, tees: {} },
+      {},
+      [{ variantId: "v", image: "/a.png", images: ["/b.jpg", "/b.jpg", "/a.png"] }],
+    );
+    expect(dup).toEqual([{ variantId: "v", role: "lifestyle", publicPath: "/b.jpg" }]);
+  });
+
+  it("skips tee JSON colorways the variant does not offer", () => {
+    const only = collectImageSources(shots, manifest, [{ variantId: "tee-x", colorways: [{ id: "black" }] }]);
+    expect(only.map((s) => s.colorway)).toEqual(["black"]);
+  });
 });

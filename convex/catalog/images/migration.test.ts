@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { internal } from "../../_generated/api";
 import type { Id } from "../../_generated/dataModel";
 import schema from "../../schema";
+import { MAX_CATALOG_VARIANTS } from "../shared";
 
 const modules = import.meta.glob("/convex/**/*.ts");
 
@@ -116,6 +117,27 @@ describe("slotStatus / findStorageBySha256", () => {
 });
 
 describe("importLegacyVariantImages", () => {
+  it("imports an archived product's legacy file and keeps going", async () => {
+    const { t } = await setup();
+    const file: Id<"_storage"> = await t.run(async (ctx) => ctx.storage.store(new Blob([png(640, 800, 9)])));
+    const file2: Id<"_storage"> = await t.run(async (ctx) => ctx.storage.store(new Blob([png(640, 800, 8)])));
+    await t.run(async (ctx) => {
+      await ctx.db.insert("variants", { ...capBase, variantId: "cap-old", storageId: file, archivedAt: 1 });
+      await ctx.db.insert("variants", { ...capBase, variantId: "cap-new", storageId: file2 });
+    });
+    const r = await t.action(internal.catalog.images.migration.importLegacyVariantImages, {});
+    expect(r).toEqual({ imported: 2, skipped: 0, failed: 0 });
+    expect((await rows(t)).map((x) => x.variantId).sort()).toEqual(["cap-new", "cap-old"]);
+  });
+
+  it("refuses to run when the catalog exceeds the scan cap", async () => {
+    const { t } = await setup();
+    await t.run(async (ctx) => {
+      for (let i = 0; i < MAX_CATALOG_VARIANTS; i++) await ctx.db.insert("variants", { ...capBase, variantId: `v${i}` });
+    });
+    await expect(t.query(internal.catalog.images.migration.legacyImportCandidates, {})).rejects.toThrow(/too large/);
+  });
+
   it("turns variants.storageId into catalog rows, reusing the file, and is idempotent", async () => {
     const { t } = await setup();
     const legacy: Id<"_storage"> = await t.run(async (ctx) => ctx.storage.store(new Blob([png(640, 800, 1)])));
@@ -133,14 +155,14 @@ describe("importLegacyVariantImages", () => {
     });
 
     const first = await t.action(internal.catalog.images.migration.importLegacyVariantImages, {});
-    expect(first).toEqual({ imported: 1, skipped: 2 });
+    expect(first).toEqual({ imported: 1, skipped: 2, failed: 0 });
     const imported = (await rows(t)).find((r) => r.variantId === "cap-a")!;
     expect(imported).toMatchObject({ role: "catalog", storageId: legacy, width: 640, height: 800 });
     expect(imported.colorway).toBeUndefined();
     expect(imported.sha256).toMatch(/^[0-9a-f]{64}$/);
 
     const second = await t.action(internal.catalog.images.migration.importLegacyVariantImages, {});
-    expect(second).toEqual({ imported: 0, skipped: 3 });
+    expect(second).toEqual({ imported: 0, skipped: 3, failed: 0 });
     expect(await rows(t)).toHaveLength(2);
   });
 });

@@ -4,13 +4,13 @@
  * overwrites an image an Administrator uploaded. Grandfathered assets are not held to the
  * upload rules (1600px short side, alpha): only their real dimensions are recorded.
  */
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { internal } from "../../_generated/api";
 import type { Doc, Id } from "../../_generated/dataModel";
 import { internalAction, internalMutation, internalQuery } from "../../_generated/server";
 import type { QueryCtx } from "../../_generated/server";
 import { recordCatalogEvent } from "../audit";
-import { MAX_CATALOG_VARIANTS, requireActiveVariant } from "../shared";
+import { MAX_CATALOG_VARIANTS, requireVariant } from "../shared";
 import { MAX_IMAGES_PER_ROLE } from "./functions";
 import { readImageHeader } from "./header";
 import { isValidSlot, type ImageSlot } from "./slots";
@@ -62,15 +62,6 @@ export const findStorageBySha256 = internalQuery({
   },
 });
 
-export const hasSha256 = internalQuery({
-  args: { sha256: v.string() },
-  returns: v.boolean(),
-  handler: async (ctx, args) => {
-    const row = await ctx.db.query("productImages").withIndex("by_sha256", (q) => q.eq("sha256", args.sha256)).first();
-    return row !== null;
-  },
-});
-
 export const importImage = internalMutation({
   args: { ...slotArgs, storageId: v.id("_storage"), width: v.number(), height: v.number() },
   returns: v.union(
@@ -78,7 +69,7 @@ export const importImage = internalMutation({
     v.object({ skipped: v.literal(true), reason: v.union(v.literal("duplicate"), v.literal("slot_taken")) }),
   ),
   handler: async (ctx, args) => {
-    const variant = await requireActiveVariant(ctx, args.variantId);
+    const variant = await requireVariant(ctx, args.variantId);
     const slot: ImageSlot = { role: args.role, colorway: args.colorway, angle: args.angle };
     if (!isValidSlot(slot, (variant.colorways ?? []).map((c) => c.id))) throw imageRuleError("invalid_slot");
 
@@ -120,9 +111,12 @@ export const legacyImportCandidates = internalQuery({
   }),
   handler: async (ctx) => {
     const variants = await ctx.db.query("variants").take(MAX_CATALOG_VARIANTS + 1);
+    if (variants.length > MAX_CATALOG_VARIANTS) {
+      throw new ConvexError("The catalog is too large to migrate legacy images in one pass.");
+    }
     const candidates: { variantId: string; storageId: Id<"_storage"> }[] = [];
     let covered = 0;
-    for (const variant of variants.slice(0, MAX_CATALOG_VARIANTS)) {
+    for (const variant of variants) {
       if (!variant.storageId) continue;
       const catalogRows = await roleRows(ctx, variant.variantId, "catalog");
       if (catalogRows.some((r) => r.colorway === undefined)) covered += 1;
@@ -143,11 +137,12 @@ async function sha256Hex(bytes: ArrayBuffer): Promise<string> {
  */
 export const importLegacyVariantImages = internalAction({
   args: {},
-  returns: v.object({ imported: v.number(), skipped: v.number() }),
-  handler: async (ctx): Promise<{ imported: number; skipped: number }> => {
+  returns: v.object({ imported: v.number(), skipped: v.number(), failed: v.number() }),
+  handler: async (ctx): Promise<{ imported: number; skipped: number; failed: number }> => {
     const { candidates, covered } = await ctx.runQuery(internal.catalog.images.migration.legacyImportCandidates, {});
     let imported = 0;
     let skipped = covered;
+    let failed = 0;
     for (const { variantId, storageId } of candidates) {
       const blob = await ctx.storage.get(storageId);
       const buffer = blob ? await blob.arrayBuffer() : null;
@@ -157,17 +152,22 @@ export const importLegacyVariantImages = internalAction({
         skipped += 1;
         continue;
       }
-      const result = await ctx.runMutation(internal.catalog.images.migration.importImage, {
-        variantId,
-        role: "catalog",
-        storageId,
-        sha256: await sha256Hex(buffer),
-        width: header.width,
-        height: header.height,
-      });
-      if (result.skipped) skipped += 1;
-      else imported += 1;
+      try {
+        const result = await ctx.runMutation(internal.catalog.images.migration.importImage, {
+          variantId,
+          role: "catalog",
+          storageId,
+          sha256: await sha256Hex(buffer),
+          width: header.width,
+          height: header.height,
+        });
+        if (result.skipped) skipped += 1;
+        else imported += 1;
+      } catch (err) {
+        console.warn(`[image-migration] legacy import for "${variantId}" failed: ${String(err)}`);
+        failed += 1;
+      }
     }
-    return { imported, skipped };
+    return { imported, skipped, failed };
   },
 });

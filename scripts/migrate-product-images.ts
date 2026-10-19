@@ -22,7 +22,7 @@ const PUBLIC_DIR = path.resolve(process.cwd(), "public");
 
 const MIME: Record<string, string> = { ".webp": "image/webp", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg" };
 
-type Summary = { uploaded: number; skipped: number; failed: number; skippedSlotTaken: number };
+type Summary = { uploaded: number; imported: number; skipped: number; skippedSlotTaken: number; failed: number };
 
 function setup() {
   const rest = process.argv.slice(2);
@@ -35,6 +35,7 @@ function setup() {
     const out = execFileSync("bunx", ["convex", "run", fn, JSON.stringify(args), ...(prod ? ["--prod"] : [])], {
       encoding: "utf-8",
       stdio: ["ignore", "pipe", "inherit"],
+      maxBuffer: 64 * 1024 * 1024,
     }).trim();
     return out ? JSON.parse(out) : null;
   };
@@ -76,7 +77,7 @@ async function upload(convex: (fn: string, args?: object) => unknown, bytes: Buf
 
 async function run() {
   const { dryRun, sources, convex } = setup();
-  const summary: Summary = { uploaded: 0, skipped: 0, failed: 0, skippedSlotTaken: 0 };
+  const summary: Summary = { uploaded: 0, imported: 0, skipped: 0, skippedSlotTaken: 0, failed: 0 };
 
   for (const [i, s] of sources.entries()) {
     const tag = `[${i + 1}/${sources.length}] ${label(s)} <- ${s.publicPath}`;
@@ -94,14 +95,16 @@ async function run() {
         console.log(`${tag}: skipped (${status === "taken" ? "slot already has a different image" : "already imported"})`);
         continue;
       }
-      const storageId =
-        (convex("catalog/images/migration:findStorageBySha256", { sha256: file.sha256 }) as string | null) ??
-        (await upload(convex, file.bytes, file.ext));
+      let storageId = convex("catalog/images/migration:findStorageBySha256", { sha256: file.sha256 }) as string | null;
+      if (!storageId) {
+        storageId = await upload(convex, file.bytes, file.ext);
+        summary.uploaded += 1;
+      }
       const result = convex("catalog/images/migration:importImage", {
         ...slot, storageId, sha256: file.sha256, width: file.width, height: file.height,
       }) as { skipped: boolean };
       if (result.skipped) summary.skipped += 1;
-      else summary.uploaded += 1;
+      else summary.imported += 1;
       console.log(`${tag}: ${result.skipped ? "skipped" : "imported"}`);
     } catch (err) {
       summary.failed += 1;
@@ -115,8 +118,9 @@ async function run() {
   }
 
   try {
-    const legacy = convex("catalog/images/migration:importLegacyVariantImages") as { imported: number; skipped: number };
+    const legacy = convex("catalog/images/migration:importLegacyVariantImages") as { imported: number; skipped: number; failed: number };
     console.log(`\nLegacy variant images: ${JSON.stringify(legacy)}`);
+    summary.failed += legacy.failed;
   } catch (err) {
     summary.failed += 1;
     console.error("Legacy variant import FAILED", err instanceof Error ? err.message : err);
