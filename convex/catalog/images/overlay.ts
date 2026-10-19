@@ -54,6 +54,15 @@ export function overlayProductImages<T extends OverlayInput>(variant: T, rows: R
 }
 
 /**
+ * Whether a row is the product's own Catalog Shot: one with no colorway, or the default
+ * Apparel Colorway's. Only these back the grid card and `primaryImage`, so only these let a
+ * product be shown (needs_image).
+ */
+export function isPrimaryCatalogRow(row: { role: ResolvedImageRow["role"]; colorway?: string }, defaultColorway: string | undefined): boolean {
+  return row.role === "catalog" && (row.colorway === undefined || row.colorway === defaultColorway);
+}
+
+/**
  * The product's single `image` (cart, checkout, order snapshots), in order of precedence:
  * the legacy upload's URL, a non-blank stored `image`, the Catalog Shot row with no colorway,
  * then the default Apparel Colorway's Catalog Shot row. Blank when none exists.

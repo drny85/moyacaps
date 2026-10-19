@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { overlayProductImages, primaryImage, type ResolvedImageRow } from "./overlay";
+import { isPrimaryCatalogRow, overlayProductImages, primaryImage, type ResolvedImageRow } from "./overlay";
 
 const cap = { catalogShot: "/legacy-catalog.png", images: ["/legacy-life.jpg"] };
 const tee = {
@@ -82,5 +82,18 @@ describe("primaryImage", () => {
   it("is blank when nothing qualifies", () => {
     expect(primaryImage({ image: "" }, rows)).toBe("");
     expect(primaryImage({ image: "", defaultColorway: "sand" }, rows)).toBe("");
+  });
+});
+
+describe("isPrimaryCatalogRow", () => {
+  it("counts a Catalog Shot with no colorway or on the default colorway", () => {
+    expect(isPrimaryCatalogRow({ role: "catalog" }, "black")).toBe(true);
+    expect(isPrimaryCatalogRow({ role: "catalog", colorway: "black" }, "black")).toBe(true);
+  });
+
+  it("ignores another colorway's Catalog Shot and non-catalog roles", () => {
+    expect(isPrimaryCatalogRow({ role: "catalog", colorway: "white" }, "black")).toBe(false);
+    expect(isPrimaryCatalogRow({ role: "catalog", colorway: "white" }, undefined)).toBe(false);
+    expect(isPrimaryCatalogRow({ role: "lifestyle" }, "black")).toBe(false);
   });
 });

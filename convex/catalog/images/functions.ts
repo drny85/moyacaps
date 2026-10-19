@@ -133,7 +133,7 @@ export const removeImage = mutation({
     const variant = await requireActiveVariant(ctx, image.variantId);
     if (
       image.role === "catalog" &&
-      blankImageWhileVisible(variant, {}, await hasCatalogImageRow(ctx, variant.variantId, (r) => r._id !== image._id))
+      blankImageWhileVisible(variant, {}, await hasCatalogImageRow(ctx, variant.variantId, variant.defaultColorway, (r) => r._id !== image._id))
     ) {
       throw new ConvexError({ kind: "needs_image" });
     }

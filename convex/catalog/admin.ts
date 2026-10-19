@@ -182,7 +182,7 @@ export const toggleVariantAvailable = mutation({
     const actor = actorEmail(await requireAdmin(ctx));
     const variant = await requireActiveVariant(ctx, args.variantId);
     const nextAvailable = nextAvailability(variant.isAvailable, args.isAvailable);
-    if (nextAvailable && blankImageWhileVisible(variant, { isAvailable: true }, await hasCatalogImageRow(ctx, variant.variantId))) {
+    if (nextAvailable && blankImageWhileVisible(variant, { isAvailable: true }, await hasCatalogImageRow(ctx, variant.variantId, variant.defaultColorway))) {
       throw new ConvexError({ kind: "needs_image" });
     }
 
@@ -387,6 +387,7 @@ export const updateVariant = mutation({
     const keepsCatalogRow = await hasCatalogImageRow(
       ctx,
       existing.variantId,
+      teePatch.defaultColorway ?? existing.defaultColorway,
       (r) => r.colorway === undefined || !removedColorways.includes(r.colorway)
     );
     if (blankImageWhileVisible(existing, patchRest, keepsCatalogRow)) {

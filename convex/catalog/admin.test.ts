@@ -364,10 +364,9 @@ describe("catalog image rows count as an image", () => {
     expect((await admin.mutation(api.catalog.admin.toggleVariantAvailable, show)).isAvailable).toBe(true);
   });
 
-  it("updateVariant refuses to remove the colorway holding a visible product's only Catalog Shot row", async () => {
-    const { t, admin } = setup();
-    const colorway = (id: string) => ({ id, nameEn: id, nameEs: id, hex: "#000000", borderHex: "#111111" });
-    await admin.mutation(api.catalog.admin.createVariant, {
+  const colorway = (id: string) => ({ id, nameEn: id, nameEs: id, hex: "#000000", borderHex: "#111111" });
+  const createTee = (admin: ReturnType<typeof setup>["admin"]) =>
+    admin.mutation(api.catalog.admin.createVariant, {
       ...blankCap,
       stock: undefined,
       category: "apparel",
@@ -376,19 +375,64 @@ describe("catalog image rows count as an image", () => {
       sizes: ["M"],
       defaultColorway: "black",
     });
-    await t.run(async (ctx) => {
-      const storageId = await ctx.storage.store(new Blob(["w"]));
-      await ctx.db.insert("productImages", { variantId: cap.variantId, colorway: "white", role: "catalog", order: 0, storageId, sha256: "w", width: 2000, height: 2500, createdAt: 1 });
+  const addColorwayShot = (t: ReturnType<typeof setup>["t"], id: string) =>
+    t.run(async (ctx) => {
+      const storageId = await ctx.storage.store(new Blob([id]));
+      return await ctx.db.insert("productImages", { variantId: cap.variantId, colorway: id, role: "catalog", order: 0, storageId, sha256: id, width: 2000, height: 2500, createdAt: 1 });
     });
+
+  it("a tee whose only Catalog Shot is on a non-default colorway cannot be shown", async () => {
+    const { t, admin } = setup();
+    await createTee(admin);
+    await addColorwayShot(t, "white");
+    const show = { variantId: cap.variantId, isAvailable: true };
+    expect(await errorData(admin.mutation(api.catalog.admin.toggleVariantAvailable, show))).toEqual({ kind: "needs_image" });
+    const hidden = await row(t);
+    const update = { variantId: cap.variantId, expectedUpdatedAt: hidden!.updatedAt!, patch: { isAvailable: true } };
+    expect(await errorData(admin.mutation(api.catalog.admin.updateVariant, update))).toEqual({ kind: "needs_image" });
+    await addColorwayShot(t, "black");
+    expect((await admin.mutation(api.catalog.admin.toggleVariantAvailable, show)).isAvailable).toBe(true);
+  });
+
+  it("a visible tee cannot move its default to a colorway without a Catalog Shot", async () => {
+    const { t, admin } = setup();
+    await createTee(admin);
+    await addColorwayShot(t, "black");
     await admin.mutation(api.catalog.admin.toggleVariantAvailable, { variantId: cap.variantId, isAvailable: true });
     const shown = await row(t);
-    const update = { variantId: cap.variantId, expectedUpdatedAt: shown!.updatedAt!, patch: { colorways: [colorway("black")] } };
+    const update = { variantId: cap.variantId, expectedUpdatedAt: shown!.updatedAt!, patch: { defaultColorway: "white" } };
     expect(await errorData(admin.mutation(api.catalog.admin.updateVariant, update))).toEqual({ kind: "needs_image" });
-    const rows = await t.run((ctx) => ctx.db.query("productImages").take(10));
-    expect(rows).toHaveLength(1);
+    await addColorwayShot(t, "white");
+    await admin.mutation(api.catalog.admin.updateVariant, update);
+    expect((await row(t))?.defaultColorway).toBe("white");
+  });
+
+  it("updateVariant refuses to remove the default colorway holding a visible tee's Catalog Shot", async () => {
+    const { t, admin } = setup();
+    await createTee(admin);
+    await addColorwayShot(t, "black");
+    await admin.mutation(api.catalog.admin.toggleVariantAvailable, { variantId: cap.variantId, isAvailable: true });
+    const shown = await row(t);
+    const update = {
+      variantId: cap.variantId,
+      expectedUpdatedAt: shown!.updatedAt!,
+      patch: { colorways: [colorway("white")], defaultColorway: "white" },
+    };
+    expect(await errorData(admin.mutation(api.catalog.admin.updateVariant, update))).toEqual({ kind: "needs_image" });
+    expect(await t.run((ctx) => ctx.db.query("productImages").take(10))).toHaveLength(1);
     // Hiding it in the same save is allowed.
     await admin.mutation(api.catalog.admin.updateVariant, { ...update, patch: { ...update.patch, isAvailable: false } });
-    expect((await row(t))?.colorways?.map((c) => c.id)).toEqual(["black"]);
+    expect((await row(t))?.colorways?.map((c) => c.id)).toEqual(["white"]);
+  });
+
+  it("removeImage keeps a visible tee's default-colorway Catalog Shot even when another colorway has one", async () => {
+    const { t, admin } = setup();
+    await createTee(admin);
+    const black = await addColorwayShot(t, "black");
+    const white = await addColorwayShot(t, "white");
+    await admin.mutation(api.catalog.admin.toggleVariantAvailable, { variantId: cap.variantId, isAvailable: true });
+    expect(await errorData(admin.mutation(api.catalog.images.functions.removeImage, { imageId: black }))).toEqual({ kind: "needs_image" });
+    await admin.mutation(api.catalog.images.functions.removeImage, { imageId: white });
   });
 });
 

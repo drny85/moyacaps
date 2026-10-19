@@ -8,7 +8,7 @@ import { ConvexError } from "convex/values";
 import { diffFields, recordCatalogEvent, type CatalogEventType } from "./audit";
 import { getVariant } from "./inventory";
 import { nextUpdatedAt, versionOf } from "./model";
-import { overlayProductImages, primaryImage, type CapAngles, type ResolvedImageRow } from "./images/overlay";
+import { isPrimaryCatalogRow, overlayProductImages, primaryImage, type CapAngles, type ResolvedImageRow } from "./images/overlay";
 
 /**
  * Upper bound for whole-catalog reads. The catalog is ~30 products; the bound keeps
@@ -82,19 +82,21 @@ export async function resolveProductImage(ctx: QueryCtx, variant: Doc<"variants"
 }
 
 /**
- * True when the product has a Catalog Shot row (any colorway: tees keep one per colorway).
- * `kept` filters the rows that count, for a write that is about to delete some of them.
+ * True when the product has its own Catalog Shot row: no colorway, or the given default
+ * Apparel Colorway (`isPrimaryCatalogRow`). `kept` filters the rows that count, for a write
+ * that is about to delete some of them.
  */
 export async function hasCatalogImageRow(
   ctx: QueryCtx,
   variantId: string,
+  defaultColorway: string | undefined,
   kept: (row: Doc<"productImages">) => boolean = () => true
 ): Promise<boolean> {
   const rows = await ctx.db
     .query("productImages")
     .withIndex("by_variantId_and_role_and_order", (q) => q.eq("variantId", variantId).eq("role", "catalog"))
     .take(MAX_PRODUCT_IMAGE_ROWS);
-  return rows.some(kept);
+  return rows.some((row) => isPrimaryCatalogRow(row, defaultColorway) && kept(row));
 }
 
 export async function countDropAlerts(ctx: QueryCtx, variantId: string): Promise<number> {
