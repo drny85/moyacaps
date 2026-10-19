@@ -3,8 +3,7 @@
  * the variant editor and per-SKU tee stock (ADR 0008, ADR 0015).
  */
 import { query, mutation, internalMutation } from "../_generated/server";
-import type { MutationCtx } from "../_generated/server";
-import type { Doc, Id } from "../_generated/dataModel";
+import type { Doc } from "../_generated/dataModel";
 import { v, ConvexError } from "convex/values";
 import { internal } from "../_generated/api";
 import { requireAdmin } from "../lib/auth";
@@ -12,7 +11,7 @@ import schema from "../schema";
 import { dropStatusValidator, successResult, variantWithSubscribers } from "./validators";
 import { getSku, getVariant, hasSkus, listSkus, setSkuStock, syncTeeAggregate } from "./inventory";
 import { deleteAlertBatch } from "./drops";
-import { deleteAllProductImages, deleteColorwayImages } from "./images/functions";
+import { deleteAllProductImages, deleteColorwayImages, scheduleFileDelete } from "./images/functions";
 import {
   buildNewVariant,
   blankImageWhileVisible,
@@ -32,7 +31,6 @@ import { planSkuChanges } from "./skuPlan";
 import { actorEmail, diffFields, recordCatalogEvent } from "./audit";
 import {
   countDropAlerts,
-  deleteStorageQuietly,
   listCatalogVariants,
   patchVariantAudited,
   requireActiveVariant,
@@ -69,31 +67,6 @@ export const generateUploadUrlInternal = internalMutation({
   returns: v.string(),
   handler: async (ctx) => {
     return await ctx.storage.generateUploadUrl();
-  },
-});
-
-export const setVariantStorageId = internalMutation({
-  args: {
-    variantId: v.string(),
-    storageId: v.id("_storage"),
-  },
-  returns: v.object({ success: v.boolean(), variantId: v.string(), storageId: v.id("_storage") }),
-  handler: async (ctx, args) => {
-    const variant = await requireVariant(ctx, args.variantId);
-
-    if (variant.storageId && variant.storageId !== args.storageId) {
-      await deleteStorageQuietly(ctx, variant.storageId);
-    }
-
-    await ctx.db.patch(variant._id, {
-      storageId: args.storageId,
-    });
-
-    return {
-      success: true,
-      variantId: args.variantId,
-      storageId: args.storageId,
-    };
   },
 });
 
@@ -231,9 +204,6 @@ const editableFields = {
   silhouette: v.string(),
   primaryHex: v.string(),
   secondaryHex: v.string(),
-  image: v.string(),
-  storageId: v.id("_storage"),
-  images: v.array(v.string()),
   stock: v.number(),
   priceUsd: v.number(),
   taxCode: v.string(),
@@ -262,13 +232,6 @@ function teeFieldMismatches(input: Partial<Record<(typeof TEE_FIELD_KEYS)[number
   return TEE_FIELD_KEYS.filter((key) => input[key] !== undefined).map((field) => ({ field, code: "mismatch" as const }));
 }
 
-/** Uploaded Catalog Shots arrive as a storage id; the row keeps their URL as `image`. */
-async function withUploadedImage<T extends { storageId?: Id<"_storage">; image?: string }>(ctx: MutationCtx, input: T): Promise<T> {
-  if (!input.storageId || input.image?.trim()) return input;
-  const url = await ctx.storage.getUrl(input.storageId);
-  return url ? { ...input, image: url } : input;
-}
-
 export const createVariant = mutation({
   args: {
     variantId: v.string(),
@@ -282,9 +245,6 @@ export const createVariant = mutation({
     isFeatured: editableFields.isFeatured,
     stock: v.optional(editableFields.stock),
     taxCode: v.optional(editableFields.taxCode),
-    image: v.optional(editableFields.image),
-    storageId: v.optional(editableFields.storageId),
-    images: v.optional(editableFields.images),
     isAvailable: v.optional(editableFields.isAvailable),
     isDrop: v.optional(editableFields.isDrop),
     dropDate: v.optional(editableFields.dropDate),
@@ -317,12 +277,11 @@ export const createVariant = mutation({
     throwIfInvalid(errors);
 
     const { colorways: _colorwayInput, ...rest } = args;
-    const base = await withUploadedImage(ctx, rest);
     const colorways = isTee ? fillColorwayShots(args.colorways!, undefined) : undefined;
     // A tee's stock lives on its SKUs, all created at zero.
     const input = isTee
-      ? { ...base, colorways, defaultColorway: args.defaultColorway ?? colorways![0].id, stock: 0 }
-      : base;
+      ? { ...rest, colorways, defaultColorway: args.defaultColorway ?? colorways![0].id, stock: 0 }
+      : rest;
     const id = await ctx.db.insert("variants", buildNewVariant(input, Date.now()));
     if (isTee) {
       for (const colorway of colorways!) {
@@ -351,10 +310,7 @@ export const updateVariant = mutation({
       silhouette: v.optional(editableFields.silhouette),
       primaryHex: v.optional(editableFields.primaryHex),
       secondaryHex: v.optional(editableFields.secondaryHex),
-      image: v.optional(editableFields.image),
-      storageId: v.optional(editableFields.storageId),
-      images: v.optional(editableFields.images),
-      stock: v.optional(editableFields.stock),
+            stock: v.optional(editableFields.stock),
       priceUsd: v.optional(editableFields.priceUsd),
       taxCode: v.optional(editableFields.taxCode),
       isFeatured: v.optional(editableFields.isFeatured),
@@ -437,16 +393,13 @@ export const updateVariant = mutation({
       throw new ConvexError({ kind: "needs_image" });
     }
 
-    const input = await withUploadedImage(ctx, { ...patchRest, ...teePatch });
+    const input = { ...patchRest, ...teePatch };
     const { updatedAt, ...fields } = buildVariantPatch(existing, input, nextUpdatedAt(existing, Date.now()));
     const before: Record<string, unknown> = {};
     for (const key of Object.keys(fields)) before[key] = (existing as Record<string, unknown>)[key];
     const changes = diffFields(before, { ...before, ...fields });
     if (changes.length === 0) return { updatedAt: versionOf(existing) };
 
-    if (existing.storageId && fields.storageId && existing.storageId !== fields.storageId) {
-      await deleteStorageQuietly(ctx, existing.storageId);
-    }
     await ctx.db.patch("variants", existing._id, { ...fields, updatedAt });
     if (skuPlan) {
       for (const cell of skuPlan.insert) {
@@ -526,11 +479,9 @@ export const purgeVariant = internalMutation({
 
     await deleteAllProductImages(ctx, variant.variantId);
 
-    if (variant.storageId) {
-      await deleteStorageQuietly(ctx, variant.storageId);
-    }
-
     await ctx.db.delete("variants", variant._id);
+    // The legacy upload may also back a productImages row (the image migration reuses files), so it is reference-checked.
+    if (variant.storageId) await scheduleFileDelete(ctx, variant.storageId);
     await recordCatalogEvent(ctx, { variantId: variant.variantId, type: "purged", actor: "system" });
     return null;
   },

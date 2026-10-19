@@ -25,7 +25,7 @@ const cap = {
 
 async function setup() {
   const t = convexTest(schema, modules);
-  await t.withIdentity({ subject: "user_admin", email: PRIMARY_ADMIN_EMAIL }).mutation(api.catalog.admin.createVariant, cap);
+  await t.run((ctx) => ctx.db.insert("variants", cap));
   return t;
 }
 
@@ -65,8 +65,8 @@ describe("derived product image", () => {
   async function productWithCatalogRow() {
     const t = convexTest(schema, modules);
     const admin = t.withIdentity({ subject: "user_admin", email: PRIMARY_ADMIN_EMAIL });
-    const { image: _image, ...noImage } = cap;
-    await admin.mutation(api.catalog.admin.createVariant, noImage);
+    const { image: _image, ...editorPayload } = cap;
+    await admin.mutation(api.catalog.admin.createVariant, editorPayload);
     const url = await t.run(async (ctx) => {
       const storageId = await ctx.storage.store(new Blob(["c"]));
       await ctx.db.insert("productImages", {

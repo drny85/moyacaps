@@ -31,7 +31,8 @@ async function imagesForRole(ctx: QueryCtx, variantId: string, role: Doc<"produc
 
 const slotOf = (row: Doc<"productImages">): ImageSlot => ({ role: row.role, colorway: row.colorway, angle: row.angle });
 
-async function scheduleFileDelete(ctx: MutationCtx, storageId: Id<"_storage">) {
+/** Delete a file after the grace period, and only if nothing references it by then (`deleteStorageFile`). */
+export async function scheduleFileDelete(ctx: MutationCtx, storageId: Id<"_storage">) {
   await ctx.scheduler.runAfter(REPLACED_FILE_GRACE_MS, internal.catalog.images.functions.deleteStorageFile, { storageId });
 }
 

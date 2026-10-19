@@ -10,25 +10,51 @@ import { SHIRT_VARIANTS } from "../../src/data/caps";
 import catalogShots from "../../src/data/catalogShots.json";
 import { SEED_PRODUCT, SEED_VARIANTS } from "./data";
 import { distributeStock, renamedLifestyleShot as renamed, teeFieldsPatch, TEE_SIZES, variantCategory } from "./model";
+import type { Id } from "../_generated/dataModel";
 import { deleteStorageQuietly, MAX_CATALOG_VARIANTS } from "./shared";
+import { isStorageIdReferenced, legacyVariantStorageIds } from "./images/references";
 
-/** Dev/fresh-deployment seed: wipes the catalog and inserts catalog/data.ts. */
+/** Rows of each table one `seedAll` wipes; past it the seed refuses (and writes nothing) rather than wipe part of the catalog. */
+export const SEED_WIPE_LIMIT = 2000;
+
+async function takeAllForWipe<T>(rows: Promise<T[]>, table: string): Promise<T[]> {
+  const out = await rows;
+  if (out.length > SEED_WIPE_LIMIT) {
+    throw new ConvexError(`seedAll: more than ${SEED_WIPE_LIMIT} ${table} rows; clear the deployment instead.`);
+  }
+  return out;
+}
+
+/**
+ * Dev/fresh-deployment seed: wipes the catalog (products, variants, SKUs, product images and
+ * the catalog audit log) and inserts catalog/data.ts. Files are deleted only once nothing
+ * references them (same check as `deleteStorageFile`).
+ */
 export const seedAll = mutation({
   args: {},
   returns: v.object({ success: v.boolean(), count: v.number() }),
   handler: async (ctx) => {
     await requireAdmin(ctx);
-    // Clear existing
-    const existingProducts = await ctx.db.query("products").take(MAX_CATALOG_VARIANTS);
-    for (const p of existingProducts) {
-      await ctx.db.delete(p._id);
-    }
-    const existing = await ctx.db.query("variants").take(MAX_CATALOG_VARIANTS);
-    for (const item of existing) {
-      if (item.storageId) {
-        await deleteStorageQuietly(ctx, item.storageId);
-      }
-      await ctx.db.delete(item._id);
+    const limit = SEED_WIPE_LIMIT + 1;
+    const products = await takeAllForWipe(ctx.db.query("products").take(limit), "products");
+    const variants = await takeAllForWipe(ctx.db.query("variants").take(limit), "variants");
+    const skus = await takeAllForWipe(ctx.db.query("skus").take(limit), "skus");
+    const images = await takeAllForWipe(ctx.db.query("productImages").take(limit), "productImages");
+    const events = await takeAllForWipe(ctx.db.query("catalog_events").take(limit), "catalog_events");
+
+    const files = new Set<Id<"_storage">>();
+    for (const variant of variants) if (variant.storageId) files.add(variant.storageId);
+    for (const image of images) files.add(image.storageId);
+
+    for (const row of products) await ctx.db.delete("products", row._id);
+    for (const row of variants) await ctx.db.delete("variants", row._id);
+    for (const row of skus) await ctx.db.delete("skus", row._id);
+    for (const row of images) await ctx.db.delete("productImages", row._id);
+    for (const row of events) await ctx.db.delete("catalog_events", row._id);
+
+    const legacy = await legacyVariantStorageIds(ctx);
+    for (const storageId of files) {
+      if (!(await isStorageIdReferenced(ctx, storageId, legacy))) await deleteStorageQuietly(ctx, storageId);
     }
 
     await ctx.db.insert("products", SEED_PRODUCT);

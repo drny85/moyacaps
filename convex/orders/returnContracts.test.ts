@@ -158,7 +158,6 @@ describe("catalog and drop reads match their return validators", () => {
       silhouette: "snapback",
       primaryHex: "#000000",
       secondaryHex: "#ffffff",
-      image: "/caps/new.png",
       stock: 2,
       priceUsd: 120,
       isFeatured: false,

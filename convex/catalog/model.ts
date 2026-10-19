@@ -3,7 +3,7 @@
  * status and the field merges behind the admin editor. No database access, so
  * every rule is unit-tested in catalogModel.test.ts.
  */
-import type { Doc, Id } from "../_generated/dataModel";
+import type { Doc } from "../_generated/dataModel";
 import { resolveTaxCode, validateProductFields } from "./rules";
 import type { Category, FieldError, TeeColorwayInput } from "./rules";
 
@@ -97,9 +97,6 @@ export type VariantPatch = {
   silhouette?: string;
   primaryHex?: string;
   secondaryHex?: string;
-  image?: string;
-  storageId?: Id<"_storage">;
-  images?: string[];
   stock?: number;
   priceUsd?: number;
   taxCode?: string;
@@ -162,11 +159,11 @@ export function buildVariantPatch(existing: Doc<"variants">, input: VariantPatch
 }
 
 /**
- * Document for a new product. A product with no image is never listed: it is saved
- * hidden whatever `isAvailable` says, so it cannot reach the storefront grid.
+ * Document for a new product. Its images are `productImages` rows attached after creation
+ * (ADR 0021), so it starts with a blank legacy `image` and is saved hidden whatever
+ * `isAvailable` says: a Product with no image must never reach the storefront grid.
  */
 export function buildNewVariant(input: NewVariantInput, now: number) {
-  const image = input.image?.trim() ?? "";
   return {
     variantId: input.variantId,
     nameEn: input.nameEn,
@@ -176,13 +173,11 @@ export function buildNewVariant(input: NewVariantInput, now: number) {
     taxCode: resolveTaxCode(input.category, input.taxCode),
     primaryHex: input.primaryHex,
     secondaryHex: input.secondaryHex,
-    image,
-    storageId: input.storageId,
-    images: input.images,
+    image: "",
     stock: input.stock ?? 0,
     priceUsd: input.priceUsd,
     isFeatured: input.isFeatured,
-    isAvailable: image === "" ? false : (input.isAvailable ?? true),
+    isAvailable: false,
     isDrop: input.isDrop ?? false,
     dropDate: input.dropDate,
     dropBadgeTextEn: input.dropBadgeTextEn,

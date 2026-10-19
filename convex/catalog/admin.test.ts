@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 import { convexTest } from "convex-test";
 import { ConvexError } from "convex/values";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import schema from "../schema";
 import { PRIMARY_ADMIN_EMAIL } from "../lib/auth";
@@ -19,14 +19,21 @@ const cap = {
   secondaryHex: "#d4af37",
   priceUsd: 45,
   stock: 10,
-  image: "/caps/oro-negro.png",
   isFeatured: false,
 };
 
 function setup() {
   const t = convexTest(schema, modules);
   const admin = t.withIdentity({ subject: "user_admin", email: PRIMARY_ADMIN_EMAIL });
-  return { t, admin };
+  /** Create the cap, then give it an image and show it, as an Administrator would after attaching its Catalog Shot. */
+  const createShown = async () => {
+    await admin.mutation(api.catalog.admin.createVariant, cap);
+    await t.run(async (ctx) => {
+      const created = await ctx.db.query("variants").withIndex("by_variantId", (q) => q.eq("variantId", cap.variantId)).unique();
+      await ctx.db.patch("variants", created!._id, { image: "/caps/oro-negro.png", isAvailable: true });
+    });
+  };
+  return { t, admin, createShown };
 }
 type Admin = ReturnType<typeof setup>["admin"];
 
@@ -90,7 +97,7 @@ describe("createVariant", () => {
 
   it("hides a product that has no image, whatever isAvailable says", async () => {
     const { t, admin } = setup();
-    await admin.mutation(api.catalog.admin.createVariant, { ...cap, image: undefined, isAvailable: true });
+    await admin.mutation(api.catalog.admin.createVariant, { ...cap, isAvailable: true });
     const created = await row(t);
     expect(created?.isAvailable).toBe(false);
     expect(created?.image).toBe("");
@@ -107,7 +114,7 @@ describe("createVariant", () => {
 describe("updateVariant", () => {
   async function created() {
     const ctx = setup();
-    await ctx.admin.mutation(api.catalog.admin.createVariant, cap);
+    await ctx.createShown();
     const existing = await row(ctx.t);
     return { ...ctx, updatedAt: existing!.updatedAt! };
   }
@@ -161,7 +168,7 @@ describe("updateVariant", () => {
   it("uses the creation time as the token for rows without updatedAt", async () => {
     const { t, admin } = setup();
     const creationTime = await t.run(async (ctx) => {
-      const { updatedAt: _omit, ...legacy } = { ...cap, isAvailable: true, isDrop: false, updatedAt: 0 };
+      const { updatedAt: _omit, ...legacy } = { ...cap, image: "/caps/oro-negro.png", isAvailable: true, isDrop: false, updatedAt: 0 };
       const id = await ctx.db.insert("variants", { ...legacy, stock: 10 });
       return (await ctx.db.get(id))!._creationTime;
     });
@@ -197,24 +204,25 @@ describe("updateVariant", () => {
     expect(await history(admin)).toHaveLength(1);
   });
 
-  it("refuses to leave a visible product without an image", async () => {
-    const { admin, updatedAt } = await created();
-    expect(
-      await errorData(admin.mutation(api.catalog.admin.updateVariant, { variantId: cap.variantId, expectedUpdatedAt: updatedAt, patch: { image: "" } }))
-    ).toEqual({ kind: "needs_image" });
-    const hidden = await admin.mutation(api.catalog.admin.updateVariant, {
-      variantId: cap.variantId,
-      expectedUpdatedAt: updatedAt,
-      patch: { image: "", isAvailable: false },
-    });
-    expect(hidden.updatedAt).toBeGreaterThan(updatedAt);
+  it("no longer accepts the legacy image fields", async () => {
+    const { t, admin, updatedAt } = await created();
+    const storageId = await t.run((ctx) => ctx.storage.store(new Blob(["x"])));
+    for (const patch of [{ image: "" }, { storageId }, { images: ["/a.jpg"] }]) {
+      await expect(
+        admin.mutation(api.catalog.admin.updateVariant, { variantId: cap.variantId, expectedUpdatedAt: updatedAt, patch: patch as never })
+      ).rejects.toThrow(/Validator error/);
+    }
+    await expect(admin.mutation(api.catalog.admin.createVariant, { ...cap, variantId: "other", image: "/x.png" } as never)).rejects.toThrow(
+      /Validator error/
+    );
+    expect((await row(t))?.image).toBe("/caps/oro-negro.png");
   });
 
   it("never edits tee stock through the patch", async () => {
     const { t, admin } = setup();
     await t.run((ctx) =>
       ctx.db.insert("variants", {
-        ...cap,
+        ...cap, image: "/caps/oro-negro.png",
         variantId: "tee-sku",
         category: "apparel",
         silhouette: "tee",
@@ -259,8 +267,8 @@ describe("single-field mutations", () => {
   });
 
   it("audits price, featured and visibility changes", async () => {
-    const { admin } = setup();
-    await admin.mutation(api.catalog.admin.createVariant, cap);
+    const { admin, createShown } = setup();
+    await createShown();
     await admin.mutation(api.catalog.admin.updateVariantPrice, { variantId: cap.variantId, priceUsd: 50 });
     await admin.mutation(api.catalog.admin.toggleVariantFeatured, { variantId: cap.variantId });
     await admin.mutation(api.catalog.admin.toggleVariantAvailable, { variantId: cap.variantId, isAvailable: false });
@@ -280,7 +288,7 @@ describe("single-field mutations", () => {
 describe("updateVariantDropStatus with expectedUpdatedAt", () => {
   async function created() {
     const ctx = setup();
-    await ctx.admin.mutation(api.catalog.admin.createVariant, cap);
+    await ctx.createShown();
     const existing = await row(ctx.t);
     return { ...ctx, updatedAt: existing!.updatedAt! };
   }
@@ -328,7 +336,7 @@ describe("updateVariantDropStatus with expectedUpdatedAt", () => {
 });
 
 describe("catalog image rows count as an image", () => {
-  const blankCap = { ...cap, image: undefined };
+  const blankCap = cap;
   const addCatalogRow = (t: ReturnType<typeof setup>["t"]) =>
     t.run(async (ctx) => {
       const storageId = await ctx.storage.store(new Blob(["x"]));
@@ -409,7 +417,7 @@ describe("stock mutations", () => {
     const { t, admin } = setup();
     await t.run((ctx) =>
       ctx.db.insert("variants", {
-        ...cap,
+        ...cap, image: "/caps/oro-negro.png",
         variantId: "tee-sku",
         category: "apparel",
         silhouette: "tee",
@@ -437,8 +445,8 @@ describe("archive, restore and purge", () => {
     admin.query(api.catalog.admin.getAllProductsAdmin, includeArchived === undefined ? {} : { includeArchived });
 
   it("archive hides the product and marks it unavailable", async () => {
-    const { t, admin } = setup();
-    await admin.mutation(api.catalog.admin.createVariant, cap);
+    const { t, admin, createShown } = setup();
+    await createShown();
     expect(await archive(admin)).toEqual({ success: true });
     const stored = await row(t);
     expect(stored?.archivedAt).toBeTypeOf("number");
@@ -447,8 +455,8 @@ describe("archive, restore and purge", () => {
   });
 
   it("archived products leave every storefront and admin read", async () => {
-    const { t, admin } = setup();
-    await admin.mutation(api.catalog.admin.createVariant, cap);
+    const { t, admin, createShown } = setup();
+    await createShown();
     await archive(admin);
     expect(await admin.query(api.catalog.queries.getVariants, { includeUnavailable: true })).toEqual([]);
     expect(await admin.query(api.catalog.queries.getProductBySlug, { slug: cap.variantId, allowUnavailable: true })).toBeNull();
@@ -503,8 +511,8 @@ describe("archive, restore and purge", () => {
   });
 
   it("checkout stock check refuses an archived product and leaves stock unchanged", async () => {
-    const { t, admin } = setup();
-    await admin.mutation(api.catalog.admin.createVariant, cap);
+    const { t, admin, createShown } = setup();
+    await createShown();
     await archive(admin);
     expect(await t.query(internal.catalog.queries.getLineStock, { variantId: cap.variantId })).toEqual({ ok: false, reason: "unavailable" });
     expect((await row(t))?.stock).toBe(cap.stock);
@@ -527,6 +535,32 @@ describe("archive, restore and purge", () => {
     const scheduled = await t.run((ctx) => ctx.db.system.query("_scheduled_functions").take(10));
     expect(scheduled.filter((f) => f.name.endsWith("deleteStorageFile"))).toHaveLength(1);
     expect((await history(admin))[0]).toMatchObject({ type: "purged" });
+  });
+
+  it("purge leaves a legacy upload that another product's image row still uses", async () => {
+    vi.useFakeTimers();
+    try {
+      const { t, admin } = setup();
+      await admin.mutation(api.catalog.admin.createVariant, cap);
+      await admin.mutation(api.catalog.admin.createVariant, { ...cap, variantId: "solo-cap" });
+      const files = await t.run(async (ctx) => {
+        const shared = await ctx.storage.store(new Blob(["shared"]));
+        const solo = await ctx.storage.store(new Blob(["solo"]));
+        const byId = (id: string) => ctx.db.query("variants").withIndex("by_variantId", (q) => q.eq("variantId", id)).unique();
+        await ctx.db.patch("variants", (await byId(cap.variantId))!._id, { storageId: shared });
+        await ctx.db.patch("variants", (await byId("solo-cap"))!._id, { storageId: solo });
+        await ctx.db.insert("productImages", { variantId: "other-cap", role: "catalog", order: 0, storageId: shared, sha256: "s", width: 2000, height: 2500, createdAt: 1 });
+        return { shared, solo };
+      });
+      await t.mutation(internal.catalog.admin.purgeVariant, { variantId: cap.variantId });
+      await t.mutation(internal.catalog.admin.purgeVariant, { variantId: "solo-cap" });
+      await t.finishAllScheduledFunctions(vi.runAllTimers);
+      const exists = (id: typeof files.shared) => t.run(async (ctx) => (await ctx.storage.get(id)) !== null);
+      expect(await exists(files.shared)).toBe(true);
+      expect(await exists(files.solo)).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("blocks edits and drop releases on an archived product", async () => {

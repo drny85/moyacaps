@@ -49,7 +49,6 @@ const input = (overrides: Partial<NewVariantInput> = {}): NewVariantInput => ({
   silhouette: "snapback",
   primaryHex: "#111111",
   secondaryHex: "#ee0000",
-  image: "/caps/new.png",
   stock: 9,
   priceUsd: 130,
   isFeatured: true,
@@ -175,32 +174,33 @@ describe("buildVariantPatch", () => {
 });
 
 describe("buildNewVariant", () => {
-  it("defaults to visible, not a drop, with the category's tax code and a stamp", () => {
+  it("defaults to not a drop, with a blank image, the category's tax code and a stamp", () => {
     const doc = buildNewVariant(input(), NOW);
-    expect(doc).toMatchObject({ isAvailable: true, isDrop: false, image: "/caps/new.png", taxCode: "txcd_30060006", updatedAt: NOW });
+    expect(doc).toMatchObject({ isDrop: false, image: "", taxCode: "txcd_30060006", updatedAt: NOW });
+    expect(doc).not.toHaveProperty("storageId");
+    expect(doc).not.toHaveProperty("images");
   });
 
   it("keeps a sent tax code", () => {
     expect(buildNewVariant(input({ category: "apparel", silhouette: "tee", taxCode: "txcd_11111111" }), NOW).taxCode).toBe("txcd_11111111");
   });
 
-  it("saves a product with no image hidden, whatever isAvailable says", () => {
-    expect(buildNewVariant(input({ image: undefined, isAvailable: true }), NOW)).toMatchObject({ image: "", isAvailable: false });
-    expect(buildNewVariant(input({ image: "   ", isAvailable: true }), NOW)).toMatchObject({ image: "", isAvailable: false });
+  it("saves a new product hidden, whatever isAvailable says: its images are attached afterwards", () => {
+    expect(buildNewVariant(input({ isAvailable: true }), NOW)).toMatchObject({ image: "", isAvailable: false });
   });
 });
 
 describe("blankImageWhileVisible", () => {
   it("flags a visible product left without an image or upload", () => {
-    expect(blankImageWhileVisible(variant(), { image: " " })).toBe(true);
-    expect(blankImageWhileVisible(variant(), { image: "", isAvailable: false })).toBe(false);
-    expect(blankImageWhileVisible(variant({ storageId: "s1" as Id<"_storage"> }), { image: "" })).toBe(false);
+    expect(blankImageWhileVisible(variant({ image: " " }), {})).toBe(true);
+    expect(blankImageWhileVisible(variant({ image: "" }), { isAvailable: false })).toBe(false);
+    expect(blankImageWhileVisible(variant({ image: "", storageId: "s1" as Id<"_storage"> }), {})).toBe(false);
     expect(blankImageWhileVisible(variant(), { priceUsd: 5 })).toBe(false);
   });
 
   it("counts a catalog image row as an image", () => {
-    expect(blankImageWhileVisible(variant(), { image: "" }, true)).toBe(false);
-    expect(blankImageWhileVisible(variant(), { image: "" }, false)).toBe(true);
+    expect(blankImageWhileVisible(variant({ image: "" }), {}, true)).toBe(false);
+    expect(blankImageWhileVisible(variant({ image: "" }), {}, false)).toBe(true);
   });
 });
 
