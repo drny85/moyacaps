@@ -8,7 +8,7 @@ import { ConvexError } from "convex/values";
 import { diffFields, recordCatalogEvent, type CatalogEventType } from "./audit";
 import { getVariant } from "./inventory";
 import { nextUpdatedAt, versionOf } from "./model";
-import { overlayProductImages, type CapAngles, type ResolvedImageRow } from "./images/overlay";
+import { overlayProductImages, primaryImage, type CapAngles, type ResolvedImageRow } from "./images/overlay";
 
 /**
  * Upper bound for whole-catalog reads. The catalog is ~30 products; the bound keeps
@@ -39,37 +39,46 @@ export async function requireVariant(ctx: QueryCtx, variantId: string) {
 /** Upper bound for one product's image rows (4 angles + catalog + lifestyle per colorway); see images/functions.ts. */
 export const MAX_PRODUCT_IMAGE_ROWS = 60;
 
-/**
- * A variant as the storefront and admin read it: the legacy uploaded `storageId` swapped
- * for its URL, `productImages` rows laid over the legacy image fields (ADR 0021), and the
- * hidden-flag defaulted to visible.
- */
-export async function resolveProduct<T extends Doc<"variants">>(
-  ctx: QueryCtx,
-  variant: T
-): Promise<T & { isAvailable: boolean; angles?: CapAngles }> {
-  let image = variant.image;
-  if (variant.storageId) {
-    const url = await ctx.storage.getUrl(variant.storageId);
-    if (url) {
-      image = url;
-    }
-  }
-  // One bounded read; rows are grouped in memory by the pure overlay.
+/** The product's `productImages` rows whose file still exists, with their URLs. One bounded read. */
+async function resolvedImageRows(ctx: QueryCtx, variantId: string): Promise<ResolvedImageRow[]> {
   const rows = await ctx.db
     .query("productImages")
-    .withIndex("by_variantId_and_role_and_order", (q) => q.eq("variantId", variant.variantId))
+    .withIndex("by_variantId_and_role_and_order", (q) => q.eq("variantId", variantId))
     .take(MAX_PRODUCT_IMAGE_ROWS);
   const resolved: ResolvedImageRow[] = [];
   for (const row of rows) {
     const url = await ctx.storage.getUrl(row.storageId);
     if (url) resolved.push({ role: row.role, colorway: row.colorway, angle: row.angle, order: row.order, url });
   }
+  return resolved;
+}
+
+async function legacyStorageUrl(ctx: QueryCtx, variant: Doc<"variants">): Promise<string | undefined> {
+  return variant.storageId ? ((await ctx.storage.getUrl(variant.storageId)) ?? undefined) : undefined;
+}
+
+/**
+ * A variant as the storefront and admin read it: `productImages` rows laid over the legacy
+ * image fields (ADR 0021), `image` derived by `primaryImage` (so a product created with only
+ * a Catalog Shot row still carries one into cart, checkout and orders), and the hidden-flag
+ * defaulted to visible.
+ */
+export async function resolveProduct<T extends Doc<"variants">>(
+  ctx: QueryCtx,
+  variant: T
+): Promise<T & { isAvailable: boolean; angles?: CapAngles }> {
+  // Rows are grouped in memory by the pure overlay.
+  const resolved = await resolvedImageRows(ctx, variant.variantId);
   return {
     ...overlayProductImages(variant, resolved),
-    image,
+    image: primaryImage({ ...variant, legacyUrl: await legacyStorageUrl(ctx, variant) }, resolved),
     isAvailable: variant.isAvailable !== false,
   };
+}
+
+/** Just the resolved `image` of a raw variant row (order snapshots read rows via `checkStock`). */
+export async function resolveProductImage(ctx: QueryCtx, variant: Doc<"variants">): Promise<string> {
+  return primaryImage({ ...variant, legacyUrl: await legacyStorageUrl(ctx, variant) }, await resolvedImageRows(ctx, variant.variantId));
 }
 
 /** True when the product has a Catalog Shot row (any colorway: tees keep one per colorway). */

@@ -1,7 +1,8 @@
 /// <reference types="vite/client" />
 import { convexTest } from "convex-test";
 import { describe, expect, it } from "vitest";
-import { api } from "../_generated/api";
+import { api, internal } from "../_generated/api";
+import { validateCartLines } from "../payments/checkoutModel";
 import schema from "../schema";
 import { PRIMARY_ADMIN_EMAIL } from "../lib/auth";
 import { resolveProduct } from "./shared";
@@ -56,5 +57,60 @@ describe("resolveProduct", () => {
     const out = await resolve(t);
     expect(out.catalogShot).toMatch(/^https?:\/\//);
     expect(out.images).toBeUndefined();
+  });
+});
+
+describe("derived product image", () => {
+  /** A product created without an image, then given a Catalog Shot row and shown. */
+  async function productWithCatalogRow() {
+    const t = convexTest(schema, modules);
+    const admin = t.withIdentity({ subject: "user_admin", email: PRIMARY_ADMIN_EMAIL });
+    const { image: _image, ...noImage } = cap;
+    await admin.mutation(api.catalog.admin.createVariant, noImage);
+    const url = await t.run(async (ctx) => {
+      const storageId = await ctx.storage.store(new Blob(["c"]));
+      await ctx.db.insert("productImages", {
+        variantId: cap.variantId,
+        role: "catalog",
+        order: 0,
+        storageId,
+        sha256: "x",
+        width: 2000,
+        height: 2500,
+        createdAt: 1,
+      });
+      return (await ctx.storage.getUrl(storageId))!;
+    });
+    await admin.mutation(api.catalog.admin.toggleVariantAvailable, { variantId: cap.variantId, isAvailable: true });
+    return { t, url };
+  }
+
+  it("prices a cart line with the catalog row URL", async () => {
+    const { t, url } = await productWithCatalogRow();
+    const variant = await t.query(api.catalog.queries.getVariantById, { variantId: cap.variantId });
+    expect(variant?.image).toBe(url);
+    const { validatedItems } = validateCartLines([{ variantId: cap.variantId, quantity: 1 }], [variant], [{ ok: true, available: 10 }], {
+      locale: "en",
+      flow: "checkout",
+      now: 0,
+    });
+    expect(validatedItems[0].image).toBe(url);
+    expect(validatedItems[0].image).not.toBe("");
+  });
+
+  it("snapshots the catalog row URL on a WhatsApp lead", async () => {
+    const { t, url } = await productWithCatalogRow();
+    const lead = await t.mutation(internal.orders.whatsapp.createWhatsAppOrderLead, {
+      items: [{ variantId: cap.variantId, name: cap.nameEn, quantity: 1, price: cap.priceUsd, image: "" }],
+      currency: "USD",
+      subtotal: cap.priceUsd,
+      shippingFee: 0,
+      total: cap.priceUsd,
+      customerName: "Test Buyer",
+      customerEmail: "buyer@test.com",
+    });
+    expect(lead.items[0].image).toBe(url);
+    const order = await t.run((ctx) => ctx.db.get("orders", lead.orderId));
+    expect(order?.items[0].image).toBe(url);
   });
 });

@@ -52,3 +52,19 @@ export function overlayProductImages<T extends OverlayInput>(variant: T, rows: R
   }
   return result;
 }
+
+/**
+ * The product's single `image` (cart, checkout, order snapshots), in order of precedence:
+ * the legacy upload's URL, a non-blank stored `image`, the Catalog Shot row with no colorway,
+ * then the default Apparel Colorway's Catalog Shot row. Blank when none exists.
+ */
+export function primaryImage(
+  variant: { legacyUrl?: string; image: string; defaultColorway?: string },
+  rows: ResolvedImageRow[]
+): string {
+  if (variant.legacyUrl) return variant.legacyUrl;
+  if (variant.image.trim() !== "") return variant.image;
+  const sorted = [...rows].sort((a, b) => a.order - b.order);
+  const catalog = (colorway: string | undefined) => sorted.find((r) => r.role === "catalog" && r.colorway === colorway)?.url;
+  return catalog(undefined) ?? (variant.defaultColorway ? catalog(variant.defaultColorway) : undefined) ?? "";
+}

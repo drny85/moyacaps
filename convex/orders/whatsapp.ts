@@ -10,6 +10,7 @@ import type { Doc } from "../_generated/dataModel";
 import { requireAdmin } from "../lib/auth";
 import { randomDigitString } from "../lib/ids";
 import { adjustStock, checkStock } from "../catalog/inventory";
+import { resolveProductImage } from "../catalog/shared";
 import { getShippingSettings } from "../settings/model";
 import { appendBoundedId, appendNote, computeShipping, isPaidLike, newTrackingNumber, orderSessionIds } from "./model";
 import { hasEmail, releaseStock, scheduleSessionExpiry } from "./shared";
@@ -160,7 +161,7 @@ export const createWhatsAppOrderLead = internalMutation({
         name: item.colorway || item.size ? item.name : variant.nameEn,
         quantity: item.quantity,
         price: unitPrice,
-        image: variant.image,
+        image: await resolveProductImage(ctx, variant),
         ...(item.colorway ? { colorway: item.colorway } : {}),
         ...(item.size ? { size: item.size } : {}),
       });

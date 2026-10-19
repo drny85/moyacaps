@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { overlayProductImages, type ResolvedImageRow } from "./overlay";
+import { overlayProductImages, primaryImage, type ResolvedImageRow } from "./overlay";
 
 const cap = { catalogShot: "/legacy-catalog.png", images: ["/legacy-life.jpg"] };
 const tee = {
@@ -51,5 +51,36 @@ describe("overlayProductImages", () => {
       back: "u-back",
       right: "u-right",
     });
+  });
+});
+
+describe("primaryImage", () => {
+  const rows = [
+    row({ role: "catalog", colorway: "white", url: "https://s/white" }),
+    row({ role: "catalog", colorway: "black", url: "https://s/black" }),
+    row({ role: "lifestyle", url: "https://s/life" }),
+  ];
+
+  it("prefers the legacy storage URL", () => {
+    expect(primaryImage({ legacyUrl: "https://s/legacy", image: "/cap.png" }, [row({ role: "catalog", url: "https://s/c" })])).toBe(
+      "https://s/legacy"
+    );
+  });
+
+  it("then a non-blank stored image", () => {
+    expect(primaryImage({ image: "/cap.png" }, [row({ role: "catalog", url: "https://s/c" })])).toBe("/cap.png");
+  });
+
+  it("then the catalog row with no colorway", () => {
+    expect(primaryImage({ image: "  " }, [...rows, row({ role: "catalog", url: "https://s/c" })])).toBe("https://s/c");
+  });
+
+  it("then the default colorway's catalog row", () => {
+    expect(primaryImage({ image: "", defaultColorway: "black" }, rows)).toBe("https://s/black");
+  });
+
+  it("is blank when nothing qualifies", () => {
+    expect(primaryImage({ image: "" }, rows)).toBe("");
+    expect(primaryImage({ image: "", defaultColorway: "sand" }, rows)).toBe("");
   });
 });
