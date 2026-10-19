@@ -3,7 +3,9 @@
  * status and the field merges behind the admin editor. No database access, so
  * every rule is unit-tested in catalogModel.test.ts.
  */
-import type { Doc } from "../_generated/dataModel";
+import type { Doc, Id } from "../_generated/dataModel";
+import { resolveTaxCode, validateProductFields } from "./rules";
+import type { Category, FieldError } from "./rules";
 
 export const TEE_SIZES = ["S", "M", "L", "XL", "2XL"] as const;
 
@@ -86,84 +88,132 @@ export function nextAvailability(current: boolean | undefined, requested: boolea
   return requested !== undefined ? requested : !(current !== false);
 }
 
-/** Admin editor payload (`catalog/admin:saveVariant`). */
-export type VariantInput = {
-  variantId: string;
-  nameEn: string;
-  nameEs: string;
-  silhouette: string;
-  primaryHex: string;
-  secondaryHex: string;
-  image: string;
-  storageId?: Doc<"variants">["storageId"];
+/** Fields `catalog/admin:updateVariant` may change. Absent means "leave as stored". */
+export type VariantPatch = {
+  nameEn?: string;
+  nameEs?: string;
+  category?: Category;
+  silhouette?: string;
+  primaryHex?: string;
+  secondaryHex?: string;
+  image?: string;
+  storageId?: Id<"_storage">;
   images?: string[];
-  stock: number;
-  priceUsd: number;
-  isFeatured: boolean;
+  stock?: number;
+  priceUsd?: number;
+  taxCode?: string;
+  isFeatured?: boolean;
   isAvailable?: boolean;
   isDrop?: boolean;
   dropDate?: number;
   dropBadgeTextEn?: string;
   dropBadgeTextEs?: string;
   dropStatus?: DropStatus;
-  category?: string;
-  taxCode?: string;
+  descriptionEn?: string;
+  descriptionEs?: string;
+  badgeTextEn?: string;
+  badgeTextEs?: string;
 };
 
-/**
- * Patch for an existing variant: optional editor fields keep their stored value when
- * omitted, and tee stock stays the SKU aggregate (never overwritten from the editor).
- */
-export function mergeVariantUpdate(existing: Doc<"variants">, input: VariantInput, image: string, teeHasSkus: boolean) {
-  const keep = <K extends keyof VariantInput & keyof Doc<"variants">>(key: K) =>
-    input[key] !== undefined ? input[key] : existing[key];
-  return {
-    nameEn: input.nameEn,
-    nameEs: input.nameEs,
-    silhouette: input.silhouette,
-    category: keep("category"),
-    taxCode: keep("taxCode"),
-    primaryHex: input.primaryHex,
-    secondaryHex: input.secondaryHex,
-    image,
-    storageId: keep("storageId"),
-    images: keep("images"),
-    stock: teeHasSkus ? existing.stock : input.stock,
-    priceUsd: input.priceUsd,
-    isFeatured: input.isFeatured,
-    isAvailable: input.isAvailable !== undefined ? input.isAvailable : existing.isAvailable !== false,
-    isDrop: keep("isDrop"),
-    dropDate: keep("dropDate"),
-    dropBadgeTextEn: keep("dropBadgeTextEn"),
-    dropBadgeTextEs: keep("dropBadgeTextEs"),
-    dropStatus: keep("dropStatus"),
-  };
+/** Payload of `catalog/admin:createVariant`. */
+export type NewVariantInput = VariantPatch & {
+  variantId: string;
+  nameEn: string;
+  nameEs: string;
+  category: Category;
+  silhouette: string;
+  primaryHex: string;
+  secondaryHex: string;
+  priceUsd: number;
+  isFeatured: boolean;
+};
+
+/** The optimistic-concurrency token of a row; rows from before `updatedAt` existed use their creation time. */
+export function versionOf(variant: Pick<Doc<"variants">, "updatedAt" | "_creationTime">): number {
+  return variant.updatedAt ?? variant._creationTime;
 }
 
-/** Document for a variant created from the admin editor. */
-export function newVariantDoc(input: VariantInput, image: string) {
+/** Timestamp for a write: the clock, but always later than the row's current version. */
+export function nextUpdatedAt(variant: Pick<Doc<"variants">, "updatedAt" | "_creationTime">, clock: number): number {
+  return Math.max(clock, versionOf(variant) + 1);
+}
+
+/**
+ * Patch for an existing variant: only the fields the editor sent, stamped with `now`.
+ * Changing the category without a tax code resets the tax code to the new category's default.
+ */
+export function buildVariantPatch(existing: Doc<"variants">, input: VariantPatch, now: number): VariantPatch & { updatedAt: number } {
+  const patch: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(input)) {
+    if (value !== undefined) patch[key] = value;
+  }
+  if (input.category !== undefined && input.taxCode === undefined && input.category !== variantCategory(existing)) {
+    patch.taxCode = resolveTaxCode(input.category);
+  }
+  return { ...(patch as VariantPatch), updatedAt: now };
+}
+
+/**
+ * Document for a new product. A product with no image is never listed: it is saved
+ * hidden whatever `isAvailable` says, so it cannot reach the storefront grid.
+ */
+export function buildNewVariant(input: NewVariantInput, now: number) {
+  const image = input.image?.trim() ?? "";
   return {
     variantId: input.variantId,
     nameEn: input.nameEn,
     nameEs: input.nameEs,
     silhouette: input.silhouette,
     category: input.category,
-    taxCode: input.taxCode,
+    taxCode: resolveTaxCode(input.category, input.taxCode),
     primaryHex: input.primaryHex,
     secondaryHex: input.secondaryHex,
     image,
     storageId: input.storageId,
     images: input.images,
-    stock: input.stock,
+    stock: input.stock ?? 0,
     priceUsd: input.priceUsd,
     isFeatured: input.isFeatured,
-    isAvailable: input.isAvailable !== undefined ? input.isAvailable : true,
+    isAvailable: image === "" ? false : (input.isAvailable ?? true),
     isDrop: input.isDrop ?? false,
     dropDate: input.dropDate,
     dropBadgeTextEn: input.dropBadgeTextEn,
     dropBadgeTextEs: input.dropBadgeTextEs,
     dropStatus: input.dropStatus,
+    descriptionEn: input.descriptionEn,
+    descriptionEs: input.descriptionEs,
+    badgeTextEn: input.badgeTextEn,
+    badgeTextEs: input.badgeTextEs,
+    updatedAt: now,
   };
+}
+
+/**
+ * Validate a variant as it would look after `patch`. `only` limits the result to the
+ * fields a single-field mutation touches, so an unrelated bad stored value cannot block it.
+ */
+export function validateMerged(existing: Doc<"variants">, patch: VariantPatch, only?: string[]): FieldError[] {
+  const merged = { ...existing, ...definedOnly(patch) };
+  const errors = validateProductFields({
+    nameEn: merged.nameEn,
+    nameEs: merged.nameEs,
+    category: (patch.category ?? variantCategory(existing)) as Category,
+    silhouette: merged.silhouette,
+    primaryHex: merged.primaryHex,
+    secondaryHex: merged.secondaryHex,
+    priceUsd: merged.priceUsd,
+    stock: merged.stock,
+    taxCode: merged.taxCode,
+    descriptionEn: merged.descriptionEn,
+    descriptionEs: merged.descriptionEs,
+    badgeTextEn: merged.badgeTextEn,
+    badgeTextEs: merged.badgeTextEs,
+  });
+  return only ? errors.filter((e) => only.includes(e.field)) : errors;
+}
+
+function definedOnly<T extends object>(obj: T): Partial<T> {
+  return Object.fromEntries(Object.entries(obj).filter(([, value]) => value !== undefined)) as Partial<T>;
 }
 
 /** Old Lifestyle Shot paths (still referenced by historical order snapshots) → canonical names */
@@ -194,7 +244,10 @@ export function teeFieldsPatch(existing: TeeRow, fields: Record<string, unknown>
   if (LIFESTYLE_RENAMES[existing.image]) patch.image = renamedLifestyleShot(existing.image);
   if (existing.images?.some((path) => LIFESTYLE_RENAMES[path])) patch.images = existing.images.map(renamedLifestyleShot);
   if (existing.colorways?.some((c) => LIFESTYLE_RENAMES[c.lifestyleImage])) {
-    patch.colorways = existing.colorways.map((c) => ({ ...c, lifestyleImage: renamedLifestyleShot(c.lifestyleImage) }));
+    patch.colorways = existing.colorways.map((c) => ({
+      ...c,
+      lifestyleImage: renamedLifestyleShot(c.lifestyleImage),
+    }));
   }
   return patch;
 }
@@ -209,5 +262,8 @@ export function distributeStock(total: number, colorways: string[], defaultColor
   const cells = order.flatMap((size) => cws.map((colorway) => ({ colorway, size })));
   const base = Math.floor(total / cells.length);
   let remainder = total - base * cells.length;
-  return cells.map((cell) => ({ ...cell, stock: base + (remainder-- > 0 ? 1 : 0) }));
+  return cells.map((cell) => ({
+    ...cell,
+    stock: base + (remainder-- > 0 ? 1 : 0),
+  }));
 }

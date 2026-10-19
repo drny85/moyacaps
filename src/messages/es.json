@@ -381,7 +381,16 @@
       "confirmShowTitle": "¿Habilitar Disponibilidad en Tienda?",
       "confirmShowDesc": "¿Estás seguro de habilitar {name}? Volverá a aparecer inmediatamente en el catálogo de la tienda y estará disponible para compra.",
       "confirmHideBtn": "Confirmar y Ocultar",
-      "confirmShowBtn": "Confirmar y Publicar"
+      "confirmShowBtn": "Confirmar y Publicar",
+      "errors": {
+        "required": "Este campo es obligatorio.",
+        "format": "Este valor no tiene un formato válido.",
+        "range": "Este valor está fuera del rango permitido.",
+        "too_long": "Este valor es demasiado largo.",
+        "mismatch": "No coincide con la categoría seleccionada.",
+        "taken": "Este nombre de URL ya lo usa otro producto.",
+        "stale": "Este producto cambió mientras lo editabas. Cierra esta ventana y vuelve a abrir el producto para ver la versión más reciente."
+      }
     },
     "drops": {
       "title": "Lanzadera de Drops VIP",

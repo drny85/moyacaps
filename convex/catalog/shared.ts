@@ -2,9 +2,12 @@
  * Database helpers shared by the catalog modules (catalog, catalogAdmin, drops,
  * catalogMigrations, orderDesk, analytics). Stock reads and writes stay in catalog/inventory.ts.
  */
-import type { Id } from "../_generated/dataModel";
+import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
+import { ConvexError } from "convex/values";
+import { diffFields, recordCatalogEvent, type CatalogEventType } from "./audit";
 import { getVariant } from "./inventory";
+import { nextUpdatedAt } from "./model";
 
 /**
  * Upper bound for whole-catalog reads. The catalog is ~30 products; the bound keeps
@@ -27,7 +30,7 @@ export async function listCatalogVariants(ctx: QueryCtx) {
 export async function requireVariant(ctx: QueryCtx, variantId: string) {
   const variant = await getVariant(ctx, variantId);
   if (!variant) {
-    throw new Error(`Variant ${variantId} not found`);
+    throw new ConvexError(`Variant ${variantId} not found`);
   }
   return variant;
 }
@@ -66,4 +69,26 @@ export async function deleteStorageQuietly(ctx: MutationCtx, storageId: Id<"_sto
   } catch (e) {
     // ignore if already deleted
   }
+}
+
+/**
+ * Patch a variant, stamp `updatedAt` (so a concurrent full edit is detected as stale)
+ * and record the audit event for the fields that changed.
+ */
+export async function patchVariantAudited(
+  ctx: MutationCtx,
+  variant: Doc<"variants">,
+  fields: Partial<Doc<"variants">>,
+  type: CatalogEventType,
+  actor: string
+) {
+  const before: Record<string, unknown> = {};
+  for (const key of Object.keys(fields)) before[key] = (variant as Record<string, unknown>)[key];
+  await ctx.db.patch("variants", variant._id, { ...fields, updatedAt: nextUpdatedAt(variant, Date.now()) });
+  await recordCatalogEvent(ctx, {
+    variantId: variant.variantId,
+    type,
+    actor,
+    changes: diffFields(before, { ...before, ...fields }),
+  });
 }

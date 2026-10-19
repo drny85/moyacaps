@@ -3,19 +3,34 @@
  * the variant editor and per-SKU tee stock (ADR 0008, ADR 0015).
  */
 import { query, mutation, internalMutation } from "../_generated/server";
+import type { MutationCtx } from "../_generated/server";
+import type { Id } from "../_generated/dataModel";
 import { v, ConvexError } from "convex/values";
 import { requireAdmin } from "../lib/auth";
 import schema from "../schema";
-import { successResult, variantWithSubscribers } from "./validators";
-import { getVariant, hasSkus, setSkuStock } from "./inventory";
-import { mergeVariantUpdate, newVariantDoc, nextAvailability, TEE_STOCK_EDIT_ERROR } from "./model";
+import { dropStatusValidator, successResult, variantWithSubscribers } from "./validators";
+import { getSku, getVariant, hasSkus, setSkuStock } from "./inventory";
+import {
+  buildNewVariant,
+  buildVariantPatch,
+  nextAvailability,
+  nextUpdatedAt,
+  TEE_STOCK_EDIT_ERROR,
+  validateMerged,
+  versionOf,
+} from "./model";
+import { throwIfInvalid, validateProductFields } from "./rules";
+import { actorEmail, diffFields, recordCatalogEvent } from "./audit";
 import {
   countDropAlerts,
   deleteStorageQuietly,
   listCatalogVariants,
+  patchVariantAudited,
   requireVariant,
   resolveVariantWithStorageUrl,
 } from "./shared";
+
+const categoryValidator = v.union(v.literal("headwear"), v.literal("apparel"));
 
 export const generateUploadUrl = mutation({
   args: {},
@@ -51,7 +66,11 @@ export const setVariantStorageId = internalMutation({
       storageId: args.storageId,
     });
 
-    return { success: true, variantId: args.variantId, storageId: args.storageId };
+    return {
+      success: true,
+      variantId: args.variantId,
+      storageId: args.storageId,
+    };
   },
 });
 
@@ -86,17 +105,16 @@ export const updateVariantStock = mutation({
   },
   returns: v.object({ success: v.boolean(), variantId: v.string(), stock: v.number() }),
   handler: async (ctx, args) => {
-    await requireAdmin(ctx);
+    const actor = actorEmail(await requireAdmin(ctx));
     const variant = await requireVariant(ctx, args.variantId);
     if (hasSkus(variant)) {
       throw new ConvexError(TEE_STOCK_EDIT_ERROR);
     }
+    throwIfInvalid(validateMerged(variant, { stock: args.stock }, ["stock"]));
 
-    await ctx.db.patch(variant._id, {
-      stock: Math.max(0, args.stock),
-    });
+    await patchVariantAudited(ctx, variant, { stock: args.stock }, "stock_adjusted", actor);
 
-    return { success: true, variantId: args.variantId, stock: Math.max(0, args.stock) };
+    return { success: true, variantId: args.variantId, stock: args.stock };
   },
 });
 
@@ -107,16 +125,16 @@ export const adjustVariantStock = mutation({
   },
   returns: v.object({ success: v.boolean(), variantId: v.string(), stock: v.number() }),
   handler: async (ctx, args) => {
-    await requireAdmin(ctx);
+    const actor = actorEmail(await requireAdmin(ctx));
     const variant = await requireVariant(ctx, args.variantId);
 
     if (hasSkus(variant)) {
       throw new ConvexError(TEE_STOCK_EDIT_ERROR);
     }
     const newStock = Math.max(0, variant.stock + args.delta);
-    await ctx.db.patch(variant._id, {
-      stock: newStock,
-    });
+    throwIfInvalid(validateMerged(variant, { stock: newStock }, ["stock"]));
+
+    await patchVariantAudited(ctx, variant, { stock: newStock }, "stock_adjusted", actor);
 
     return { success: true, variantId: args.variantId, stock: newStock };
   },
@@ -129,14 +147,17 @@ export const updateVariantPrice = mutation({
   },
   returns: v.object({ success: v.boolean(), variantId: v.string(), priceUsd: v.number() }),
   handler: async (ctx, args) => {
-    await requireAdmin(ctx);
+    const actor = actorEmail(await requireAdmin(ctx));
     const variant = await requireVariant(ctx, args.variantId);
+    throwIfInvalid(validateMerged(variant, { priceUsd: args.priceUsd }, ["priceUsd"]));
 
-    await ctx.db.patch(variant._id, {
-      priceUsd: Math.max(0, args.priceUsd),
-    });
+    await patchVariantAudited(ctx, variant, { priceUsd: args.priceUsd }, "price_set", actor);
 
-    return { success: true, variantId: args.variantId, priceUsd: args.priceUsd };
+    return {
+      success: true,
+      variantId: args.variantId,
+      priceUsd: args.priceUsd,
+    };
   },
 });
 
@@ -146,12 +167,10 @@ export const toggleVariantFeatured = mutation({
   },
   returns: v.object({ success: v.boolean(), isFeatured: v.boolean() }),
   handler: async (ctx, args) => {
-    await requireAdmin(ctx);
+    const actor = actorEmail(await requireAdmin(ctx));
     const variant = await requireVariant(ctx, args.variantId);
 
-    await ctx.db.patch(variant._id, {
-      isFeatured: !variant.isFeatured,
-    });
+    await patchVariantAudited(ctx, variant, { isFeatured: !variant.isFeatured }, "featured_toggled", actor);
 
     return { success: true, isFeatured: !variant.isFeatured };
   },
@@ -164,66 +183,159 @@ export const toggleVariantAvailable = mutation({
   },
   returns: v.object({ success: v.boolean(), variantId: v.string(), isAvailable: v.boolean() }),
   handler: async (ctx, args) => {
-    await requireAdmin(ctx);
+    const actor = actorEmail(await requireAdmin(ctx));
     const variant = await requireVariant(ctx, args.variantId);
     const nextAvailable = nextAvailability(variant.isAvailable, args.isAvailable);
 
-    await ctx.db.patch(variant._id, {
-      isAvailable: nextAvailable,
-    });
+    await patchVariantAudited(ctx, variant, { isAvailable: nextAvailable }, "visibility_set", actor);
 
-    return { success: true, variantId: args.variantId, isAvailable: nextAvailable };
+    return {
+      success: true,
+      variantId: args.variantId,
+      isAvailable: nextAvailable,
+    };
   },
 });
 
-export const saveVariant = mutation({
+/** The fields shared by `createVariant` and the optional part of `updateVariant`'s patch. */
+const editableFields = {
+  nameEn: v.string(),
+  nameEs: v.string(),
+  category: categoryValidator,
+  silhouette: v.string(),
+  primaryHex: v.string(),
+  secondaryHex: v.string(),
+  image: v.string(),
+  storageId: v.id("_storage"),
+  images: v.array(v.string()),
+  stock: v.number(),
+  priceUsd: v.number(),
+  taxCode: v.string(),
+  isFeatured: v.boolean(),
+  isAvailable: v.boolean(),
+  isDrop: v.boolean(),
+  dropDate: v.number(),
+  dropBadgeTextEn: v.string(),
+  dropBadgeTextEs: v.string(),
+  dropStatus: dropStatusValidator,
+  descriptionEn: v.string(),
+  descriptionEs: v.string(),
+  badgeTextEn: v.string(),
+  badgeTextEs: v.string(),
+};
+
+/** Uploaded Catalog Shots arrive as a storage id; the row keeps their URL as `image`. */
+async function withUploadedImage<T extends { storageId?: Id<"_storage">; image?: string }>(ctx: MutationCtx, input: T): Promise<T> {
+  if (!input.storageId || input.image?.trim()) return input;
+  const url = await ctx.storage.getUrl(input.storageId);
+  return url ? { ...input, image: url } : input;
+}
+
+export const createVariant = mutation({
   args: {
     variantId: v.string(),
-    nameEn: v.string(),
-    nameEs: v.string(),
-    silhouette: v.string(),
-    primaryHex: v.string(),
-    secondaryHex: v.string(),
-    image: v.string(),
-    storageId: v.optional(v.id("_storage")),
-    images: v.optional(v.array(v.string())),
-    stock: v.number(),
-    priceUsd: v.number(),
-    isFeatured: v.boolean(),
-    isAvailable: v.optional(v.boolean()),
-    isDrop: v.optional(v.boolean()),
-    dropDate: v.optional(v.number()),
-    dropBadgeTextEn: v.optional(v.string()),
-    dropBadgeTextEs: v.optional(v.string()),
-    dropStatus: v.optional(v.union(v.literal("scheduled"), v.literal("live"), v.literal("archived"))),
-    category: v.optional(v.string()),
-    taxCode: v.optional(v.string()),
+    nameEn: editableFields.nameEn,
+    nameEs: editableFields.nameEs,
+    category: editableFields.category,
+    silhouette: editableFields.silhouette,
+    primaryHex: editableFields.primaryHex,
+    secondaryHex: editableFields.secondaryHex,
+    priceUsd: editableFields.priceUsd,
+    isFeatured: editableFields.isFeatured,
+    stock: v.optional(editableFields.stock),
+    taxCode: v.optional(editableFields.taxCode),
+    image: v.optional(editableFields.image),
+    storageId: v.optional(editableFields.storageId),
+    images: v.optional(editableFields.images),
+    isAvailable: v.optional(editableFields.isAvailable),
+    isDrop: v.optional(editableFields.isDrop),
+    dropDate: v.optional(editableFields.dropDate),
+    dropBadgeTextEn: v.optional(editableFields.dropBadgeTextEn),
+    dropBadgeTextEs: v.optional(editableFields.dropBadgeTextEs),
+    dropStatus: v.optional(editableFields.dropStatus),
+    descriptionEn: v.optional(editableFields.descriptionEn),
+    descriptionEs: v.optional(editableFields.descriptionEs),
+    badgeTextEn: v.optional(editableFields.badgeTextEn),
+    badgeTextEs: v.optional(editableFields.badgeTextEs),
   },
-  returns: v.object({ success: v.boolean(), action: v.union(v.literal("updated"), v.literal("created")), id: v.id("variants") }),
+  returns: v.object({ id: v.id("variants"), variantId: v.string() }),
   handler: async (ctx, args) => {
-    await requireAdmin(ctx);
-    let resolvedImage = args.image;
-    if (args.storageId && (!resolvedImage || resolvedImage.trim() === "")) {
-      const url = await ctx.storage.getUrl(args.storageId);
-      if (url) {
-        resolvedImage = url;
-      }
+    const actor = actorEmail(await requireAdmin(ctx));
+    const errors = validateProductFields(args);
+    if (await getVariant(ctx, args.variantId)) errors.push({ field: "variantId", code: "taken" });
+    throwIfInvalid(errors);
+
+    const input = await withUploadedImage(ctx, args);
+    const id = await ctx.db.insert("variants", buildNewVariant(input, Date.now()));
+    await recordCatalogEvent(ctx, {
+      variantId: args.variantId,
+      type: "created",
+      actor,
+    });
+    return { id, variantId: args.variantId };
+  },
+});
+
+export const updateVariant = mutation({
+  args: {
+    variantId: v.string(),
+    expectedUpdatedAt: v.number(),
+    patch: v.object({
+      nameEn: v.optional(editableFields.nameEn),
+      nameEs: v.optional(editableFields.nameEs),
+      category: v.optional(editableFields.category),
+      silhouette: v.optional(editableFields.silhouette),
+      primaryHex: v.optional(editableFields.primaryHex),
+      secondaryHex: v.optional(editableFields.secondaryHex),
+      image: v.optional(editableFields.image),
+      storageId: v.optional(editableFields.storageId),
+      images: v.optional(editableFields.images),
+      stock: v.optional(editableFields.stock),
+      priceUsd: v.optional(editableFields.priceUsd),
+      taxCode: v.optional(editableFields.taxCode),
+      isFeatured: v.optional(editableFields.isFeatured),
+      isAvailable: v.optional(editableFields.isAvailable),
+      isDrop: v.optional(editableFields.isDrop),
+      dropDate: v.optional(editableFields.dropDate),
+      dropBadgeTextEn: v.optional(editableFields.dropBadgeTextEn),
+      dropBadgeTextEs: v.optional(editableFields.dropBadgeTextEs),
+      dropStatus: v.optional(editableFields.dropStatus),
+      descriptionEn: v.optional(editableFields.descriptionEn),
+      descriptionEs: v.optional(editableFields.descriptionEs),
+      badgeTextEn: v.optional(editableFields.badgeTextEn),
+      badgeTextEs: v.optional(editableFields.badgeTextEs),
+    }),
+  },
+  returns: v.object({ updatedAt: v.number() }),
+  handler: async (ctx, args) => {
+    const actor = actorEmail(await requireAdmin(ctx));
+    const existing = await requireVariant(ctx, args.variantId);
+    if (versionOf(existing) !== args.expectedUpdatedAt) {
+      throw new ConvexError({ kind: "stale" });
     }
-
-    const existing = await getVariant(ctx, args.variantId);
-
-    if (existing) {
-      if (existing.storageId && args.storageId && existing.storageId !== args.storageId) {
-        await deleteStorageQuietly(ctx, existing.storageId);
-      }
-
-      await ctx.db.patch(existing._id, mergeVariantUpdate(existing, args, resolvedImage, hasSkus(existing)));
-      return { success: true, action: "updated" as const, id: existing._id };
+    if (args.patch.stock !== undefined && hasSkus(existing)) {
+      throw new ConvexError(TEE_STOCK_EDIT_ERROR);
     }
+    throwIfInvalid(validateMerged(existing, args.patch));
 
-    const id = await ctx.db.insert("variants", newVariantDoc(args, resolvedImage));
+    const input = await withUploadedImage(ctx, args.patch);
+    const { updatedAt, ...fields } = buildVariantPatch(existing, input, nextUpdatedAt(existing, Date.now()));
+    const before: Record<string, unknown> = {};
+    for (const key of Object.keys(fields)) before[key] = (existing as Record<string, unknown>)[key];
+    const changes = diffFields(before, { ...before, ...fields });
+    if (changes.length === 0) return { updatedAt: versionOf(existing) };
 
-    return { success: true, action: "created" as const, id };
+    if (existing.storageId && fields.storageId && existing.storageId !== fields.storageId) {
+      await deleteStorageQuietly(ctx, existing.storageId);
+    }
+    await ctx.db.patch("variants", existing._id, { ...fields, updatedAt });
+    await recordCatalogEvent(ctx, {
+      variantId: existing.variantId,
+      type: "updated",
+      actor,
+      changes,
+    });
+    return { updatedAt };
   },
 });
 
@@ -233,7 +345,7 @@ export const deleteVariant = mutation({
   },
   returns: successResult,
   handler: async (ctx, args) => {
-    await requireAdmin(ctx);
+    const actor = actorEmail(await requireAdmin(ctx));
     const variant = await requireVariant(ctx, args.variantId);
 
     if (variant.storageId) {
@@ -241,6 +353,11 @@ export const deleteVariant = mutation({
     }
 
     await ctx.db.delete(variant._id);
+    await recordCatalogEvent(ctx, {
+      variantId: args.variantId,
+      type: "purged",
+      actor,
+    });
     return { success: true };
   },
 });
@@ -255,15 +372,31 @@ export const setTeeSkuStock = mutation({
   },
   returns: successResult,
   handler: async (ctx, args) => {
-    await requireAdmin(ctx);
-    const variant = await getVariant(ctx, args.variantId);
-    if (!variant) throw new ConvexError(`Variant ${args.variantId} not found`);
+    const actor = actorEmail(await requireAdmin(ctx));
+    const variant = await requireVariant(ctx, args.variantId);
     if (!hasSkus(variant)) throw new ConvexError(`${args.variantId} is not a tee with colorways and sizes`);
     if (!variant.colorways!.some((c) => c.id === args.colorway) || !variant.sizes!.includes(args.size)) {
       throw new ConvexError(`${args.colorway} / ${args.size} is not offered for ${args.variantId}`);
     }
     if (!Number.isFinite(args.stock) || args.stock < 0) throw new ConvexError("Stock must be zero or more");
+    const previous = (await getSku(ctx, variant.variantId, args.colorway, args.size))?.stock ?? 0;
     await setSkuStock(ctx, variant, args.colorway, args.size, args.stock);
+    // The tee row's aggregate changed too; stamp it so an open full edit goes stale.
+    await ctx.db.patch("variants", variant._id, {
+      updatedAt: nextUpdatedAt(variant, Date.now()),
+    });
+    await recordCatalogEvent(ctx, {
+      variantId: variant.variantId,
+      type: "sku_stock_set",
+      actor,
+      changes: [
+        {
+          field: `stock:${args.colorway}/${args.size}`,
+          from: previous,
+          to: Math.max(0, Math.floor(args.stock)),
+        },
+      ],
+    });
     return { success: true };
   },
 });

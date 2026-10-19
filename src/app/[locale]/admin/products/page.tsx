@@ -5,7 +5,10 @@ import Image from "next/image";
 import { useTranslations, useLocale } from "next-intl";
 import { Link } from "@/i18n/routing";
 import { useQuery, useMutation } from "convex/react";
+import { ConvexError } from "convex/values";
 import { api } from "@convex/_generated/api";
+import type { Id } from "@convex/_generated/dataModel";
+import { normalizeSlug, type FieldError } from "@convex/catalog/rules";
 import {
   Plus,
   Layers,
@@ -42,6 +45,7 @@ import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
 
 export default function AdminProductsPage() {
   const t = useTranslations("admin.products");
+  const tErrors = useTranslations("admin.products.errors");
   const locale = useLocale();
 
   // Filter state
@@ -76,10 +80,10 @@ export default function AdminProductsPage() {
   // Convex data & mutations
   const data = useQuery(api.catalog.admin.getAllProductsAdmin);
   const adjustStock = useMutation(api.catalog.admin.adjustVariantStock);
-  const updatePrice = useMutation(api.catalog.admin.updateVariantPrice);
   const toggleFeatured = useMutation(api.catalog.admin.toggleVariantFeatured);
   const toggleAvailable = useMutation(api.catalog.admin.toggleVariantAvailable);
-  const saveVariant = useMutation(api.catalog.admin.saveVariant);
+  const createVariant = useMutation(api.catalog.admin.createVariant);
+  const updateVariant = useMutation(api.catalog.admin.updateVariant);
   const deleteVariant = useMutation(api.catalog.admin.deleteVariant);
   const generateUploadUrl = useMutation(api.catalog.admin.generateUploadUrl);
   const updateVariantDropStatus = useMutation(api.catalog.drops.updateVariantDropStatus);
@@ -101,6 +105,8 @@ export default function AdminProductsPage() {
   const [formDropBadgeTextEn, setFormDropBadgeTextEn] = useState("");
   const [formDropBadgeTextEs, setFormDropBadgeTextEs] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<FieldError[]>([]);
+  const [isStale, setIsStale] = useState(false);
 
   // Image Upload State
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -148,6 +154,8 @@ export default function AdminProductsPage() {
     setFormDropBadgeTextEn("");
     setFormDropBadgeTextEs("");
     setFormError(null);
+    setFieldErrors([]);
+    setIsStale(false);
     setEditingVariant(true);
   };
 
@@ -174,6 +182,8 @@ export default function AdminProductsPage() {
     setFormDropBadgeTextEn(variant.dropBadgeTextEn || "");
     setFormDropBadgeTextEs(variant.dropBadgeTextEs || "");
     setFormError(null);
+    setFieldErrors([]);
+    setIsStale(false);
     setEditingVariant(variant);
   };
 
@@ -293,6 +303,8 @@ export default function AdminProductsPage() {
     try {
       setIsSaving(true);
       setFormError(null);
+      setFieldErrors([]);
+      setIsStale(false);
 
       let finalStorageId = storageId;
       let finalImageUrl = formImage.trim();
@@ -321,33 +333,73 @@ export default function AdminProductsPage() {
       }
 
       setUploadProgress("Saving product details...");
-      await saveVariant({
-        variantId: formVariantId.trim().toLowerCase().replace(/\s+/g, "-"),
-        nameEn: formNameEn,
-        nameEs: formNameEs,
-        silhouette: formSilhouette,
-        primaryHex: formPrimaryHex,
-        secondaryHex: formSecondaryHex,
-        image: finalImageUrl,
-        storageId: finalStorageId ? (finalStorageId as any) : undefined,
-        stock: Number(formStock),
-        priceUsd: Number(formPriceUsd),
-        isFeatured: formIsFeatured,
-        isAvailable: formIsAvailable,
-        isDrop: formIsDrop,
-        dropDate: formIsDrop ? formDropTimestamp : undefined,
-        dropBadgeTextEn: formDropBadgeTextEn.trim() || undefined,
-        dropBadgeTextEs: formDropBadgeTextEs.trim() || undefined,
-      });
+      if (isNewVariant) {
+        await createVariant({
+          variantId: normalizeSlug(formVariantId),
+          nameEn: formNameEn,
+          nameEs: formNameEs,
+          category: "headwear",
+          silhouette: formSilhouette,
+          primaryHex: formPrimaryHex,
+          secondaryHex: formSecondaryHex,
+          image: finalImageUrl || undefined,
+          storageId: finalStorageId ? (finalStorageId as Id<"_storage">) : undefined,
+          stock: Number(formStock),
+          priceUsd: Number(formPriceUsd),
+          isFeatured: formIsFeatured,
+          isAvailable: formIsAvailable,
+          isDrop: formIsDrop,
+          dropDate: formIsDrop ? formDropTimestamp : undefined,
+          dropBadgeTextEn: formDropBadgeTextEn.trim() || undefined,
+          dropBadgeTextEs: formDropBadgeTextEs.trim() || undefined,
+        });
+      } else {
+        const original = editingVariant;
+        const changed = <T,>(next: T, prev: T) => (next !== prev ? next : undefined);
+        const isTee = Boolean(original.colorways?.length);
+        await updateVariant({
+          variantId: original.variantId,
+          expectedUpdatedAt: original.updatedAt ?? original._creationTime,
+          patch: {
+            nameEn: changed(formNameEn, original.nameEn),
+            nameEs: changed(formNameEs, original.nameEs),
+            silhouette: changed(formSilhouette, original.silhouette),
+            primaryHex: changed(formPrimaryHex, original.primaryHex),
+            secondaryHex: changed(formSecondaryHex, original.secondaryHex),
+            image: changed(finalImageUrl, original.image || ""),
+            storageId: finalStorageId && finalStorageId !== original.storageId ? (finalStorageId as Id<"_storage">) : undefined,
+            stock: isTee ? undefined : changed(Number(formStock), original.stock),
+            priceUsd: changed(Number(formPriceUsd), original.priceUsd),
+            isFeatured: changed(formIsFeatured, Boolean(original.isFeatured)),
+            isAvailable: changed(formIsAvailable, original.isAvailable !== false),
+            isDrop: changed(formIsDrop, Boolean(original.isDrop)),
+            dropDate: formIsDrop ? changed(formDropTimestamp, original.dropDate) : undefined,
+            dropBadgeTextEn: changed(formDropBadgeTextEn.trim() || undefined, original.dropBadgeTextEn || undefined),
+            dropBadgeTextEs: changed(formDropBadgeTextEs.trim() || undefined, original.dropBadgeTextEs || undefined),
+          },
+        });
+      }
 
       setEditingVariant(null);
     } catch (err: any) {
       console.error("Failed to save variant", err);
-      setFormError(err?.message || "Failed to save variant. Please check inputs.");
+      const data: { kind?: string; errors?: FieldError[] } | string | undefined = err instanceof ConvexError ? err.data : undefined;
+      if (typeof data === "object" && data.kind === "validation") {
+        setFieldErrors(data.errors ?? []);
+      } else if (typeof data === "object" && data.kind === "stale") {
+        setIsStale(true);
+      } else {
+        setFormError(typeof data === "string" ? data : err?.message || "Failed to save variant. Please check inputs.");
+      }
     } finally {
       setIsSaving(false);
       setUploadProgress(null);
     }
+  };
+
+  const fieldError = (field: string) => {
+    const error = fieldErrors.find((e) => e.field === field);
+    return error ? <p className="mt-1 text-[11px] text-red-600 dark:text-red-400">{tErrors(error.code)}</p> : null;
   };
 
   const handleSaveVariant = async (e: React.FormEvent) => {
@@ -881,6 +933,12 @@ export default function AdminProductsPage() {
                 </div>
               )}
 
+              {isStale && (
+                <div role="alert" className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-400 text-xs">
+                  {tErrors("stale")}
+                </div>
+              )}
+
               {/* Variant ID / Slug */}
               <div>
                 <label className="font-medium text-zinc-700 dark:text-zinc-300 block mb-1">
@@ -895,6 +953,7 @@ export default function AdminProductsPage() {
                   placeholder="e.g. negro-oro"
                   className="w-full py-2 px-3 rounded-xl bg-zinc-50 dark:bg-white/[0.03] border border-zinc-200 dark:border-white/10 text-zinc-900 dark:text-white font-mono placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-moya-red disabled:opacity-60"
                 />
+                {fieldError("variantId")}
               </div>
 
               {/* Names EN & ES */}
@@ -911,6 +970,7 @@ export default function AdminProductsPage() {
                     placeholder="e.g. Black / Gold Flare"
                     className="w-full py-2 px-3 rounded-xl bg-zinc-50 dark:bg-white/[0.03] border border-zinc-200 dark:border-white/10 text-zinc-900 dark:text-white placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-moya-red"
                   />
+                {fieldError("nameEn")}
                 </div>
                 <div>
                   <label className="font-medium text-zinc-700 dark:text-zinc-300 block mb-1">
@@ -924,6 +984,7 @@ export default function AdminProductsPage() {
                     placeholder="e.g. Negro / Oro Edición"
                     className="w-full py-2 px-3 rounded-xl bg-zinc-50 dark:bg-white/[0.03] border border-zinc-200 dark:border-white/10 text-zinc-900 dark:text-white placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-moya-red"
                   />
+                {fieldError("nameEs")}
                 </div>
               </div>
 
@@ -941,6 +1002,7 @@ export default function AdminProductsPage() {
                     <option value="snapback">{t("snapback")}</option>
                     <option value="trucker">{t("trucker")}</option>
                   </select>
+                {fieldError("silhouette")}
                 </div>
 
                 <div>
@@ -1118,6 +1180,7 @@ export default function AdminProductsPage() {
                       onChange={(e) => setFormPrimaryHex(e.target.value)}
                       className="flex-1 py-1.5 px-2 rounded-lg bg-white dark:bg-black/30 border border-zinc-200 dark:border-white/10 font-mono text-zinc-900 dark:text-white uppercase"
                     />
+                {fieldError("primaryHex")}
                   </div>
                 </div>
 
@@ -1138,6 +1201,7 @@ export default function AdminProductsPage() {
                       onChange={(e) => setFormSecondaryHex(e.target.value)}
                       className="flex-1 py-1.5 px-2 rounded-lg bg-white dark:bg-black/30 border border-zinc-200 dark:border-white/10 font-mono text-zinc-900 dark:text-white uppercase"
                     />
+                {fieldError("secondaryHex")}
                   </div>
                 </div>
               </div>
@@ -1156,6 +1220,7 @@ export default function AdminProductsPage() {
                     onChange={(e) => setFormPriceUsd(Number(e.target.value))}
                     className="w-full py-2 px-3 rounded-xl bg-zinc-50 dark:bg-white/[0.03] border border-zinc-200 dark:border-white/10 text-zinc-900 dark:text-white font-mono focus:outline-none focus:ring-1 focus:ring-moya-red"
                   />
+                {fieldError("priceUsd")}
                 </div>
 
                 <div>
@@ -1172,6 +1237,7 @@ export default function AdminProductsPage() {
                     title={editingVariant?.colorways?.length ? "Tee stock is edited per colorway and size (SKUs button)" : undefined}
                     className="w-full py-2 px-3 rounded-xl bg-zinc-50 dark:bg-white/[0.03] border border-zinc-200 dark:border-white/10 text-zinc-900 dark:text-white font-mono focus:outline-none focus:ring-1 focus:ring-moya-red disabled:opacity-50"
                   />
+                {fieldError("stock")}
                 </div>
               </div>
 

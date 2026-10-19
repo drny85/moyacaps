@@ -150,19 +150,20 @@ describe("catalog and drop reads match their return validators", () => {
     expect(await admin.mutation(api.catalog.admin.toggleVariantFeatured, { variantId: "negro-rojo" })).toEqual({ success: true, isFeatured: false });
     expect(await admin.mutation(api.catalog.admin.toggleVariantAvailable, { variantId: "negro-rojo" })).toMatchObject({ isAvailable: false });
     expect(await admin.mutation(api.catalog.admin.updateVariantPrice, { variantId: "negro-rojo", priceUsd: 125 })).toMatchObject({ priceUsd: 125 });
-    const saved = await admin.mutation(api.catalog.admin.saveVariant, {
+    const saved = await admin.mutation(api.catalog.admin.createVariant, {
       variantId: "new-cap",
       nameEn: "New",
       nameEs: "Nueva",
+      category: "headwear",
       silhouette: "snapback",
-      primaryHex: "#000",
-      secondaryHex: "#fff",
+      primaryHex: "#000000",
+      secondaryHex: "#ffffff",
       image: "/caps/new.png",
       stock: 2,
       priceUsd: 120,
       isFeatured: false,
     });
-    expect(saved.action).toBe("created");
+    expect(saved.variantId).toBe("new-cap");
     expect(await admin.mutation(api.catalog.drops.scheduleDrop, { variantId: "new-cap", dropDate: NOW + DAY })).toMatchObject({ dropStatus: "scheduled" });
     expect(await admin.mutation(api.catalog.drops.releaseDropNow, { variantId: "new-cap" })).toMatchObject({ dropStatus: "live" });
     expect(
