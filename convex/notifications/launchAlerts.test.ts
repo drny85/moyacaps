@@ -63,7 +63,7 @@ describe("launch emails", () => {
     await t.mutation(internal.notifications.launchAlerts.claimLaunchEmails, { category: "apparel" });
 
     const notified = Object.fromEntries((await alerts(t)).map((a) => [a.contact, a.notifiedAt !== undefined]));
-    expect(notified).toEqual({ "tee@x.com": true, "+15551234567": false, "cap@x.com": false });
+    expect(notified).toEqual({ "tee@x.com": true, "15551234567": false, "cap@x.com": false });
     const jobs = await sendJobs(t);
     expect(jobs).toHaveLength(1);
     expect((jobs[0].args[0] as { recipients: { contact: string }[] }).recipients).toMatchObject([{ contact: "tee@x.com" }]);
@@ -99,7 +99,7 @@ describe("admin waitlist", () => {
     await signUp(t, "first@x.com");
     await signUp(t, "+15551234567", "whatsapp");
     const rows = await admin.query(api.notifications.launchAlerts.getCategoryWaitlistAdmin, { category: "apparel" });
-    expect(rows.map((r) => r.contact)).toEqual(["+15551234567", "first@x.com"]);
+    expect(rows.map((r) => r.contact)).toEqual(["15551234567", "first@x.com"]);
 
     await admin.mutation(api.notifications.launchAlerts.markAlertNotified, { id: rows[0]._id });
     const after = await admin.query(api.notifications.launchAlerts.getCategoryWaitlistAdmin, { category: "apparel" });
@@ -112,5 +112,37 @@ describe("admin waitlist", () => {
     await signUp(t, "a@b.com");
     expect(await admin.query(api.catalog.drops.getDropSubscribersList, {})).toEqual([]);
     expect(await admin.query(api.catalog.drops.getDropSubscribers, {})).toEqual([]);
+  });
+});
+
+describe("sign-up input limits", () => {
+  it("rejects malformed emails and oversized fields", async () => {
+    const { t, admin } = setup();
+    await teesComingSoon(admin);
+    await expect(signUp(t, "not-an-email")).rejects.toThrow("Enter a valid email");
+    await expect(signUp(t, `${"a".repeat(250)}@x.com`)).rejects.toThrow("Enter a valid email");
+    await expect(
+      t.mutation(api.notifications.launchAlerts.subscribeToCategoryLaunch, {
+        category: "apparel", contact: "a@b.com", channel: "email", locale: "en", name: "n".repeat(81),
+      })
+    ).rejects.toThrow("Name is too long");
+  });
+
+  it("stores WhatsApp numbers as digits so formatting variants are one sign-up", async () => {
+    const { t, admin } = setup();
+    await teesComingSoon(admin);
+    const first = await signUp(t, "+1 (555) 123-4567", "whatsapp");
+    const again = await signUp(t, "15551234567", "whatsapp");
+    expect(again).toEqual({ success: true, alreadySubscribed: true, id: first.id });
+    await expect(signUp(t, "12", "whatsapp")).rejects.toThrow("Enter a valid WhatsApp number");
+  });
+
+  it("takes the Clerk user from the session, never from the caller", async () => {
+    const { t, admin } = setup();
+    await teesComingSoon(admin);
+    await t.withIdentity({ subject: "user_real" }).mutation(api.notifications.launchAlerts.subscribeToCategoryLaunch, {
+      category: "apparel", contact: "a@b.com", channel: "email", locale: "en",
+    });
+    expect((await alerts(t))[0].clerkUserId).toBe("user_real");
   });
 });

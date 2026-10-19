@@ -135,3 +135,13 @@ export function gallerySlides(
   if (slides.length === 0) slides.push({ src: p.image, alt: name, fit: "contain", kind: "catalog" });
   return slides;
 }
+
+/**
+ * The product a product page shows: the server render until the live query answers, then
+ * the live one. `null` means a Customer can no longer see it (hidden, or its category left
+ * Live, ADR 0022), so an open page keeps rendering but stops selling it.
+ */
+export function currentProductDoc<T extends { isAvailable?: boolean }>(initial: T, live: T | null | undefined): T {
+  if (live === undefined) return initial;
+  return live ?? { ...initial, isAvailable: false };
+}

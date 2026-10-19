@@ -12,7 +12,7 @@ import { toCapVariant } from "@/lib/toCapVariant";
 import { customDescription } from "@/lib/productCopy";
 import { getCapAngleImages } from "@/lib/capAngles";
 import { applyShop, DEFAULT_STATE, isTee } from "@/lib/shop";
-import { gallerySlides, initialSelection, type Selection, type SkuStock } from "@/lib/productOptions";
+import { gallerySlides, initialSelection, type Selection, type SkuStock, currentProductDoc } from "@/lib/productOptions";
 import { useCapVariants } from "@/hooks/useCapVariants";
 import { useStoreSettings } from "@/hooks/useStoreSettings";
 import { ProductGallery } from "@/components/product/ProductGallery";
@@ -35,7 +35,7 @@ export function ProductView({ initial }: { initial: ProductWithSkus }) {
   const [now] = useState(() => Date.now());
 
   const live = useQuery(api.catalog.queries.getProductBySlug, { slug: initial.variantId });
-  const doc = live ?? initial;
+  const doc = useMemo(() => currentProductDoc(initial, live), [initial, live]);
   const product = useMemo(() => toCapVariant(doc), [doc]);
   const skus: SkuStock[] = doc.skus;
   const tee = isTee(product);

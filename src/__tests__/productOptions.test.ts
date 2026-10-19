@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { CapVariant } from "../data/caps";
 import {
   cartLineId,
+  currentProductDoc,
   colorwayStock,
   gallerySlides,
   initialSelection,
@@ -116,5 +117,22 @@ describe("gallerySlides", () => {
   });
   it("falls back to the product photo when nothing else exists", () => {
     expect(gallerySlides({ ...cap, catalogShot: undefined }, {}, "x", null, labels)).toHaveLength(1);
+  });
+});
+
+describe("currentProductDoc", () => {
+  const initial = { variantId: "tee", isAvailable: true, priceUsd: 80 };
+
+  it("shows the server-rendered product until the live query answers", () => {
+    expect(currentProductDoc(initial, undefined)).toBe(initial);
+  });
+
+  it("follows the live product once it answers", () => {
+    const live = { ...initial, priceUsd: 90 };
+    expect(currentProductDoc(initial, live)).toBe(live);
+  });
+
+  it("marks the product unavailable when it was hidden or its category left Live", () => {
+    expect(currentProductDoc(initial, null)).toEqual({ ...initial, isAvailable: false });
   });
 });

@@ -126,7 +126,8 @@ export function HeroInteractive() {
   const [frameIndex, setFrameIndex] = useState(0);
   const onInteract = useCallback(() => setHasTurned(true), []);
 
-  if (!activeCap) return null;
+  // No cap to show (Caps not Live, ADR 0022): keep the poster headline without the turntable.
+  if (!activeCap) return <HeroPoster />;
   const name = locale === "es" ? activeCap.nameEs : activeCap.nameEn;
   const showHint = frames.length > 1 && !hasTurned && !scrolled;
 
@@ -318,6 +319,35 @@ export function HeroInteractive() {
             </Link>
           </div>
         </div>
+      </div>
+    </section>
+  );
+}
+
+/** The hero's headline and a way into the Shop, for when there is no cap to put on the turntable. */
+function HeroPoster() {
+  const t = useTranslations("hero");
+  return (
+    <section id="hero" className="relative overflow-clip px-4 pb-14 pt-10 sm:px-6 sm:pb-20 sm:pt-16 lg:px-8">
+      <div className="relative mx-auto flex w-full max-w-7xl flex-col items-center text-center">
+        <p
+          aria-hidden
+          className="ghost-type pointer-events-none absolute top-0 select-none whitespace-nowrap font-poster text-[clamp(10rem,48vw,26rem)] leading-none"
+        >
+          0880
+        </p>
+        <h1 className="relative font-poster uppercase tracking-tight text-zinc-950 dark:text-white">
+          <span className="block text-[clamp(2.6rem,13.4vw,6rem)] leading-[0.86]">{t("titlePrefix")}</span>
+          <span className="block text-[clamp(3.6rem,21vw,8.75rem)] leading-[0.86] text-moya-red">{t("titleHighlight")}</span>
+        </h1>
+        <p className="relative mt-5 max-w-md text-[15px] leading-relaxed text-zinc-600 dark:text-zinc-400">{t("posterSubtitle")}</p>
+        <Link
+          href="/products"
+          className="relative mt-7 inline-flex h-12 items-center gap-2 rounded-full bg-zinc-950 px-6 font-display text-[15px] font-semibold text-white dark:bg-white dark:text-zinc-950"
+        >
+          {t("ctaShopAll")}
+          <ArrowRight className="h-4 w-4" />
+        </Link>
       </div>
     </section>
   );

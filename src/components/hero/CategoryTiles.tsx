@@ -22,6 +22,8 @@ export function CategoryTiles() {
     [catalog, launches]
   );
   if (tiles.length === 0) return null;
+  // A lone tile spans the row, so it becomes a wide banner instead of a very tall card.
+  const tileAspect = tiles.length === 1 ? "sm:aspect-[21/9]" : "sm:aspect-[5/4]";
 
   return (
     <nav aria-label={t("categoriesLabel")} className="mx-auto w-full max-w-7xl px-4 pb-14 sm:px-6 sm:pb-20 lg:px-8">
@@ -31,7 +33,7 @@ export function CategoryTiles() {
             <li key={tile.category}>
               <Link
                 href={`/products?category=${tile.category}`}
-                className="group relative flex aspect-[4/5] flex-col justify-end overflow-hidden rounded-[18px] bg-zinc-950 p-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-moya-red focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:aspect-[5/4] sm:p-5"
+                className={`group relative flex aspect-[4/5] flex-col justify-end overflow-hidden rounded-[18px] bg-zinc-950 p-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-moya-red focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:p-5 ${tileAspect}`}
               >
                 <div aria-hidden className="pointer-events-none absolute -right-12 -top-12 h-48 w-48 rounded-full bg-moya-red/30 blur-3xl" />
                 <p className="relative font-poster text-[clamp(2rem,9vw,4.5rem)] uppercase leading-[0.85] text-white">
@@ -47,7 +49,7 @@ export function CategoryTiles() {
           <li key={tile.category}>
             <Link
               href={`/products?category=${tile.category}`}
-              className="group relative block aspect-[4/5] overflow-hidden rounded-[18px] bg-[#ECEAE6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-moya-red focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:aspect-[5/4]"
+              className={`group relative block aspect-[4/5] overflow-hidden rounded-[18px] bg-[#ECEAE6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-moya-red focus-visible:ring-offset-2 focus-visible:ring-offset-background ${tileAspect}`}
             >
               <Image
                 src={tile.entry.image}

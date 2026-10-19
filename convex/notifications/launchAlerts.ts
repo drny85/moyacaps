@@ -8,6 +8,25 @@ import { internal } from "../_generated/api";
 import { requireAdmin } from "../lib/auth";
 import { categoryValidator, getCategoryLaunches } from "../settings/launch";
 
+const EMAIL_MAX = 254;
+const NAME_MAX = 80;
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/**
+ * The stored form of a sign-up contact: a lowercased email, or a WhatsApp number as digits
+ * only (so "+1 (555) 123-4567" and "15551234567" are the same person). Throws on bad input.
+ */
+export function normalizeContact(channel: "email" | "whatsapp", raw: string): string {
+  if (channel === "email") {
+    const email = raw.trim().toLowerCase();
+    if (email.length > EMAIL_MAX || !EMAIL_PATTERN.test(email)) throw new Error("Enter a valid email");
+    return email;
+  }
+  const digits = raw.replace(/\D/g, "");
+  if (digits.length < 8 || digits.length > 15) throw new Error("Enter a valid WhatsApp number");
+  return digits;
+}
+
 /** Email rows claimed per mutation; a full batch schedules the next one. */
 export const LAUNCH_EMAIL_BATCH = 100;
 const MAX_WAITLIST_LISTED = 1000;
@@ -18,13 +37,13 @@ export const subscribeToCategoryLaunch = mutation({
     contact: v.string(),
     channel: v.union(v.literal("whatsapp"), v.literal("email")),
     name: v.optional(v.string()),
-    clerkUserId: v.optional(v.string()),
     locale: v.union(v.literal("en"), v.literal("es")),
   },
   returns: v.object({ success: v.boolean(), alreadySubscribed: v.boolean(), id: v.id("drop_alerts") }),
   handler: async (ctx, args) => {
-    const contact = args.contact.trim().toLowerCase();
-    if (!contact) throw new Error("Contact information is required");
+    const contact = normalizeContact(args.channel, args.contact);
+    const name = args.name?.trim() || undefined;
+    if (name && name.length > NAME_MAX) throw new Error("Name is too long");
     if ((await getCategoryLaunches(ctx))[args.category].status !== "coming_soon") {
       throw new Error("This category is not accepting sign-ups");
     }
@@ -39,8 +58,8 @@ export const subscribeToCategoryLaunch = mutation({
       category: args.category,
       contact,
       channel: args.channel,
-      name: args.name?.trim() || undefined,
-      clerkUserId: args.clerkUserId,
+      name,
+      clerkUserId: (await ctx.auth.getUserIdentity())?.subject,
       locale: args.locale,
       createdAt: Date.now(),
     });
