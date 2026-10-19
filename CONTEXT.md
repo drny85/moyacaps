@@ -89,8 +89,8 @@ The operational lifecycle of packing, carrier assigning, dispatching, and record
 _Avoid_: Shipping process, handling
 
 **Fulfillment Territory**:
-The geographical boundary supported for customer order delivery: strictly domestic United States (50 US States), explicitly excluding Puerto Rico (PR), US Virgin Islands, Guam, other unincorporated territories, and international destinations.
-_Avoid_: Global shipping, domestic + territories, international orders
+Where the store delivers: the 50 US States and the District of Columbia. Excluded: Puerto Rico, the US Virgin Islands, Guam and other territories, military addresses (APO/FPO/DPO, states AA/AE/AP) and every international destination. A paid Order outside it is flagged for refund at payment, not discovered at packing.
+_Avoid_: Global shipping, domestic + territories, international orders, 50 states (when DC is meant too)
 
 **Domestic Hybrid Fulfillment Matrix**:
 The tiered carrier dispatch policy deploying USPS Ground Advantage for standard sub-1lb single/double cap shipments (free doorstep pickup, lowest commercial cost) and commercial couriers (UPS Ground, UPS 2nd Day Air) for multi-cap master cartons and expedited VIP drops.
@@ -104,17 +104,9 @@ _Avoid_: Manual address verification, unrestricted courier assignment
 Calibrated rigid corrugated box specifications (`8"×8"×6"` single-cap, `10"×8"×6"` double-cap, `12"×10"×8"` collector master box) engineered with crown clearance to prevent visor bending or structured embroidery crushing during bulk transit.
 _Avoid_: Bubble mailers, poly mailers, soft envelopes
 
-**WhatsApp Concierge Order**:
-An order initiated via the Loot Bag for domestic US delivery, reserving inventory for 24 hours in Convex. The customer provides their name and email for tracking and receipt dispatch; physical US shipping address entry, phone collection, and real-time state sales taxes are delegated to the official Stripe checkout payment link (or entered manually by an Administrator for offline Zelle settlements). The order begins in review (`whatsapp_initiated`) and is not marked as paid until the customer completes checkout via the payment link or verified bank transfer.
-_Avoid_: Manual order, cash order, off-platform order, instant WhatsApp checkout
-
-**Concierge Payment Link Dispatch**:
-The operational action performed by an Administrator after inspecting a WhatsApp Concierge Order, stamping `paymentLinkSentAt`, extending the 24-hour inventory reservation hold, and delivering the pre-generated Stripe checkout link or Zelle details back to the Customer via WhatsApp chat.
-_Avoid_: Link sharing, manual text, invoice sending
-
-**WhatsApp Order Settlement**:
-The atomic transition of a WhatsApp Concierge Order from `whatsapp_initiated` to `paid`, triggered either automatically when the Customer completes the Stripe checkout link (where Stripe captures the shipping address, phone, and sales tax, and reconciles by `orderNumber` in the webhook) or manually by an Administrator confirming a verified Zelle / bank transfer receipt (`markWhatsAppOrderPaidAdmin`).
-_Avoid_: Offline mark, manual pay, cash reconcile
+**WhatsApp Support Chat**:
+A link that opens a WhatsApp conversation with the store for questions. It never creates, reserves or settles an Order: every purchase goes through card checkout (ADR 0023).
+_Avoid_: WhatsApp order, concierge order, Zelle payment
 
 **User Account**:
 A synchronized customer or administrator identity record mirrored into Convex from Clerk with role-based access control, profile metadata, and soft-delete retention for order audit history.
@@ -133,7 +125,7 @@ A mandatory interactive dialog requiring explicit user or administrator confirma
 _Avoid_: Pop-up, alert box, notification
 
 **Available Inventory**:
-The current real-time stock units of a specific Cap Variant ready for sale in Convex, strictly bounding customer cart additions and gateway session generation.
+The units of a Cap, or of a Heavyweight Tee's SKU, that can still be sold: stock not already sold or held by a Checkout Hold. It bounds how many a Customer can add to the cart and buy.
 _Avoid_: Quantity on hand, stock pool, supply
 
 **Checkout In-Flight Lock**:
@@ -141,12 +133,52 @@ A concurrency mutex safeguarding customer checkout buttons and session generatio
 _Avoid_: Debounce guard, double-click blocker
 
 **Order Settlement**:
-The irreversible atomic transaction finalizing a customer purchase, deducting confirmed units from Available Inventory and issuing a persistent order number.
+The moment a Customer's payment succeeds and the Order's Checkout Hold becomes a sale: Payment Status turns paid and the held units leave Available Inventory for good.
 _Avoid_: Order placement, payment commit, double transaction
 
 **Checkout Session**:
-An ephemeral payment gateway session created with Stripe hosting pre-validated items and prices, bounded by a strict idempotency key.
+The Stripe-hosted payment page for one Order, priced from the store's own data. It lasts 30 minutes; when it expires unpaid, the Order is cancelled and its Checkout Hold released.
 _Avoid_: Payment link, cart checkout, gateway intent
+
+**Checkout Hold**:
+The units an awaiting-payment Order keeps out of Available Inventory while its Checkout Session is open, so two Customers can never pay for the same last unit. Ends in Order Settlement or, when the session expires, in release.
+_Avoid_: Reservation, cart hold, soft lock
+
+**Payment Status**:
+Where an Order's money stands: awaiting payment, paid, partially refunded, refunded or disputed. Independent of Fulfillment Status.
+_Avoid_: Order status (when meaning money only), paid flag
+
+**Fulfillment Status**:
+Where an Order's package stands: unfulfilled, label purchased, in transit, delivered, delivery exception or returned. Only changes once the Order is paid. Independent of Payment Status.
+_Avoid_: Shipping status, order status (when meaning the package only)
+
+**Tracking Number**:
+The carrier's number for an Order's package. It exists only once a shipping label is bought; an Order with no label has none.
+_Avoid_: Order number, internal tracking code
+
+**Restock**:
+Returning a refunded or returned line's units to Available Inventory. Always an explicit Administrator choice per line, never automatic; an unsellable return is never restocked.
+_Avoid_: Inventory release (that is for an expired Checkout Hold), auto-restock
+
+**Return**:
+A Customer sending back unworn items with tags within 30 days of delivery for a refund. Requested through support and processed by an Administrator, who refunds by line and decides Restock per line. The Customer pays return shipping unless the item is defective or wrong; the original shipping fee is not refunded.
+_Avoid_: Exchange (an exchange is a Return plus a new Order), final sale
+
+**Customer Cancellation**:
+A signed-in Customer cancelling their own paid Order for a full automatic refund, allowed only while it is unfulfilled. Guests cancel through support.
+_Avoid_: Void, abort, order deletion
+
+**Delivery Exception**:
+The carrier could not deliver the package (failed attempt, damage, address problem). The Administrator and Customer are told; the Administrator then reships or refunds.
+_Avoid_: Lost package, shipping error
+
+**Reship**:
+Buying a new label for the same Order after a Delivery Exception or a return to sender. The Order keeps the history of every label.
+_Avoid_: Replacement order, duplicate order
+
+**Goodwill Refund**:
+A free-amount refund an Administrator gives outside any line (an apology, a delay). It never Restocks.
+_Avoid_: Credit, partial refund (when meaning a line refund)
 
 **Cap Media Storage**:
 Convex binary storage (`_storage`) managing high-resolution product photography for Cap Variants, referenced by immutable `storageId` and resolved to signed CDN URLs during catalog queries.

@@ -1,3 +1,7 @@
+---
+status: superseded by ADR 0023
+---
+
 # ADR 0010: WhatsApp Concierge Order Pipeline & Admin Payment Link Dispatch
 
 ## Context
