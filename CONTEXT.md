@@ -52,6 +52,10 @@ _Avoid_: Thumbnail, packshot, mockup, product photo
 An image of a Product worn by a model or placed in a scene. Shown on product pages and in editorial sections, never as the grid image.
 _Avoid_: Model photo, lookbook image, hero shot
 
+**Angle Shot**:
+A transparent cutout of a Cap from one of four fixed angles (front, left, back, right), used by Try-On and the turntable. A Cap missing any Angle Shot is left out of both. Never shown in grids or cards, and never taken of a Heavyweight Tee.
+_Avoid_: Angle image, cutout, 360 shot, turntable frame
+
 **Shop**:
 The single browsable listing of every Product, filterable by category, Colorway, Silhouette and Graphic Design.
 _Avoid_: Catalog page, store page, collection page (Collection means a themed release)
