@@ -8,6 +8,8 @@
  */
 import type { Doc } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
+import { isCustomerVisible } from "./model";
+import { getCategoryLaunches } from "../settings/launch";
 
 export type StockLine = {
   variantId: string;
@@ -57,7 +59,7 @@ export type StockCheck =
 export async function checkStock(ctx: QueryCtx, line: StockLine): Promise<StockCheck> {
   const variant = await getVariant(ctx, line.variantId);
   if (!variant) return { ok: false, reason: "not_found" };
-  if (variant.isAvailable === false || variant.archivedAt !== undefined) return { ok: false, reason: "unavailable", variant };
+  if (!isCustomerVisible(variant, await getCategoryLaunches(ctx))) return { ok: false, reason: "unavailable", variant };
   if (!hasSkus(variant)) return { ok: true, variant, available: Math.max(0, variant.stock) };
 
   if (!line.colorway || !line.size) return { ok: false, reason: "option_required", variant };

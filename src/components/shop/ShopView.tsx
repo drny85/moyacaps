@@ -12,6 +12,9 @@ import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { DURATION, EASE } from "@/lib/motion";
 import { ProductCard } from "@/components/catalog/ProductCard";
 import { LayoutMotion } from "@/components/motion/LayoutMotion";
+import { ComingSoonCard, ComingSoonTeaser } from "@/components/drops/ComingSoonTeaser";
+import { useCategoryLaunches } from "@/hooks/useCategoryLaunches";
+import { liveShopCategories, statusFor, teaserShopCategories } from "@/lib/launch";
 import {
   activeFilterCount,
   applyShop,
@@ -56,11 +59,24 @@ export function ShopView({ initialQuery = "" }: { initialQuery?: string }) {
   const [sheetOpen, setSheetOpen] = useState(false);
 
   const title = state.category === "caps" ? t("titleCaps") : state.category === "tees" ? t("titleTees") : t("titleAll");
-  const tabs: { key: Category; label: string }[] = [
+  // Category Status (ADR 0022): Hidden categories lose their tab, Coming Soon ones show a teaser.
+  const launches = useCategoryLaunches();
+  const tNav = useTranslations("nav");
+  const allTabs: { key: Category; label: string }[] = [
     { key: "all", label: t("tabAll") },
     { key: "caps", label: t("tabCaps") },
     { key: "tees", label: t("tabTees") },
   ];
+  const tabs = allTabs.filter((tab) => tab.key === "all" || statusFor(launches, tab.key) !== "hidden");
+  const teaserScope =
+    state.category === "all"
+      ? liveShopCategories(launches).length === 0
+        ? "all"
+        : null
+      : statusFor(launches, state.category) === "coming_soon"
+        ? state.category
+        : null;
+  const teaserCards = state.category === "all" ? teaserShopCategories(launches) : [];
 
   return (
     <LayoutMotion>
@@ -70,9 +86,11 @@ export function ShopView({ initialQuery = "" }: { initialQuery?: string }) {
           <h1 className="font-poster text-[clamp(3.5rem,14vw,8rem)] uppercase leading-[0.85] tracking-tight text-zinc-900 dark:text-white">
             {title}
           </h1>
-          <p className="pb-2 text-sm text-zinc-500 dark:text-zinc-400 tabular-nums" aria-live="polite">
-            {t("count", { count: items.length })}
-          </p>
+          {!teaserScope && (
+            <p className="pb-2 text-sm text-zinc-500 dark:text-zinc-400 tabular-nums" aria-live="polite">
+              {t("count", { count: items.length })}
+            </p>
+          )}
         </header>
 
         {/* Category tabs, filter trigger and sort: sticky under the navbar */}
@@ -99,6 +117,9 @@ export function ShopView({ initialQuery = "" }: { initialQuery?: string }) {
                       />
                     )}
                     <span className="relative">{tab.label}</span>
+                    {tab.key !== "all" && statusFor(launches, tab.key) === "coming_soon" && (
+                      <span className="relative ml-1.5 rounded-full bg-moya-red px-1.5 py-0.5 text-[10px] font-bold uppercase text-white">{tNav("soon")}</span>
+                    )}
                   </button>
                 );
               })}
@@ -140,6 +161,11 @@ export function ShopView({ initialQuery = "" }: { initialQuery?: string }) {
           </div>
         </div>
 
+        {teaserScope ? (
+          <div className="mt-6">
+            <ComingSoonTeaser scope={teaserScope} />
+          </div>
+        ) : (
         <div className="mt-6 grid grid-cols-1 gap-8 lg:grid-cols-[220px_1fr] lg:gap-10">
           <aside className="hidden lg:block" aria-label={t("filters")}>
             <div className="sticky top-[calc(var(--navbar-h,66px)+5rem)]">
@@ -176,10 +202,16 @@ export function ShopView({ initialQuery = "" }: { initialQuery?: string }) {
                     </m.li>
                   ))}
                 </AnimatePresence>
+                {teaserCards.map((category) => (
+                  <li key={`soon-${category}`}>
+                    <ComingSoonCard category={category} />
+                  </li>
+                ))}
               </ul>
             )}
           </section>
         </div>
+        )}
 
         <FilterSheet
           open={sheetOpen}

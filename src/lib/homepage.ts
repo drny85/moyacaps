@@ -59,3 +59,21 @@ export function categoryEntries(products: CapVariant[], preferred: { caps?: stri
   }
   return entries;
 }
+
+export type HomeTile = { kind: "live"; category: "caps" | "tees"; entry: CategoryEntry } | { kind: "soon"; category: "caps" | "tees" };
+
+/**
+ * The homepage category tiles for the current Category Status (ADR 0022): a Live category
+ * with products gets its tile, a Coming Soon one a "Dropping soon" tile, a Hidden one none.
+ */
+export function homeTiles(
+  entries: CategoryEntry[],
+  launches: Record<"headwear" | "apparel", { status: "live" | "coming_soon" | "hidden" }>
+): HomeTile[] {
+  return (["caps", "tees"] as const).flatMap((category): HomeTile[] => {
+    const status = launches[category === "tees" ? "apparel" : "headwear"].status;
+    if (status === "coming_soon") return [{ kind: "soon", category }];
+    const entry = entries.find((e) => e.category === category);
+    return status === "live" && entry ? [{ kind: "live", category, entry }] : [];
+  });
+}

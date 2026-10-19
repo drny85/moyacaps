@@ -13,7 +13,8 @@ import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { SoundToggle } from "@/components/ui/SoundToggle";
 import { SafeUserButton, useSafeUser } from "@/lib/useSafeUser";
 import { useIsAdmin } from "@/lib/useIsAdmin";
-import { PRIMARY_NAV, activeNavKey, type NavKey } from "@/lib/navigation";
+import { PRIMARY_NAV, activeNavKey, launchNav, type NavKey } from "@/lib/navigation";
+import { useCategoryLaunches } from "@/hooks/useCategoryLaunches";
 
 const DRAWER_ID = "mobile-nav";
 
@@ -273,9 +274,11 @@ function ActiveNavLinks({ variant, onNavigate }: { variant: LinksVariant; onNavi
 function NavLinks({ active, variant, onNavigate }: { active: NavKey | null; variant: LinksVariant; onNavigate?: () => void }) {
   const t = useTranslations("nav");
   const locale = useLocale();
+  // Category Status (ADR 0022): Hidden categories drop out, Coming Soon ones get a badge.
+  const items = launchNav(PRIMARY_NAV, useCategoryLaunches());
   return (
     <>
-      {PRIMARY_NAV.map(({ key, href }) => {
+      {items.map(({ key, href, soon }) => {
         const isActive = key === active;
         const className =
           variant === "drawer"
@@ -293,6 +296,11 @@ function NavLinks({ active, variant, onNavigate }: { active: NavKey | null; vari
         return (
           <Link key={key} href={href} onClick={onNavigate} aria-current={isActive ? "page" : undefined} className={className}>
             {t(key)}
+            {soon && (
+              <span className="ml-1.5 rounded-full bg-moya-red px-1.5 py-0.5 align-middle text-[10px] font-bold uppercase leading-none text-white">
+                {t("soon")}
+              </span>
+            )}
           </Link>
         );
       })}

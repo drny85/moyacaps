@@ -8,7 +8,8 @@ import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import schema from "../schema";
 import { requireAdmin } from "../lib/auth";
-import { computedDropStatus, hasDropHistory, isUpcomingDrop } from "./model";
+import { computedDropStatus, hasDropHistory, isCustomerVisible, isUpcomingDrop } from "./model";
+import { getCategoryLaunches } from "../settings/launch";
 import { actorEmail } from "./audit";
 import { countDropAlerts, listCatalogVariants, patchVariantAudited, requireActiveVariant, requireVariant, requireVersion, resolveProduct } from "./shared";
 import { adminDropRow, dropStatusValidator, dropSubscriberRow, variantWithSubscribers } from "./validators";
@@ -43,7 +44,8 @@ export const getUpcomingDrops = query({
   returns: v.array(variantWithSubscribers),
   handler: async (ctx, args) => {
     const rawVariants = await listCatalogVariants(ctx);
-    const dropVariants = rawVariants.filter((v) => v.archivedAt === undefined && isUpcomingDrop(v, args.clientTime));
+    const launches = await getCategoryLaunches(ctx);
+    const dropVariants = rawVariants.filter((v) => isCustomerVisible(v, launches) && isUpcomingDrop(v, args.clientTime));
 
     // Sort by earliest dropDate
     dropVariants.sort((a, b) => (a.dropDate || 0) - (b.dropDate || 0));
@@ -340,7 +342,9 @@ export const getDropSubscribers = query({
         .withIndex("by_variantId", (q) => q.eq("variantId", args.variantId!))
         .take(MAX_SUBSCRIBERS_LISTED);
     }
-    return await ctx.db.query("drop_alerts").withIndex("by_createdAt").order("desc").take(MAX_SUBSCRIBERS_LISTED);
+    const alerts = await ctx.db.query("drop_alerts").withIndex("by_createdAt").order("desc").take(MAX_SUBSCRIBERS_LISTED);
+    // Category waitlists (ADR 0022) have no product and are listed on their own.
+    return alerts.filter((a) => a.variantId !== undefined);
   },
 });
 
@@ -361,11 +365,13 @@ export const getDropSubscribersList = query({
     } else {
       alerts = await ctx.db.query("drop_alerts").withIndex("by_createdAt").order("desc").take(MAX_SUBSCRIBERS_LISTED);
     }
+    // Category waitlists (ADR 0022) have no product and are listed on their own.
+    const productAlerts = alerts.flatMap((a) => (a.variantId === undefined ? [] : [{ ...a, variantId: a.variantId }]));
 
     const variants = await listCatalogVariants(ctx);
     const variantMap = new Map(variants.map((v) => [v.variantId, v]));
 
-    return alerts
+    return productAlerts
       .map((a) => {
         const v = variantMap.get(a.variantId);
         return {

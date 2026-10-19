@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { ArrowLeft } from "lucide-react";
+import { notFound } from "next/navigation";
 import { Link } from "@/i18n/routing";
+import { api } from "@convex/_generated/api";
+import { queryForStaticRender } from "@/lib/server/convexStatic";
+import { isTryOnAvailable } from "@/lib/launch";
 import { TryOnStudio } from "@/components/tryon/TryOnStudio";
 import { absoluteUrl, DEFAULT_OG_IMAGE, ogLocale, pageAlternates } from "@/lib/seo/site";
 
@@ -30,6 +34,8 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
 
 export default async function TryOnPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
+  // Try-On is caps only: it is gone while Caps are not Live (ADR 0022).
+  if (!isTryOnAvailable(await queryForStaticRender(api.settings.functions.getStorefrontLaunch, {}))) notFound();
   const t = await getTranslations({ locale, namespace: "tryOn" });
 
   return (

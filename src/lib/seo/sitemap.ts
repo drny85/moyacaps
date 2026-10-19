@@ -25,9 +25,18 @@ export const STATIC_PAGES: Page[] = [
   { path: "/track", changeFrequency: "yearly", priority: 0.3 },
 ];
 
-export function buildSitemap(products: CapVariant[], base: string, now: Date): MetadataRoute.Sitemap {
+type Launches = Record<"headwear" | "apparel", { status: "live" | "coming_soon" | "hidden" }>;
+const ALL_LIVE: Launches = { headwear: { status: "live" }, apparel: { status: "live" } };
+const CATEGORY_PAGE: Record<string, keyof Launches> = {
+  "/products?category=caps": "headwear",
+  "/products?category=tees": "apparel",
+  "/try-on": "headwear",
+};
+
+export function buildSitemap(products: CapVariant[], base: string, now: Date, launches: Launches = ALL_LIVE): MetadataRoute.Sitemap {
   const pages: Page[] = [
-    ...STATIC_PAGES,
+    // A category page (and Try-On, which is caps only) is listed only while its category is Live (ADR 0022)
+    ...STATIC_PAGES.filter((page) => !(page.path in CATEGORY_PAGE) || launches[CATEGORY_PAGE[page.path]].status === "live"),
     ...products
       .filter((p) => p.isAvailable !== false)
       .map((p) => ({

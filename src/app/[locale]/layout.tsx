@@ -18,6 +18,7 @@ import { OrganizationJsonLd } from "@/components/seo/OrganizationJsonLd";
 import { HtmlDocument } from "@/components/layout/HtmlDocument";
 import { CatalogProvider } from "@/components/providers/CatalogProvider";
 import { queryForStaticRender } from "@/lib/server/convexStatic";
+import { ALL_LIVE, type CategoryLaunches } from "@/lib/launch";
 import { toCapVariant } from "@/lib/toCapVariant";
 import { api } from "@convex/_generated/api";
 import type { CapVariant } from "@/data/caps";
@@ -38,6 +39,17 @@ async function loadCatalogSeed(): Promise<CapVariant[]> {
     if (!shouldSwallowSeedError(process.env.NEXT_PHASE)) throw error;
     console.error("Catalog seed fetch failed; rendering with an empty seed", error);
     return [];
+  }
+}
+
+/** Category Status for the first render (ADR 0022). Same error policy as the catalog seed. */
+async function loadLaunchSeed(): Promise<CategoryLaunches> {
+  try {
+    return await queryForStaticRender(api.settings.functions.getStorefrontLaunch, {});
+  } catch (error) {
+    if (!shouldSwallowSeedError(process.env.NEXT_PHASE)) throw error;
+    console.error("Launch seed fetch failed; rendering with every category live", error);
+    return ALL_LIVE;
   }
 }
 
@@ -62,7 +74,7 @@ export default async function LocaleLayout({
 
   // Storefront copy only; auth-area segments add the rest (FullMessagesProvider, ADR 0018)
   const messages = pickNamespaces(await getMessages(), STOREFRONT_NAMESPACES);
-  const catalogSeed = await loadCatalogSeed();
+  const [catalogSeed, launchSeed] = await Promise.all([loadCatalogSeed(), loadLaunchSeed()]);
 
   return (
     <HtmlDocument lang={locale}>
@@ -71,7 +83,7 @@ export default async function LocaleLayout({
         <ClerkClientProvider>
           <ConvexClientProvider>
             <UserSyncProvider>
-              <CatalogProvider seed={catalogSeed}>
+              <CatalogProvider seed={catalogSeed} launchSeed={launchSeed}>
                 <SmoothScrollProvider>
                   <MotionProvider>
                     <div className="flex min-h-screen flex-col pb-20 md:pb-0 print:pb-0 print:min-h-0">

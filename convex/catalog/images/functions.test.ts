@@ -261,7 +261,7 @@ describe("removeImage and reorderImages", () => {
 
   it("remove refuses to leave a visible product with no image, allows it once hidden", async () => {
     const { t, admin } = setup();
-    await t.run((ctx) => ctx.db.insert("variants", { ...capBase, variantId: "blank-cap", image: "" }));
+    await t.run((ctx) => ctx.db.insert("variants", { ...capBase, variantId: "blank-cap", image: "", isAvailable: true }));
     const storageId = await store(t, png(2000, 2500, 2));
     const { imageId } = await admin.action(api.catalog.images.attach.attachImage, { variantId: "blank-cap", storageId, role: "catalog" });
     expect(await errorData(admin.mutation(api.catalog.images.functions.removeImage, { imageId }))).toEqual({ kind: "needs_image" });

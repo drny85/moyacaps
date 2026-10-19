@@ -1,0 +1,26 @@
+# Category Launch States
+
+The Administrator wants to open the store one category at a time: show only Caps, tease Tees as "dropping soon" to build hype, and launch Tees later. Products also need to stay off the storefront until the Administrator turns each one on. Before this, a product was visible unless `isAvailable === false`, and a category could not be turned off at all.
+
+## Decisions
+
+1. **Products are hidden until turned on.** A product is listed only when `isAvailable === true`. `buildNewVariant` already creates products with `isAvailable: false`; a one-off migration sets `isAvailable: true` on every product where the field is missing, so existing products keep their current state. It ships and runs before the strict check does.
+2. **Category Status.** Each category (`headwear` = Caps, `apparel` = Tees) has a status: `live`, `coming_soon` or `hidden`. It is stored on the `store_settings` row under `categoryLaunch`. A missing value means `live`, so deploying changes nothing.
+3. **The category wins.** A Customer sees a product only when it is not archived, `isAvailable === true`, and its category is `live`. Product toggles keep their values while a category is not live, so the Administrator can prepare everything and launch with one switch.
+4. **Enforced on the server.** The rule lives in one pure function, `isCustomerVisible`, used by every public catalog read (grid, cart, product page, Drop Radar) and by the checkout stock check. Search, the sitemap and Try-On read the gated grid. A cart line in a non-live category is marked unavailable, like a hidden product today. WhatsApp Concierge reservations that already exist are not touched.
+5. **Coming Soon Teaser.** A `coming_soon` category shows a teaser instead of products: fixed EN/ES copy with an optional headline override (`headlineEn`, `headlineEs`, at most 80 characters) and an optional launch date with a live countdown. The "Notify me" sign-up (§9–10) is built in Convex but not offered on the storefront yet (2026-10-19).
+6. **Where it shows.** The nav link stays and gets a "Soon" badge. The category page shows the teaser. The all-products grid lists only live products plus one teaser card per `coming_soon` category. The homepage category tile reads "Dropping soon". When no category is live, the shop shows a store-wide teaser; the homepage keeps its brand story and anatomy sections and hides product sections that would be empty. The hero falls back to its poster headline when there is no cap to put on the turntable. **Try-On** is caps only, so it follows the Caps status: its nav link, sitemap entry and page (404) go away unless Caps are `live`. A `hidden` category disappears: no nav link, no tile, no teaser, and its category page returns 404.
+7. **Scheduled launch.** Saving a `coming_soon` status with a launch date schedules a Convex job that sets the category to `live` at that time. Changing or clearing the date cancels the job, and a job that finds the status or date changed does nothing.
+8. **Immediate storefront refresh.** Every Category Status change, manual or scheduled, runs a Convex action that POSTs to the Next route `/api/revalidate` with the shared secret `REVALIDATE_SECRET`. The route revalidates every page under the locale layout. A failed refresh is logged and never undoes the status change; ISR still catches up within 5 minutes (ADR 0020).
+9. **Category waitlist.** `drop_alerts` gets an optional `category` field and its `variantId` becomes optional; exactly one of the two is set. Sign-ups are accepted only while the category is `coming_soon`, and a repeat sign-up with the same contact returns the existing row.
+10. **Launch notifications.** When a category goes live, its email subscribers receive a bilingual "now live" email through the existing Resend pipeline. Each row is stamped with `notifiedAt` before the email is queued, so no one is emailed twice. WhatsApp subscribers are not messaged automatically: the admin Drops page lists them with click-to-chat links and a "mark notified" action.
+11. **Turning a live category off** is allowed at any time behind a High-Friction Confirmation Safeguard that names how many listed products will disappear.
+12. **Admin preview.** The storefront shows Administrators exactly what Customers see, grids and product pages alike; a gated product is previewed from the admin editor. (A storefront preview with a "Not live" banner was considered, but the storefront has no admin preview of hidden products to build on.)
+
+## Consequences
+
+- Launching a category is one switch, and the storefront updates within seconds instead of 5 minutes.
+- Two new environment values: `REVALIDATE_SECRET` in both Convex and Vercel. Convex already has `NEXT_PUBLIC_APP_URL`.
+- Code that reads `drop_alerts.variantId` must handle category rows, where it is absent.
+- A product whose `isAvailable` was never set is now hidden; the migration prevents that for existing rows. **Deploy order:** deploy Convex, run `catalog/migrations:backfillAvailability` on that deployment, then promote the site. Skipping the backfill empties the store.
+- An open tab follows the live catalog: an empty live list is trusted, and an open product page stops selling a product the moment it is gated.

@@ -1,5 +1,6 @@
 import { defineSchema, defineTable } from "convex/server";
 import { capAngleValidator, imageRoleValidator } from "./catalog/images/validators";
+import { storedCategoryLaunchValidator } from "./settings/launch";
 import { v } from "convex/values";
 
 export default defineSchema({
@@ -212,8 +213,10 @@ export default defineSchema({
   })
     .index("by_order", ["orderId"])
     .index("by_stripeEventId", ["stripeEventId"]),
+  // Waitlist sign-ups: a product drop (`variantId`) or a Coming Soon category (`category`, ADR 0022); exactly one is set.
   drop_alerts: defineTable({
-    variantId: v.string(),
+    variantId: v.optional(v.string()),
+    category: v.optional(v.union(v.literal("headwear"), v.literal("apparel"))),
     contact: v.string(), // email or WhatsApp number
     channel: v.union(v.literal("whatsapp"), v.literal("email")),
     name: v.optional(v.string()),
@@ -224,7 +227,9 @@ export default defineSchema({
   })
     .index("by_variantId", ["variantId"])
     .index("by_variant_contact", ["variantId", "contact"])
-    .index("by_createdAt", ["createdAt"]),
+    .index("by_createdAt", ["createdAt"])
+    .index("by_category_and_contact", ["category", "contact"])
+    .index("by_category_and_channel_and_notifiedAt", ["category", "channel", "notifiedAt"]),
   // Append-only audit trail of admin catalog writes. `changes` is a JSON string of FieldChange[].
   catalog_events: defineTable({
     variantId: v.optional(v.string()),
@@ -240,6 +245,10 @@ export default defineSchema({
     key: v.literal("default"),
     flatShippingFeeUsd: v.number(),
     freeShippingThresholdUnits: v.number(),
+    // Category Status per category (ADR 0022); absent means every category is Live.
+    categoryLaunch: v.optional(
+      v.object({ headwear: storedCategoryLaunchValidator, apparel: storedCategoryLaunchValidator })
+    ),
     updatedAt: v.number(),
   }).index("by_key", ["key"]),
   // Admin-managed product photos in Convex storage (ADR 0021). Reads fall back to legacy string fields.

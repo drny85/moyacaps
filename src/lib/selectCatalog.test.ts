@@ -10,8 +10,8 @@ describe("selectCatalog", () => {
     expect(selectCatalog(seed, undefined)).toEqual({ caps: seed, isLive: false });
   });
 
-  it("keeps the seed when the live list is empty", () => {
-    expect(selectCatalog(seed, [])).toEqual({ caps: seed, isLive: false });
+  it("trusts an empty live list: every category may be off (ADR 0022)", () => {
+    expect(selectCatalog(seed, [])).toEqual({ caps: [], isLive: true });
   });
 
   it("returns the live list once it has rows", () => {

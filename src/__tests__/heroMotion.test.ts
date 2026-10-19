@@ -6,8 +6,7 @@ import {
   frameIndexForProgress,
   heroScrollProgress,
   platterAngle,
-  scrub,
-} from "../lib/heroMotion";
+  scrub, POSTER_LAYERS, pointerOffset } from "../lib/heroMotion";
 
 describe("clamp01", () => {
   it("keeps values inside 0..1 and treats NaN as 0", () => {
@@ -103,5 +102,33 @@ describe("platterAngle", () => {
     expect(platterAngle(1, 4)).toBe(90);
     expect(platterAngle(3, 4)).toBe(270);
     expect(platterAngle(0, 0)).toBe(0);
+  });
+});
+
+describe("poster hero parallax", () => {
+  it("every layer rests at identity before any scroll", () => {
+    expect(scrub(0, POSTER_LAYERS.ghost.y)).toBe(0);
+    expect(scrub(0, POSTER_LAYERS.ghost.scale)).toBe(1);
+    expect(scrub(0, POSTER_LAYERS.copy.opacity)).toBe(1);
+    for (const layer of [POSTER_LAYERS.line1, POSTER_LAYERS.line2]) {
+      expect(scrub(0, layer.x)).toBe(0);
+      expect(scrub(0, layer.y)).toBe(0);
+    }
+  });
+
+  it("the headline lines split apart and the ghost sinks as the page scrolls", () => {
+    expect(scrub(1, POSTER_LAYERS.line1.x)).toBeLessThan(0);
+    expect(scrub(1, POSTER_LAYERS.line2.x)).toBeGreaterThan(0);
+    expect(scrub(1, POSTER_LAYERS.ghost.y)).toBeGreaterThan(scrub(1, POSTER_LAYERS.line1.y));
+    expect(scrub(1, POSTER_LAYERS.copy.opacity)).toBe(0);
+  });
+
+  it("pointerOffset maps the pointer to [-1, 1] from the box centre", () => {
+    const box = { left: 100, top: 50, width: 200, height: 100 };
+    expect(pointerOffset(200, 100, box)).toEqual({ x: 0, y: 0 });
+    expect(pointerOffset(300, 150, box)).toEqual({ x: 1, y: 1 });
+    expect(pointerOffset(100, 50, box)).toEqual({ x: -1, y: -1 });
+    expect(pointerOffset(10_000, -10_000, box)).toEqual({ x: 1, y: -1 });
+    expect(pointerOffset(5, 5, { left: 0, top: 0, width: 0, height: 0 })).toEqual({ x: 0, y: 0 });
   });
 });

@@ -17,7 +17,8 @@
     "menu": "Abrir menú",
     "closeMenu": "Cerrar menú",
     "primary": "Principal",
-    "search": "Buscar"
+    "search": "Buscar",
+    "soon": "Pronto"
   },
   "checkout": {
     "title": "Asegurando tu Pedido",
@@ -61,7 +62,8 @@
     "dragHint": "Arrastra para girar",
     "dropLive": "Viene un nuevo drop",
     "ctaThisCap": "Ver esta gorra",
-    "ctaShopAll": "Ver todo"
+    "ctaShopAll": "Ver todo",
+    "posterSubtitle": "Streetwear heavyweight para los que hacen su propia suerte."
   },
   "cart": {
     "title": "Tu Bolsa de Compra",
@@ -712,6 +714,51 @@
       "deleteSubscribersLabel": "Purgar también todas las alertas registradas en la lista de espera para este modelo",
       "dropDeletedSuccess": "Drop VIP eliminado permanentemente.",
       "archiveDrop": "Archivar Drop"
+    },
+    "launch": {
+      "title": "Lanzamiento por categoría",
+      "subtitle": "Elige qué ven los clientes en cada categoría. Muy pronto muestra un adelanto con registro en lugar de productos; Oculta quita la categoría de la tienda. Los cambios llegan a la tienda en segundos.",
+      "category": {
+        "headwear": "Gorras",
+        "apparel": "Playeras"
+      },
+      "status": {
+        "live": "En vivo",
+        "coming_soon": "Muy pronto",
+        "hidden": "Oculta"
+      },
+      "statusNow": {
+        "live": "Ahora: en vivo",
+        "coming_soon": "Ahora: muy pronto",
+        "hidden": "Ahora: oculta"
+      },
+      "statusLabel": "Estado de {name}",
+      "statusHelp": {
+        "live": "Los productos visibles se muestran y se pueden comprar.",
+        "coming_soon": "Los clientes ven un adelanto de Muy pronto, con cuenta regresiva si pones fecha. No se muestran productos.",
+        "hidden": "La categoría desaparece de la tienda: sin enlace en el menú, sin mosaico, sin adelanto."
+      },
+      "scheduleLaunch": "Lanzar automáticamente en una fecha",
+      "launchAtHelp": "{name} pasa a En vivo a esta hora. El adelanto muestra la cuenta regresiva.",
+      "headlineEn": "Titular del adelanto (inglés, opcional)",
+      "headlineEs": "Titular del adelanto (español, opcional)",
+      "headlinePlaceholder": {
+        "headwear": {
+          "headlineEn": "Caps — Dropping soon",
+          "headlineEs": "Gorras — Muy pronto"
+        },
+        "apparel": {
+          "headlineEn": "Tees — Dropping soon",
+          "headlineEs": "Playeras — Muy pronto"
+        }
+      },
+      "save": "Guardar {name}",
+      "saved": "Guardado.",
+      "saveFailed": "No se pudo guardar. Inténtalo de nuevo.",
+      "confirmTitle": "¿Cambiar {name} a {status}?",
+      "confirmBody": "{count, plural, =0 {Ningún producto visible se verá afectado.} one {# producto visible desaparecerá de la tienda.} other {# productos visibles desaparecerán de la tienda.}} Los carritos que los tengan los mostrarán como no disponibles.",
+      "cancel": "Cancelar",
+      "confirm": "Sí, cambiar"
     }
   },
   "track": {
@@ -925,7 +972,8 @@
     "viewTee": "Ver playera",
     "asShown": "Color como se muestra",
     "otherColours": "{count, plural, one {Disponible en # color} other {Disponible en # colores}}",
-    "closeCard": "Cerrar"
+    "closeCard": "Cerrar",
+    "droppingSoon": "Muy pronto"
   },
   "tryOn": {
     "metaTitle": "Pruébate una gorra | Good Luck 0880",
@@ -991,5 +1039,21 @@
     "navigate": "para moverte",
     "open": "para abrir",
     "dismiss": "para cerrar"
+  },
+  "launch": {
+    "headline": {
+      "caps": "Gorras — Muy pronto",
+      "tees": "Playeras — Muy pronto",
+      "all": "Algo viene muy pronto"
+    },
+    "body": "Algo nuevo viene en camino. Vuelve pronto.",
+    "bodyAll": "La tienda abre muy pronto. Vuelve pronto.",
+    "eyebrow": "Muy pronto",
+    "countdownLabel": "Sale en",
+    "days": "Días",
+    "hours": "Hrs",
+    "minutes": "Min",
+    "seconds": "Seg",
+    "droppingNow": "Saliendo ahora…"
   }
 }

@@ -7,7 +7,8 @@ import { v } from "convex/values";
 import { isAdmin } from "../lib/auth";
 import { lineStockResult, productPage, resolvedVariant } from "./validators";
 import { checkStock, getVariant, hasSkus, listSkus } from "./inventory";
-import { filterCatalogVariants } from "./model";
+import { filterCatalogVariants, isCustomerVisible } from "./model";
+import { getCategoryLaunches } from "../settings/launch";
 import { listCatalogVariants, resolveProduct } from "./shared";
 
 export const getVariants = query({
@@ -22,7 +23,8 @@ export const getVariants = query({
   handler: async (ctx, args) => {
     // Hidden drafts (copy, storage URLs) are for Administrators only; everyone else gets the listed catalog.
     const includeUnavailable = args.includeUnavailable === true && (await isAdmin(ctx));
-    const variants = filterCatalogVariants(await listCatalogVariants(ctx), { ...args, includeUnavailable });
+    const launches = await getCategoryLaunches(ctx);
+    const variants = filterCatalogVariants(await listCatalogVariants(ctx), { ...args, includeUnavailable, launches });
     return await Promise.all(
       variants.map((v) => resolveProduct(ctx, v))
     );
@@ -41,10 +43,13 @@ export const getCartVariants = query({
   returns: v.array(resolvedVariant),
   handler: async (ctx, args) => {
     const wanted = [...new Set(args.variantIds)].slice(0, MAX_CART_VARIANT_IDS);
+    const launches = await getCategoryLaunches(ctx);
     const out = [];
     for (const variantId of wanted) {
       const variant = await getVariant(ctx, variantId);
-      if (variant && variant.archivedAt === undefined) out.push(await resolveProduct(ctx, variant));
+      if (!variant || variant.archivedAt !== undefined) continue;
+      // `isAvailable` here is "can a Customer buy it now", so a gated category reads as unavailable.
+      out.push({ ...(await resolveProduct(ctx, variant)), isAvailable: isCustomerVisible(variant, launches) });
     }
     return out;
   },
@@ -59,8 +64,8 @@ export const getVariantById = query({
   handler: async (ctx, args) => {
     const variant = await getVariant(ctx, args.variantId);
     if (!variant || variant.archivedAt !== undefined) return null;
-    // Hidden products are visible to Administrators only; the flag is ignored for everyone else.
-    if (variant.isAvailable === false && !(args.allowUnavailable && (await isAdmin(ctx)))) {
+    // Hidden products and non-live categories are visible to Administrators only; the flag is ignored for everyone else.
+    if (!isCustomerVisible(variant, await getCategoryLaunches(ctx)) && !(args.allowUnavailable && (await isAdmin(ctx)))) {
       return null;
     }
     return await resolveProduct(ctx, variant);
@@ -74,8 +79,8 @@ export const getProductBySlug = query({
   handler: async (ctx, args) => {
     const variant = await getVariant(ctx, args.slug);
     if (!variant || variant.archivedAt !== undefined) return null;
-    // Hidden products (and their SKU stock) are visible to Administrators only.
-    if (variant.isAvailable === false && !(args.allowUnavailable && (await isAdmin(ctx)))) return null;
+    // Hidden products and non-live categories (and their SKU stock) are visible to Administrators only.
+    if (!isCustomerVisible(variant, await getCategoryLaunches(ctx)) && !(args.allowUnavailable && (await isAdmin(ctx)))) return null;
     const resolved = await resolveProduct(ctx, variant);
     const skus = hasSkus(variant)
       ? (await listSkus(ctx, variant.variantId)).map((s) => ({ colorway: s.colorway, size: s.size, stock: s.stock }))

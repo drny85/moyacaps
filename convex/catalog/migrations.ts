@@ -10,7 +10,7 @@ import { SHIRT_VARIANTS } from "../../src/data/caps";
 import catalogShots from "../../src/data/catalogShots.json";
 import { SEED_PRODUCT, SEED_VARIANTS } from "./data";
 import { distributeStock, renamedLifestyleShot as renamed, teeFieldsPatch, TEE_SIZES, variantCategory } from "./model";
-import type { Id } from "../_generated/dataModel";
+import type { Doc, Id } from "../_generated/dataModel";
 import { deleteStorageQuietly, MAX_CATALOG_VARIANTS } from "./shared";
 import { isStorageIdReferenced, legacyVariantStorageIds } from "./images/references";
 
@@ -60,7 +60,9 @@ export const seedAll = mutation({
     await ctx.db.insert("products", SEED_PRODUCT);
 
     for (const v of SEED_VARIANTS) {
-      await ctx.db.insert("variants", v);
+      // Seed products are shown unless the seed says otherwise (a missing flag is hidden, ADR 0022).
+      const seeded: Partial<Doc<"variants">> = v;
+      await ctx.db.insert("variants", { ...v, isAvailable: seeded.isAvailable ?? true });
     }
 
     return { success: true, count: SEED_VARIANTS.length };
@@ -211,5 +213,25 @@ export const backfillBadges = internalMutation({
       updated++;
     }
     return { updated };
+  },
+});
+
+/**
+ * ADR 0022: a product is listed only when `isAvailable === true`. Rows created before that
+ * rule without the flag were visible, so this marks them visible to keep the storefront as
+ * it was. Idempotent; run on each deployment before the strict check ships.
+ */
+export const backfillAvailability = internalMutation({
+  args: {},
+  returns: v.object({ patched: v.number(), isDone: v.boolean() }),
+  handler: async (ctx) => {
+    const variants = await ctx.db.query("variants").take(MAX_CATALOG_VARIANTS);
+    let patched = 0;
+    for (const variant of variants) {
+      if (variant.isAvailable !== undefined) continue;
+      await ctx.db.patch("variants", variant._id, { isAvailable: true });
+      patched++;
+    }
+    return { patched, isDone: variants.length < MAX_CATALOG_VARIANTS };
   },
 });

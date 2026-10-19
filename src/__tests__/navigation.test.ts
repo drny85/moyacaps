@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import en from "../messages/en.json";
 import es from "../messages/es.json";
-import { PRIMARY_NAV, activeNavKey } from "../lib/navigation";
+import { PRIMARY_NAV, activeNavKey, launchNav } from "../lib/navigation";
 
 describe("activeNavKey", () => {
   it("marks Shop on the Shop page and on product pages", () => {
@@ -35,5 +35,26 @@ describe("PRIMARY_NAV", () => {
       expect(en.nav[key as keyof typeof en.nav], `en ${key}`).toBeTruthy();
       expect(es.nav[key as keyof typeof es.nav], `es ${key}`).toBeTruthy();
     }
+  });
+});
+
+describe("launchNav (ADR 0022)", () => {
+  const live = { headwear: { status: "live" as const }, apparel: { status: "live" as const } };
+
+  it("keeps every item when both categories are live", () => {
+    expect(launchNav(PRIMARY_NAV, live).map((i) => [i.key, i.soon])).toEqual(PRIMARY_NAV.map((i) => [i.key, false]));
+  });
+
+  it("removes a hidden category and flags a coming_soon one as soon", () => {
+    const nav = launchNav(PRIMARY_NAV, { headwear: { status: "coming_soon" }, apparel: { status: "hidden" } });
+    expect(nav.map((i) => i.key)).not.toContain("tees");
+    expect(nav.find((i) => i.key === "caps")?.soon).toBe(true);
+    expect(nav.find((i) => i.key === "shop")?.soon).toBe(false);
+  });
+
+  it("removes Try-On unless Caps are live", () => {
+    expect(launchNav(PRIMARY_NAV, { ...live, headwear: { status: "hidden" } }).map((i) => i.key)).not.toContain("tryOn");
+    expect(launchNav(PRIMARY_NAV, { ...live, headwear: { status: "coming_soon" } }).map((i) => i.key)).not.toContain("tryOn");
+    expect(launchNav(PRIMARY_NAV, live).find((i) => i.key === "tryOn")?.soon).toBe(false);
   });
 });

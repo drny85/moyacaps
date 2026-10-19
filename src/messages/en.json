@@ -17,7 +17,8 @@
     "menu": "Open menu",
     "closeMenu": "Close menu",
     "primary": "Main",
-    "search": "Search"
+    "search": "Search",
+    "soon": "Soon"
   },
   "checkout": {
     "title": "Securing Your Order",
@@ -61,7 +62,8 @@
     "dragHint": "Drag to rotate",
     "dropLive": "A new drop is coming",
     "ctaThisCap": "Shop this cap",
-    "ctaShopAll": "Shop everything"
+    "ctaShopAll": "Shop everything",
+    "posterSubtitle": "Heavyweight streetwear for the ones who make their own luck."
   },
   "cart": {
     "title": "Your Loot Bag",
@@ -712,6 +714,51 @@
       "deleteSubscribersLabel": "Also purge all registered waitlist alerts for this colorway",
       "dropDeletedSuccess": "VIP Drop permanently deleted.",
       "archiveDrop": "Archive Drop"
+    },
+    "launch": {
+      "title": "Category launch",
+      "subtitle": "Choose what Customers see for each category. Coming soon shows a teaser with a sign-up instead of products; Hidden removes the category from the store. Changes reach the store in seconds.",
+      "category": {
+        "headwear": "Caps",
+        "apparel": "Tees"
+      },
+      "status": {
+        "live": "Live",
+        "coming_soon": "Coming soon",
+        "hidden": "Hidden"
+      },
+      "statusNow": {
+        "live": "Now: live",
+        "coming_soon": "Now: coming soon",
+        "hidden": "Now: hidden"
+      },
+      "statusLabel": "{name} status",
+      "statusHelp": {
+        "live": "Visible products are shown and can be bought.",
+        "coming_soon": "Customers see a Dropping soon teaser, with a countdown if you set a date. No products are shown.",
+        "hidden": "The category disappears from the store: no menu link, no tile, no teaser."
+      },
+      "scheduleLaunch": "Go live automatically on a date",
+      "launchAtHelp": "{name} turns Live at this time. The teaser counts down to it.",
+      "headlineEn": "Teaser headline (English, optional)",
+      "headlineEs": "Teaser headline (Spanish, optional)",
+      "headlinePlaceholder": {
+        "headwear": {
+          "headlineEn": "Caps — Dropping soon",
+          "headlineEs": "Gorras — Muy pronto"
+        },
+        "apparel": {
+          "headlineEn": "Tees — Dropping soon",
+          "headlineEs": "Playeras — Muy pronto"
+        }
+      },
+      "save": "Save {name}",
+      "saved": "Saved.",
+      "saveFailed": "Could not save. Please try again.",
+      "confirmTitle": "Set {name} to {status}?",
+      "confirmBody": "{count, plural, =0 {No listed products will be affected.} one {# listed product will disappear from the store.} other {# listed products will disappear from the store.}} Carts holding them will show them as unavailable.",
+      "cancel": "Cancel",
+      "confirm": "Yes, change it"
     }
   },
   "track": {
@@ -925,7 +972,8 @@
     "viewTee": "View tee",
     "asShown": "Colour as shown",
     "otherColours": "{count, plural, one {Sold in # colour} other {Sold in # colours}}",
-    "closeCard": "Close"
+    "closeCard": "Close",
+    "droppingSoon": "Dropping soon"
   },
   "tryOn": {
     "metaTitle": "Try on a cap | Good Luck 0880",
@@ -991,5 +1039,21 @@
     "navigate": "to move",
     "open": "to open",
     "dismiss": "to close"
+  },
+  "launch": {
+    "headline": {
+      "caps": "Caps — Dropping soon",
+      "tees": "Tees — Dropping soon",
+      "all": "Something's dropping soon"
+    },
+    "body": "Something new is on the way. Check back soon.",
+    "bodyAll": "The store opens soon. Check back soon.",
+    "eyebrow": "Coming soon",
+    "countdownLabel": "Drops in",
+    "days": "Days",
+    "hours": "Hrs",
+    "minutes": "Min",
+    "seconds": "Sec",
+    "droppingNow": "Dropping now…"
   }
 }

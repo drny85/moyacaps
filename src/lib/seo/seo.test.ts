@@ -83,6 +83,21 @@ describe("sitemap", () => {
     expect(urls.some((u) => /\/(admin|checkout|account)/.test(u))).toBe(false);
   });
 
+  it("omits the category URL of a non-live category", () => {
+    const launches = { headwear: { status: "live" as const }, apparel: { status: "coming_soon" as const } };
+    const gated = buildSitemap([cap], BASE, NOW, launches).map((e) => e.url);
+    expect(gated).toContain(`${BASE}/en/products?category=caps`);
+    expect(gated.some((u) => u.includes("category=tees"))).toBe(false);
+    expect(gated).toContain(`${BASE}/en/products`);
+  });
+
+  it("omits Try-On unless Caps are live", () => {
+    const capsHidden = { headwear: { status: "hidden" as const }, apparel: { status: "live" as const } };
+    const urls = buildSitemap([tee], BASE, NOW, capsHidden).map((e) => e.url);
+    expect(urls.some((u) => u.includes("/try-on"))).toBe(false);
+    expect(urls.some((u) => u.includes("category=caps"))).toBe(false);
+  });
+
   it("gives product entries absolute images and hreflang with x-default", () => {
     const entry = entries.find((e) => e.url === `${BASE}/en/products/${cap.id}`)!;
     expect(entry.images?.[0]).toMatch(/^https?:\/\//);

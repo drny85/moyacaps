@@ -32,6 +32,7 @@ async function seedTee(tt: T, skus: Record<string, number>) {
     const total = Object.values(skus).reduce((a, b) => a + b, 0);
     await ctx.db.insert("variants", {
       variantId: "T1",
+      isAvailable: true,
       nameEn: "Tee T1",
       nameEs: "Playera T1",
       silhouette: "tee",

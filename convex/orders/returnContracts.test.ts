@@ -27,6 +27,7 @@ async function seeded() {
     });
     await ctx.db.insert("variants", {
       variantId: "negro-rojo",
+      isAvailable: true,
       nameEn: "Black / Red",
       nameEs: "Negro / Rojo",
       silhouette: "snapback",
@@ -39,6 +40,7 @@ async function seeded() {
     });
     await ctx.db.insert("variants", {
       variantId: "drop-cap",
+      isAvailable: true,
       nameEn: "Drop Cap",
       nameEs: "Gorra Drop",
       silhouette: "trucker",
