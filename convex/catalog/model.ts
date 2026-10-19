@@ -118,7 +118,6 @@ export type VariantPatch = {
   fabricEs?: string;
   fitEn?: string;
   fitEs?: string;
-  printPosition?: "front" | "back";
   defaultColorway?: string;
   colorways?: Doc<"variants">["colorways"];
   sizes?: string[];
@@ -197,7 +196,6 @@ export function buildNewVariant(input: NewVariantInput, now: number) {
     fabricEs: input.fabricEs,
     fitEn: input.fitEn,
     fitEs: input.fitEs,
-    printPosition: input.printPosition,
     defaultColorway: input.defaultColorway,
     colorways: input.colorways,
     sizes: input.sizes,
@@ -282,8 +280,12 @@ export function teeFieldsPatch(existing: TeeRow, fields: Record<string, unknown>
  * Split a tee's current stock across its SKUs: an even share each, remainder to the
  * default colorway first in the most common sizes. The sum is unchanged.
  */
-export function distributeStock(total: number, colorways: string[], defaultColorway: string) {
-  const order = ["L", "M", "XL", "S", "2XL"];
+export function distributeStock(
+  total: number,
+  colorways: string[],
+  defaultColorway: string,
+  order: string[] = ["L", "M", "XL", "S", "2XL"]
+) {
   const cws = [defaultColorway, ...colorways.filter((c) => c !== defaultColorway)];
   const cells = order.flatMap((size) => cws.map((colorway) => ({ colorway, size })));
   const base = Math.floor(total / cells.length);

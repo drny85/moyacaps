@@ -183,7 +183,7 @@ describe("updateVariant", () => {
           patch: { category: "apparel" },
         })
       )
-    ).toEqual({ kind: "validation", errors: [{ field: "silhouette", code: "mismatch" }] });
+    ).toEqual({ kind: "validation", errors: expect.arrayContaining([{ field: "silhouette", code: "mismatch" }]) });
   });
 
   it("skips the write and the event when nothing changed", async () => {

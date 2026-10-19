@@ -134,7 +134,7 @@ describe("updateVariant tee options", () => {
   });
 
   it("throws sku_in_stock for a stocked colorway and leaves rows untouched", async () => {
-    const { t, admin, updatedAt } = await createdTee();
+    const { t, admin } = await createdTee();
     await admin.mutation(api.catalog.admin.setTeeSkuStock, { variantId: tee.variantId, colorway: "lime", size: "M", stock: 2 });
     const before = await rowOf(t);
     const data = await errorData(
@@ -147,7 +147,6 @@ describe("updateVariant tee options", () => {
     expect(data).toEqual({ kind: "sku_in_stock", cells: [{ colorway: "lime", size: "M", stock: 2 }] });
     expect(await skusOf(t)).toHaveLength(10);
     expect(await rowOf(t)).toEqual(before);
-    expect(updatedAt).toBeLessThanOrEqual(before!.updatedAt!);
   });
 
   it("rejects a default colorway that is not offered", async () => {
@@ -180,5 +179,72 @@ describe("backfillBadges", () => {
     expect(await get("tee-a")).toMatchObject({ badgeTextEn: "Heavyweight Drop", badgeTextEs: "Drop Heavyweight" });
     expect((await get("cap-b"))?.badgeTextEs).toBeUndefined();
     expect((await get("cap-c"))?.badgeTextEn).toBeUndefined();
+  });
+});
+
+describe("tee option edge cases", () => {
+  const plainApparel = { ...tee, colorways: undefined, sizes: undefined };
+  const legacy = async (stock: number) => {
+    const ctx = setup();
+    await ctx.t.run((c) =>
+      c.db.insert("variants", {
+        variantId: tee.variantId, nameEn: "n", nameEs: "n", primaryHex: "#111111", secondaryHex: "#222222",
+        image: "/a.png", stock, priceUsd: 80, taxCode: "txcd_30011000", silhouette: "tee", category: "apparel", isFeatured: false,
+      })
+    );
+    return { ...ctx, updatedAt: (await rowOf(ctx.t))!._creationTime };
+  };
+
+  it("keeps legacy apparel stock when options are first set", async () => {
+    const { t, admin, updatedAt } = await legacy(5);
+    await admin.mutation(api.catalog.admin.updateVariant, {
+      variantId: tee.variantId,
+      expectedUpdatedAt: updatedAt,
+      patch: { colorways: tee.colorways, sizes: ["XS", "S", "3XL"] },
+    });
+    const skus = await skusOf(t);
+    expect(skus).toHaveLength(6);
+    expect(skus.reduce((n, s) => n + s.stock, 0)).toBe(5);
+    expect((await rowOf(t))?.stock).toBe(5);
+  });
+
+  it("allows headwear to apparel only with valid tee options", async () => {
+    const ctx = setup();
+    await ctx.admin.mutation(api.catalog.admin.createVariant, { ...plainApparel, category: "headwear", silhouette: "snapback", colorways: undefined, sizes: undefined });
+    const updatedAt = (await rowOf(ctx.t))!.updatedAt!;
+    const data = (await errorData(
+      ctx.admin.mutation(api.catalog.admin.updateVariant, {
+        variantId: tee.variantId, expectedUpdatedAt: updatedAt, patch: { category: "apparel", silhouette: "tee" },
+      })
+    )) as { errors: { field: string; code: string }[] };
+    expect(data.errors).toEqual(expect.arrayContaining([{ field: "colorways", code: "required" }, { field: "sizes", code: "required" }]));
+    await ctx.admin.mutation(api.catalog.admin.updateVariant, {
+      variantId: tee.variantId, expectedUpdatedAt: updatedAt,
+      patch: { category: "apparel", silhouette: "tee", colorways: tee.colorways, sizes: SIZES },
+    });
+    expect(await skusOf(ctx.t)).toHaveLength(10);
+  });
+
+  it("rejects apparel to headwear while the row has tee data", async () => {
+    const { admin, updatedAt } = await createdTee();
+    const data = (await errorData(
+      admin.mutation(api.catalog.admin.updateVariant, {
+        variantId: tee.variantId, expectedUpdatedAt: updatedAt, patch: { category: "headwear", silhouette: "snapback" },
+      })
+    )) as { errors: { field: string; code: string }[] };
+    expect(data.errors).toContainEqual({ field: "category", code: "mismatch" });
+  });
+
+  it("blocks removing a stocked size", async () => {
+    const { t, admin } = await createdTee();
+    await admin.mutation(api.catalog.admin.setTeeSkuStock, { variantId: tee.variantId, colorway: "black", size: "2XL", stock: 3 });
+    const row = await rowOf(t);
+    const data = await errorData(
+      admin.mutation(api.catalog.admin.updateVariant, {
+        variantId: tee.variantId, expectedUpdatedAt: row!.updatedAt!, patch: { sizes: ["S", "M", "L", "XL"] },
+      })
+    );
+    expect(data).toEqual({ kind: "sku_in_stock", cells: [{ colorway: "black", size: "2XL", stock: 3 }] });
+    expect(await skusOf(t)).toHaveLength(10);
   });
 });

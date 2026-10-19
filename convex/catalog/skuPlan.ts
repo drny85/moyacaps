@@ -9,6 +9,7 @@ export type SkuPlan = { insert: SkuCell[]; remove: SkuCell[]; blocked: (SkuCell 
 
 const cellKey = (cell: SkuCell) => `${cell.colorway}\u0000${cell.size}`;
 
+/** Diffs against the actual SKU rows, so `before` is kept only for the interface. */
 export function planSkuChanges(before: SkuOptions, after: SkuOptions, skus: (SkuCell & { stock: number })[]): SkuPlan {
   const wanted = after.colorways.flatMap((colorway) => after.sizes.map((size) => ({ colorway, size })));
   const wantedKeys = new Set(wanted.map(cellKey));

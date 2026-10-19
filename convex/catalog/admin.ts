@@ -17,6 +17,7 @@ import {
   buildNewVariant,
   blankImageWhileVisible,
   buildVariantPatch,
+  distributeStock,
   fillColorwayShots,
   nextAvailability,
   nextUpdatedAt,
@@ -49,7 +50,7 @@ const teeColorwayValidator = v.object({
 });
 
 /** Tee-only fields; a headwear product that sends any of them is rejected. */
-const TEE_FIELD_KEYS = ["colorways", "sizes", "defaultColorway", "fabricEn", "fabricEs", "fitEn", "fitEs", "printPosition"] as const;
+const TEE_FIELD_KEYS = ["colorways", "sizes", "defaultColorway", "fabricEn", "fabricEs", "fitEn", "fitEs"] as const;
 
 const categoryValidator = v.union(v.literal("headwear"), v.literal("apparel"));
 
@@ -253,7 +254,6 @@ const editableFields = {
   fabricEs: v.string(),
   fitEn: v.string(),
   fitEs: v.string(),
-  printPosition: v.union(v.literal("front"), v.literal("back")),
 };
 
 /** Tee fields supplied on a headwear product are `mismatch` errors. */
@@ -301,7 +301,6 @@ export const createVariant = mutation({
     fabricEs: v.optional(editableFields.fabricEs),
     fitEn: v.optional(editableFields.fitEn),
     fitEs: v.optional(editableFields.fitEs),
-    printPosition: v.optional(editableFields.printPosition),
   },
   returns: v.object({ id: v.id("variants"), variantId: v.string() }),
   handler: async (ctx, args) => {
@@ -375,8 +374,7 @@ export const updateVariant = mutation({
       fabricEs: v.optional(editableFields.fabricEs),
       fitEn: v.optional(editableFields.fitEn),
       fitEs: v.optional(editableFields.fitEs),
-      printPosition: v.optional(editableFields.printPosition),
-    }),
+      }),
   },
   returns: v.object({ updatedAt: v.number() }),
   handler: async (ctx, args) => {
@@ -394,8 +392,17 @@ export const updateVariant = mutation({
     let teePatch: { colorways?: Doc<"variants">["colorways"]; defaultColorway?: string } = {};
     let skuPlan: ReturnType<typeof planSkuChanges> | undefined;
     let removedColorways: string[] = [];
-    if (teeTouched) {
-      if ((args.patch.category ?? variantCategory(existing)) !== "apparel") {
+    let legacySeed: ReturnType<typeof distributeStock> | undefined;
+    const category = args.patch.category ?? variantCategory(existing);
+    const toApparel = category === "apparel" && variantCategory(existing) !== "apparel";
+    if (category !== "apparel" && variantCategory(existing) === "apparel") {
+      // Converting a tee back to a cap is not supported while it carries tee data.
+      if (hasSkus(existing) || existing.colorways?.length || existing.sizes?.length || (await listSkus(ctx, existing.variantId)).length > 0) {
+        errors.push({ field: "category", code: "mismatch" });
+      }
+    }
+    if (teeTouched || toApparel) {
+      if (category !== "apparel") {
         errors.push(...teeFieldMismatches(args.patch));
       } else {
         const colorways = colorwayInput ? fillColorwayShots(colorwayInput, existing.colorways) : (existing.colorways ?? []);
@@ -407,7 +414,12 @@ export const updateVariant = mutation({
         if (colorwayInput || args.patch.sizes) {
           const before = { colorways: (existing.colorways ?? []).map((c) => c.id), sizes: existing.sizes ?? [] };
           const after = { colorways: colorways.map((c) => c.id), sizes };
-          skuPlan = planSkuChanges(before, after, await listSkus(ctx, existing.variantId));
+          const rows = await listSkus(ctx, existing.variantId);
+          skuPlan = planSkuChanges(before, after, rows);
+          // Legacy apparel stock (no SKUs yet) moves onto the new cells so no units are lost.
+          if (rows.length === 0 && existing.stock > 0 && defaultColorway) {
+            legacySeed = distributeStock(existing.stock, after.colorways, defaultColorway, sizes);
+          }
           removedColorways = before.colorways.filter((id) => !after.colorways.includes(id));
         }
       }
@@ -433,7 +445,8 @@ export const updateVariant = mutation({
     await ctx.db.patch("variants", existing._id, { ...fields, updatedAt });
     if (skuPlan) {
       for (const cell of skuPlan.insert) {
-        await ctx.db.insert("skus", { variantId: existing.variantId, ...cell, stock: 0 });
+        const seeded = legacySeed?.find((c) => c.colorway === cell.colorway && c.size === cell.size);
+        await ctx.db.insert("skus", { variantId: existing.variantId, ...cell, stock: seeded?.stock ?? 0 });
       }
       for (const cell of skuPlan.remove) {
         const sku = await getSku(ctx, existing.variantId, cell.colorway, cell.size);
