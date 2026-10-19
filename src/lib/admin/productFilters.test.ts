@@ -1,51 +1,78 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_FILTERS, filterProducts, silhouetteOptions, withFilterCategory } from "./productFilters";
-import type { FilterableProduct } from "./productFilters";
+import { EMPTY_FILTERS, applyFilters, chipCount, filtersFromSearchParams, filtersToSearchParams, hasActiveFilters } from "./productFilters";
+import type { ProductFilters } from "./productFilters";
+import { capRow, teeRow } from "./productFixtures";
 
-const rows: FilterableProduct[] = [
-  { variantId: "negro-rojo", nameEn: "Black Red", nameEs: "Negro Rojo", silhouette: "snapback", category: "headwear", isAvailable: true },
-  { variantId: "mesh-blue", nameEn: "Mesh Blue", nameEs: "Malla Azul", silhouette: "trucker", category: "headwear", isAvailable: false },
-  { variantId: "heavy-tee", nameEn: "Heavy Tee", nameEs: "Playera", silhouette: "tee", category: "apparel", isAvailable: true },
-  // Saved before `category` existed: a tee silhouette means apparel.
-  { variantId: "old-tee", nameEn: "Old Tee", nameEs: "Vieja", silhouette: "tee", isAvailable: true },
+const NOW = 1_000_000;
+const rows = [
+  capRow({ variantId: "live-cap" }),
+  capRow({ variantId: "hidden-cap", isAvailable: false }),
+  capRow({ variantId: "low-cap", stock: 5, isFeatured: true }),
+  capRow({ variantId: "out-cap", stock: 0 }),
+  capRow({ variantId: "drop-cap", isDrop: true, dropDate: NOW + 1000 }),
+  capRow({ variantId: "archived-cap", archivedAt: 1, isAvailable: false }),
+  teeRow({ variantId: "tee" }),
 ];
+const ids = (f: Partial<ProductFilters>) => applyFilters(rows, { ...EMPTY_FILTERS, ...f }, NOW).map((r) => r.variantId);
 
-const ids = (list: FilterableProduct[]) => list.map((r) => r.variantId);
-
-describe("filterProducts", () => {
-  it("returns everything with the default filters", () => {
-    expect(ids(filterProducts(rows, DEFAULT_FILTERS))).toEqual(["negro-rojo", "mesh-blue", "heavy-tee", "old-tee"]);
+describe("applyFilters", () => {
+  it("leaves archived products out unless Status is Archived", () => {
+    expect(ids({})).not.toContain("archived-cap");
+    expect(ids({ status: "archived" })).toEqual(["archived-cap"]);
   });
 
-  it("searches names in both languages and the slug, case-insensitively", () => {
-    expect(ids(filterProducts(rows, { ...DEFAULT_FILTERS, query: "MALLA" }))).toEqual(["mesh-blue"]);
-    expect(ids(filterProducts(rows, { ...DEFAULT_FILTERS, query: "black" }))).toEqual(["negro-rojo"]);
-    expect(ids(filterProducts(rows, { ...DEFAULT_FILTERS, query: "heavy-" }))).toEqual(["heavy-tee"]);
+  it("filters by category and status", () => {
+    expect(ids({ category: "apparel" })).toEqual(["tee"]);
+    expect(ids({ status: "hidden" })).toEqual(["hidden-cap"]);
+    expect(ids({ status: "live" })).toEqual(["live-cap", "low-cap", "out-cap", "drop-cap", "tee"]);
+    expect(ids({ status: "drop" })).toEqual(["drop-cap"]);
   });
 
-  it("filters by category, with the legacy fallback", () => {
-    expect(ids(filterProducts(rows, { ...DEFAULT_FILTERS, category: "apparel" }))).toEqual(["heavy-tee", "old-tee"]);
-    expect(ids(filterProducts(rows, { ...DEFAULT_FILTERS, category: "headwear" }))).toEqual(["negro-rojo", "mesh-blue"]);
+  it("treats low stock as 1 to 5", () => {
+    expect(ids({ stock: "low" })).toEqual(["low-cap", "tee"]);
+    expect(ids({ stock: "out" })).toEqual(["out-cap"]);
+    expect(ids({ stock: "in" })).toEqual(["live-cap", "hidden-cap", "drop-cap"]);
   });
 
-  it("filters by silhouette and availability", () => {
-    expect(ids(filterProducts(rows, { ...DEFAULT_FILTERS, silhouette: "trucker" }))).toEqual(["mesh-blue"]);
-    expect(ids(filterProducts(rows, { ...DEFAULT_FILTERS, availability: "unavailable" }))).toEqual(["mesh-blue"]);
-    expect(ids(filterProducts(rows, { ...DEFAULT_FILTERS, availability: "available" }))).toEqual(["negro-rojo", "heavy-tee", "old-tee"]);
+  it("filters featured and needs attention", () => {
+    expect(ids({ featured: true })).toEqual(["low-cap"]);
+    expect(ids({ attention: true })).toEqual(["out-cap"]);
+  });
+
+  it("combines filters with AND, including the search", () => {
+    expect(ids({ stock: "low", category: "headwear" })).toEqual(["low-cap"]);
+    expect(ids({ q: "skull", stock: "low" })).toEqual(["tee"]);
+    expect(ids({ q: "skull", category: "headwear" })).toEqual([]);
   });
 });
 
-describe("silhouetteOptions", () => {
-  it("lists the silhouettes of the chosen category, or all of them", () => {
-    expect(silhouetteOptions("headwear")).toEqual(["snapback", "trucker"]);
-    expect(silhouetteOptions("all")).toEqual(["snapback", "trucker", "tee"]);
+describe("chipCount", () => {
+  it("counts what the list would show with the chip on", () => {
+    expect(chipCount(rows, { ...EMPTY_FILTERS, category: "headwear" }, { stock: "out" }, NOW)).toBe(1);
+    expect(chipCount(rows, EMPTY_FILTERS, { status: "archived" }, NOW)).toBe(1);
   });
 });
 
-describe("withFilterCategory", () => {
-  it("resets a silhouette the new category does not have", () => {
-    const filters = { ...DEFAULT_FILTERS, silhouette: "trucker" };
-    expect(withFilterCategory(filters, "apparel")).toEqual({ ...DEFAULT_FILTERS, category: "apparel", silhouette: "all" });
-    expect(withFilterCategory(filters, "headwear")).toEqual({ ...filters, category: "headwear" });
+describe("URL params", () => {
+  it("round-trips every filter", () => {
+    const f: ProductFilters = { q: "gótico skull", category: "apparel", status: "drop", stock: "low", featured: true, attention: true };
+    expect(filtersFromSearchParams(filtersToSearchParams(f))).toEqual(f);
+  });
+
+  it("omits empty filters", () => {
+    expect(filtersToSearchParams(EMPTY_FILTERS).toString()).toBe("");
+    expect(filtersToSearchParams({ ...EMPTY_FILTERS, featured: true }).toString()).toBe("featured=1");
+  });
+
+  it("ignores junk values", () => {
+    expect(filtersFromSearchParams(new URLSearchParams("status=foo&stock=bar&category=hats&featured=yes"))).toEqual(EMPTY_FILTERS);
+  });
+});
+
+describe("hasActiveFilters", () => {
+  it("is false only for no query and no chips", () => {
+    expect(hasActiveFilters(EMPTY_FILTERS)).toBe(false);
+    expect(hasActiveFilters({ ...EMPTY_FILTERS, q: " " })).toBe(false);
+    expect(hasActiveFilters({ ...EMPTY_FILTERS, stock: "out" })).toBe(true);
   });
 });
