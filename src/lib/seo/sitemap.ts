@@ -30,11 +30,12 @@ const ALL_LIVE: Launches = { headwear: { status: "live" }, apparel: { status: "l
 const CATEGORY_PAGE: Record<string, keyof Launches> = {
   "/products?category=caps": "headwear",
   "/products?category=tees": "apparel",
+  "/try-on": "headwear",
 };
 
 export function buildSitemap(products: CapVariant[], base: string, now: Date, launches: Launches = ALL_LIVE): MetadataRoute.Sitemap {
   const pages: Page[] = [
-    // A category page is listed only while its category is Live (ADR 0022)
+    // A category page (and Try-On, which is caps only) is listed only while its category is Live (ADR 0022)
     ...STATIC_PAGES.filter((page) => !(page.path in CATEGORY_PAGE) || launches[CATEGORY_PAGE[page.path]].status === "live"),
     ...products
       .filter((p) => p.isAvailable !== false)

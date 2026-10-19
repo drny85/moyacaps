@@ -91,6 +91,13 @@ describe("sitemap", () => {
     expect(gated).toContain(`${BASE}/en/products`);
   });
 
+  it("omits Try-On unless Caps are live", () => {
+    const capsHidden = { headwear: { status: "hidden" as const }, apparel: { status: "live" as const } };
+    const urls = buildSitemap([tee], BASE, NOW, capsHidden).map((e) => e.url);
+    expect(urls.some((u) => u.includes("/try-on"))).toBe(false);
+    expect(urls.some((u) => u.includes("category=caps"))).toBe(false);
+  });
+
   it("gives product entries absolute images and hreflang with x-default", () => {
     const entry = entries.find((e) => e.url === `${BASE}/en/products/${cap.id}`)!;
     expect(entry.images?.[0]).toMatch(/^https?:\/\//);

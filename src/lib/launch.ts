@@ -30,3 +30,8 @@ export function teaserHeadline(launch: CategoryLaunch, locale: "en" | "es", fall
   const custom = (locale === "es" ? launch.headlineEs : launch.headlineEn)?.trim();
   return custom || fallback;
 }
+
+/** Try-On is for Caps only, so it is offered only while Caps are Live. */
+export function isTryOnAvailable(launches: CategoryLaunches): boolean {
+  return launches.headwear.status === "live";
+}

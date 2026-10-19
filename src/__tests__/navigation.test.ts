@@ -51,4 +51,10 @@ describe("launchNav (ADR 0022)", () => {
     expect(nav.find((i) => i.key === "caps")?.soon).toBe(true);
     expect(nav.find((i) => i.key === "shop")?.soon).toBe(false);
   });
+
+  it("removes Try-On unless Caps are live", () => {
+    expect(launchNav(PRIMARY_NAV, { ...live, headwear: { status: "hidden" } }).map((i) => i.key)).not.toContain("tryOn");
+    expect(launchNav(PRIMARY_NAV, { ...live, headwear: { status: "coming_soon" } }).map((i) => i.key)).not.toContain("tryOn");
+    expect(launchNav(PRIMARY_NAV, live).find((i) => i.key === "tryOn")?.soon).toBe(false);
+  });
 });

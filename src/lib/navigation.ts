@@ -55,13 +55,16 @@ const CATEGORY_NAV: Partial<Record<NavKey, "headwear" | "apparel">> = { caps: "h
 
 /**
  * PRIMARY_NAV for the current Category Status (ADR 0022): a Hidden category's link is
- * removed and a Coming Soon one is flagged `soon` for its badge.
+ * removed, a Coming Soon one is flagged `soon` for its badge, and Try-On is removed
+ * unless Caps are Live.
  */
 export function launchNav(
   items: readonly NavItem[],
   launches: Record<"headwear" | "apparel", { status: "live" | "coming_soon" | "hidden" }>
 ): (NavItem & { soon: boolean })[] {
   return items.flatMap((item) => {
+    // Try-On is caps only: it goes whenever Caps are not Live.
+    if (item.key === "tryOn" && launches.headwear.status !== "live") return [];
     const category = CATEGORY_NAV[item.key];
     const status = category ? launches[category].status : "live";
     return status === "hidden" ? [] : [{ ...item, soon: status === "coming_soon" }];
