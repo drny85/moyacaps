@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 import { convexTest } from "convex-test";
 import { describe, expect, it } from "vitest";
-import { api } from "../_generated/api";
+import { api, internal } from "../_generated/api";
 import schema from "../schema";
 import { PRIMARY_ADMIN_EMAIL } from "../lib/auth";
 import { SEED_VARIANTS } from "./data";
@@ -60,5 +60,27 @@ describe("seedAll", () => {
   it("requires an administrator", async () => {
     const { t } = setup();
     await expect(t.mutation(api.catalog.migrations.seedAll, {})).rejects.toThrow();
+  });
+});
+
+describe("backfillBadges", () => {
+  it("fills a featured product with no badge, and keeps a badge the Administrator cleared", async () => {
+    const { t } = setup();
+    await t.run(async (ctx) => {
+      await ctx.db.insert("variants", { ...cap, variantId: "never-set", isFeatured: true });
+      await ctx.db.insert("variants", { ...cap, variantId: "cleared", isFeatured: true, badgeTextEn: "", badgeTextEs: "" });
+      await ctx.db.insert("variants", { ...cap, variantId: "custom", isFeatured: true, badgeTextEn: "Mine", badgeTextEs: "Mía" });
+      await ctx.db.insert("variants", { ...cap, variantId: "plain" });
+    });
+    expect(await t.mutation(internal.catalog.migrations.backfillBadges, {})).toEqual({ updated: 1 });
+    const badges = await t.run(async (ctx) =>
+      Object.fromEntries((await ctx.db.query("variants").take(10)).map((v) => [v.variantId, [v.badgeTextEn ?? null, v.badgeTextEs ?? null]]))
+    );
+    expect(badges).toEqual({
+      "never-set": ["Signature Edition", "Edición Insignia"],
+      cleared: ["", ""],
+      custom: ["Mine", "Mía"],
+      plain: [null, null],
+    });
   });
 });

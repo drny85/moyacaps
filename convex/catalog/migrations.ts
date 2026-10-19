@@ -191,7 +191,8 @@ export const setApparelPriceUsd = internalMutation({
 
 /**
  * Fill the storefront badge text on featured products that have none, from the copy that
- * was hardcoded in `toCapVariant`. Idempotent: rows with a badge or not featured are left alone.
+ * was hardcoded in `toCapVariant`. Idempotent: rows with a badge (even a cleared, empty one) or
+ * not featured are left alone.
  */
 export const backfillBadges = internalMutation({
   args: {},
@@ -200,7 +201,8 @@ export const backfillBadges = internalMutation({
     const variants = await ctx.db.query("variants").take(MAX_CATALOG_VARIANTS);
     let updated = 0;
     for (const variant of variants) {
-      if (!variant.isFeatured || variant.badgeTextEn || variant.badgeTextEs) continue;
+      // "" is a badge the Administrator cleared on purpose; only a never-set badge is filled.
+      if (!variant.isFeatured || variant.badgeTextEn !== undefined || variant.badgeTextEs !== undefined) continue;
       const isTee = variantCategory(variant) === "apparel";
       await ctx.db.patch("variants", variant._id, {
         badgeTextEn: isTee ? "Heavyweight Drop" : "Signature Edition",
