@@ -52,4 +52,11 @@ crons.interval(
   {}
 );
 
+crons.interval(
+  "product-image-orphan-cleanup",
+  { hours: 24 },
+  internal.catalog.images.cleanup.sweepOrphans,
+  {}
+);
+
 export default crons;

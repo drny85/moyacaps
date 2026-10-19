@@ -9,7 +9,8 @@ import { internalMutation, mutation, query } from "../../_generated/server";
 import type { MutationCtx, QueryCtx } from "../../_generated/server";
 import { requireAdmin } from "../../lib/auth";
 import { actorEmail, recordCatalogEvent } from "../audit";
-import { deleteStorageQuietly, listCatalogVariants, requireActiveVariant } from "../shared";
+import { deleteStorageQuietly, requireActiveVariant } from "../shared";
+import { isStorageIdReferenced } from "./references";
 import { capAngleValidator, imageRoleValidator, imageRuleError } from "./validators";
 import { isValidSlot, sameSlot, type ImageSlot } from "./slots";
 
@@ -198,13 +199,7 @@ export const deleteStorageFile = internalMutation({
   args: { storageId: v.id("_storage") },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const stillUsed = await ctx.db
-      .query("productImages")
-      .withIndex("by_storageId", (q) => q.eq("storageId", args.storageId))
-      .first();
-    // Legacy single-image field (dropped in a later task); catalog-sized scan.
-    const legacyUse = stillUsed ? null : (await listCatalogVariants(ctx)).some((x) => x.storageId === args.storageId);
-    if (!stillUsed && !legacyUse) await deleteStorageQuietly(ctx, args.storageId);
+    if (!(await isStorageIdReferenced(ctx, args.storageId))) await deleteStorageQuietly(ctx, args.storageId);
     return null;
   },
 });
