@@ -41,8 +41,16 @@ A themed design release encompassing multiple colorways and silhouettes (e.g., t
 _Avoid_: Category, department, bundle
 
 **Product**:
-Any sellable item in the storefront, either a Cap or a Heavyweight Tee, browsed, filtered and displayed through one shared card and one product page.
+Any sellable item in the storefront, either a Cap or a Heavyweight Tee, browsed, filtered and displayed through one shared card and one product page. A Product starts hidden; Customers see it only once an Administrator makes it visible and its category's Category Status is Live.
 _Avoid_: Item, cap (when meaning tees too), listing
+
+**Category Status**:
+Whether a category (Caps or Tees) is **Live** (its visible Products are shown and sellable), **Coming Soon** (a Coming Soon Teaser shows instead of Products) or **Hidden** (the category is gone from the storefront). Set by an Administrator, optionally with a launch date that turns it Live automatically (ADR 0022).
+_Avoid_: Category toggle, category flag, store mode
+
+**Coming Soon Teaser**:
+What a Coming Soon category shows in place of its Products: a headline, an optional countdown to its launch date, and a sign-up to be notified when it goes Live.
+_Avoid_: Splash page, placeholder, waitlist page
 
 **Catalog Shot**:
 The canonical 4:5 product image and the only image role allowed in grids and cards: a Cap alone on the shared studio backdrop, or (until flat-lay photos exist) a Heavyweight Tee cropped from its on-model photo.

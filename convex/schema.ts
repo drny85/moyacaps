@@ -1,5 +1,6 @@
 import { defineSchema, defineTable } from "convex/server";
 import { capAngleValidator, imageRoleValidator } from "./catalog/images/validators";
+import { storedCategoryLaunchValidator } from "./settings/launch";
 import { v } from "convex/values";
 
 export default defineSchema({
@@ -240,6 +241,10 @@ export default defineSchema({
     key: v.literal("default"),
     flatShippingFeeUsd: v.number(),
     freeShippingThresholdUnits: v.number(),
+    // Category Status per category (ADR 0022); absent means every category is Live.
+    categoryLaunch: v.optional(
+      v.object({ headwear: storedCategoryLaunchValidator, apparel: storedCategoryLaunchValidator })
+    ),
     updatedAt: v.number(),
   }).index("by_key", ["key"]),
   // Admin-managed product photos in Convex storage (ADR 0021). Reads fall back to legacy string fields.

@@ -118,3 +118,44 @@ describe("store settings", () => {
     expect(await whatsappLeadShippingFee(t, 1)).toBe(8);
   });
 });
+
+describe("category launch", () => {
+  it("setCategoryLaunch requires an Administrator", async () => {
+    const { t } = setup();
+    await expect(t.mutation(api.settings.functions.setCategoryLaunch, { category: "apparel", status: "hidden" })).rejects.toThrow();
+  });
+
+  it("setCategoryLaunch keeps shipping settings, trims headlines and records a catalog event", async () => {
+    const { t, admin } = setup();
+    await admin.mutation(api.settings.functions.updateStoreSettings, { flatShippingFeeUsd: 5, freeShippingThresholdUnits: 3 });
+
+    await admin.mutation(api.settings.functions.setCategoryLaunch, {
+      category: "apparel",
+      status: "coming_soon",
+      headlineEn: "  Tees are coming  ",
+      headlineEs: "   ",
+    });
+
+    expect(await t.query(api.settings.functions.getStorefrontLaunch, {})).toEqual({
+      headwear: { status: "live" },
+      apparel: { status: "coming_soon", headlineEn: "Tees are coming" },
+    });
+    expect(await t.query(api.settings.functions.getStoreSettings, {})).toEqual({ flatShippingFeeUsd: 5, freeShippingThresholdUnits: 3 });
+    expect((await events(t)).map((e) => e.type)).toContain("category_launch_set");
+  });
+
+  it("setCategoryLaunch creates the settings row with default shipping when none exists", async () => {
+    const { t, admin } = setup();
+    await admin.mutation(api.settings.functions.setCategoryLaunch, { category: "headwear", status: "hidden" });
+    expect(await t.query(api.settings.functions.getStoreSettings, {})).toEqual(DEFAULT_SHIPPING_SETTINGS);
+    expect((await t.query(api.settings.functions.getStorefrontLaunch, {})).headwear).toEqual({ status: "hidden" });
+    expect(await rows(t)).toHaveLength(1);
+  });
+
+  it("setCategoryLaunch rejects invalid input with field errors", async () => {
+    const { admin } = setup();
+    await expect(
+      admin.mutation(api.settings.functions.setCategoryLaunch, { category: "apparel", status: "live", launchAt: Date.now() + 60_000 }),
+    ).rejects.toThrow(ConvexError);
+  });
+});
