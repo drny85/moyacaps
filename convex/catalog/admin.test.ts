@@ -626,3 +626,28 @@ describe("archive, restore and purge", () => {
     expect(await admin.query(api.catalog.drops.getAllDropsAdmin, { clientTime: 1 })).toEqual([]);
   });
 });
+
+describe("getAllProductsAdmin", () => {
+  it("lists each tee's SKUs, and none for a cap", async () => {
+    const { admin } = setup();
+    await admin.mutation(api.catalog.admin.createVariant, cap);
+    const colorway = (id: string) => ({ id, nameEn: id, nameEs: id, hex: "#000000", borderHex: "#111111" });
+    await admin.mutation(api.catalog.admin.createVariant, {
+      ...cap,
+      variantId: "skull-tee",
+      stock: undefined,
+      category: "apparel",
+      silhouette: "tee",
+      colorways: [colorway("black"), colorway("white")],
+      sizes: ["M", "L"],
+      defaultColorway: "black",
+    });
+    await admin.mutation(api.catalog.admin.setTeeSkuStock, { variantId: "skull-tee", colorway: "black", size: "M", stock: 3 });
+
+    const { variants } = await admin.query(api.catalog.admin.getAllProductsAdmin, {});
+    const tee = variants.find((x) => x.variantId === "skull-tee");
+    expect(tee?.skus).toHaveLength(4);
+    expect(tee?.skus).toContainEqual({ colorway: "black", size: "M", stock: 3 });
+    expect(variants.find((x) => x.variantId === cap.variantId)?.skus).toEqual([]);
+  });
+});

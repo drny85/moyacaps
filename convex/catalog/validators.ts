@@ -12,12 +12,17 @@ export const resolvedVariant = variantDoc.extend({
 
 export const variantWithSubscribers = resolvedVariant.extend({ subscribersCount: v.number() });
 
+const skuStock = v.object({ colorway: v.string(), size: v.string(), stock: v.number() });
+
+/** An admin product list row: its SKUs (empty for caps) feed the tee stock totals and the SKU matrix. */
+export const adminProductRow = variantWithSubscribers.extend({ skus: v.array(skuStock) });
+
 export const dropStatusValidator = v.union(v.literal("scheduled"), v.literal("live"), v.literal("archived"));
 
 export const adminDropRow = variantWithSubscribers.extend({ computedStatus: dropStatusValidator });
 
 export const productPage = resolvedVariant.extend({
-  skus: v.array(v.object({ colorway: v.string(), size: v.string(), stock: v.number() })),
+  skus: v.array(skuStock),
 });
 
 export const lineStockResult = v.union(
