@@ -100,21 +100,6 @@ describe("derived product image", () => {
     expect(validatedItems[0].image).not.toBe("");
   });
 
-  it("snapshots the catalog row URL on a WhatsApp lead", async () => {
-    const { t, url } = await productWithCatalogRow();
-    const lead = await t.mutation(internal.orders.whatsapp.createWhatsAppOrderLead, {
-      items: [{ variantId: cap.variantId, name: cap.nameEn, quantity: 1, price: cap.priceUsd, image: "" }],
-      currency: "USD",
-      subtotal: cap.priceUsd,
-      shippingFee: 0,
-      total: cap.priceUsd,
-      customerName: "Test Buyer",
-      customerEmail: "buyer@test.com",
-    });
-    expect(lead.items[0].image).toBe(url);
-    const order = await t.run((ctx) => ctx.db.get("orders", lead.orderId));
-    expect(order?.items[0].image).toBe(url);
-  });
 });
 
 describe("requireVariant", () => {

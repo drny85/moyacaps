@@ -11,7 +11,6 @@ import {
   DollarSign,
   Package,
   TrendingUp,
-  MessageCircle,
   AlertTriangle,
   ArrowRight,
   ShieldAlert,
@@ -74,7 +73,7 @@ export default function AdminAnalyticsPage() {
     return (
       <div className="space-y-6 animate-pulse">
         <div className="h-8 bg-zinc-200 dark:bg-white/[0.06] rounded-xl w-64" />
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="h-32 bg-zinc-200 dark:bg-white/[0.04] rounded-2xl" />
           ))}
@@ -92,7 +91,6 @@ export default function AdminAnalyticsPage() {
     completedOrdersCount,
     totalOrdersCount,
     aov,
-    whatsappPipeline,
     paymentBreakdown,
     statusCounts,
     topVariants,
@@ -145,8 +143,8 @@ export default function AdminAnalyticsPage() {
 
       <StoreSettingsCard />
 
-      {/* ── Top 4 Key Metric Cards ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* ── Top 3 Key Metric Cards ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {/* Gross Revenue */}
         <div className="bg-white dark:bg-[#0c0c14] border border-zinc-200 dark:border-white/[0.06] rounded-2xl p-5 shadow-xs relative overflow-hidden group">
           <div className="absolute top-0 right-0 p-4 text-zinc-100 dark:text-white/[0.03] pointer-events-none -mr-2 -mt-2 group-hover:scale-110 transition-transform">
@@ -186,27 +184,6 @@ export default function AdminAnalyticsPage() {
           </div>
           <div className="mt-2 flex items-center gap-2 text-[11px] text-zinc-600 dark:text-zinc-400">
             <span className="font-semibold text-zinc-800 dark:text-zinc-200">{totalOrdersCount}</span> total checkout attempts
-          </div>
-        </div>
-
-        {/* WhatsApp Pipeline */}
-        <div className="bg-white dark:bg-[#0c0c14] border border-zinc-200 dark:border-white/[0.06] rounded-2xl p-5 shadow-xs relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-4 text-zinc-100 dark:text-white/[0.03] pointer-events-none -mr-2 -mt-2 group-hover:scale-110 transition-transform">
-            <MessageCircle className="w-20 h-20" />
-          </div>
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-[11px] font-mono uppercase tracking-wider text-zinc-600 dark:text-zinc-400 font-semibold">
-              {t("metrics.whatsappPipeline")}
-            </span>
-            <span className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-              <MessageCircle className="w-4 h-4" />
-            </span>
-          </div>
-          <div className="text-2xl sm:text-3xl font-display font-bold text-emerald-600 dark:text-emerald-400 tracking-tight">
-            ${whatsappPipeline.value.toLocaleString()} <span className="text-xs font-mono text-zinc-600 dark:text-zinc-400">USD</span>
-          </div>
-          <div className="mt-2 flex items-center gap-1.5 text-[11px] text-zinc-600 dark:text-zinc-400">
-            <span className="font-semibold text-zinc-800 dark:text-zinc-200">{whatsappPipeline.count}</span> awaiting confirmation
           </div>
         </div>
 
@@ -350,15 +327,6 @@ export default function AdminAnalyticsPage() {
             </div>
           </div>
 
-          <div className="pt-4 border-t border-zinc-100 dark:border-white/[0.04] flex items-center justify-between text-[11px] text-zinc-600 dark:text-zinc-400">
-            <span>Active WhatsApp Leads:</span>
-            <Link
-              href="/admin/orders"
-              className="font-semibold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1"
-            >
-              {whatsappPipeline.count} orders awaiting action <ArrowRight className="w-3 h-3" />
-            </Link>
-          </div>
         </div>
       </div>
 

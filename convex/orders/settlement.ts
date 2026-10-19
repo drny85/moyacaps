@@ -11,6 +11,7 @@ import {
   appendNote,
   decideStripeSettlement,
   hasProcessedWebhookEvent,
+  isPaidLike,
   newTrackingNumber,
   planRefund,
   withWebhookEventId,
@@ -205,8 +206,6 @@ export const createOrUpdateStripeOrder = internalMutation({
     hostedInvoiceUrl: v.optional(v.string()),
     // Stripe event id that triggered this settlement (bounded replay-dedupe guard).
     webhookEventId: v.optional(v.string()),
-    // True when the session was issued for a WhatsApp concierge lead order.
-    isWhatsAppOrder: v.optional(v.boolean()),
   },
   returns: v.id("orders"),
   handler: async (ctx, args) => {
@@ -224,9 +223,8 @@ export const createOrUpdateStripeOrder = internalMutation({
         return existing._id;
       }
 
-      // Double-settlement guard (M2): order was already settled (typically Zelle marked paid
-      // by staff) and now a Stripe payment landed on it anyway. NEVER silently overwrite —
-      // flag for human review/refund decision.
+      // Double-settlement guard (M2): order was already settled and a different Stripe
+      // session paid it again. NEVER silently overwrite — flag for human review/refund decision.
       if (decision === "double_settlement") {
         await ctx.runMutation(internal.orders.functions.recordPaymentEvent, {
           orderId: existing._id,
@@ -234,12 +232,12 @@ export const createOrUpdateStripeOrder = internalMutation({
           type: "double_settlement_attempted",
           stripeEventId: args.webhookEventId,
           stripeSessionId: args.stripeSessionId,
-          details: `Order settled as ${existing.paymentMethod.toUpperCase()} but Stripe session ${args.stripeSessionId} also completed with amount ${args.total}. Manual refund review required.`,
+          details: `Order already ${existing.status} via session ${existing.stripeSessionId ?? "none"} but Stripe session ${args.stripeSessionId} also completed with amount ${args.total}. Manual refund review required.`,
         });
         await ctx.db.patch(existing._id, {
           adminNotes: appendNote(
             existing.adminNotes,
-            `⚠️ DOUBLE SETTLEMENT: Stripe session ${args.stripeSessionId} paid $${args.total} after order was already ${existing.status} via ${existing.paymentMethod}. Refund one side manually.`
+            `⚠️ DOUBLE SETTLEMENT: Stripe session ${args.stripeSessionId} paid $${args.total} after order was already ${existing.status}. Refund one side manually.`
           ),
           updatedAt: Date.now(),
         });
@@ -267,7 +265,7 @@ export const createOrUpdateStripeOrder = internalMutation({
         return existing._id;
       }
 
-      const wasAwaitingPayment = existing.status === "whatsapp_initiated";
+      const wasAwaitingPayment = !isPaidLike(existing.status);
 
       // Update with latest details and ensure paid
       await ctx.db.patch(existing._id, {
@@ -306,7 +304,7 @@ export const createOrUpdateStripeOrder = internalMutation({
         details: JSON.stringify({ total: args.total, tax: args.tax }),
       });
 
-      // M4: a WhatsApp lead settling through Stripe never hit the insert branch below, so the
+      // M4: an order created before payment never hits the insert branch below, so the
       // customer receipt must be queued here or the payer gets no confirmation email.
       if (wasAwaitingPayment && hasEmail(args.customerEmail)) {
         await ctx.scheduler.runAfter(0, internal.notifications.emails.sendCustomerReceipt, {
@@ -373,7 +371,6 @@ export const createOrUpdateStripeOrder = internalMutation({
       total: args.total,
       currency: args.currency,
       paymentMethod: "stripe",
-      isWhatsAppPending: false,
       customerName: args.customerName,
       customerEmail: args.customerEmail,
       customerPhone: args.customerPhone,

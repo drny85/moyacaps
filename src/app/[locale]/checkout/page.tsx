@@ -8,7 +8,7 @@ import { useStore } from "@/store/useStore";
 import { useStoreSettings } from "@/hooks/useStoreSettings";
 import { cartVariantIds } from "@/lib/cartVariantIds";
 import { formatUsd } from "@/lib/whatsapp";
-import { useSafeUser, SafeSignInButton } from "@/lib/useSafeUser";
+import { useSafeUser } from "@/lib/useSafeUser";
 import { useAction, useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import {
@@ -26,7 +26,7 @@ import { m } from "framer-motion";
 export default function CheckoutPage() {
   const t = useTranslations("checkout");
   const locale = useLocale();
-  const { user, isLoaded, isSignedIn } = useSafeUser();
+  const { user, isLoaded } = useSafeUser();
   const { cart, currency } = useStore();
   const createCheckoutSession = useAction(api.payments.checkout.createCheckoutSession);
   const convexVariants = useQuery(api.catalog.queries.getCartVariants, { variantIds: cartVariantIds(cart) });
@@ -61,7 +61,7 @@ export default function CheckoutPage() {
   const total = subtotal + shippingFee;
 
   const handleCheckout = async () => {
-    if (cart.length === 0 || !user?.id || isSubmittingRef.current) return;
+    if (cart.length === 0 || isSubmittingRef.current) return;
 
     if (hasUnreleasedDrop) {
       isSubmittingRef.current = false;
@@ -89,8 +89,8 @@ export default function CheckoutPage() {
         currency,
         locale,
         origin: window.location.origin,
-        clerkUserId: user.id,
-        customerEmail: user.primaryEmailAddress?.emailAddress,
+        clerkUserId: user?.id,
+        customerEmail: user?.primaryEmailAddress?.emailAddress,
       });
 
       if (result.url) {
@@ -108,9 +108,9 @@ export default function CheckoutPage() {
     }
   };
 
-  // Automatically initiate checkout as soon as the authenticated user and cart are ready
+  // Automatically initiate checkout as soon as the session state and cart are ready (guests included)
   useEffect(() => {
-    if (isLoaded && isSignedIn && user?.id && cart.length > 0 && convexVariants !== undefined && !hasInitiatedRef.current) {
+    if (isLoaded && cart.length > 0 && convexVariants !== undefined && !hasInitiatedRef.current) {
       if (hasUnreleasedDrop) {
         setStatus("error");
         setErrorMessage(
@@ -123,7 +123,7 @@ export default function CheckoutPage() {
       hasInitiatedRef.current = true;
       handleCheckout();
     }
-  }, [isLoaded, isSignedIn, user?.id, cart.length, convexVariants, hasUnreleasedDrop, locale]);
+  }, [isLoaded, cart.length, convexVariants, hasUnreleasedDrop, locale]);
 
   return (
     <div className="min-h-[70vh] flex items-center justify-center px-4 sm:px-6 lg:px-8 py-12 sm:py-20">
@@ -135,33 +135,6 @@ export default function CheckoutPage() {
             <p className="font-display font-bold text-sm text-zinc-900 dark:text-white">
               Authenticating session...
             </p>
-          </div>
-        ) : !isSignedIn ? (
-          /* Unauthenticated Fallback */
-          <div className="p-8 sm:p-10 rounded-3xl glass-card border border-black/[0.08] dark:border-white/[0.08] text-center space-y-5 shadow-2xl">
-            <div className="w-16 h-16 rounded-2xl bg-moya-red/10 border border-moya-red/20 flex items-center justify-center text-moya-red mx-auto">
-              <ShieldCheck className="w-8 h-8" />
-            </div>
-            <div>
-              <h2 className="text-xl sm:text-2xl font-display font-bold text-zinc-900 dark:text-white">
-                Collector Authentication Required
-              </h2>
-              <p className="text-xs text-zinc-500 mt-1.5 max-w-sm mx-auto">
-                Sign in or register to secure your 0880 drop. You will be redirected immediately to payment.
-              </p>
-            </div>
-            <SafeSignInButton
-              mode="modal"
-              forceRedirectUrl={`/${locale}/checkout`}
-              fallbackRedirectUrl={`/${locale}/checkout`}
-              signUpForceRedirectUrl={`/${locale}/checkout`}
-              signUpFallbackRedirectUrl={`/${locale}/checkout`}
-            >
-              <button className="w-full py-3.5 rounded-2xl bg-moya-red hover:bg-rose-500 text-white font-display font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-xl shadow-moya-red-deep/40">
-                <span>Sign In & Continue</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            </SafeSignInButton>
           </div>
         ) : cart.length === 0 ? (
           /* Empty Bag State */

@@ -96,21 +96,31 @@ describe("planAdminStatusChange", () => {
 describe("decideStripeSettlement", () => {
   it("replays an already-applied event before anything else", () => {
     const existing = order({ status: "cancelled", webhookEventIds: ["evt_1"] });
-    expect(decideStripeSettlement(existing, { webhookEventId: "evt_1" })).toBe("replay");
+    expect(decideStripeSettlement(existing, { webhookEventId: "evt_1", stripeSessionId: "cs_1" })).toBe("replay");
   });
 
-  it("flags a Stripe payment on a settled WhatsApp order as double settlement", () => {
-    expect(decideStripeSettlement(order({ status: "paid", paymentMethod: "whatsapp" }), {})).toBe("double_settlement");
-    expect(decideStripeSettlement(order({ status: "dispatched" }), { isWhatsAppOrder: true })).toBe("double_settlement");
+  it("treats a settled order paid again by its own session as a replay", () => {
+    const existing = order({ status: "dispatched", stripeSessionId: "cs_1" });
+    expect(decideStripeSettlement(existing, { webhookEventId: "evt_3", stripeSessionId: "cs_1" })).toBe("replay");
+  });
+
+  it("flags a settled order paid by a different session as double settlement", () => {
+    expect(decideStripeSettlement(order({ status: "paid", stripeSessionId: "cs_1" }), { stripeSessionId: "cs_2" })).toBe(
+      "double_settlement"
+    );
+    expect(decideStripeSettlement(order({ status: "paid", paymentMethod: "whatsapp" }), { stripeSessionId: "cs_2" })).toBe(
+      "double_settlement"
+    );
   });
 
   it("flags a payment on a cancelled order", () => {
-    expect(decideStripeSettlement(order({ status: "cancelled" }), { webhookEventId: "evt_2" })).toBe("cancelled");
+    expect(decideStripeSettlement(order({ status: "cancelled" }), { webhookEventId: "evt_2", stripeSessionId: "cs_1" })).toBe(
+      "cancelled"
+    );
   });
 
-  it("settles reservations and re-delivered card sessions", () => {
-    expect(decideStripeSettlement(order({ status: "whatsapp_initiated", paymentMethod: "whatsapp" }), { isWhatsAppOrder: true })).toBe("settle");
-    expect(decideStripeSettlement(order({ status: "paid" }), { webhookEventId: "evt_3" })).toBe("settle");
+  it("settles an order still awaiting payment", () => {
+    expect(decideStripeSettlement(order({ status: "pending" }), { stripeSessionId: "cs_1" })).toBe("settle");
   });
 });
 

@@ -50,21 +50,11 @@ export const getAllOrdersAdmin = query({
 
     let orders;
     if (args.status === "needs_attention") {
-      const [paid, whatsapp] = await Promise.all([
-        ctx.db
-          .query("orders")
-          .withIndex("by_status", (q) => q.eq("status", "paid"))
-          .order("desc")
-          .take(maxItems),
-        ctx.db
-          .query("orders")
-          .withIndex("by_status", (q) => q.eq("status", "whatsapp_initiated"))
-          .order("desc")
-          .take(maxItems),
-      ]);
-      orders = [...paid, ...whatsapp]
-        .sort((a, b) => b.createdAt - a.createdAt)
-        .slice(0, maxItems);
+      orders = await ctx.db
+        .query("orders")
+        .withIndex("by_status", (q) => q.eq("status", "paid"))
+        .order("desc")
+        .take(maxItems);
     } else if (args.status === "overdue") {
       const twentyFourHoursAgo = args.clientTime - 24 * 60 * 60 * 1000;
       const paid = await ctx.db
@@ -120,15 +110,10 @@ export const getOrdersAttentionStats = query({
     // Bounded reads via by_status indexes. Operational queues rarely exceed these caps;
     // if they do, the number shown is clamped rather than scanning the whole table.
     const STATS_WINDOW = 1000;
-    const [paidOrders, whatsappOrders, latestOrder, variants] = await Promise.all([
+    const [paidOrders, latestOrder, variants] = await Promise.all([
       ctx.db
         .query("orders")
         .withIndex("by_status", (q) => q.eq("status", "paid"))
-        .order("desc")
-        .take(STATS_WINDOW),
-      ctx.db
-        .query("orders")
-        .withIndex("by_status", (q) => q.eq("status", "whatsapp_initiated"))
         .order("desc")
         .take(STATS_WINDOW),
       ctx.db
@@ -139,7 +124,7 @@ export const getOrdersAttentionStats = query({
       listCatalogVariants(ctx),
     ]);
 
-    return computeAttentionStats(paidOrders, whatsappOrders, latestOrder?.createdAt || 0, variants, args.clientTime);
+    return computeAttentionStats(paidOrders, latestOrder?.createdAt || 0, variants, args.clientTime);
   },
 });
 

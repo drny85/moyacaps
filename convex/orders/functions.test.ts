@@ -66,43 +66,52 @@ async function getEvents(t: T, orderId: string) {
   });
 }
 
-async function createLead(
+async function seedOrder(
   t: T,
   variantId: string,
-  opts: { qty?: number; email?: string; phone?: string; withSession?: boolean } = {}
+  opts: {
+    qty?: number;
+    email?: string;
+    status?: "pending" | "paid" | "dispatched" | "cancelled" | "whatsapp_initiated";
+    paymentMethod?: "stripe" | "whatsapp";
+    stripeSessionId?: string | null;
+    orderNumber?: string;
+  } = {}
 ) {
   const qty = opts.qty ?? 1;
-  const subtotal = qty * 100;
-  return await t.mutation(internal.orders.whatsapp.createWhatsAppOrderLead, {
-    items: [
-      {
-        variantId,
-        name: `Cap ${variantId}`,
-        quantity: qty,
-        price: 100,
-        image: "/img.png",
-      },
-    ],
-    currency: "USD",
-    subtotal,
-    shippingFee: subtotal, // deliberately wrong: the server must recompute canonically
-    total: subtotal,
-    customerName: "Test Buyer",
-    customerEmail: opts.email ?? "buyer@test.com",
-    customerPhone: opts.phone,
-    clerkUserId: "user_cust",
-    paymentUrl:
-      opts.withSession === false ? undefined : "https://checkout.stripe.com/c/pay/cs_test_demo",
-    stripeSessionId: opts.withSession === false ? undefined : "cs_test_demo1",
+  const status = opts.status ?? "paid";
+  const orderNumber = opts.orderNumber ?? `GL-TEST-${Math.floor(Math.random() * 1e6)}`;
+  const stripeSessionId = opts.stripeSessionId === null ? undefined : (opts.stripeSessionId ?? "cs_test_demo1");
+  const orderId = await t.run(async (ctx) => {
+    // Settled orders and legacy reservations hold their units, as in production.
+    if (status === "paid" || status === "dispatched" || status === "whatsapp_initiated") {
+      const variant = await ctx.db
+        .query("variants")
+        .withIndex("by_variantId", (q) => q.eq("variantId", variantId))
+        .first();
+      if (variant) await ctx.db.patch(variant._id, { stock: variant.stock - qty });
+    }
+    return await ctx.db.insert("orders", {
+      orderNumber,
+      customerName: "Test Buyer",
+      customerEmail: opts.email ?? "buyer@test.com",
+      clerkUserId: "user_cust",
+      items: [{ variantId, name: `Cap ${variantId}`, quantity: qty, price: 100, image: "/img.png" }],
+      currency: "USD",
+      subtotal: qty * 100,
+      shippingFee: 0,
+      total: qty * 100,
+      status,
+      paymentMethod: opts.paymentMethod ?? "stripe",
+      stripeSessionId,
+      paymentUrl: stripeSessionId ? "https://checkout.stripe.com/c/pay/cs_test_demo" : undefined,
+      createdAt: Date.now(),
+    });
   });
+  return { orderId, orderNumber };
 }
 
-async function settleStripe(
-  t: T,
-  orderNumber: string,
-  sessionId: string,
-  opts: { eventId?: string; isWhatsApp?: boolean } = {}
-) {
+async function settleStripe(t: T, orderNumber: string, sessionId: string, opts: { eventId?: string } = {}) {
   return await t.mutation(internal.orders.settlement.createOrUpdateStripeOrder, {
     stripeSessionId: sessionId,
     orderNumber,
@@ -114,10 +123,9 @@ async function settleStripe(
     currency: "USD",
     subtotal: 100,
     shippingFee: 0,
-    total: opts.isWhatsApp ? 108.5 : 100,
+    total: 108.5,
     tax: 8.5,
     webhookEventId: opts.eventId,
-    isWhatsAppOrder: opts.isWhatsApp ?? true,
   });
 }
 
@@ -126,12 +134,10 @@ describe("API surface lockdown (security regression locks)", () => {
     // Each @ts-expect-error FAILS the build if the named function becomes public again.
     // eslint-disable-next-line @typescript-eslint/no-unused-expressions
     (() => {
-      // @ts-expect-error updateOrderPaymentUrl must remain an internalMutation
-      void api.orders.whatsapp.updateOrderPaymentUrl;
       // @ts-expect-error attachStripeCustomerInternal must remain internal
       void api.orders.settlement.attachStripeCustomerInternal;
-      // @ts-expect-error createWhatsAppOrderLead must remain internal
-      void api.orders.whatsapp.createWhatsAppOrderLead;
+      // @ts-expect-error cancelOpenWhatsAppReservations must remain internal
+      void api.orders.migrations.cancelOpenWhatsAppReservations;
       // @ts-expect-error cancelOrder must remain internal
       void api.orders.functions.cancelOrder;
       // @ts-expect-error cancelOrderAdmin must remain internal
@@ -147,255 +153,69 @@ describe("API surface lockdown (security regression locks)", () => {
   });
 });
 
-describe("WhatsApp lead creation", () => {
-  it("reserves stock with server-verified totals and links the session", async () => {
-    const tt = t();
-    await seedVariant(tt, "V1", 5);
-    const lead = await createLead(tt, "V1", { qty: 2 });
-
-    expect(lead.subtotal).toBe(200);
-    expect(lead.shippingFee).toBe(0); // 2+ caps → free shipping, server-computed
-    expect(lead.total).toBe(200);
-    expect(lead.orderNumber).toMatch(/^GL-WA-\d{8}$/);
-    expect(await getStock(tt, "V1")).toBe(3); // 5 - 2 reserved
-
-    const order = await getOrder(tt, lead.orderNumber);
-    expect(order?.status).toBe("whatsapp_initiated");
-    expect(order?.stripeSessionId).toBe("cs_test_demo1");
-    expect(order?.stripeSessionIds).toEqual(["cs_test_demo1"]);
-    expect(order?.paymentUrl).toBeDefined();
-
-    const events = await getEvents(tt, lead.orderId);
-    expect(events.map((e) => e.type)).toContain("lead_created");
-    await drain(tt);
-  });
-
-  it("rejects quantities exceeding live stock", async () => {
-    const tt = t();
-    await seedVariant(tt, "V1", 1);
-    await expect(createLead(tt, "V1", { qty: 2 })).rejects.toThrow(/Insufficient stock/);
-    expect(await getStock(tt, "V1")).toBe(1);
-    await drain(tt);
-  });
-
-  it("enforces the anti-hoarding cap of 3 active leads per email", async () => {
-    const tt = t();
-    await seedVariant(tt, "V1", 50);
-    for (let i = 0; i < 3; i++) {
-      await createLead(tt, "V1", { email: "hoarder@test.com" });
-    }
-    await expect(
-      createLead(tt, "V1", { email: "hoarder@test.com" })
-    ).rejects.toThrow(/MAX_ACTIVE_RESERVATIONS/);
-    await drain(tt);
-  });
-
-  it("cancel-and-recreate cannot launder the reservation window cap", async () => {
-    const tt = t();
-    await seedVariant(tt, "V1", 50);
-    // Create 5 reservations with the same email, cancelling each immediately so the
-    // ACTIVE count never reaches 3 — only a window over ALL created reservations stops this.
-    for (let i = 0; i < 5; i++) {
-      const lead = await createLead(tt, "V1", { email: "churn@test.com" });
-      await customer(tt).mutation(internal.orders.functions.cancelOrder, {
-        orderId: lead.orderId,
-        clerkUserId: "user_cust",
-      });
-    }
-    await expect(
-      createLead(tt, "V1", { email: "churn@test.com" })
-    ).rejects.toThrow(/RESERVATION_RATE_LIMITED/);
-    await drain(tt);
-  });
-
-  it("uses phone as a secondary identity anchor when email differs", async () => {
-    const tt = t();
-    await seedVariant(tt, "V1", 50);
-    for (let i = 0; i < 3; i++) {
-      await createLead(tt, "V1", { email: `x${i}@test.com`, phone: "+1 305 111 2222" });
-    }
-    // Same phone (different formatting), fresh email → still blocked by the phone anchor.
-    await expect(
-      createLead(tt, "V1", { email: "fresh@test.com", phone: "13051112222" })
-    ).rejects.toThrow(/MAX_ACTIVE_RESERVATIONS/);
-    await drain(tt);
-  });
-});
-
-describe("Reservation expiry state machine", () => {
-  it("a stale scheduled expire job self-vetoes inside an extended hold", async () => {
-    const tt = t();
-    await seedVariant(tt, "V1", 5);
-    const lead = await createLead(tt, "V1");
-
-    // Admin dispatches the link → hold extended 24h from dispatch.
-    const dispatched = await admin(tt).mutation(api.orders.whatsapp.dispatchWhatsAppPaymentLinkAdmin, {
-      orderId: lead.orderId,
-    });
-    expect(dispatched.reservationExpiresAt).toBeGreaterThan(Date.now());
-    const order0 = await getOrder(tt, lead.orderNumber);
-    expect(order0?.paymentLinkSentAt).toBeDefined();
-
-    // Original (stale) expiration job fires early → must NOT cancel.
-    await tt.mutation(internal.orders.whatsapp.expireWhatsAppOrderLead, { orderId: lead.orderId });
-    const order = await getOrder(tt, lead.orderNumber);
-    expect(order?.status).toBe("whatsapp_initiated");
-    expect(await getStock(tt, "V1")).toBe(4); // still reserved
-    await drain(tt);
-  });
-
-  it("releases stock once the hold window truly elapses", async () => {
-    const tt = t();
-    await seedVariant(tt, "V1", 5);
-    const lead = await createLead(tt, "V1");
-
-    // Force the window to elapse (as if 24h passed).
-    await tt.run(async (ctx) => {
-      await ctx.db.patch(lead.orderId, { reservationExpiresAt: Date.now() - 1000 });
-    });
-
-    await tt.mutation(internal.orders.whatsapp.expireWhatsAppOrderLead, { orderId: lead.orderId });
-    const order = await getOrder(tt, lead.orderNumber);
-    expect(order?.status).toBe("cancelled");
-    expect(await getStock(tt, "V1")).toBe(5); // restored
-
-    const events = await getEvents(tt, lead.orderId);
-    expect(events.map((e) => e.type)).toContain("inventory_released");
-    await drain(tt);
-  });
-
-  it("re-running the expiry job after cancellation is a no-op (idempotent)", async () => {
-    const tt = t();
-    await seedVariant(tt, "V1", 5);
-    const lead = await createLead(tt, "V1");
-    await tt.run(async (ctx) => {
-      await ctx.db.patch(lead.orderId, { reservationExpiresAt: Date.now() - 1000 });
-    });
-    await tt.mutation(internal.orders.whatsapp.expireWhatsAppOrderLead, { orderId: lead.orderId });
-    await tt.mutation(internal.orders.whatsapp.expireWhatsAppOrderLead, { orderId: lead.orderId });
-    expect(await getStock(tt, "V1")).toBe(5); // NOT restored twice
-    await drain(tt);
-  });
-
-  it("reconciliation query only returns elapsed holds", async () => {
-    const tt = t();
-    await seedVariant(tt, "V1", 5);
-    const active = await createLead(tt, "V1");
-    await tt.run(async (ctx) => {
-      await ctx.db.patch(active.orderId, { reservationExpiresAt: Date.now() - 1 });
-    });
-
-    const stale = await tt.query(internal.orders.whatsapp.getExpiredWhatsAppReservationsInternal, {
-      now: Date.now(),
-      limit: 100,
-    });
-    expect(stale.map((o) => o._id)).toContain(active.orderId);
-    await drain(tt);
-  });
-});
-
 describe("Settlement guards (double-payment prevention)", () => {
-  it("Zelle settlement keeps paymentMethod=whatsapp and assigns tracking", async () => {
+  it("a different session paying a settled order is flagged, never silently applied", async () => {
     const tt = t();
     await seedVariant(tt, "V1", 5);
-    const lead = await createLead(tt, "V1", { withSession: false });
+    const order = await seedOrder(tt, "V1", { stripeSessionId: "cs_first" });
 
-    const res = await admin(tt).mutation(api.orders.whatsapp.markWhatsAppOrderPaidAdmin, {
-      orderId: lead.orderId,
-      notes: "Zelle ref 8842",
-    });
-    expect(res.trackingNumber).toMatch(/^GL-TRK-\d{6}$/);
+    await settleStripe(tt, order.orderNumber, "cs_test_late", { eventId: "evt_late" });
 
-    const order = await getOrder(tt, lead.orderNumber);
-    expect(order?.status).toBe("paid");
-    expect(order?.paymentMethod).toBe("whatsapp");
+    const after = await getOrder(tt, order.orderNumber);
+    expect(after?.status).toBe("paid");
+    expect(after?.stripeSessionId).toBe("cs_first");
+    expect(after?.adminNotes).toContain("DOUBLE SETTLEMENT");
+    expect(await getStock(tt, "V1")).toBe(4);
 
-    const events = await getEvents(tt, lead.orderId);
-    expect(events.map((e) => e.type)).toContain("zelle_settled");
+    const events = await getEvents(tt, order.orderId);
+    expect(events.map((e) => e.type)).toContain("double_settlement_attempted");
     await drain(tt);
   });
 
-  it("a Stripe webhook after Zelle settlement is flagged, never silently applied", async () => {
+  it("a re-delivered payment for the order's own session never regresses a dispatched order", async () => {
     const tt = t();
     await seedVariant(tt, "V1", 5);
-    const lead = await createLead(tt, "V1", { withSession: false });
-    await admin(tt).mutation(api.orders.whatsapp.markWhatsAppOrderPaidAdmin, { orderId: lead.orderId });
+    const order = await seedOrder(tt, "V1", { status: "dispatched", stripeSessionId: "cs_own" });
 
-    await settleStripe(tt, lead.orderNumber, "cs_test_late", { eventId: "evt_late" });
+    await settleStripe(tt, order.orderNumber, "cs_own", { eventId: "evt_new_id" });
 
-    const order = await getOrder(tt, lead.orderNumber);
-    expect(order?.status).toBe("paid");
-    expect(order?.paymentMethod).toBe("whatsapp"); // NOT flipped to stripe
-    expect(order?.adminNotes).toContain("DOUBLE SETTLEMENT");
-
-    const events = await getEvents(tt, lead.orderId);
-    expect(events.map((e) => e.type)).toContain("double_settlement_attempted");
+    const after = await getOrder(tt, order.orderNumber);
+    expect(after?.status).toBe("dispatched");
+    const events = await getEvents(tt, order.orderId);
+    expect(events).toHaveLength(0);
     await drain(tt);
   });
 
   it("settling a cancelled order is refused and flagged", async () => {
     const tt = t();
     await seedVariant(tt, "V1", 5);
-    const lead = await createLead(tt, "V1", { withSession: false });
+    const order = await seedOrder(tt, "V1", { stripeSessionId: null });
     await customer(tt).mutation(internal.orders.functions.cancelOrder, {
-      orderId: lead.orderId,
+      orderId: order.orderId,
       clerkUserId: "user_cust",
     });
 
-    await settleStripe(tt, lead.orderNumber, "cs_test_late", { eventId: "evt_late2" });
+    await settleStripe(tt, order.orderNumber, "cs_test_late", { eventId: "evt_late2" });
 
-    const order = await getOrder(tt, lead.orderNumber);
-    expect(order?.status).toBe("cancelled");
-    const events = await getEvents(tt, lead.orderId);
+    const after = await getOrder(tt, order.orderNumber);
+    expect(after?.status).toBe("cancelled");
+    const events = await getEvents(tt, order.orderId);
     expect(events.map((e) => e.type)).toContain("double_settlement_attempted");
-    await drain(tt);
-  });
-
-  it("refuses to mark a cancelled reservation as paid", async () => {
-    const tt = t();
-    await seedVariant(tt, "V1", 5);
-    const lead = await createLead(tt, "V1", { withSession: false });
-    await customer(tt).mutation(internal.orders.functions.cancelOrder, {
-      orderId: lead.orderId,
-      clerkUserId: "user_cust",
-    });
-    await expect(
-      admin(tt).mutation(api.orders.whatsapp.markWhatsAppOrderPaidAdmin, { orderId: lead.orderId })
-    ).rejects.toThrow(/cancelled/i);
     await drain(tt);
   });
 });
 
-describe("Stripe settlement of WhatsApp leads", () => {
-  it("settles the lead and never re-decrements reserved stock", async () => {
-    const tt = t();
-    await seedVariant(tt, "V1", 5);
-    const lead = await createLead(tt, "V1");
-
-    await settleStripe(tt, lead.orderNumber, "cs_test_demo1", { eventId: "evt_ok" });
-
-    const order = await getOrder(tt, lead.orderNumber);
-    expect(order?.status).toBe("paid");
-    expect(order?.paymentMethod).toBe("stripe");
-    expect(order?.trackingNumber).toMatch(/^GL-TRK-\d{6}$/);
-    expect(order?.tax).toBe(8.5);
-    expect(await getStock(tt, "V1")).toBe(4); // stock was already reserved by the lead
-
-    const events = await getEvents(tt, lead.orderId);
-    expect(events.map((e) => e.type)).toContain("stripe_settled");
-    await drain(tt);
-  });
-
+describe("Stripe settlement", () => {
   it("replays the same webhook event id exactly once", async () => {
     const tt = t();
     await seedVariant(tt, "V1", 5);
-    const lead = await createLead(tt, "V1");
 
-    await settleStripe(tt, lead.orderNumber, "cs_test_demo1", { eventId: "evt_dup" });
-    await settleStripe(tt, lead.orderNumber, "cs_test_demo1", { eventId: "evt_dup" });
+    const orderId = await settleStripe(tt, "GL-DUP-1", "cs_dup", { eventId: "evt_dup" });
+    await settleStripe(tt, "GL-DUP-1", "cs_dup", { eventId: "evt_dup" });
 
-    const events = await getEvents(tt, lead.orderId);
+    const events = await getEvents(tt, orderId);
     expect(events.filter((e) => e.type === "stripe_settled")).toHaveLength(1);
+    expect(await getStock(tt, "V1")).toBe(4);
     await drain(tt);
   });
 
@@ -414,7 +234,6 @@ describe("Stripe settlement of WhatsApp leads", () => {
       shippingFee: 0,
       total: 200,
       webhookEventId: "evt_direct",
-      isWhatsAppOrder: false,
     });
     expect(await getStock(tt, "V1")).toBe(3); // direct orders deduct at settlement
     const order = await getOrder(tt, "GL-DIRECT-1");
@@ -424,49 +243,34 @@ describe("Stripe settlement of WhatsApp leads", () => {
 });
 
 describe("updateOrderStatusAdmin state machine", () => {
-  it("rejects settling a whatsapp reservation through the generic endpoint", async () => {
-    const tt = t();
-    await seedVariant(tt, "V1", 5);
-    const lead = await createLead(tt, "V1");
-    await expect(
-      admin(tt).mutation(api.orders.desk.updateOrderStatusAdmin, {
-        orderId: lead.orderId,
-        newStatus: "dispatched",
-      })
-    ).rejects.toThrow(/Mark as Paid \(Zelle\)/);
-    await drain(tt);
-  });
-
   it("rejects regressing a settled order and allows paid→dispatched", async () => {
     const tt = t();
     await seedVariant(tt, "V1", 5);
-    const lead = await createLead(tt, "V1");
-    await settleStripe(tt, lead.orderNumber, "cs_test_demo1", { eventId: "evt_sm" });
+    const order = await seedOrder(tt, "V1");
 
     await expect(
       admin(tt).mutation(api.orders.desk.updateOrderStatusAdmin, {
-        orderId: lead.orderId,
-        newStatus: "whatsapp_initiated",
+        orderId: order.orderId,
+        newStatus: "pending",
       })
     ).rejects.toThrow(/Invalid transition/);
 
     await admin(tt).mutation(api.orders.desk.updateOrderStatusAdmin, {
-      orderId: lead.orderId,
+      orderId: order.orderId,
       newStatus: "dispatched",
     });
-    const order = await getOrder(tt, lead.orderNumber);
-    expect(order?.status).toBe("dispatched");
-    expect(order?.trackingNumber).toMatch(/^GL-TRK-\d{6}$/);
+    const after = await getOrder(tt, order.orderNumber);
+    expect(after?.status).toBe("dispatched");
     await drain(tt);
   });
 
   it("requires admin identity", async () => {
     const tt = t();
     await seedVariant(tt, "V1", 5);
-    const lead = await createLead(tt, "V1");
+    const order = await seedOrder(tt, "V1");
     await expect(
       customer(tt).mutation(api.orders.desk.updateOrderStatusAdmin, {
-        orderId: lead.orderId,
+        orderId: order.orderId,
         newStatus: "dispatched",
       })
     ).rejects.toThrow(/Unauthorized|Forbidden/);
@@ -474,10 +278,35 @@ describe("updateOrderStatusAdmin state machine", () => {
   });
 });
 
+describe("WhatsApp cutover migration (ADR 0023)", () => {
+  it("cancels open reservations, releases their stock and leaves paid WhatsApp orders alone", async () => {
+    const tt = t();
+    await seedVariant(tt, "V1", 5);
+    const open1 = await seedOrder(tt, "V1", { status: "whatsapp_initiated", paymentMethod: "whatsapp", stripeSessionId: null });
+    const open2 = await seedOrder(tt, "V1", { status: "whatsapp_initiated", paymentMethod: "whatsapp", stripeSessionId: null, qty: 2 });
+    const paid = await seedOrder(tt, "V1", { status: "paid", paymentMethod: "whatsapp", stripeSessionId: null });
+    expect(await getStock(tt, "V1")).toBe(1);
+
+    const res = await tt.mutation(internal.orders.migrations.cancelOpenWhatsAppReservations, {});
+    expect(res).toEqual({ cancelled: 2, done: true });
+
+    expect((await getOrder(tt, open1.orderNumber))?.status).toBe("cancelled");
+    expect((await getOrder(tt, open2.orderNumber))?.status).toBe("cancelled");
+    expect((await getOrder(tt, paid.orderNumber))?.status).toBe("paid");
+    expect(await getStock(tt, "V1")).toBe(4);
+    expect((await getEvents(tt, open1.orderId)).map((e) => e.type)).toContain("cancelled");
+
+    const again = await tt.mutation(internal.orders.migrations.cancelOpenWhatsAppReservations, {});
+    expect(again).toEqual({ cancelled: 0, done: true });
+    expect(await getStock(tt, "V1")).toBe(4);
+    await drain(tt);
+  });
+});
+
 describe("Public query PII containment", () => {
   async function seeded(tt: T) {
     await seedVariant(tt, "V1", 5);
-    const lead = await createLead(tt, "V1", { email: "secret@test.com" });
+    const lead = await seedOrder(tt, "V1", { email: "secret@test.com" });
     await tt.run(async (ctx) => {
       await ctx.db.patch(lead.orderId, {
         shippingAddress: {
@@ -539,8 +368,6 @@ describe("Public query PII containment", () => {
     expect(rightEmail.customerEmail).toBeUndefined();
     expect(rightEmail.customerPhone).toBeUndefined();
     expect(rightEmail.paymentUrl).toBeUndefined();
-    // Countdown data is intentionally shared with the holder of order+email:
-    expect(rightEmail.reservationExpiresAt).toBeTypeOf("number");
     await drain(tt);
   });
 });
@@ -560,7 +387,6 @@ describe("Stripe Refund and Dispute Webhook Lifecycle", () => {
       subtotal: 100,
       total: 100,
       webhookEventId: "evt_settle_refund",
-      isWhatsAppOrder: false,
     });
 
     expect(await getStock(tt, "V1")).toBe(3); // 5 - 2 = 3
@@ -614,7 +440,6 @@ describe("Stripe Refund and Dispute Webhook Lifecycle", () => {
       subtotal: 100,
       total: 100,
       webhookEventId: "evt_settle_partial",
-      isWhatsAppOrder: false,
     });
 
     const order = await getOrder(tt, "GL-PARTIAL-1");
@@ -651,7 +476,6 @@ describe("Stripe Refund and Dispute Webhook Lifecycle", () => {
       subtotal: 65,
       total: 65,
       webhookEventId: "evt_settle_dispute",
-      isWhatsAppOrder: false,
     });
 
     const order = await getOrder(tt, "GL-DISPUTE-1");
@@ -735,7 +559,6 @@ describe("Stripe Customer Identity Attachment", () => {
       shippingFee: 0,
       tax: 0,
       total: 120,
-      isWhatsAppOrder: false,
     });
 
     const order = await getOrder(tt, "GL-CUST-1");
@@ -772,7 +595,6 @@ describe("Stripe Invoice Attachment", () => {
       shippingFee: 0,
       tax: 0,
       total: 120,
-      isWhatsAppOrder: false,
     });
 
     let order = await getOrder(tt, "GL-INV-1");
@@ -815,7 +637,6 @@ describe("Shipping & Multi-Carrier Label Printing Lifecycle", () => {
       shippingFee: 0,
       tax: 0,
       total: 150,
-      isWhatsAppOrder: false,
     });
 
     let order = await getOrder(tt, "GL-SHIP-01");
@@ -891,7 +712,6 @@ describe("Shipping & Multi-Carrier Label Printing Lifecycle", () => {
       shippingFee: 0,
       tax: 0,
       total: 175,
-      isWhatsAppOrder: false,
     });
 
     let order = await getOrder(tt, "GL-DELIV-01");
@@ -955,7 +775,6 @@ describe("Shipping & Multi-Carrier Label Printing Lifecycle", () => {
       shippingFee: 0,
       tax: 0,
       total: 175,
-      isWhatsAppOrder: false,
     });
 
     let order = await getOrder(tt, "GL-FAIL-01");
@@ -1010,7 +829,6 @@ describe("Shipping & Multi-Carrier Label Printing Lifecycle", () => {
       shippingFee: 0,
       tax: 0,
       total: 175,
-      isWhatsAppOrder: false,
     });
 
     let order = await getOrder(tt, "GL-OVER-01");

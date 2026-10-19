@@ -58,7 +58,6 @@ export const sendAdminOrderAlert = internalAction({
     total: v.number(),
     currency: v.string(),
     paymentMethod: v.string(),
-    isWhatsAppPending: v.optional(v.boolean()),
     customerName: v.optional(v.string()),
     customerEmail: v.optional(v.string()),
     customerPhone: v.optional(v.string()),
@@ -82,7 +81,6 @@ export const sendAdminOrderAlert = internalAction({
           total: args.total,
           currency: args.currency,
           paymentMethod: args.paymentMethod,
-          isWhatsAppPending: args.isWhatsAppPending,
           customerName: args.customerName,
           customerEmail: args.customerEmail,
           customerPhone: args.customerPhone,
@@ -96,9 +94,7 @@ export const sendAdminOrderAlert = internalAction({
         })
       );
 
-      const subject = args.isWhatsAppPending
-        ? `⚠️ [Action Required] New WhatsApp Order #${args.orderNumber} (${args.currency} $${args.total.toFixed(2)})`
-        : `⚡ [New Order] #${args.orderNumber} Received (${args.currency} $${args.total.toFixed(2)})`;
+      const subject = `⚡ [New Order] #${args.orderNumber} Received (${args.currency} $${args.total.toFixed(2)})`;
 
       const emailId = await resend.sendEmail(ctx, {
         from: DEFAULT_SENDER,
@@ -199,7 +195,6 @@ export const sendTestAdminOrderAlert = action({
         total: 95.0,
         currency: "USD",
         paymentMethod: "stripe",
-        isWhatsAppPending: false,
         customerName: "Operations Test Staff",
         customerEmail: recipient,
         customerPhone: "+1 (555) 019-2834",

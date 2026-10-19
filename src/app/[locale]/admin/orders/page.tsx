@@ -10,8 +10,6 @@ import { Id } from "@convex/_generated/dataModel";
 import { getCarrierTrackingUrl } from "@/lib/tracking";
 import {
   getWhatsAppAdminCustomerUrl,
-  getWhatsAppAdminPaymentLinkUrl,
-  getWhatsAppAdminPaymentLinkMessage,
 } from "@/lib/whatsapp";
 import {
   Search,
@@ -40,7 +38,6 @@ import {
   AlertCircle,
   Maximize2,
   Printer,
-  CreditCard,
 } from "lucide-react";
 import { Link } from "@/i18n/routing";
 import { useSearchParams } from "next/navigation";
@@ -83,7 +80,6 @@ export default function AdminOrdersPage() {
   const [trackingInput, setTrackingInput] = useState("");
   const [adminNotesInput, setAdminNotesInput] = useState("");
 
-  const [confirmWhatsAppOrder, setConfirmWhatsAppOrder] = useState<any | null>(null);
   const [cancelModalOrder, setCancelModalOrder] = useState<any | null>(null);
   const [refundStripeToggle, setRefundStripeToggle] = useState(true);
   const [cancelReasonInput, setCancelReasonInput] = useState("");
@@ -151,9 +147,6 @@ export default function AdminOrdersPage() {
   }, [orders, selectedOrder]);
 
   const updateOrderStatus = useMutation(api.orders.desk.updateOrderStatusAdmin);
-  const markWhatsAppOrderPaidAdmin = useMutation(api.orders.whatsapp.markWhatsAppOrderPaidAdmin);
-  const dispatchWhatsAppPaymentLinkAdmin = useMutation(api.orders.whatsapp.dispatchWhatsAppPaymentLinkAdmin);
-  const generateOrRefreshPaymentLink = useAction(api.payments.checkout.generateOrRefreshWhatsAppPaymentLink);
   const updateOrderFulfillment = useMutation(api.orders.desk.updateOrderFulfillmentAdmin);
   const updateShippingAddressAdmin = useMutation(api.orders.desk.updateShippingAddressAdmin);
   const cancelAndRefundAdmin = useAction(api.payments.refunds.cancelAndRefundOrderAdmin);
@@ -181,83 +174,6 @@ export default function AdminOrdersPage() {
     navigator.clipboard.writeText(text);
     setCopiedTracking(true);
     setTimeout(() => setCopiedTracking(false), 2000);
-  };
-
-  // Status transitions
-  const handleConfirmWhatsAppPayment = async () => {
-    if (!confirmWhatsAppOrder) return;
-    try {
-      setIsProcessing(true);
-      const res = await markWhatsAppOrderPaidAdmin({
-        orderId: confirmWhatsAppOrder._id,
-      });
-      setConfirmWhatsAppOrder(null);
-      if (selectedOrder?._id === confirmWhatsAppOrder._id) {
-        setSelectedOrder({
-          ...selectedOrder,
-          status: "paid",
-          trackingNumber: res.trackingNumber || selectedOrder.trackingNumber,
-        });
-      }
-      triggerSuccess("WhatsApp payment (Zelle/Transfer) confirmed, order marked paid & receipt queued.");
-    } catch (err: any) {
-      console.error("Failed to mark WhatsApp order paid:", err);
-      setActionError(err?.message || "Failed to confirm payment.");
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const handleDispatchPaymentLink = async (ord: any) => {
-    if (!ord) return;
-    try {
-      setIsProcessing(true);
-      // Ensure the Stripe Checkout link has destination shipping address and automatic taxes calculated
-      const linkRes = await generateOrRefreshPaymentLink({
-        orderId: ord._id,
-        origin: window.location.origin,
-        locale,
-      });
-
-      const paymentUrl = linkRes.paymentUrl || ord.paymentUrl;
-      if (!paymentUrl) {
-        throw new Error("Could not generate Stripe payment link. Please check customer shipping address.");
-      }
-
-      await dispatchWhatsAppPaymentLinkAdmin({
-        orderId: ord._id,
-      });
-
-      const waRes = getWhatsAppAdminPaymentLinkUrl({
-        customerPhone: ord.customerPhone,
-        customerName: ord.customerName,
-        orderNumber: ord.orderNumber,
-        paymentUrl,
-        total: ord.total,
-        currency: ord.currency || "USD",
-        locale,
-      });
-
-      if (waRes.url) {
-        window.open(waRes.url, "_blank");
-        triggerSuccess("Payment link refreshed with destination taxes & dispatched via WhatsApp! 24h stock hold extended.");
-      } else {
-        // Lean ADR-0011 leads may have no phone: copy the message so staff can paste it
-        // into the concierge thread the customer already opened.
-        try {
-          await navigator.clipboard.writeText(waRes.message);
-        } catch {
-          /* clipboard may be unavailable; message remains in console for staff */
-          console.warn("Payment link message (no customer phone on order):", waRes.message);
-        }
-        triggerSuccess("No WhatsApp number on this lead — payment message copied to clipboard. Paste it into the customer's concierge thread.");
-      }
-    } catch (err: any) {
-      console.error("Failed to dispatch payment link:", err);
-      setActionError(err?.message || "Failed to dispatch payment link.");
-    } finally {
-      setIsProcessing(false);
-    }
   };
 
   const handleDispatchOrder = async (notifyWhatsApp = false) => {
@@ -479,7 +395,7 @@ export default function AdminOrdersPage() {
       case "whatsapp_initiated":
         return (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-mono font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
-            <MessageCircle className="w-3.5 h-3.5" /> WhatsApp Pending
+            <MessageCircle className="w-3.5 h-3.5" /> WhatsApp (legacy)
           </span>
         );
       case "cancelled":
@@ -592,7 +508,6 @@ export default function AdminOrdersPage() {
               </p>
               <p className="text-zinc-600 dark:text-zinc-400 text-[11px]">
                 {attentionStats.unfulfilledPaid} awaiting dispatch
-                {attentionStats.pendingWhatsApp > 0 && ` • ${attentionStats.pendingWhatsApp} WhatsApp leads awaiting verification`}
                 {attentionStats.overduePaid > 0 && (
                   <span className="text-rose-500 font-bold ml-1">
                     • {attentionStats.overduePaid} overdue (&gt;24h)
@@ -643,7 +558,7 @@ export default function AdminOrdersPage() {
             >
               <option value="all">{t("allPayments")}</option>
               <option value="stripe">Stripe Checkout</option>
-              <option value="whatsapp">WhatsApp Concierge</option>
+              <option value="whatsapp">WhatsApp (legacy)</option>
             </select>
           </div>
         </div>
@@ -667,7 +582,6 @@ export default function AdminOrdersPage() {
             { id: "paid", label: "Paid" },
             { id: "dispatched", label: "Dispatched" },
             { id: "delivered", label: "Delivered" },
-            { id: "whatsapp_initiated", label: "WhatsApp Leads" },
             { id: "refunded", label: "Refunded" },
             { id: "cancelled", label: "Cancelled" },
           ]
@@ -856,18 +770,6 @@ export default function AdminOrdersPage() {
                                 <Clock className="w-2.5 h-2.5" /> Overdue (&gt;24h)
                               </span>
                             )}
-                          {order.status === "whatsapp_initiated" && (
-                            <span
-                              className={`inline-flex items-center gap-1 text-[9px] font-mono font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${
-                                order.paymentLinkSentAt
-                                  ? "text-blue-500 bg-blue-500/10"
-                                  : "text-amber-500 bg-amber-500/10"
-                              }`}
-                            >
-                              <AlertCircle className="w-2.5 h-2.5" />
-                              {order.paymentLinkSentAt ? "Link Sent" : "Needs Payment Link"}
-                            </span>
-                          )}
                         </div>
                       </td>
 
@@ -877,17 +779,6 @@ export default function AdminOrdersPage() {
                         onClick={(e) => e.stopPropagation()}
                       >
                         <div className="flex items-center justify-end gap-1.5">
-                          {/* 1. Confirm WhatsApp Payment Button */}
-                          {order.status === "whatsapp_initiated" && (
-                            <button
-                              onClick={() => setConfirmWhatsAppOrder(order)}
-                              className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white shadow-xs transition-colors"
-                              title={t("confirmWhatsAppBtn")}
-                            >
-                              Confirm $
-                            </button>
-                          )}
-
                           {/* 2. Dispatch / Shipping Label Buttons */}
                           {order.status === "paid" && (
                             <div className="flex items-center gap-1.5">
@@ -1130,88 +1021,6 @@ export default function AdminOrdersPage() {
                 </div>
               </div>
 
-              {/* WhatsApp / Stripe Payment Link Section */}
-              {selectedOrder.paymentUrl && (
-                <div className="p-4 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-200/70 dark:border-indigo-500/20 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-mono uppercase tracking-wider text-indigo-700 dark:text-indigo-400 font-semibold flex items-center gap-1.5">
-                      <CreditCard className="w-3.5 h-3.5" /> Stripe Payment Link (24h)
-                    </span>
-                    {selectedOrder.paymentLinkSentAt ? (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
-                        <CheckCircle2 className="w-3 h-3" /> Link Sent
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400">
-                        <Clock className="w-3 h-3" /> Needs Link Dispatch
-                      </span>
-                    )}
-                  </div>
-
-                  {/* 1-Click WhatsApp Dispatch Button for WhatsApp Orders */}
-                  {selectedOrder.status === "whatsapp_initiated" && (
-                    <button
-                      onClick={() => handleDispatchPaymentLink(selectedOrder)}
-                      disabled={isProcessing}
-                      className="w-full py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-md shadow-emerald-600/20 active:scale-[0.99]"
-                    >
-                      <MessageCircle className="w-4 h-4" />
-                      <span>
-                        {selectedOrder.paymentLinkSentAt
-                          ? t("resendPaymentLinkWhatsApp")
-                          : t("sendPaymentLinkWhatsApp")}
-                      </span>
-                    </button>
-                  )}
-
-                  <div className="flex items-center gap-2 p-2 rounded-xl bg-white dark:bg-black/30 border border-indigo-100 dark:border-indigo-900/30">
-                    <input
-                      type="text"
-                      readOnly
-                      value={selectedOrder.paymentUrl}
-                      className="flex-1 bg-transparent text-[11px] font-mono text-zinc-700 dark:text-zinc-300 truncate focus:outline-none"
-                    />
-                    <button
-                      onClick={() => handleCopy(selectedOrder.paymentUrl || "")}
-                      className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-semibold flex items-center gap-1 shrink-0 transition-colors"
-                      title={t("copyPaymentLink")}
-                    >
-                      {copiedTracking ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                      <span>{t("copyPaymentLink")}</span>
-                    </button>
-                  </div>
-
-                  <div className="flex items-center justify-between text-[11px] pt-1 text-zinc-500">
-                    <button
-                      onClick={() => {
-                        const msg = getWhatsAppAdminPaymentLinkMessage({
-                          customerName: selectedOrder.customerName,
-                          orderNumber: selectedOrder.orderNumber,
-                          paymentUrl: selectedOrder.paymentUrl,
-                          total: selectedOrder.total,
-                          currency: selectedOrder.currency || "USD",
-                          locale,
-                        });
-                        handleCopy(msg);
-                      }}
-                      className="text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 font-medium"
-                    >
-                      <Copy className="w-3 h-3" />
-                      <span>{t("copyPaymentMessage")}</span>
-                    </button>
-                    <a
-                      href={selectedOrder.paymentUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-300 hover:underline inline-flex items-center gap-1"
-                    >
-                      <span>Open Checkout</span>
-                      <ExternalLink className="w-3 h-3" />
-                    </a>
-                  </div>
-                </div>
-              )}
-
               {/* Fulfillment & Tracking Section */}
               <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-white/[0.02] border border-zinc-200/70 dark:border-white/[0.06] space-y-3">
                 <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-600 dark:text-zinc-400 font-semibold block">
@@ -1355,16 +1164,6 @@ export default function AdminOrdersPage() {
               )}
 
               <div className="flex items-center gap-2">
-                {selectedOrder.status === "whatsapp_initiated" && (
-                  <button
-                    onClick={() => setConfirmWhatsAppOrder(selectedOrder)}
-                    className="py-2 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition-colors flex items-center gap-1.5 shadow-md shadow-emerald-600/20"
-                  >
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>Mark as Paid (Zelle)</span>
-                  </button>
-                )}
-
                 {selectedOrder.status === "paid" && (
                   <button
                     onClick={() => {
@@ -1398,46 +1197,6 @@ export default function AdminOrdersPage() {
                   </button>
                 )}
               </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Modal 1: Confirm WhatsApp Offline Payment ── */}
-      {confirmWhatsAppOrder && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="max-w-md w-full bg-white dark:bg-[#0c0c14] border border-zinc-200 dark:border-white/10 rounded-2xl p-6 shadow-2xl space-y-4">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto">
-              <CheckCircle2 className="w-6 h-6" />
-            </div>
-
-            <div className="text-center">
-              <h3 className="font-display font-bold text-lg text-zinc-900 dark:text-white">
-                {t("confirmWhatsAppTitle")}
-              </h3>
-              <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-2 leading-relaxed">
-                {t("confirmWhatsAppDesc")}
-              </p>
-              <div className="mt-3 p-3 rounded-xl bg-zinc-50 dark:bg-white/[0.02] border border-zinc-200 dark:border-white/10 font-mono text-xs">
-                Order <span className="font-bold text-zinc-900 dark:text-white">{confirmWhatsAppOrder.orderNumber}</span> • Total: <span className="font-bold text-emerald-600">${confirmWhatsAppOrder.total} USD</span>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 pt-2">
-              <button
-                onClick={() => setConfirmWhatsAppOrder(null)}
-                disabled={isProcessing}
-                className="flex-1 py-2.5 px-3 rounded-xl border border-zinc-200 dark:border-white/10 text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-white/5 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleConfirmWhatsAppPayment}
-                disabled={isProcessing}
-                className="flex-1 py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition-colors shadow-md shadow-emerald-600/20"
-              >
-                {isProcessing ? "Deducting Stock..." : t("confirmWhatsAppBtn")}
-              </button>
             </div>
           </div>
         </div>

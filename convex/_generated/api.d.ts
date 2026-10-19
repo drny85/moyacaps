@@ -29,7 +29,6 @@ import type * as catalog_inventory from "../catalog/inventory.js";
 import type * as catalog_migrations from "../catalog/migrations.js";
 import type * as catalog_model from "../catalog/model.js";
 import type * as catalog_queries from "../catalog/queries.js";
-import type * as catalog_reservations from "../catalog/reservations.js";
 import type * as catalog_rules from "../catalog/rules.js";
 import type * as catalog_shared from "../catalog/shared.js";
 import type * as catalog_skuPlan from "../catalog/skuPlan.js";
@@ -52,12 +51,12 @@ import type * as notifications_templates_OrderDispatchedEmail from "../notificat
 import type * as orders_desk from "../orders/desk.js";
 import type * as orders_fulfillment from "../orders/fulfillment.js";
 import type * as orders_functions from "../orders/functions.js";
+import type * as orders_migrations from "../orders/migrations.js";
 import type * as orders_model from "../orders/model.js";
 import type * as orders_settlement from "../orders/settlement.js";
 import type * as orders_shared from "../orders/shared.js";
 import type * as orders_tracking from "../orders/tracking.js";
 import type * as orders_validators from "../orders/validators.js";
-import type * as orders_whatsapp from "../orders/whatsapp.js";
 import type * as payments_checkout from "../payments/checkout.js";
 import type * as payments_checkoutMetadata from "../payments/checkoutMetadata.js";
 import type * as payments_checkoutModel from "../payments/checkoutModel.js";
@@ -74,7 +73,6 @@ import type * as stripeCheckout from "../stripeCheckout.js";
 import type * as users_clerk from "../users/clerk.js";
 import type * as users_clerkWebhook from "../users/clerkWebhook.js";
 import type * as users_functions from "../users/functions.js";
-import type * as whatsappOrders from "../whatsappOrders.js";
 
 import type {
   ApiFromModules,
@@ -104,7 +102,6 @@ declare const fullApi: ApiFromModules<{
   "catalog/migrations": typeof catalog_migrations;
   "catalog/model": typeof catalog_model;
   "catalog/queries": typeof catalog_queries;
-  "catalog/reservations": typeof catalog_reservations;
   "catalog/rules": typeof catalog_rules;
   "catalog/shared": typeof catalog_shared;
   "catalog/skuPlan": typeof catalog_skuPlan;
@@ -127,12 +124,12 @@ declare const fullApi: ApiFromModules<{
   "orders/desk": typeof orders_desk;
   "orders/fulfillment": typeof orders_fulfillment;
   "orders/functions": typeof orders_functions;
+  "orders/migrations": typeof orders_migrations;
   "orders/model": typeof orders_model;
   "orders/settlement": typeof orders_settlement;
   "orders/shared": typeof orders_shared;
   "orders/tracking": typeof orders_tracking;
   "orders/validators": typeof orders_validators;
-  "orders/whatsapp": typeof orders_whatsapp;
   "payments/checkout": typeof payments_checkout;
   "payments/checkoutMetadata": typeof payments_checkoutMetadata;
   "payments/checkoutModel": typeof payments_checkoutModel;
@@ -149,7 +146,6 @@ declare const fullApi: ApiFromModules<{
   "users/clerk": typeof users_clerk;
   "users/clerkWebhook": typeof users_clerkWebhook;
   "users/functions": typeof users_functions;
-  whatsappOrders: typeof whatsappOrders;
 }>;
 
 /**
