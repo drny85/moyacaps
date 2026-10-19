@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { Link, usePathname, useRouter } from "@/i18n/routing";
+import { BrandMark } from "@/components/layout/BrandMark";
 import { AdminGuard } from "@/components/admin/AdminGuard";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { SafeUserButton, useSafeUser } from "@/lib/useSafeUser";
@@ -167,12 +168,10 @@ export function AdminConsoleLayout({
           {/* Brand Header */}
           <div className="p-5 border-b border-zinc-200 dark:border-white/[0.06] flex items-center justify-between">
             <Link href="/admin/analytics" className="flex items-center gap-2.5 group">
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-moya-red to-moya-red-deep flex items-center justify-center text-white font-display font-bold shadow-md shadow-moya-red/20">
-                M
-              </div>
+              <BrandMark className="w-8 h-8 shrink-0 rounded-[22%] shadow-md shadow-moya-red/20" />
               <div>
                 <span className="font-display font-bold text-sm tracking-tight block text-zinc-950 dark:text-white">
-                  MOYA<span className="text-moya-red">CAPS</span>
+                  GOOD<span className="text-moya-red">LUCK</span>
                 </span>
                 <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-600 dark:text-zinc-400 block -mt-0.5">
                   Operations HQ
@@ -321,7 +320,7 @@ export function AdminConsoleLayout({
               )}
             </button>
             <span className="font-display font-bold text-sm tracking-tight text-zinc-900 dark:text-white">
-              MOYA<span className="text-moya-red">CAPS</span>{" "}
+              GOOD<span className="text-moya-red">LUCK</span>{" "}
               <span className="text-[10px] font-mono text-zinc-600 dark:text-zinc-400">HQ</span>
             </span>
           </div>

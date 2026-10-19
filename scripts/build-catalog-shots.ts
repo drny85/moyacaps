@@ -11,8 +11,6 @@
  *                                            or 1600×2000 from a printed tee's `flatLayPhoto` cut-out
  *   public/shirts/{design}-{color}.jpg       on-model Lifestyle Shots printed from the templates
  *   src/data/catalogShots.json               manifest of everything written
- *   src/app/icon.png, src/app/apple-icon.png site icons (Next app/ file convention)
- *   public/brand/logo-512.png                organization logo (JSON-LD)
  *   public/og/home.jpg                       1200×630 share image
  */
 import sharp from "sharp";
@@ -328,25 +326,12 @@ async function buildTees() {
 }
 
 /**
- * Brand images from the flagship cap: small site icons (the full photo was a 389 KB favicon
- * fetched at high priority on every page), the JSON-LD logo and the 1200×630 share image.
+ * The 1200×630 share image from the flagship cap. Site icons and the JSON-LD logo come from the
+ * brand logo instead (scripts/build-brand-icons.ts).
  */
 async function buildBrandImages() {
   const flagship = path.join(OUT, "caps", "negro-rojo", "front.webp");
   const cap = await trimmed(flagship);
-  const square = async (size: number, pad: number, background: sharp.Color) => {
-    const inner = Math.round(size * (1 - pad * 2));
-    const resized = await sharp(cap.data).resize(inner, inner, { fit: "inside" }).png().toBuffer({ resolveWithObject: true });
-    return sharp({ create: { width: size, height: size, channels: 4, background } })
-      .composite([{ input: resized.data, left: Math.round((size - resized.info.width) / 2), top: Math.round((size - resized.info.height) / 2) }])
-      .png();
-  };
-  const transparent = { r: 0, g: 0, b: 0, alpha: 0 };
-  await (await square(64, 0.04, transparent)).toFile(path.join(ROOT, "src", "app", "icon.png"));
-  await (await square(180, 0.1, BACKDROP)).toFile(path.join(ROOT, "src", "app", "apple-icon.png"));
-  await fs.mkdir(path.join(PUBLIC, "brand"), { recursive: true });
-  await (await square(512, 0.08, BACKDROP)).toFile(path.join(PUBLIC, "brand", "logo-512.png"));
-
   const og = { width: 1200, height: 630 };
   const capH = Math.round(og.height * 0.62);
   const ogCap = await sharp(cap.data).resize({ height: capH }).png().toBuffer({ resolveWithObject: true });
@@ -359,7 +344,7 @@ async function buildBrandImages() {
     ])
     .jpeg({ quality: 86, mozjpeg: true })
     .toFile(path.join(PUBLIC, "og", "home.jpg"));
-  console.log("✅ brand images: icon, apple-icon, logo-512, og/home.jpg");
+  console.log("✅ brand images: og/home.jpg");
 }
 
 async function main() {

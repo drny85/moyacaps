@@ -3,6 +3,7 @@
 import { useTranslations, useLocale } from "next-intl";
 import { MessageCircle, ShieldCheck, RotateCcw, Truck } from "lucide-react";
 import { useStore } from "@/store/useStore";
+import { BrandMark } from "./BrandMark";
 import { usePathname } from "@/i18n/routing";
 import { getWhatsAppConciergeUrl } from "@/lib/whatsapp";
 
@@ -29,6 +30,7 @@ export function Footer() {
         {/* Brand */}
         <div className="flex flex-col items-center md:items-start gap-2">
           <div className="flex items-center gap-2">
+            <BrandMark className="w-7 h-7 shrink-0" />
             <span className="font-display text-xl font-bold text-zinc-900 dark:text-white tracking-tight">
               GOOD<span className="text-moya-red">LUCK</span>
             </span>
