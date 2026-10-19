@@ -110,6 +110,24 @@ describe("gallerySlides", () => {
       ["artwork", "/shirts/graphics/butterfly.jpg"],
     ]);
   });
+  it("tees: every Lifestyle Shot of the chosen colorway, in order", () => {
+    const multi = { ...tee, colorways: tee.colorways!.map((c) => (c.id === "washed-black" ? { ...c, modelImages: ["/l1.jpg", "/l2.jpg", "/l3.jpg"] } : c)) };
+    const slides = gallerySlides(multi, { colorway: "washed-black" }, "Butterfly Tee", null, labels);
+    expect(slides.filter((s) => s.kind === "lifestyle").map((s) => s.src)).toEqual(["/l1.jpg", "/l2.jpg", "/l3.jpg"]);
+    expect(slides.at(-1)?.kind).toBe("artwork");
+  });
+  it("caps: Lifestyle Shots follow the angles, skipping the catalog image and product photo", () => {
+    const withLife = { ...cap, images: ["/caps/negro-rojo.png", "/life-1.jpg", "/catalog/caps/negro-rojo.webp", "/life-2.jpg", "/life-1.jpg"] };
+    const slides = gallerySlides(withLife, {}, "Black / Red", { front: "/f.webp", left: "/l.webp", back: "/b.webp", right: "/r.webp" }, labels);
+    expect(slides.map((s) => [s.kind, s.src])).toEqual([
+      ["catalog", "/catalog/caps/negro-rojo.webp"],
+      ["angle", "/l.webp"],
+      ["angle", "/b.webp"],
+      ["angle", "/r.webp"],
+      ["lifestyle", "/life-1.jpg"],
+      ["lifestyle", "/life-2.jpg"],
+    ]);
+  });
   it("caps: Catalog Shot, then side and back angles", () => {
     const slides = gallerySlides(cap, {}, "Black / Red", { front: "/f.webp", left: "/l.webp", back: "/b.webp", right: "/r.webp" }, labels);
     expect(slides.map((s) => s.src)).toEqual(["/catalog/caps/negro-rojo.webp", "/l.webp", "/b.webp", "/r.webp"]);

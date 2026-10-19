@@ -4,9 +4,22 @@ import schema from "../schema";
 
 export const variantDoc = schema.doc("variants");
 
+/** A stored Apparel Colorway plus every Lifestyle Shot it has (read model only, never stored). */
+const resolvedColorway = v.object({
+  id: v.string(),
+  nameEn: v.string(),
+  nameEs: v.string(),
+  hex: v.string(),
+  borderHex: v.string(),
+  lifestyleImage: v.string(),
+  lifestyleImages: v.optional(v.array(v.string())),
+  catalogShot: v.string(),
+});
+
 /** A variant with its uploaded image resolved to a URL and `isAvailable` always set. */
 export const resolvedVariant = variantDoc.extend({
   isAvailable: v.boolean(),
+  colorways: v.optional(v.array(resolvedColorway)),
   angles: v.optional(v.object({ front: v.string(), left: v.string(), back: v.string(), right: v.string() })),
 });
 

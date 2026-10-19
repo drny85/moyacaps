@@ -36,10 +36,24 @@ describe("overlayProductImages", () => {
       row({ role: "lifestyle", colorway: "white", url: "wl-new" }),
     ]);
     expect(out.colorways).toEqual([
-      tee.colorways[0],
-      { id: "white", lifestyleImage: "wl-new", catalogShot: "w-new" },
+      { ...tee.colorways[0], lifestyleImages: ["/l-black.jpg"] },
+      { id: "white", lifestyleImage: "wl-new", lifestyleImages: ["wl-new"], catalogShot: "w-new" },
     ]);
     expect(out.catalogShot).toBe("/legacy-tee.png");
+  });
+
+  it("lists every lifestyle row of a colorway in order, the first as its lifestyleImage", () => {
+    const out = overlayProductImages(tee, [
+      row({ role: "lifestyle", colorway: "black", url: "b2", order: 1 }),
+      row({ role: "lifestyle", colorway: "black", url: "b1", order: 0 }),
+      row({ role: "lifestyle", colorway: "black", url: "b3", order: 2 }),
+    ]);
+    expect(out.colorways?.[0]).toMatchObject({ lifestyleImage: "b1", lifestyleImages: ["b1", "b2", "b3"] });
+  });
+
+  it("gives a colorway with no lifestyle at all an empty list", () => {
+    const out = overlayProductImages({ colorways: [{ id: "x", lifestyleImage: "", catalogShot: "/c.png" }] }, []);
+    expect(out.colorways?.[0]).toMatchObject({ lifestyleImages: [] });
   });
 
   it("sets angles only when all four exist", () => {

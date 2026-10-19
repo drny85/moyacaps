@@ -38,11 +38,18 @@ export function overlayProductImages<T extends OverlayInput>(variant: T, rows: R
   if (lifestyle.length > 0) result.images = lifestyle;
 
   if (variant.colorways) {
-    result.colorways = variant.colorways.map((c) => ({
-      ...c,
-      catalogShot: urls("catalog", c.id)[0] ?? c.catalogShot,
-      lifestyleImage: urls("lifestyle", c.id)[0] ?? c.lifestyleImage,
-    }));
+    result.colorways = variant.colorways.map((c) => {
+      // Rows replace the legacy single photo; a colorway may have any number of Lifestyle Shots.
+      // `lifestyleImages` is read-model only (resolvedVariant); `lifestyleImage` stays its first.
+      const rowShots = urls("lifestyle", c.id);
+      const lifestyleImages = rowShots.length > 0 ? rowShots : c.lifestyleImage ? [c.lifestyleImage] : [];
+      return {
+        ...c,
+        catalogShot: urls("catalog", c.id)[0] ?? c.catalogShot,
+        lifestyleImage: lifestyleImages[0] ?? c.lifestyleImage,
+        lifestyleImages,
+      };
+    });
   }
 
   const angleUrls = ANGLES.map((angle) => sorted.find((r) => r.role === "angle" && r.angle === angle)?.url);
