@@ -1,46 +1,8 @@
-import React from "react";
+import { organizationJsonLd, websiteJsonLd } from "@/lib/seo/jsonLd";
+import { siteUrl } from "@/lib/seo/site";
+import { JsonLd } from "./JsonLd";
 
 export function OrganizationJsonLd() {
-  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://goodluckcaps.com").replace(/\/$/, "");
-
-  const organizationSchema = {
-    "@context": "https://schema.org",
-    "@type": "Organization",
-    name: "Good Luck",
-    alternateName: "Good Luck Co.",
-    url: siteUrl,
-    logo: `${siteUrl}/brand/logo-512.png`,
-    description: "Signature streetwear headwear crafted with high-density 3D puff embroidery and 0880 mythology.",
-    contactPoint: {
-      "@type": "ContactPoint",
-      contactType: "customer concierge",
-      availableLanguage: ["English", "Spanish"],
-    },
-  };
-
-  const webSiteSchema = {
-    "@context": "https://schema.org",
-    "@type": "WebSite",
-    name: "Good Luck",
-    url: siteUrl,
-    inLanguage: ["en", "es"],
-    potentialAction: {
-      "@type": "SearchAction",
-      target: `${siteUrl}/en/products/{search_term_string}`,
-      "query-input": "required name=search_term_string",
-    },
-  };
-
-  return (
-    <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(webSiteSchema) }}
-      />
-    </>
-  );
+  const base = siteUrl();
+  return <JsonLd data={[organizationJsonLd(base), websiteJsonLd(base)]} />;
 }

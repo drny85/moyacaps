@@ -1,5 +1,6 @@
 import { FullMessagesProvider } from "@/components/providers/FullMessagesProvider";
 import type { Metadata } from "next";
+import { pageAlternates } from "@/lib/seo/site";
 
 export async function generateMetadata({
   params,
@@ -8,20 +9,13 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { locale } = await params;
   const isEs = locale === "es";
-  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://goodluckcaps.com").replace(/\/$/, "");
 
   return {
     title: isEs ? "Rastrear Pedido | Good Luck" : "Track Order | Good Luck",
     description: isEs
       ? "Consulta el estado en tiempo real y el despacho de tu orden Good Luck."
       : "Inspect live fulfillment progress and carrier tracking for your Good Luck order.",
-    alternates: {
-      canonical: `${siteUrl}/${locale}/track`,
-      languages: {
-        en: `${siteUrl}/en/track`,
-        es: `${siteUrl}/es/track`,
-      },
-    },
+    alternates: pageAlternates(locale, "/track"),
   };
 }
 

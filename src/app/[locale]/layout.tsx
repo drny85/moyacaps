@@ -15,6 +15,7 @@ import { MobileActionBar } from "@/components/layout/MobileActionBar";
 import { DeferredOverlays } from "@/components/layout/DeferredOverlays";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { OrganizationJsonLd } from "@/components/seo/OrganizationJsonLd";
+import { HtmlDocument } from "@/components/layout/HtmlDocument";
 
 export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
@@ -39,6 +40,7 @@ export default async function LocaleLayout({
   const messages = pickNamespaces(await getMessages(), STOREFRONT_NAMESPACES);
 
   return (
+    <HtmlDocument lang={locale}>
     <NextIntlClientProvider messages={messages}>
       <ThemeProvider>
         <ClerkClientProvider>
@@ -63,5 +65,6 @@ export default async function LocaleLayout({
         </ClerkClientProvider>
     </ThemeProvider>
   </NextIntlClientProvider>
+    </HtmlDocument>
   );
 }
