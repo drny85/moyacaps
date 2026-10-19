@@ -1,0 +1,24 @@
+{
+  "ledger_version": "1.0.0",
+  "title": "goodluckcaps.com SEO audit 2026-10-19",
+  "steps": [
+    {
+      "id": "site-audit",
+      "path": "site-audit.md",
+      "title": "Multi-lane SEO audit",
+      "status": "provisional",
+      "owner": "Robert Melendez",
+      "outcome": "7 defects fixed live by PR #3 (verified 16:54Z); 5 opportunities; 4 unknowns",
+      "sha256": "66f9ed5f51799cc717b8cfd498c93913809fb0fc1065a052a8ec36613261b82d"
+    },
+    {
+      "id": "markdown-coverage",
+      "path": "markdown-coverage.md",
+      "title": "Markdown discovery coverage",
+      "status": "provisional",
+      "owner": "Robert Melendez",
+      "outcome": "0 of 68 eligible URLs have Markdown; no llms.txt or sitemap.md",
+      "sha256": "046a5a03fa2d8b18b9c39cf986ad5191d42b23d46b7c2a732cebd7a910dc0e6a"
+    }
+  ]
+}
