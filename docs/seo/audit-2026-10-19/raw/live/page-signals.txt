@@ -1,0 +1,192 @@
+### page_cw.html
+bytes 97033
+lang ['en']
+title ['Good Luck Knockout Boxing Gloves Tee | Good Luck heavyweight tees']
+desc ['Good Luck Knockout Boxing Gloves Tee: 280–300 GSM heavyweight tee with a boxy cut and high-density screen print. $80 USD.']
+robots []
+canonical ['https://goodluckcaps.com/en/products/boxing-gloves-tee']
+hreflang [('en', 'https://goodluckcaps.com/en/products/boxing-gloves-tee'), ('es', 'https://goodluckcaps.com/es/products/boxing-gloves-tee'), ('en', 'https://goodluckcaps.com/en/products/boxing-gloves-tee'), ('es', 'https://goodluckcaps.com/es/products/boxing-gloves-tee')]
+og [('title', 'Good Luck Knockout Boxing Gloves Tee | Good Luck heavyweight tees'), ('url', 'https://goodluckcaps.com/en/products/boxing-gloves-tee'), ('image', 'https://goodluckcaps.com/catalog/tees/boxing-gloves-tee/washed-black.webp'), ('type', 'website')]
+h1 ['Good Luck Knockout Boxing Gloves Tee']
+h2count 1
+jsonld ['Organization', 'ContactPoint']
+jsonld ['WebSite', 'SearchAction']
+jsonld ['Product', 'Brand', 'Offer', 'Organization']
+imgs 1 noalt 0 emptyalt 0
+visible_words 306
+internal_links 15 ['/en', '/en/account/orders', '/en/products', '/en/products/butterfly-grunge-tee?colorway=butter-cream', '/en/products/eagle-clover-tee?colorway=washed-black', '/en/products/eight-ball-tee?colorway=crisp-white', '/en/products/gothic-angel-tee?colorway=crisp-white', '/en/products/gothic-skull-tee?colorway=washed-black', '/en/products/retro-soul-tee?colorway=washed-black', '/en/products/snake-horseshoe-tee?colorway=washed-black', '/en/products/vintage-f1-tee?colorway=butter-cream', '/en/products?category=caps', '/en/products?category=tees', '/en/track', '/en/try-on']
+### page_en.html
+bytes 118640
+lang ['en']
+title ['Good Luck | 0880 Signature Streetwear Caps &amp; Heavyweight Tees']
+desc ['Official store for Good Luck. Signature 3D puff embroidery caps and heavyweight 280-300 GSM graphic tees across 11 designs with interactive model lookbook studio.']
+robots []
+canonical ['https://goodluckcaps.com/en']
+hreflang [('en', 'https://goodluckcaps.com/en'), ('es', 'https://goodluckcaps.com/es'), ('en', 'https://goodluckcaps.com/en'), ('es', 'https://goodluckcaps.com/es')]
+og [('title', 'Good Luck | 0880 Signature Streetwear Caps &amp; Heavyweight Tees'), ('url', 'https://goodluckcaps.com/en'), ('image', 'https://goodluckcaps.com/og/home.jpg'), ('type', 'website')]
+h1 ['FORTUNE MEETSREBELLION']
+h2count 4
+jsonld ['Organization', 'ContactPoint']
+jsonld ['WebSite', 'SearchAction']
+imgs 3 noalt 0 emptyalt 2
+visible_words 469
+internal_links 15 ['/en', '/en/account/orders', '/en/products', '/en/products/azul-marino-rojo', '/en/products/blanco-rojo', '/en/products/boxing-gloves-tee?colorway=washed-black', '/en/products/butterfly-grunge-tee?colorway=butter-cream', '/en/products/eagle-clover-tee?colorway=washed-black', '/en/products/eight-ball-tee?colorway=crisp-white', '/en/products/negro-rojo', '/en/products/rojo-negro', '/en/products?category=caps', '/en/products?category=tees', '/en/track', '/en/try-on']
+### page_en_caps.html
+bytes 10930
+lang ['en']
+title ['Good Luck | 0880 Signature Caps &amp; Heavyweight Tees']
+desc ['Official Good Luck store: 0880 caps with heavyweight 3D puff embroidery and boxy 280 GSM graphic tees.']
+robots ['noindex']
+canonical []
+hreflang []
+og []
+h1 ['404']
+h2count 1
+imgs 0 noalt 0 emptyalt 0
+visible_words 30
+internal_links 1 ['/en']
+### page_en_does-not-exist.html
+bytes 10930
+lang ['en']
+title ['Good Luck | 0880 Signature Caps &amp; Heavyweight Tees']
+desc ['Official Good Luck store: 0880 caps with heavyweight 3D puff embroidery and boxy 280 GSM graphic tees.']
+robots ['noindex']
+canonical []
+hreflang []
+og []
+h1 ['404']
+h2count 1
+imgs 0 noalt 0 emptyalt 0
+visible_words 30
+internal_links 1 ['/en']
+### page_en_products.html
+bytes 118315
+lang ['en']
+title ['Shop caps and heavyweight tees | Good Luck']
+desc ['Every Good Luck cap and heavyweight tee in one place. Filter by colour, fit and print.']
+robots []
+canonical ['https://goodluckcaps.com/en/products']
+hreflang [('en', 'https://goodluckcaps.com/en/products'), ('es', 'https://goodluckcaps.com/es/products'), ('en', 'https://goodluckcaps.com/en/products'), ('es', 'https://goodluckcaps.com/es/products')]
+og [('title', 'Shop caps and heavyweight tees | Good Luck'), ('url', 'https://goodluckcaps.com/en/products'), ('type', 'website')]
+h1 ['Shop']
+h2count 0
+jsonld ['Organization', 'ContactPoint']
+jsonld ['WebSite', 'SearchAction']
+imgs 4 noalt 0 emptyalt 0
+visible_words 408
+internal_links 35 ['/en', '/en/account/orders', '/en/products', '/en/products/azul-marino-rojo', '/en/products/azul-rey-blanco', '/en/products/beige-rojo', '/en/products/blanco-negro-trucker', '/en/products/blanco-rojo', '/en/products/boxing-gloves-tee?colorway=washed-black', '/en/products/butterfly-grunge-tee?colorway=butter-cream', '/en/products/camuflaje-gris-negro', '/en/products/camuflaje-negro', '/en/products/crash-scene-tee?colorway=acid-wash-lime', '/en/products/eagle-clover-tee?colorway=washed-black', '/en/products/eight-ball-tee?colorway=crisp-white', '/en/products/gothic-angel-tee?colorway=crisp-white', '/en/products/gothic-skull-tee?colorway=washed-black', '/en/products/gris-negro-trucker', '/en/products/gris-rojo', '/en/products/lightning-star-tee?colorway=heather-grey', '/en/products/marron-rojo', '/en/products/morado-blanco', '/en/products/muscle-car-tee?colorway=washed-black', '/en/products/negro-rojo', '/en/products/retro-soul-tee?colorway=washed-black']
+### page_en_products_category_caps.html
+bytes 87453
+lang ['en']
+title ['Shop 0880 caps | Good Luck']
+desc ['Every Good Luck cap and heavyweight tee in one place. Filter by colour, fit and print.']
+robots []
+canonical ['https://goodluckcaps.com/en/products?category=caps']
+hreflang [('en', 'https://goodluckcaps.com/en/products?category=caps'), ('es', 'https://goodluckcaps.com/es/products?category=caps'), ('en', 'https://goodluckcaps.com/en/products?category=caps'), ('es', 'https://goodluckcaps.com/es/products?category=caps')]
+og [('title', 'Shop 0880 caps | Good Luck'), ('url', 'https://goodluckcaps.com/en/products?category=caps'), ('type', 'website')]
+h1 ['Caps']
+h2count 0
+jsonld ['Organization', 'ContactPoint']
+jsonld ['WebSite', 'SearchAction']
+imgs 4 noalt 0 emptyalt 0
+visible_words 266
+internal_links 23 ['/en', '/en/account/orders', '/en/products', '/en/products/azul-marino-rojo', '/en/products/azul-rey-blanco', '/en/products/beige-rojo', '/en/products/blanco-negro-trucker', '/en/products/blanco-rojo', '/en/products/camuflaje-gris-negro', '/en/products/camuflaje-negro', '/en/products/gris-negro-trucker', '/en/products/gris-rojo', '/en/products/marron-rojo', '/en/products/morado-blanco', '/en/products/negro-rojo', '/en/products/rojo-negro', '/en/products/rosa-blanco', '/en/products/turquesa-blanco', '/en/products/verde-rojo', '/en/products?category=caps', '/en/products?category=tees', '/en/track', '/en/try-on']
+### page_en_products_negro-rojo.html
+bytes 75297
+lang ['en']
+title ['Black / Red Signature | Good Luck 0880 caps']
+desc ['Black / Red Signature: Good Luck 0880 cap with high-density 3D puff embroidery. $120 USD.']
+robots []
+canonical ['https://goodluckcaps.com/en/products/negro-rojo']
+hreflang [('en', 'https://goodluckcaps.com/en/products/negro-rojo'), ('es', 'https://goodluckcaps.com/es/products/negro-rojo'), ('en', 'https://goodluckcaps.com/en/products/negro-rojo'), ('es', 'https://goodluckcaps.com/es/products/negro-rojo')]
+og [('title', 'Black / Red Signature | Good Luck 0880 caps'), ('url', 'https://goodluckcaps.com/en/products/negro-rojo'), ('image', 'https://goodluckcaps.com/catalog/caps/negro-rojo.webp'), ('type', 'website')]
+h1 ['Black / Red Signature']
+h2count 1
+jsonld ['Organization', 'ContactPoint']
+jsonld ['WebSite', 'SearchAction']
+jsonld ['Product', 'Brand', 'Offer', 'Organization']
+imgs 1 noalt 0 emptyalt 0
+visible_words 264
+internal_links 15 ['/en', '/en/account/orders', '/en/products', '/en/products/azul-marino-rojo', '/en/products/azul-rey-blanco', '/en/products/beige-rojo', '/en/products/blanco-rojo', '/en/products/gris-rojo', '/en/products/marron-rojo', '/en/products/rojo-negro', '/en/products/verde-rojo', '/en/products?category=caps', '/en/products?category=tees', '/en/track', '/en/try-on']
+### page_en_products_vintage-f1-tee.html
+bytes 96800
+lang ['en']
+title ['Good Luck Grand Prix Vintage F1 Racer Tee | Good Luck heavyweight tees']
+desc ['Good Luck Grand Prix Vintage F1 Racer Tee: 280–300 GSM heavyweight tee with a boxy cut and high-density screen print. $80 USD.']
+robots []
+canonical ['https://goodluckcaps.com/en/products/vintage-f1-tee']
+hreflang [('en', 'https://goodluckcaps.com/en/products/vintage-f1-tee'), ('es', 'https://goodluckcaps.com/es/products/vintage-f1-tee'), ('en', 'https://goodluckcaps.com/en/products/vintage-f1-tee'), ('es', 'https://goodluckcaps.com/es/products/vintage-f1-tee')]
+og [('title', 'Good Luck Grand Prix Vintage F1 Racer Tee | Good Luck heavyweight tees'), ('url', 'https://goodluckcaps.com/en/products/vintage-f1-tee'), ('image', 'https://goodluckcaps.com/catalog/tees/vintage-f1-tee/butter-cream.webp'), ('type', 'website')]
+h1 ['Good Luck Grand Prix Vintage F1 Racer Tee']
+h2count 1
+jsonld ['Organization', 'ContactPoint']
+jsonld ['WebSite', 'SearchAction']
+jsonld ['Product', 'Brand', 'Offer', 'Organization']
+imgs 1 noalt 0 emptyalt 0
+visible_words 304
+internal_links 15 ['/en', '/en/account/orders', '/en/products', '/en/products/boxing-gloves-tee?colorway=washed-black', '/en/products/butterfly-grunge-tee?colorway=butter-cream', '/en/products/eagle-clover-tee?colorway=washed-black', '/en/products/eight-ball-tee?colorway=crisp-white', '/en/products/gothic-angel-tee?colorway=crisp-white', '/en/products/gothic-skull-tee?colorway=washed-black', '/en/products/retro-soul-tee?colorway=washed-black', '/en/products/snake-horseshoe-tee?colorway=washed-black', '/en/products?category=caps', '/en/products?category=tees', '/en/track', '/en/try-on']
+### page_en_track.html
+bytes 73843
+lang ['en']
+title ['Track Order | Good Luck']
+desc ['Inspect live fulfillment progress and carrier tracking for your Good Luck order.']
+robots []
+canonical ['https://goodluckcaps.com/en/track']
+hreflang [('en', 'https://goodluckcaps.com/en/track'), ('es', 'https://goodluckcaps.com/es/track'), ('en', 'https://goodluckcaps.com/en/track'), ('es', 'https://goodluckcaps.com/es/track')]
+og []
+h1 ['Track Your Shipment']
+h2count 0
+jsonld ['Organization', 'ContactPoint']
+jsonld ['WebSite', 'SearchAction']
+imgs 0 noalt 0 emptyalt 0
+visible_words 131
+internal_links 7 ['/en', '/en/account/orders', '/en/products', '/en/products?category=caps', '/en/products?category=tees', '/en/track', '/en/try-on']
+### page_en_try-on.html
+bytes 106534
+lang ['en']
+title ['Try on a cap | Good Luck 0880']
+desc ['See any Good Luck 0880 cap on your own photo. The cap fits itself to your face, and your photo never leaves your device.']
+robots []
+canonical ['https://goodluckcaps.com/en/try-on']
+hreflang [('en', 'https://goodluckcaps.com/en/try-on'), ('es', 'https://goodluckcaps.com/es/try-on'), ('en', 'https://goodluckcaps.com/en/try-on'), ('es', 'https://goodluckcaps.com/es/try-on')]
+og [('title', 'Try on a cap | Good Luck 0880'), ('url', 'https://goodluckcaps.com/en/try-on'), ('image', 'https://goodluckcaps.com/og/home.jpg'), ('type', 'website')]
+h1 ['Try it on']
+h2count 0
+jsonld ['Organization', 'ContactPoint']
+jsonld ['WebSite', 'SearchAction']
+imgs 24 noalt 0 emptyalt 24
+visible_words 192
+internal_links 8 ['/en', '/en/account/orders', '/en/products', '/en/products/boxing-gloves-tee', '/en/products?category=caps', '/en/products?category=tees', '/en/track', '/en/try-on']
+### page_es.html
+bytes 119872
+lang ['en']
+title ['Good Luck | Gorras Urbanas Exclusivas &amp; Playeras Heavyweight — Serie 0880']
+desc ['Tienda oficial Good Luck. Gorras snapback con bordado 3D de alta densidad y playeras heavyweight 280-300 GSM en 11 diseños con probador virtual en modelo.']
+robots []
+canonical ['https://goodluckcaps.com/es']
+hreflang [('en', 'https://goodluckcaps.com/en'), ('es', 'https://goodluckcaps.com/es'), ('en', 'https://goodluckcaps.com/en'), ('es', 'https://goodluckcaps.com/es')]
+og [('title', 'Good Luck | Gorras Urbanas Exclusivas &amp; Playeras Heavyweight — Serie 0880'), ('url', 'https://goodluckcaps.com/es'), ('image', 'https://goodluckcaps.com/og/home.jpg'), ('type', 'website')]
+h1 ['LA FORTUNA Y LAREBELDÍA']
+h2count 4
+jsonld ['Organization', 'ContactPoint']
+jsonld ['WebSite', 'SearchAction']
+imgs 3 noalt 0 emptyalt 2
+visible_words 513
+internal_links 15 ['/es', '/es/account/orders', '/es/products', '/es/products/azul-marino-rojo', '/es/products/blanco-rojo', '/es/products/boxing-gloves-tee?colorway=washed-black', '/es/products/butterfly-grunge-tee?colorway=butter-cream', '/es/products/eagle-clover-tee?colorway=washed-black', '/es/products/eight-ball-tee?colorway=crisp-white', '/es/products/negro-rojo', '/es/products/rojo-negro', '/es/products?category=caps', '/es/products?category=tees', '/es/track', '/es/try-on']
+### page_es_products_negro-rojo.html
+bytes 76429
+lang ['en']
+title ['Negro / Rojo Insignia | Good Luck 0880 caps']
+desc ['Negro / Rojo Insignia: gorra Good Luck 0880 con bordado 3D de alta densidad. $120 USD.']
+robots []
+canonical ['https://goodluckcaps.com/es/products/negro-rojo']
+hreflang [('en', 'https://goodluckcaps.com/en/products/negro-rojo'), ('es', 'https://goodluckcaps.com/es/products/negro-rojo'), ('en', 'https://goodluckcaps.com/en/products/negro-rojo'), ('es', 'https://goodluckcaps.com/es/products/negro-rojo')]
+og [('title', 'Negro / Rojo Insignia | Good Luck 0880 caps'), ('url', 'https://goodluckcaps.com/es/products/negro-rojo'), ('image', 'https://goodluckcaps.com/catalog/caps/negro-rojo.webp'), ('type', 'website')]
+h1 ['Negro / Rojo Insignia']
+h2count 1
+jsonld ['Organization', 'ContactPoint']
+jsonld ['WebSite', 'SearchAction']
+jsonld ['Product', 'Brand', 'Offer', 'Organization']
+imgs 1 noalt 0 emptyalt 0
+visible_words 276
+internal_links 15 ['/es', '/es/account/orders', '/es/products', '/es/products/azul-marino-rojo', '/es/products/azul-rey-blanco', '/es/products/beige-rojo', '/es/products/blanco-rojo', '/es/products/gris-rojo', '/es/products/marron-rojo', '/es/products/rojo-negro', '/es/products/verde-rojo', '/es/products?category=caps', '/es/products?category=tees', '/es/track', '/es/try-on']

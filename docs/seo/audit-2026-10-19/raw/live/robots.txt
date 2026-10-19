@@ -1,0 +1,22 @@
+User-Agent: *
+Allow: /
+Allow: /products
+Allow: /products/*
+Allow: /caps
+Allow: /caps/*
+Allow: /track
+Allow: /track/*
+Disallow: /admin
+Disallow: /admin/*
+Disallow: /*/admin
+Disallow: /*/admin/*
+Disallow: /checkout
+Disallow: /checkout/*
+Disallow: /*/checkout
+Disallow: /*/checkout/*
+Disallow: /account
+Disallow: /account/*
+Disallow: /*/account
+Disallow: /*/account/*
+
+Sitemap: https://goodluckcaps.com/sitemap.xml

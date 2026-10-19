@@ -1,0 +1,31 @@
+### /es
+bytes 122274
+lang ['es']
+title ['Good Luck | Gorras Urbanas Exclusivas &amp; Playeras Heavyweight — Serie 0880']
+desc ['Tienda oficial Good Luck. Gorras snapback con bordado 3D de alta densidad y playeras heavyweight 280-300 GSM en 11 diseños con probador virtual en modelo.']
+robots ['index, follow']
+canonical ['https://goodluckcaps.com/es']
+hreflang [('en', 'https://goodluckcaps.com/en'), ('es', 'https://goodluckcaps.com/es'), ('x-default', 'https://goodluckcaps.com/en'), ('en', 'https://goodluckcaps.com/en'), ('es', 'https://goodluckcaps.com/es'), ('x-default', 'https://goodluckcaps.com/en')]
+og [('title', 'Good Luck | Gorras Urbanas Exclusivas &amp; Playeras Heavyweight — Serie 0880'), ('url', 'https://goodluckcaps.com/es'), ('image', 'https://goodluckcaps.com/og/home.jpg'), ('type', 'website')]
+h1 ['LA FORTUNA Y LAREBELDÍA']
+h2count 4
+jsonld ['Organization', 'ContactPoint', 'WebSite']
+imgs 3 noalt 0 emptyalt 2
+visible_words 513
+internal_links 15 ['/es', '/es/account/orders', '/es/products', '/es/products/azul-marino-rojo', '/es/products/blanco-rojo', '/es/products/boxing-gloves-tee?colorway=washed-black', '/es/products/butterfly-grunge-tee?colorway=butter-cream', '/es/products/eagle-clover-tee?colorway=washed-black', '/es/products/eight-ball-tee?colorway=crisp-white', '/es/products/negro-rojo', '/es/products/rojo-negro', '/es/products?category=caps', '/es/products?category=tees', '/es/track', '/es/try-on']
+### /en/products/negro-rojo
+bytes 78785
+lang ['en']
+title ['Black / Red Signature | Good Luck 0880 caps']
+desc ['Black / Red Signature: Good Luck 0880 cap with high-density 3D puff embroidery. $120 USD.']
+robots ['index, follow']
+canonical ['https://goodluckcaps.com/en/products/negro-rojo']
+hreflang [('en', 'https://goodluckcaps.com/en/products/negro-rojo'), ('es', 'https://goodluckcaps.com/es/products/negro-rojo'), ('x-default', 'https://goodluckcaps.com/en/products/negro-rojo'), ('en', 'https://goodluckcaps.com/en/products/negro-rojo'), ('es', 'https://goodluckcaps.com/es/products/negro-rojo'), ('x-default', 'https://goodluckcaps.com/en/products/negro-rojo')]
+og [('title', 'Black / Red Signature | Good Luck 0880 caps'), ('url', 'https://goodluckcaps.com/en/products/negro-rojo'), ('image', 'https://goodluckcaps.com/catalog/caps/negro-rojo.webp'), ('type', 'website')]
+h1 ['Black / Red Signature']
+h2count 1
+jsonld ['Organization', 'ContactPoint', 'WebSite']
+jsonld ['Product', 'Brand', 'Offer', 'BreadcrumbList', 'ListItem', 'ListItem', 'ListItem', 'ListItem']
+imgs 1 noalt 0 emptyalt 0
+visible_words 264
+internal_links 15 ['/en', '/en/account/orders', '/en/products', '/en/products/azul-marino-rojo', '/en/products/azul-rey-blanco', '/en/products/beige-rojo', '/en/products/blanco-rojo', '/en/products/gris-rojo', '/en/products/marron-rojo', '/en/products/rojo-negro', '/en/products/verde-rojo', '/en/products?category=caps', '/en/products?category=tees', '/en/track', '/en/try-on']
