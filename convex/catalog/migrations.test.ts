@@ -109,7 +109,7 @@ describe("seedAll visibility (ADR 0022)", () => {
     await admin.mutation(api.catalog.migrations.seedAll, {});
     const rows = await t.run((ctx) => ctx.db.query("variants").take(500));
     for (const row of rows) {
-      const seed = SEED_VARIANTS.find((s) => s.variantId === row.variantId)!;
+      const seed: { isAvailable?: boolean; variantId: string } = SEED_VARIANTS.find((s) => s.variantId === row.variantId)!;
       expect(row.isAvailable).toBe(seed.isAvailable ?? true);
     }
   });

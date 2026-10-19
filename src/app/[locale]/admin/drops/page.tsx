@@ -36,6 +36,7 @@ import {
 import { AdminModal } from "@/components/admin/AdminModal";
 import { DateTimePicker } from "@/components/admin/DateTimePicker";
 import { Link } from "@/i18n/routing";
+import { CategoryWaitlist } from "@/components/admin/CategoryWaitlist";
 
 function CountdownDisplay({ targetTimestamp }: { targetTimestamp: number }) {
   const [timeLeft, setTimeLeft] = useState<{
@@ -367,6 +368,12 @@ export default function AdminDropsPage() {
             <span>{t("scheduleNewDrop")}</span>
           </button>
         </div>
+      </div>
+
+      {/* ── Category waitlists (ADR 0022) ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 empty:hidden">
+        <CategoryWaitlist category="headwear" />
+        <CategoryWaitlist category="apparel" />
       </div>
 
       {/* ── Key Telemetry Cards ── */}
