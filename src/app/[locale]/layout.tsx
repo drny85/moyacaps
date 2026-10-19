@@ -21,16 +21,21 @@ import { queryForStaticRender } from "@/lib/server/convexStatic";
 import { toCapVariant } from "@/lib/toCapVariant";
 import { api } from "@convex/_generated/api";
 import type { CapVariant } from "@/data/caps";
+import { shouldSwallowSeedError } from "@/lib/selectCatalog";
 
 // Same interval as the product pages (ADR 0020) so the seeded catalog refreshes with them
 export const revalidate = 300;
 
-/** Never fails the render: the live Convex query fills the catalog on the client. */
+/**
+ * Build time: a failed fetch seeds [] so the build never fails; the live query fills the
+ * catalog on the client. Runtime (ISR revalidation): rethrow so Next keeps the last good page.
+ */
 async function loadCatalogSeed(): Promise<CapVariant[]> {
   try {
     const rows = await queryForStaticRender(api.catalog.queries.getVariants, {});
     return rows.map(toCapVariant);
   } catch (error) {
+    if (!shouldSwallowSeedError(process.env.NEXT_PHASE)) throw error;
     console.error("Catalog seed fetch failed; rendering with an empty seed", error);
     return [];
   }
@@ -67,20 +72,20 @@ export default async function LocaleLayout({
           <ConvexClientProvider>
             <UserSyncProvider>
               <CatalogProvider seed={catalogSeed}>
-              <SmoothScrollProvider>
-                <MotionProvider>
-                  <div className="flex min-h-screen flex-col pb-20 md:pb-0 print:pb-0 print:min-h-0">
-                    <OrganizationJsonLd />
-                    {/* Film grain noise overlay */}
-                    <div className="noise-overlay print:hidden" aria-hidden="true" />
-                    <Navbar />
-                    <main className="flex-1 print:p-0">{children}</main>
-                    <Footer />
-                    <MobileActionBar />
-                    <DeferredOverlays />
-                  </div>
-                </MotionProvider>
-              </SmoothScrollProvider>
+                <SmoothScrollProvider>
+                  <MotionProvider>
+                    <div className="flex min-h-screen flex-col pb-20 md:pb-0 print:pb-0 print:min-h-0">
+                      <OrganizationJsonLd />
+                      {/* Film grain noise overlay */}
+                      <div className="noise-overlay print:hidden" aria-hidden="true" />
+                      <Navbar />
+                      <main className="flex-1 print:p-0">{children}</main>
+                      <Footer />
+                      <MobileActionBar />
+                      <DeferredOverlays />
+                    </div>
+                  </MotionProvider>
+                </SmoothScrollProvider>
               </CatalogProvider>
             </UserSyncProvider>
           </ConvexClientProvider>
