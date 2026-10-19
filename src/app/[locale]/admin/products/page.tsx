@@ -8,6 +8,7 @@ import { useQuery, useMutation } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { ConvexError } from "convex/values";
 import { api } from "@convex/_generated/api";
+import { ProductHistory } from "@/components/admin/products/ProductHistory";
 import type { Id } from "@convex/_generated/dataModel";
 import { normalizeSlug, type FieldError } from "@convex/catalog/rules";
 import {
@@ -1415,6 +1416,8 @@ export default function AdminProductsPage() {
                   <span>{uploadProgress}</span>
                 </div>
               )}
+
+              {editingRow && <ProductHistory variantId={editingRow.variantId} />}
 
               <div className="flex items-center gap-3 pt-3 border-t border-zinc-100 dark:border-white/[0.06]">
                 <button
