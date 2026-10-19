@@ -342,7 +342,9 @@ export const getDropSubscribers = query({
         .withIndex("by_variantId", (q) => q.eq("variantId", args.variantId!))
         .take(MAX_SUBSCRIBERS_LISTED);
     }
-    return await ctx.db.query("drop_alerts").withIndex("by_createdAt").order("desc").take(MAX_SUBSCRIBERS_LISTED);
+    const alerts = await ctx.db.query("drop_alerts").withIndex("by_createdAt").order("desc").take(MAX_SUBSCRIBERS_LISTED);
+    // Category waitlists (ADR 0022) have no product and are listed on their own.
+    return alerts.filter((a) => a.variantId !== undefined);
   },
 });
 
@@ -363,11 +365,13 @@ export const getDropSubscribersList = query({
     } else {
       alerts = await ctx.db.query("drop_alerts").withIndex("by_createdAt").order("desc").take(MAX_SUBSCRIBERS_LISTED);
     }
+    // Category waitlists (ADR 0022) have no product and are listed on their own.
+    const productAlerts = alerts.flatMap((a) => (a.variantId === undefined ? [] : [{ ...a, variantId: a.variantId }]));
 
     const variants = await listCatalogVariants(ctx);
     const variantMap = new Map(variants.map((v) => [v.variantId, v]));
 
-    return alerts
+    return productAlerts
       .map((a) => {
         const v = variantMap.get(a.variantId);
         return {

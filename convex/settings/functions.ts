@@ -87,14 +87,17 @@ export async function writeCategoryLaunch(ctx: MutationCtx, category: Category, 
   }
 }
 
-/** Side effects of a Category Status change: refresh the static storefront. */
+/** Side effects of a Category Status change: refresh the static storefront; on launch, email the waitlist. */
 export async function onCategoryLaunchChanged(
   ctx: MutationCtx,
-  _category: Category,
-  _before: CategoryStatus,
-  _after: CategoryStatus
+  category: Category,
+  before: CategoryStatus,
+  after: CategoryStatus
 ): Promise<void> {
   await ctx.scheduler.runAfter(0, internal.settings.revalidate.revalidateStorefront, {});
+  if (after === "live" && before !== "live") {
+    await ctx.scheduler.runAfter(0, internal.notifications.launchAlerts.claimLaunchEmails, { category });
+  }
 }
 
 async function storedLaunch(ctx: MutationCtx, category: Category): Promise<StoredLaunch> {
