@@ -19,6 +19,7 @@ import type * as catalog_images_attach from "../catalog/images/attach.js";
 import type * as catalog_images_cleanup from "../catalog/images/cleanup.js";
 import type * as catalog_images_functions from "../catalog/images/functions.js";
 import type * as catalog_images_header from "../catalog/images/header.js";
+import type * as catalog_images_migration from "../catalog/images/migration.js";
 import type * as catalog_images_overlay from "../catalog/images/overlay.js";
 import type * as catalog_images_references from "../catalog/images/references.js";
 import type * as catalog_images_rules from "../catalog/images/rules.js";
@@ -87,6 +88,7 @@ declare const fullApi: ApiFromModules<{
   "catalog/images/cleanup": typeof catalog_images_cleanup;
   "catalog/images/functions": typeof catalog_images_functions;
   "catalog/images/header": typeof catalog_images_header;
+  "catalog/images/migration": typeof catalog_images_migration;
   "catalog/images/overlay": typeof catalog_images_overlay;
   "catalog/images/references": typeof catalog_images_references;
   "catalog/images/rules": typeof catalog_images_rules;
