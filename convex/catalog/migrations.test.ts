@@ -102,3 +102,15 @@ describe("backfillAvailability", () => {
     expect(byId).toEqual({ unset: true, hidden: false, shown: true });
   });
 });
+
+describe("seedAll visibility (ADR 0022)", () => {
+  it("seeds visible products unless the seed row hides them", async () => {
+    const { t, admin } = setup();
+    await admin.mutation(api.catalog.migrations.seedAll, {});
+    const rows = await t.run((ctx) => ctx.db.query("variants").take(500));
+    for (const row of rows) {
+      const seed = SEED_VARIANTS.find((s) => s.variantId === row.variantId)!;
+      expect(row.isAvailable).toBe(seed.isAvailable ?? true);
+    }
+  });
+});

@@ -23,6 +23,7 @@ async function whatsappLeadShippingFee(t: ReturnType<typeof setup>["t"], qty: nu
   await t.run((ctx) =>
     ctx.db.insert("variants", {
       variantId: "V1",
+      isAvailable: true,
       nameEn: "Cap V1",
       nameEs: "Gorra V1",
       silhouette: "snapback",

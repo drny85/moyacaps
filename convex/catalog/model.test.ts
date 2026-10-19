@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { DEFAULT_CATEGORY_LAUNCHES } from "../settings/launch";
 import type { Doc, Id } from "../_generated/dataModel";
 import {
   computedDropStatus,
@@ -7,6 +8,7 @@ import {
   hasDropHistory,
   isPurchaseBlockedByDrop,
   isUpcomingDrop,
+  isCustomerVisible,
   blankImageWhileVisible,
   buildNewVariant,
   buildVariantPatch,
@@ -67,44 +69,75 @@ describe("variantCategory", () => {
 });
 
 describe("filterCatalogVariants", () => {
-  const cap = variant({ variantId: "cap" });
+  const cap = variant({ variantId: "cap", isAvailable: true });
   const hidden = variant({ variantId: "hidden", isAvailable: false });
-  const soldOut = variant({ variantId: "sold-out", stock: 0 });
-  const tee = variant({ variantId: "tee", silhouette: "tee" });
+  const soldOut = variant({ variantId: "sold-out", stock: 0, isAvailable: true });
+  const tee = variant({ variantId: "tee", silhouette: "tee", isAvailable: true });
   const all = [cap, hidden, soldOut, tee];
   const ids = (vs: Doc<"variants">[]) => vs.map((v) => v.variantId);
+  const launches = DEFAULT_CATEGORY_LAUNCHES;
 
   it("hides unavailable products unless asked to include them", () => {
-    expect(ids(filterCatalogVariants(all, {}))).toEqual(["cap", "sold-out", "tee"]);
-    expect(ids(filterCatalogVariants(all, { includeUnavailable: true }))).toEqual(["cap", "hidden", "sold-out", "tee"]);
+    expect(ids(filterCatalogVariants(all, { launches }))).toEqual(["cap", "sold-out", "tee"]);
+    expect(ids(filterCatalogVariants(all, { includeUnavailable: true, launches }))).toEqual(["cap", "hidden", "sold-out", "tee"]);
   });
 
   it("never returns archived products, even when including unavailable ones", () => {
     const archived = variant({ variantId: "archived", isAvailable: false, archivedAt: NOW });
-    expect(ids(filterCatalogVariants([...all, archived], { includeUnavailable: true }))).toEqual(["cap", "hidden", "sold-out", "tee"]);
-    expect(ids(filterCatalogVariants([...all, archived], {}))).toEqual(["cap", "sold-out", "tee"]);
+    expect(ids(filterCatalogVariants([...all, archived], { includeUnavailable: true, launches }))).toEqual(["cap", "hidden", "sold-out", "tee"]);
+    expect(ids(filterCatalogVariants([...all, archived], { launches }))).toEqual(["cap", "sold-out", "tee"]);
   });
 
   it("treats 'all' as no silhouette or category filter", () => {
-    expect(ids(filterCatalogVariants(all, { silhouette: "all", category: "all" }))).toEqual(["cap", "sold-out", "tee"]);
+    expect(ids(filterCatalogVariants(all, { silhouette: "all", category: "all", launches }))).toEqual(["cap", "sold-out", "tee"]);
   });
 
   it("filters by silhouette, derived category and stock", () => {
-    expect(ids(filterCatalogVariants(all, { silhouette: "tee" }))).toEqual(["tee"]);
-    expect(ids(filterCatalogVariants(all, { category: "headwear" }))).toEqual(["cap", "sold-out"]);
-    expect(ids(filterCatalogVariants(all, { inStock: true }))).toEqual(["cap", "tee"]);
+    expect(ids(filterCatalogVariants(all, { silhouette: "tee", launches }))).toEqual(["tee"]);
+    expect(ids(filterCatalogVariants(all, { category: "headwear", launches }))).toEqual(["cap", "sold-out"]);
+    expect(ids(filterCatalogVariants(all, { inStock: true, launches }))).toEqual(["cap", "tee"]);
+  });
+
+  it("hides products of a category that is not live unless asked to include them", () => {
+    const teesSoon = { ...launches, apparel: { status: "coming_soon" as const } };
+    expect(ids(filterCatalogVariants(all, { launches: teesSoon }))).toEqual(["cap", "sold-out"]);
+    expect(ids(filterCatalogVariants(all, { launches: teesSoon, includeUnavailable: true }))).toEqual(["cap", "hidden", "sold-out", "tee"]);
+  });
+});
+
+describe("isCustomerVisible", () => {
+  const live = DEFAULT_CATEGORY_LAUNCHES;
+  const cap = variant({ isAvailable: true });
+  const tee = variant({ silhouette: "tee", category: "apparel", isAvailable: true });
+
+  it("needs isAvailable === true", () => {
+    expect(isCustomerVisible(cap, live)).toBe(true);
+    expect(isCustomerVisible({ ...cap, isAvailable: undefined }, live)).toBe(false);
+    expect(isCustomerVisible({ ...cap, isAvailable: false }, live)).toBe(false);
+  });
+
+  it("needs the product's category to be live", () => {
+    expect(isCustomerVisible(tee, { ...live, apparel: { status: "coming_soon" } })).toBe(false);
+    expect(isCustomerVisible(tee, { ...live, apparel: { status: "hidden" } })).toBe(false);
+    expect(isCustomerVisible(cap, { ...live, apparel: { status: "hidden" } })).toBe(true);
+    expect(isCustomerVisible({ ...cap, category: undefined }, { ...live, headwear: { status: "hidden" } })).toBe(false);
+  });
+
+  it("never shows an archived product", () => {
+    expect(isCustomerVisible({ ...cap, archivedAt: NOW }, live)).toBe(false);
   });
 });
 
 describe("drop rules", () => {
-  const scheduled = { isDrop: true, dropDate: NOW + HOUR, dropStatus: "scheduled" as const };
+  const scheduled = { isDrop: true, dropDate: NOW + HOUR, dropStatus: "scheduled" as const, isAvailable: true };
 
   it("isUpcomingDrop: visible, future and not live", () => {
     expect(isUpcomingDrop(scheduled, NOW)).toBe(true);
     expect(isUpcomingDrop({ ...scheduled, isAvailable: false }, NOW)).toBe(false);
     expect(isUpcomingDrop({ ...scheduled, dropStatus: "live" }, NOW)).toBe(false);
     expect(isUpcomingDrop({ ...scheduled, dropDate: NOW - 1 }, NOW)).toBe(false);
-    expect(isUpcomingDrop({ isDrop: false, dropDate: NOW + HOUR }, NOW)).toBe(false);
+    expect(isUpcomingDrop({ isDrop: false, dropDate: NOW + HOUR, isAvailable: true }, NOW)).toBe(false);
+    expect(isUpcomingDrop({ ...scheduled, isAvailable: undefined }, NOW)).toBe(false);
   });
 
   it("hasDropHistory: any drop attribute counts", () => {
@@ -193,7 +226,8 @@ describe("buildNewVariant", () => {
 
 describe("blankImageWhileVisible", () => {
   it("flags a visible product left without an image or upload", () => {
-    expect(blankImageWhileVisible(variant({ image: " " }), {})).toBe(true);
+    expect(blankImageWhileVisible(variant({ image: " ", isAvailable: true }), {})).toBe(true);
+    expect(blankImageWhileVisible(variant({ image: " " }), {})).toBe(false);
     expect(blankImageWhileVisible(variant({ image: "" }), { isAvailable: false })).toBe(false);
     expect(blankImageWhileVisible(variant({ image: "", storageId: "s1" as Id<"_storage"> }), {})).toBe(false);
     expect(blankImageWhileVisible(variant(), { priceUsd: 5 })).toBe(false);
@@ -201,7 +235,7 @@ describe("blankImageWhileVisible", () => {
 
   it("counts a catalog image row as an image", () => {
     expect(blankImageWhileVisible(variant({ image: "" }), {}, true)).toBe(false);
-    expect(blankImageWhileVisible(variant({ image: "" }), {}, false)).toBe(true);
+    expect(blankImageWhileVisible(variant({ image: "", isAvailable: true }), {}, false)).toBe(true);
   });
 });
 

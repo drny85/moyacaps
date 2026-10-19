@@ -72,7 +72,7 @@ export async function resolveProduct<T extends Doc<"variants">>(
   return {
     ...overlayProductImages(variant, resolved),
     image: primaryImage({ ...variant, legacyUrl: await legacyStorageUrl(ctx, variant) }, resolved),
-    isAvailable: variant.isAvailable !== false,
+    isAvailable: variant.isAvailable === true,
   };
 }
 

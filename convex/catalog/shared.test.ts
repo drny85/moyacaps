@@ -22,6 +22,7 @@ const cap = {
   stock: 10,
   image: "/caps/oro-negro.png",
   isFeatured: false,
+  isAvailable: true,
 };
 
 async function setup() {

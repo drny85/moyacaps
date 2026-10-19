@@ -8,7 +8,8 @@ import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import schema from "../schema";
 import { requireAdmin } from "../lib/auth";
-import { computedDropStatus, hasDropHistory, isUpcomingDrop } from "./model";
+import { computedDropStatus, hasDropHistory, isCustomerVisible, isUpcomingDrop } from "./model";
+import { getCategoryLaunches } from "../settings/launch";
 import { actorEmail } from "./audit";
 import { countDropAlerts, listCatalogVariants, patchVariantAudited, requireActiveVariant, requireVariant, requireVersion, resolveProduct } from "./shared";
 import { adminDropRow, dropStatusValidator, dropSubscriberRow, variantWithSubscribers } from "./validators";
@@ -43,7 +44,8 @@ export const getUpcomingDrops = query({
   returns: v.array(variantWithSubscribers),
   handler: async (ctx, args) => {
     const rawVariants = await listCatalogVariants(ctx);
-    const dropVariants = rawVariants.filter((v) => v.archivedAt === undefined && isUpcomingDrop(v, args.clientTime));
+    const launches = await getCategoryLaunches(ctx);
+    const dropVariants = rawVariants.filter((v) => isCustomerVisible(v, launches) && isUpcomingDrop(v, args.clientTime));
 
     // Sort by earliest dropDate
     dropVariants.sort((a, b) => (a.dropDate || 0) - (b.dropDate || 0));

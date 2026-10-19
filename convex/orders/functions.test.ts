@@ -24,6 +24,7 @@ async function seedVariant(t: T, variantId: string, stock = 5, priceUsd = 100) {
   await t.run(async (ctx) => {
     await ctx.db.insert("variants", {
       variantId,
+      isAvailable: true,
       nameEn: `Cap ${variantId}`,
       nameEs: `Gorra ${variantId}`,
       silhouette: "snapback",

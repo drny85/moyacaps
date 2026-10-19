@@ -6,6 +6,7 @@
 import type { Doc } from "../_generated/dataModel";
 import { resolveTaxCode, validateProductFields } from "./rules";
 import type { Category, FieldError, TeeColorwayInput } from "./rules";
+import type { CategoryLaunches } from "../settings/launch";
 
 export const TEE_SIZES = ["S", "M", "L", "XL", "2XL"] as const;
 
@@ -19,11 +20,32 @@ export function variantCategory(variant: Pick<Doc<"variants">, "category" | "sil
   return variant.category ?? (variant.silhouette === "tee" ? "apparel" : "headwear");
 }
 
+/** The product's category as a Category Status key; rows without one count as Caps. */
+export function catalogCategory(variant: Pick<Doc<"variants">, "category" | "silhouette">): Category {
+  return variantCategory(variant) === "apparel" ? "apparel" : "headwear";
+}
+
+/**
+ * ADR 0022: what a Customer may see or buy. Not archived, turned on by an Administrator
+ * (`isAvailable === true`; a missing flag is hidden), and its category Live.
+ */
+export function isCustomerVisible(
+  variant: Pick<Doc<"variants">, "archivedAt" | "isAvailable" | "category" | "silhouette">,
+  launches: CategoryLaunches
+): boolean {
+  return (
+    variant.archivedAt === undefined &&
+    variant.isAvailable === true &&
+    launches[catalogCategory(variant)].status === "live"
+  );
+}
+
 export type CatalogFilter = {
   silhouette?: string;
   category?: string;
   inStock?: boolean;
   includeUnavailable?: boolean;
+  launches: CategoryLaunches;
 };
 
 /** Storefront filters for `catalog/queries:getVariants`; "all" means no filter. */
@@ -34,7 +56,7 @@ export function filterCatalogVariants<T extends Pick<Doc<"variants">, "isAvailab
   // Archived products are never storefront-visible, even to `includeUnavailable` callers.
   let result = variants.filter((v) => v.archivedAt === undefined);
   if (!filter.includeUnavailable) {
-    result = result.filter((v) => v.isAvailable !== false);
+    result = result.filter((v) => isCustomerVisible(v, filter.launches));
   }
   if (filter.silhouette && filter.silhouette !== "all") {
     result = result.filter((v) => v.silhouette === filter.silhouette);
@@ -55,7 +77,7 @@ export function isUpcomingDrop(variant: DropFields, now: number): boolean {
   return (
     variant.isDrop === true &&
     typeof variant.dropDate === "number" &&
-    variant.isAvailable !== false &&
+    variant.isAvailable === true &&
     now < variant.dropDate &&
     variant.dropStatus !== "live"
   );
@@ -205,7 +227,7 @@ export function buildNewVariant(input: NewVariantInput, now: number) {
  */
 export function blankImageWhileVisible(existing: Doc<"variants">, patch: VariantPatch, hasCatalogImage = false): boolean {
   const merged = { ...existing, ...definedOnly(patch) };
-  return merged.isAvailable !== false && merged.image.trim() === "" && !merged.storageId && !hasCatalogImage;
+  return merged.isAvailable === true && merged.image.trim() === "" && !merged.storageId && !hasCatalogImage;
 }
 
 /**
