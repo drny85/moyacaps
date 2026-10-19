@@ -8,6 +8,8 @@ This directory houses technical design documents, architectural blueprints, and 
 | :--- | :--- | :--- | :--- | :--- |
 | **0001** | **Undervisor & Side-Patch Customizer Studio ("Moya Studio")** | Ready for Implementation | `feat/customizer-studio` | [`0001-customizer-studio.md`](./0001-customizer-studio.md) |
 | **0002** | **Mobile-First Storefront Redesign** | Ready for Implementation | 5 phase branches | [`0002-mobile-first-storefront-redesign.md`](./0002-mobile-first-storefront-redesign.md) |
+| **0003** | **Try-On Redesign** | Implemented | `feat/try-on-redesign` | [`0003-try-on-redesign.md`](./0003-try-on-redesign.md) |
+| **0004** | **Admin Catalog Foundation** | In progress | `feat/admin-catalog-foundation` | [`0004-admin-catalog-foundation.md`](./0004-admin-catalog-foundation.md) |
 
 ---
 

@@ -241,4 +241,22 @@ export default defineSchema({
     freeShippingThresholdUnits: v.number(),
     updatedAt: v.number(),
   }).index("by_key", ["key"]),
+  // Admin-managed product photos in Convex storage (ADR 0021). Reads fall back to legacy string fields.
+  productImages: defineTable({
+    variantId: v.string(),
+    colorway: v.optional(v.string()),
+    role: v.union(v.literal("catalog"), v.literal("lifestyle"), v.literal("angle")),
+    angle: v.optional(
+      v.union(v.literal("front"), v.literal("left"), v.literal("back"), v.literal("right")),
+    ),
+    order: v.number(),
+    storageId: v.id("_storage"),
+    sha256: v.string(),
+    width: v.number(),
+    height: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_variantId_and_role_and_order", ["variantId", "role", "order"])
+    .index("by_storageId", ["storageId"])
+    .index("by_sha256", ["sha256"]),
 });
