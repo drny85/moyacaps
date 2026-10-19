@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { editorFeedback, editorFieldKey, fieldErrorFor, formatSkuCells, isEditorField, splitFieldErrors } from "./editorErrors";
+import { ConvexError } from "convex/values";
+import { editorFeedback, editorFieldKey, errorLine, fieldErrorFor, formatSkuCells, isEditorField, splitFieldErrors } from "./editorErrors";
 
 describe("editorFieldKey", () => {
   it("folds per-size errors onto the sizes input", () => {
@@ -118,5 +119,26 @@ describe("formatSkuCells", () => {
     ];
     expect(formatSkuCells(cells)).toBe("black / M (3), sand / XL (1)");
     expect(formatSkuCells(cells, (id) => (id === "black" ? "Black" : id))).toBe("Black / M (3), sand / XL (1)");
+  });
+});
+
+describe("errorLine", () => {
+  it("names the copy key for structured server errors, never the raw object", () => {
+    expect(errorLine(new ConvexError({ kind: "validation", errors: [{ field: "stock", code: "range" }] }))).toEqual({ key: "errors.range" });
+    expect(errorLine(new ConvexError({ kind: "archived" }))).toEqual({ key: "errors.archived" });
+    expect(errorLine(new ConvexError({ kind: "stale" }))).toEqual({ key: "errors.stale" });
+    expect(errorLine(new ConvexError({ kind: "needs_image" }))).toEqual({ key: "errors.needs_image" });
+    expect(errorLine(new ConvexError({ kind: "image_rule", code: "too_many" }))).toEqual({ key: "images.errors.too_many" });
+    expect(errorLine(new ConvexError({ kind: "sku_in_stock", cells: [{ colorway: "black", size: "M", stock: 3 }] }))).toEqual({
+      key: "errors.sku_in_stock",
+      values: { cells: "black / M (3)" },
+    });
+  });
+
+  it("keeps a server string as text and falls back to unknown", () => {
+    expect(errorLine(new ConvexError("tee-1 is not a tee with colorways and sizes"))).toEqual({ text: "tee-1 is not a tee with colorways and sizes" });
+    expect(errorLine(new ConvexError({ kind: "not_found", variantId: "x" }))).toEqual({ key: "errors.unknown" });
+    expect(errorLine(new Error("network down"))).toEqual({ key: "errors.unknown" });
+    expect(errorLine(new ConvexError({ kind: "validation", errors: [] }))).toEqual({ key: "errors.unknown" });
   });
 });

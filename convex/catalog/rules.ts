@@ -48,7 +48,8 @@ const NAME_MAX = 80;
 const DESCRIPTION_MAX = 1000;
 const BADGE_MAX = 24;
 const PRICE_MAX = 10000;
-const STOCK_MAX = 100000;
+/** Largest stock one product or SKU may hold. */
+export const STOCK_MAX = 100000;
 
 export function normalizeSlug(raw: string): string {
   return raw

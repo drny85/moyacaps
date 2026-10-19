@@ -1,3 +1,4 @@
+import { ConvexError } from "convex/values";
 import type { FieldError } from "../../../convex/catalog/rules";
 import { imageErrorCode } from "./imageUpload";
 import type { ImageErrorCode } from "./imageUpload";
@@ -117,4 +118,29 @@ export function fieldErrorFor(feedback: EditorFeedback, field: string): FieldErr
 /** "black / M (3), sand / XL (1)": the cells that still hold stock. */
 export function formatSkuCells(cells: SkuCellStock[], nameOf: (colorwayId: string) => string = (id) => id): string {
   return cells.map((c) => `${nameOf(c.colorway)} / ${c.size} (${c.stock})`).join(", ");
+}
+
+/** What a dialog with no inputs to mark shows: a message key under `admin.products`, or the server's own text. */
+export type ErrorLine = { key: string; values?: Record<string, string> } | { text: string };
+
+/** One line for any thrown save error (dialogs never render `ConvexError.data` itself). */
+export function errorLine(err: unknown): ErrorLine {
+  const feedback = editorFeedback(err instanceof ConvexError ? (err.data as unknown) : undefined);
+  const firstError = feedback.fieldErrors[0] ?? feedback.formErrors[0];
+  if (firstError) return { key: `errors.${firstError.code}` };
+  const b = feedback.banner;
+  switch (b?.kind) {
+    case "message":
+      return { text: b.text };
+    case "stale":
+    case "archived":
+    case "needs_image":
+      return { key: `errors.${b.kind}` };
+    case "sku_in_stock":
+      return { key: "errors.sku_in_stock", values: { cells: formatSkuCells(b.cells) } };
+    case "image_rule":
+      return { key: `images.errors.${b.code}` };
+    default:
+      return { key: "errors.unknown" };
+  }
 }

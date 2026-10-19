@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { emptyForm } from "./productForm";
 import type { ProductFormState } from "./productForm";
-import { addColorway, colorInputValue, isColorwayLocked, removeColorway, toggleSize, updateColorway, withColorwayUids } from "./teeOptions";
+import { addColorway, clampSkuStockInput, colorInputValue, isColorwayLocked, removeColorway, toggleSize, updateColorway, withColorwayUids } from "./teeOptions";
 
 const black = { id: "black", nameEn: "Black", nameEs: "Negro", hex: "#111111", borderHex: "#333333" };
 const white = { id: "white", nameEn: "White", nameEs: "Blanco", hex: "#ffffff", borderHex: "#dddddd" };
@@ -116,5 +116,16 @@ describe("colorInputValue", () => {
     expect(colorInputValue("#ABCDEF")).toBe("#abcdef");
     expect(colorInputValue("#abc")).toBe("#aabbcc");
     expect(colorInputValue("nope")).toBe("#000000");
+  });
+});
+
+describe("clampSkuStockInput", () => {
+  it("keeps a typed cell within 0..100000 whole units", () => {
+    expect(clampSkuStockInput("12")).toBe(12);
+    expect(clampSkuStockInput("3.7")).toBe(3);
+    expect(clampSkuStockInput("-4")).toBe(0);
+    expect(clampSkuStockInput("")).toBe(0);
+    expect(clampSkuStockInput("abc")).toBe(0);
+    expect(clampSkuStockInput("999999999")).toBe(100000);
   });
 });

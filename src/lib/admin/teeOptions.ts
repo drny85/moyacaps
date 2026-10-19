@@ -1,4 +1,4 @@
-import { ALLOWED_SIZES } from "../../../convex/catalog/rules";
+import { ALLOWED_SIZES, STOCK_MAX } from "../../../convex/catalog/rules";
 import { suggestVariantId } from "./productForm";
 import type { ColorwayDraft, ProductFormState } from "./productForm";
 
@@ -79,4 +79,9 @@ export function colorInputValue(hex: string): string {
     return `#${hex.slice(1).split("").map((ch) => ch + ch).join("")}`.toLowerCase();
   }
   return "#000000";
+}
+
+/** A typed SKU stock cell as a whole number within 0..STOCK_MAX (the server's range). */
+export function clampSkuStockInput(raw: string): number {
+  return Math.min(STOCK_MAX, Math.max(0, Math.floor(Number(raw) || 0)));
 }
