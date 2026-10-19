@@ -6,8 +6,23 @@ import type { ColorwayDraft, ProductFormState } from "./productForm";
 
 const BLANK_COLORWAY: ColorwayDraft = { id: "", nameEn: "", nameEs: "", hex: "#000000", borderHex: "#000000" };
 
+/** A uid not yet used in `colorways` (client-only list key). */
+function nextUid(colorways: ColorwayDraft[]): string {
+  const used = new Set(colorways.map((c) => c.uid));
+  let n = colorways.length;
+  while (used.has(`c${n}`)) n++;
+  return `c${n}`;
+}
+
+/** Give every colorway a list key; used when a form is seeded. */
+export function withColorwayUids(form: ProductFormState): ProductFormState {
+  const colorways: ColorwayDraft[] = [];
+  for (const c of form.colorways) colorways.push(c.uid ? c : { ...c, uid: nextUid([...form.colorways, ...colorways]) });
+  return { ...form, colorways };
+}
+
 export function addColorway(form: ProductFormState): ProductFormState {
-  return { ...form, colorways: [...form.colorways, { ...BLANK_COLORWAY }] };
+  return { ...form, colorways: [...form.colorways, { ...BLANK_COLORWAY, uid: nextUid(form.colorways) }] };
 }
 
 /**

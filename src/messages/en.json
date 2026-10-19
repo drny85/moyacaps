@@ -568,7 +568,8 @@
           "front": "Front",
           "back": "Back"
         }
-      }
+      },
+      "discardConfirm": "Discard your unsaved changes to this product?"
     },
     "drops": {
       "title": "VIP Drops Launchpad",

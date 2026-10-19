@@ -21,7 +21,12 @@ export type CreateVariantArgs = FunctionArgs<typeof api.catalog.admin.createVari
 export type UpdatePatch = FunctionArgs<typeof api.catalog.admin.updateVariant>["patch"];
 export type ResolvedVariant = FunctionReturnType<typeof api.catalog.admin.getAllProductsAdmin>["variants"][number];
 
-export type ColorwayDraft = TeeColorwayInput;
+/** `uid` is a client-only key for list rendering; it is never sent to the server. */
+export type ColorwayDraft = TeeColorwayInput & { uid?: string };
+
+function toColorwayInputs(colorways: ColorwayDraft[]): TeeColorwayInput[] {
+  return colorways.map(({ id, nameEn, nameEs, hex, borderHex }) => ({ id, nameEn, nameEs, hex, borderHex }));
+}
 
 export type ProductFormState = {
   variantId: string;
@@ -182,7 +187,7 @@ export function validateForm(form: ProductFormState): FieldError[] {
   if (isTee) {
     errors.push(
       ...validateTeeOptions({
-        colorways: form.colorways,
+        colorways: toColorwayInputs(form.colorways),
         sizes: form.sizes,
         defaultColorway: effectiveDefault(form),
         fabricEn: form.fabricEn,
@@ -198,6 +203,16 @@ export function validateForm(form: ProductFormState): FieldError[] {
 /** Slug a typed name into a product id suggestion. */
 export function suggestVariantId(name: string): string {
   return normalizeSlug(name);
+}
+
+const FORM_KEYS = Object.keys(emptyForm("headwear")) as (keyof ProductFormState)[];
+
+/** True when the admin changed anything since `initial`; colorway `uid`s do not count. */
+export function isFormDirty(initial: ProductFormState, current: ProductFormState): boolean {
+  if (initial.defaultColorway !== current.defaultColorway) return true;
+  if (!sameColorways(initial.colorways, current.colorways)) return true;
+  if (!sameStrings(initial.sizes, current.sizes)) return true;
+  return FORM_KEYS.some((key) => key !== "colorways" && key !== "sizes" && initial[key] !== current[key]);
 }
 
 /** Set the English name; a new product's id follows it until the id is edited by hand. */
@@ -225,7 +240,7 @@ export function formToCreateArgs(form: ProductFormState): CreateVariantArgs {
     if (form[field] !== "") args[field] = form[field];
   }
   if (form.category === "apparel") {
-    args.colorways = form.colorways;
+    args.colorways = toColorwayInputs(form.colorways);
     args.sizes = form.sizes;
     args.defaultColorway = effectiveDefault(form);
     for (const field of TEE_TEXT_FIELDS) {
@@ -268,7 +283,7 @@ export function formToPatch(initial: ProductFormState, current: ProductFormState
   if (price !== numberOf(initial.priceUsd)) patch.priceUsd = price;
 
   if (current.category === "apparel") {
-    if (!sameColorways(initial.colorways, current.colorways)) patch.colorways = current.colorways;
+    if (!sameColorways(initial.colorways, current.colorways)) patch.colorways = toColorwayInputs(current.colorways);
     if (!sameStrings(initial.sizes, current.sizes)) patch.sizes = current.sizes;
     const nextDefault = effectiveDefault(current);
     if (nextDefault !== undefined && nextDefault !== effectiveDefault(initial)) patch.defaultColorway = nextDefault;

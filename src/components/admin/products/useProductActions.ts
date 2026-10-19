@@ -25,7 +25,7 @@ function bannerOf(err: unknown): EditorBanner | null {
 }
 
 /** Quick row actions on the product list and the confirm dialogs that guard them. */
-export function useProductActions(locale: string) {
+export function useProductActions(locale: string, { onDropSaved }: { onDropSaved?: (variantId: string) => void } = {}) {
   const adjustStock = useMutation(api.catalog.admin.adjustVariantStock);
   const toggleFeatured = useMutation(api.catalog.admin.toggleVariantFeatured);
   const toggleAvailable = useMutation(api.catalog.admin.toggleVariantAvailable);
@@ -122,6 +122,7 @@ export function useProductActions(locale: string) {
     setBusy(true);
     try {
       await updateDropStatus(args);
+      onDropSaved?.(args.variantId);
       setDropTarget(null);
     } finally {
       setBusy(false);

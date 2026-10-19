@@ -21,7 +21,7 @@ export default function AdminProductsPage() {
   const [showArchived, setShowArchived] = useState(false);
   const data = useQuery(api.catalog.admin.getAllProductsAdmin, { includeArchived: showArchived });
   const editor = useProductEditor(data?.variants);
-  const actions = useProductActions(locale);
+  const actions = useProductActions(locale, { onDropSaved: editor.markDropSaved });
 
   const handlers: ProductRowHandlers = {
     onStock: actions.requestStock,
@@ -73,7 +73,7 @@ export default function AdminProductsPage() {
         handlers={handlers}
       />
 
-      <ProductEditor editor={editor} locale={locale} onScheduleDrop={actions.openDropSchedule} />
+      <ProductEditor editor={editor} locale={locale} blockClose={actions.dropTarget !== null} onScheduleDrop={actions.openDropSchedule} />
       <ProductActionDialogs actions={actions} />
     </div>
   );

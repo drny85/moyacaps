@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { emptyForm } from "./productForm";
 import type { ProductFormState } from "./productForm";
-import { addColorway, colorInputValue, isColorwayLocked, removeColorway, toggleSize, updateColorway } from "./teeOptions";
+import { addColorway, colorInputValue, isColorwayLocked, removeColorway, toggleSize, updateColorway, withColorwayUids } from "./teeOptions";
 
 const black = { id: "black", nameEn: "Black", nameEs: "Negro", hex: "#111111", borderHex: "#333333" };
 const white = { id: "white", nameEn: "White", nameEs: "Blanco", hex: "#ffffff", borderHex: "#dddddd" };
@@ -16,7 +16,23 @@ describe("addColorway", () => {
   it("appends a blank colorway", () => {
     const next = addColorway(tee());
     expect(next.colorways).toHaveLength(3);
-    expect(next.colorways[2]).toEqual({ id: "", nameEn: "", nameEs: "", hex: "#000000", borderHex: "#000000" });
+    expect(next.colorways[2]).toEqual({ id: "", nameEn: "", nameEs: "", hex: "#000000", borderHex: "#000000", uid: "c2" });
+  });
+
+  it("never reuses a list key", () => {
+    const form = addColorway(addColorway(tee({ colorways: [] })));
+    const afterRemove = addColorway(removeColorway(form, 0));
+    expect(afterRemove.colorways.map((c) => c.uid)).toEqual(["c1", "c2"]);
+  });
+});
+
+describe("withColorwayUids", () => {
+  it("keys every colorway once and keeps existing keys", () => {
+    const form = withColorwayUids(tee({ colorways: [black, { ...white, uid: "c0" }] }));
+    const uids = form.colorways.map((c) => c.uid);
+    expect(uids[1]).toBe("c0");
+    expect(new Set(uids).size).toBe(2);
+    expect(form.colorways[0]).toMatchObject(black);
   });
 });
 

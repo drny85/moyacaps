@@ -568,7 +568,8 @@
           "front": "Frente",
           "back": "Espalda"
         }
-      }
+      },
+      "discardConfirm": "¿Descartar los cambios sin guardar de este producto?"
     },
     "drops": {
       "title": "Lanzadera de Drops VIP",

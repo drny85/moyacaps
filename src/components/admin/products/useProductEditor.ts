@@ -1,25 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import { useMutation } from "convex/react";
 import { ConvexError } from "convex/values";
+import { useTranslations } from "next-intl";
 import { api } from "@convex/_generated/api";
 import type { Category } from "@convex/catalog/rules";
-import {
-  emptyForm,
-  formFromVariant,
-  formToCreateArgs,
-  formToPatch,
-  validateForm,
-  withCategory,
-  withNameEn,
-} from "@/lib/admin/productForm";
+import { formToCreateArgs, formToPatch, validateForm, withCategory, withNameEn } from "@/lib/admin/productForm";
 import type { ProductFormState, ResolvedVariant } from "@/lib/admin/productForm";
 import { editorFeedback, NO_FEEDBACK, splitFieldErrors } from "@/lib/admin/editorErrors";
 import type { EditorFeedback } from "@/lib/admin/editorErrors";
-
-/** `version` is the row's `updatedAt` the form was seeded from; null while a just-created row loads. */
-type Session = { mode: "create" } | { mode: "edit"; variantId: string; version: number | null };
+import { canSave, closeDecision, editorReducer, initialEditorState } from "@/lib/admin/editorSession";
 
 export type StockChange = { current: number; next: number };
 
@@ -27,15 +18,16 @@ const NO_IDS: ReadonlySet<string> = new Set();
 
 /**
  * Form state and save logic for the product editor. `rows` is the live admin
- * list; edit mode tracks its row so "Reload latest" can re-seed after a stale save.
+ * list; edit mode tracks its row so "Reload latest" can re-seed after a stale
+ * save. Session transitions live in the pure `editorReducer`.
  */
 export function useProductEditor(rows: ResolvedVariant[] | undefined) {
+  const t = useTranslations("admin.products");
   const createVariant = useMutation(api.catalog.admin.createVariant);
   const updateVariant = useMutation(api.catalog.admin.updateVariant);
 
-  const [session, setSession] = useState<Session | null>(null);
-  const [form, setForm] = useState<ProductFormState>(() => emptyForm("headwear"));
-  const [initial, setInitial] = useState<ProductFormState>(form);
+  const [state, dispatch] = useReducer(editorReducer, undefined, initialEditorState);
+  const { session, form, initial } = state;
   const [feedback, setFeedback] = useState<EditorFeedback>(NO_FEEDBACK);
   const [saving, setSaving] = useState(false);
   const [pendingStock, setPendingStock] = useState<StockChange | null>(null);
@@ -43,51 +35,61 @@ export function useProductEditor(rows: ResolvedVariant[] | undefined) {
   const liveRow = session?.mode === "edit" ? rows?.find((r) => r.variantId === session.variantId) : undefined;
   const isNew = session?.mode === "create";
 
-  const seed = useCallback((row: ResolvedVariant) => {
-    const next = formFromVariant(row);
-    setForm(next);
-    setInitial(next);
+  // Seeds a just-created product and adopts the version bump of a drop change.
+  useEffect(() => {
+    if (liveRow) dispatch({ type: "rowUpdated", row: liveRow });
+  }, [liveRow, session]);
+
+  const resetTransient = () => {
     setFeedback(NO_FEEDBACK);
     setPendingStock(null);
-    setSession({ mode: "edit", variantId: row.variantId, version: row.updatedAt ?? row._creationTime });
-  }, []);
-
-  // After a create, switch to editing the new (hidden) product once its row arrives.
-  useEffect(() => {
-    if (session?.mode === "edit" && session.version === null && liveRow) seed(liveRow);
-  }, [session, liveRow, seed]);
+  };
 
   const openCreate = useCallback(() => {
-    const blank = emptyForm("headwear");
-    setForm(blank);
-    setInitial(blank);
-    setFeedback(NO_FEEDBACK);
-    setPendingStock(null);
-    setSession({ mode: "create" });
+    resetTransient();
+    dispatch({ type: "openCreate" });
+  }, []);
+
+  const openEdit = useCallback((row: ResolvedVariant) => {
+    resetTransient();
+    dispatch({ type: "openEdit", row });
   }, []);
 
   const close = useCallback(() => {
-    setSession(null);
     setPendingStock(null);
+    dispatch({ type: "close" });
   }, []);
 
-  const update = useCallback((changes: Partial<ProductFormState>) => setForm((f) => ({ ...f, ...changes })), []);
-  const edit = useCallback((fn: (f: ProductFormState) => ProductFormState) => setForm(fn), []);
-  const setCategory = useCallback((category: Category) => setForm((f) => withCategory(f, category)), []);
-  const setNameEn = useCallback((nameEn: string) => setForm((f) => withNameEn(f, nameEn, isNew)), [isNew]);
+  /** Escape, Cancel and the close button: guarded by `closeDecision`. */
+  const requestClose = (blocked: boolean) => {
+    const decision = closeDecision(state, { saving, blocked: blocked || pendingStock !== null });
+    if (decision === "block") return;
+    if (decision === "confirm" && !window.confirm(t("discardConfirm"))) return;
+    close();
+  };
+
+  const edit = useCallback((fn: (f: ProductFormState) => ProductFormState) => dispatch({ type: "edit", fn }), []);
+  const update = useCallback((changes: Partial<ProductFormState>) => edit((f) => ({ ...f, ...changes })), [edit]);
+  const setCategory = useCallback((category: Category) => edit((f) => withCategory(f, category)), [edit]);
+  const setNameEn = useCallback((nameEn: string) => edit((f) => withNameEn(f, nameEn, isNew)), [edit, isNew]);
 
   const reloadLatest = useCallback(() => {
-    if (liveRow) seed(liveRow);
-  }, [liveRow, seed]);
+    if (!liveRow) return;
+    resetTransient();
+    dispatch({ type: "reload", row: liveRow });
+  }, [liveRow]);
+
+  /** Call after a drop change for this product succeeds (it bumps the row version). */
+  const markDropSaved = useCallback((variantId: string) => dispatch({ type: "dropSaved", variantId }), []);
 
   const commit = async () => {
-    if (!session) return;
+    if (!session || !canSave(session)) return;
     setSaving(true);
     setFeedback(NO_FEEDBACK);
     try {
       if (session.mode === "create") {
         const { variantId } = await createVariant(formToCreateArgs(form));
-        setSession({ mode: "edit", variantId, version: null });
+        dispatch({ type: "created", variantId });
         return;
       }
       if (session.version === null) return;
@@ -106,6 +108,7 @@ export function useProductEditor(rows: ResolvedVariant[] | undefined) {
 
   /** Validate, then save; a cap's stock change in edit mode asks for confirmation first. */
   const requestSave = () => {
+    if (!canSave(session)) return;
     const errors = validateForm(form);
     if (errors.length > 0) {
       setFeedback(splitFieldErrors(errors));
@@ -135,6 +138,7 @@ export function useProductEditor(rows: ResolvedVariant[] | undefined) {
   return {
     isOpen: session !== null,
     isNew,
+    canSave: canSave(session),
     form,
     feedback,
     saving,
@@ -142,13 +146,15 @@ export function useProductEditor(rows: ResolvedVariant[] | undefined) {
     savedColorwayIds,
     pendingStock,
     openCreate,
-    openEdit: seed,
+    openEdit,
     close,
+    requestClose,
     update,
     edit,
     setCategory,
     setNameEn,
     reloadLatest,
+    markDropSaved,
     dismissFeedback: () => setFeedback(NO_FEEDBACK),
     requestSave,
     confirmStock,

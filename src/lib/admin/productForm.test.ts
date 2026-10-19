@@ -4,6 +4,7 @@ import {
   formFromVariant,
   formToCreateArgs,
   formToPatch,
+  isFormDirty,
   validateForm,
   withCategory,
   withNameEn,
@@ -208,5 +209,33 @@ describe("withNameEn", () => {
   it("never suggests for a saved product", () => {
     const form = withNameEn({ ...emptyForm("headwear"), nameEn: "Negro", variantId: "negro" }, "Negro Oro", false);
     expect(form).toMatchObject({ nameEn: "Negro Oro", variantId: "negro" });
+  });
+});
+
+describe("colorway list keys", () => {
+  it("are never sent to the server", () => {
+    const initial = validTee();
+    const keyed = { ...initial, colorways: initial.colorways.map((c, i) => ({ ...c, uid: `c${i}` })) };
+    expect(formToPatch(initial, keyed)).toEqual({});
+    const edited = { ...keyed, colorways: [{ ...keyed.colorways[0], hex: "#222222" }, keyed.colorways[1]] };
+    expect(formToPatch(initial, edited).colorways?.every((c) => !("uid" in c))).toBe(true);
+    expect(formToCreateArgs({ ...edited, variantId: "new-tee" }).colorways?.every((c) => !("uid" in c))).toBe(true);
+  });
+});
+
+describe("isFormDirty", () => {
+  it("is false for an untouched form, list keys included", () => {
+    const initial = validTee();
+    expect(isFormDirty(initial, { ...initial, sizes: [...initial.sizes] })).toBe(false);
+    expect(isFormDirty(initial, { ...initial, colorways: initial.colorways.map((c) => ({ ...c, uid: "k" })) })).toBe(false);
+  });
+
+  it("notices text, flag, size, colorway and default changes", () => {
+    const initial = validTee();
+    expect(isFormDirty(initial, { ...initial, priceUsd: "1" })).toBe(true);
+    expect(isFormDirty(initial, { ...initial, isFeatured: !initial.isFeatured })).toBe(true);
+    expect(isFormDirty(initial, { ...initial, sizes: ["S"] })).toBe(true);
+    expect(isFormDirty(initial, { ...initial, colorways: [initial.colorways[0]] })).toBe(true);
+    expect(isFormDirty(initial, { ...initial, defaultColorway: "bone" })).toBe(true);
   });
 });

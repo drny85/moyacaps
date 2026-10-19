@@ -26,6 +26,7 @@ export function TeeOptionsEditor({
   onChange: (edit: (f: ProductFormState) => ProductFormState) => void;
 }) {
   const t = useTranslations("admin.products.teeOptions");
+  const tSections = useTranslations("admin.products.sections");
   const err = (field: string) => fieldErrorFor(feedback, field);
   const setColorway = (index: number, changes: Partial<ColorwayDraft>) =>
     onChange((f) => updateColorway(f, index, changes, savedColorwayIds));
@@ -33,8 +34,9 @@ export function TeeOptionsEditor({
 
   return (
     <section className={sectionClass}>
+      <h3 className={sectionTitleClass}>{tSections("tee")}</h3>
       <div className="flex items-center justify-between">
-        <h3 className={sectionTitleClass}>{t("colorways")}</h3>
+        <span className="font-medium text-zinc-700 dark:text-zinc-300">{t("colorways")}</span>
         <button
           type="button"
           onClick={() => onChange(addColorway)}
@@ -51,7 +53,7 @@ export function TeeOptionsEditor({
         const locked = isColorwayLocked(form.colorways, i, savedColorwayIds);
         const at = `colorways[${i}]`;
         return (
-          <div key={i} className="p-3 rounded-xl bg-zinc-50 dark:bg-white/[0.02] border border-zinc-200 dark:border-white/10 space-y-3">
+          <div key={c.uid ?? i} className="p-3 rounded-xl bg-zinc-50 dark:bg-white/[0.02] border border-zinc-200 dark:border-white/10 space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <TextField label={t("nameEn")} value={c.nameEn} onChange={(nameEn) => setColorway(i, { nameEn })} error={err(`${at}.nameEn`)} />
               <TextField label={t("nameEs")} value={c.nameEs} onChange={(nameEs) => setColorway(i, { nameEs })} error={err(`${at}.nameEs`)} />
