@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import { DeferredImage } from "@/components/media/DeferredImage";
 import { useMemo, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { m, useMotionValueEvent, useScroll, useTransform, type MotionValue } from "framer-motion";
@@ -129,7 +129,7 @@ function ScenePhoto({
   const scale = useTransform(progress, (p) => valueAt(p, [index / count, (index + 1) / count], [1.08, 1]));
   return (
     <m.div style={{ opacity, scale }} className="absolute inset-0">
-      <Image
+      <DeferredImage
         src={scene.src}
         alt={locale === "es" ? scene.alt.es : scene.alt.en}
         fill
@@ -177,7 +177,7 @@ function ScenePanel({ scene }: { scene: Scene }) {
   return (
     <li ref={ref} className="relative aspect-[3/4] overflow-hidden rounded-[18px] bg-zinc-900">
       <m.div style={{ y: drift }} className="absolute inset-[-4%_0]">
-        <Image
+        <DeferredImage
           src={scene.src}
           alt={locale === "es" ? scene.alt.es : scene.alt.en}
           fill

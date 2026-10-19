@@ -10,8 +10,8 @@
 4. **Stripe SDK only in `"use node"` files.** `stripeClient.ts` holds the client, customer upsert, session expiry and refunds. Only `stripeCheckout.ts`, `stripeWebhook.ts` and `stripeRefunds.ts` import it.
 5. **Bounded catalog reads.** Whole-catalog scans use `listCatalogVariants` (`take(MAX_CATALOG_VARIANTS = 500)`; the catalog is ~30 products). Drop-alert counts clamp at `MAX_DROP_ALERTS_COUNTED = 1000`. Move to `@convex-dev/aggregate` before a waitlist approaches the cap.
 6. **Every function declares `returns:`.** Shared shapes live in `catalogValidators.ts`, `orderValidators.ts` (customer order views) and `analyticsModel.ts`. `returnContracts.test.ts` calls each read once, because convex-test enforces the validators.
-7. **Queries never read the clock.** Time-dependent queries (`drops:getUpcomingDrops`, `drops:getAllDropsAdmin`, `orderDesk:getAllOrdersAdmin`, `orderDesk:getOrdersAttentionStats`, `analytics:getAnalyticsAdmin`) take a required `clientTime`, which clients get from `useMinuteClock` (floored to the minute so components share one subscription).
-8. **Admin lists clamp.** Subscriber lists (1000 newest), account order history (200 newest) and the users list (1000 newest) are bounded; `drops:deleteDrop` deletes alerts in batches of 500 and schedules `drops:deleteDropAlertsBatch` for the rest.
+7. **Queries never read the clock.** Time-dependent queries (`catalog/drops:getUpcomingDrops`, `catalog/drops:getAllDropsAdmin`, `orders/desk:getAllOrdersAdmin`, `orders/desk:getOrdersAttentionStats`, `analytics/functions:getAnalyticsAdmin`) take a required `clientTime`, which clients get from `useMinuteClock` (floored to the minute so components share one subscription).
+8. **Admin lists clamp.** Subscriber lists (1000 newest), account order history (200 newest) and the users list (1000 newest) are bounded; `catalog/drops:deleteDrop` deletes alerts in batches of 500 and schedules `catalog/drops:deleteDropAlertsBatch` for the rest.
 
 ## Module map
 
@@ -23,5 +23,6 @@
 
 ## Consequences
 
-- Function paths changed (listed in the commit). Production had not run `migrateUnifiedCatalog` or `setApparelPriceUsd` yet, so those runs use the new names: `catalogMigrations:migrateUnifiedCatalog`, `catalogMigrations:setApparelPriceUsd`.
+- Function paths changed (listed in the commit). Production had not run `migrateUnifiedCatalog` or `setApparelPriceUsd` yet, so those runs use the new names. After the move into domain folders (`6c05384`), they are `catalog/migrations:migrateUnifiedCatalog` and `catalog/migrations:setApparelPriceUsd`.
 - A frontend and backend deploy must ship together: old clients calling `api.products.*` or `api.stripe.*` fail until they reload.
+- **Domain folders (amendment, `6c05384`).** The modules now live in folders: `catalog/` (queries, admin, drops, migrations, inventory, model, …), `orders/`, `payments/`, `users/`, `shipping/`, `analytics/` and `notifications/`. Function paths follow the file, e.g. `catalog/queries:getVariants` and `orders/desk:getAllOrdersAdmin`. The table above names the original modules.

@@ -1,5 +1,5 @@
 import { NextIntlClientProvider } from "next-intl";
-import { getMessages } from "next-intl/server";
+import { getMessages, setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { routing } from "@/i18n/routing";
 import { pickNamespaces, STOREFRONT_NAMESPACES } from "@/i18n/clientMessages";
@@ -15,6 +15,7 @@ import { MobileActionBar } from "@/components/layout/MobileActionBar";
 import { DeferredOverlays } from "@/components/layout/DeferredOverlays";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { OrganizationJsonLd } from "@/components/seo/OrganizationJsonLd";
+import { HtmlDocument } from "@/components/layout/HtmlDocument";
 
 export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
@@ -32,11 +33,14 @@ export default async function LocaleLayout({
   if (!routing.locales.includes(locale as "en" | "es")) {
     notFound();
   }
+  // Locale from the route, not request headers, so storefront pages can prerender (ADR 0020)
+  setRequestLocale(locale);
 
   // Storefront copy only; auth-area segments add the rest (FullMessagesProvider, ADR 0018)
   const messages = pickNamespaces(await getMessages(), STOREFRONT_NAMESPACES);
 
   return (
+    <HtmlDocument lang={locale}>
     <NextIntlClientProvider messages={messages}>
       <ThemeProvider>
         <ClerkClientProvider>
@@ -61,5 +65,6 @@ export default async function LocaleLayout({
         </ClerkClientProvider>
     </ThemeProvider>
   </NextIntlClientProvider>
+    </HtmlDocument>
   );
 }

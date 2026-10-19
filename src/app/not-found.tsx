@@ -1,7 +1,10 @@
 import Link from "next/link";
+import { HtmlDocument } from "@/components/layout/HtmlDocument";
 
 export default function NotFound() {
+  // The root layout renders no <html>, so the global 404 brings its own document
   return (
+    <HtmlDocument lang="en">
     <div className="min-h-screen bg-[#08080a] text-white flex flex-col items-center justify-center p-4">
       <h1 className="text-6xl font-black text-red-500 mb-2">404</h1>
       <h2 className="text-xl font-bold mb-4">Drop Not Found</h2>
@@ -13,5 +16,6 @@ export default function NotFound() {
         Return to Store
       </Link>
     </div>
+    </HtmlDocument>
   );
 }
