@@ -465,6 +465,7 @@
           "too_many": "Esta sección llegó a su límite de imágenes.",
           "not_found": "Esa imagen ya no existe. Actualiza e inténtalo de nuevo.",
           "invalid_order": "El orden cambió en otro lugar. Actualiza e inténtalo de nuevo.",
+          "needs_image": "Un producto visible necesita una foto de catálogo. Sube otra primero, o oculta el producto.",
           "archived": "Este producto está archivado. Restáuralo antes de cambiar imágenes.",
           "unknown": "Algo salió mal. Inténtalo de nuevo."
         }

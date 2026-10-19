@@ -2,14 +2,15 @@
  * Admin product images in Convex storage (ADR 0021): replace, remove, reorder, list.
  * Upload validation lives in attach.ts; the write that follows is `insertOrReplaceImage`.
  */
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { internal } from "../../_generated/api";
 import type { Doc, Id } from "../../_generated/dataModel";
 import { internalMutation, mutation, query } from "../../_generated/server";
 import type { MutationCtx, QueryCtx } from "../../_generated/server";
 import { requireAdmin } from "../../lib/auth";
 import { actorEmail, recordCatalogEvent } from "../audit";
-import { deleteStorageQuietly, requireActiveVariant } from "../shared";
+import { blankImageWhileVisible } from "../model";
+import { deleteStorageQuietly, hasCatalogImageRow, requireActiveVariant } from "../shared";
 import { isStorageIdReferenced } from "./references";
 import { capAngleValidator, imageRoleValidator, imageRuleError } from "./validators";
 import { isValidSlot, sameSlot, type ImageSlot } from "./slots";
@@ -128,7 +129,13 @@ export const removeImage = mutation({
     const actor = actorEmail(await requireAdmin(ctx));
     const image = await ctx.db.get("productImages", args.imageId);
     if (!image) throw imageRuleError("not_found");
-    await requireActiveVariant(ctx, image.variantId);
+    const variant = await requireActiveVariant(ctx, image.variantId);
+    if (
+      image.role === "catalog" &&
+      blankImageWhileVisible(variant, {}, await hasCatalogImageRow(ctx, variant.variantId, (r) => r._id !== image._id))
+    ) {
+      throw new ConvexError({ kind: "needs_image" });
+    }
     await ctx.db.delete("productImages", image._id);
     await scheduleFileDelete(ctx, image.storageId);
     await recordCatalogEvent(ctx, {

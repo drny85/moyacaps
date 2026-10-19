@@ -355,6 +355,33 @@ describe("catalog image rows count as an image", () => {
     await addCatalogRow(t);
     expect((await admin.mutation(api.catalog.admin.toggleVariantAvailable, show)).isAvailable).toBe(true);
   });
+
+  it("updateVariant refuses to remove the colorway holding a visible product's only Catalog Shot row", async () => {
+    const { t, admin } = setup();
+    const colorway = (id: string) => ({ id, nameEn: id, nameEs: id, hex: "#000000", borderHex: "#111111" });
+    await admin.mutation(api.catalog.admin.createVariant, {
+      ...blankCap,
+      stock: undefined,
+      category: "apparel",
+      silhouette: "tee",
+      colorways: [colorway("black"), colorway("white")],
+      sizes: ["M"],
+      defaultColorway: "black",
+    });
+    await t.run(async (ctx) => {
+      const storageId = await ctx.storage.store(new Blob(["w"]));
+      await ctx.db.insert("productImages", { variantId: cap.variantId, colorway: "white", role: "catalog", order: 0, storageId, sha256: "w", width: 2000, height: 2500, createdAt: 1 });
+    });
+    await admin.mutation(api.catalog.admin.toggleVariantAvailable, { variantId: cap.variantId, isAvailable: true });
+    const shown = await row(t);
+    const update = { variantId: cap.variantId, expectedUpdatedAt: shown!.updatedAt!, patch: { colorways: [colorway("black")] } };
+    expect(await errorData(admin.mutation(api.catalog.admin.updateVariant, update))).toEqual({ kind: "needs_image" });
+    const rows = await t.run((ctx) => ctx.db.query("productImages").take(10));
+    expect(rows).toHaveLength(1);
+    // Hiding it in the same save is allowed.
+    await admin.mutation(api.catalog.admin.updateVariant, { ...update, patch: { ...update.patch, isAvailable: false } });
+    expect((await row(t))?.colorways?.map((c) => c.id)).toEqual(["black"]);
+  });
 });
 
 describe("stock mutations", () => {

@@ -259,6 +259,27 @@ describe("removeImage and reorderImages", () => {
     expect(events[0].type).toBe("image_removed");
   });
 
+  it("remove refuses to leave a visible product with no image, allows it once hidden", async () => {
+    const { t, admin } = setup();
+    await t.run((ctx) => ctx.db.insert("variants", { ...capBase, variantId: "blank-cap", image: "" }));
+    const storageId = await store(t, png(2000, 2500, 2));
+    const { imageId } = await admin.action(api.catalog.images.attach.attachImage, { variantId: "blank-cap", storageId, role: "catalog" });
+    expect(await errorData(admin.mutation(api.catalog.images.functions.removeImage, { imageId }))).toEqual({ kind: "needs_image" });
+    expect(await t.run((ctx) => ctx.db.get("productImages", imageId))).not.toBeNull();
+    await admin.mutation(api.catalog.admin.toggleVariantAvailable, { variantId: "blank-cap", isAvailable: false });
+    await admin.mutation(api.catalog.images.functions.removeImage, { imageId });
+    expect(await t.run((ctx) => ctx.db.get("productImages", imageId))).toBeNull();
+  });
+
+  it("remove of a lifestyle image never needs an image check", async () => {
+    const { t, admin } = setup();
+    await t.run((ctx) => ctx.db.insert("variants", { ...capBase, variantId: "blank-cap", image: "" }));
+    const storageId = await store(t, png(2000, 2500, 2, 7));
+    const { imageId } = await admin.action(api.catalog.images.attach.attachImage, { variantId: "blank-cap", storageId, role: "lifestyle" });
+    await admin.mutation(api.catalog.images.functions.removeImage, { imageId });
+    expect(await t.run((ctx) => ctx.db.get("productImages", imageId))).toBeNull();
+  });
+
   it("remove of a missing image is a structured error", async () => {
     const { t, admin } = setup();
     await seed(t);

@@ -45,6 +45,9 @@ describe("imageErrorCode", () => {
     expect(imageErrorCode({ kind: "image_rule", code: "too_many" })).toBe("too_many");
     expect(imageErrorCode({ kind: "archived" })).toBe("archived");
   });
+  it("maps the needs_image refusal of removing a visible product's last Catalog Shot", () => {
+    expect(imageErrorCode({ kind: "needs_image" })).toBe("needs_image");
+  });
   it("falls back to unknown", () => {
     expect(imageErrorCode({ kind: "image_rule", code: "nope" })).toBe("unknown");
     expect(imageErrorCode("boom")).toBe("unknown");

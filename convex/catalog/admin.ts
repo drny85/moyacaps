@@ -427,7 +427,13 @@ export const updateVariant = mutation({
     if (skuPlan && skuPlan.blocked.length > 0) {
       throw new ConvexError({ kind: "sku_in_stock", cells: skuPlan.blocked });
     }
-    if (blankImageWhileVisible(existing, patchRest, await hasCatalogImageRow(ctx, existing.variantId))) {
+    // Rows of removed colorways are deleted below, so they no longer count as the product's image.
+    const keepsCatalogRow = await hasCatalogImageRow(
+      ctx,
+      existing.variantId,
+      (r) => r.colorway === undefined || !removedColorways.includes(r.colorway)
+    );
+    if (blankImageWhileVisible(existing, patchRest, keepsCatalogRow)) {
       throw new ConvexError({ kind: "needs_image" });
     }
 

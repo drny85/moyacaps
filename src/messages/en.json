@@ -465,6 +465,7 @@
           "too_many": "This section has reached its image limit.",
           "not_found": "That image no longer exists. Refresh and try again.",
           "invalid_order": "The order changed elsewhere. Refresh and try again.",
+          "needs_image": "A visible product needs a Catalog Shot. Upload another one first, or hide the product.",
           "archived": "This product is archived. Restore it before changing images.",
           "unknown": "Something went wrong. Please try again."
         }

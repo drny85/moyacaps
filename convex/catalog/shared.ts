@@ -81,13 +81,20 @@ export async function resolveProductImage(ctx: QueryCtx, variant: Doc<"variants"
   return primaryImage({ ...variant, legacyUrl: await legacyStorageUrl(ctx, variant) }, await resolvedImageRows(ctx, variant.variantId));
 }
 
-/** True when the product has a Catalog Shot row (any colorway: tees keep one per colorway). */
-export async function hasCatalogImageRow(ctx: QueryCtx, variantId: string): Promise<boolean> {
-  const row = await ctx.db
+/**
+ * True when the product has a Catalog Shot row (any colorway: tees keep one per colorway).
+ * `kept` filters the rows that count, for a write that is about to delete some of them.
+ */
+export async function hasCatalogImageRow(
+  ctx: QueryCtx,
+  variantId: string,
+  kept: (row: Doc<"productImages">) => boolean = () => true
+): Promise<boolean> {
+  const rows = await ctx.db
     .query("productImages")
     .withIndex("by_variantId_and_role_and_order", (q) => q.eq("variantId", variantId).eq("role", "catalog"))
-    .first();
-  return row !== null;
+    .take(MAX_PRODUCT_IMAGE_ROWS);
+  return rows.some(kept);
 }
 
 export async function countDropAlerts(ctx: QueryCtx, variantId: string): Promise<number> {
