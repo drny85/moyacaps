@@ -6,10 +6,10 @@ import type { Category } from "@convex/catalog/rules";
 import type { ProductFormState } from "@/lib/admin/productForm";
 import { fieldErrorFor } from "@/lib/admin/editorErrors";
 import type { EditorFeedback } from "@/lib/admin/editorErrors";
-import { Field, HexField, TextAreaField, TextField, inputClass, sectionTitleClass } from "./editorFields";
+import { Field, HexField, TextAreaField, TextField, inputClass, sectionClass, sectionTitleClass } from "./editorFields";
 
 /** Identity, names, palette and storefront copy of a product. */
-export function ProductDetailsFields({
+export function DetailsSection({
   form,
   feedback,
   isNew,
@@ -28,7 +28,7 @@ export function ProductDetailsFields({
   const err = (field: string) => fieldErrorFor(feedback, field);
 
   return (
-    <section className="space-y-3">
+    <section className={sectionClass}>
       <h3 className={sectionTitleClass}>{t("sections.details")}</h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Field label={t("category")} error={err("category")}>

@@ -7,7 +7,7 @@ import type { EditorFeedback } from "@/lib/admin/editorErrors";
 import { TextField, sectionClass, sectionTitleClass } from "./editorFields";
 
 /** Price, stock, tax code, storefront visibility and featured flag. */
-export function ProductPricingFields({
+export function PricingStockSection({
   form,
   feedback,
   onChange,

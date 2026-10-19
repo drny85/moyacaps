@@ -4,7 +4,9 @@ import { useQuery } from "convex/react";
 import { useLocale, useTranslations } from "next-intl";
 import { api } from "@convex/_generated/api";
 import { formatChange } from "@/lib/admin/formatChange";
+import { sectionClass, sectionTitleClass } from "./editorFields";
 
+/** The Product's audit log, collapsed by default. */
 export function ProductHistory({ variantId }: { variantId: string }) {
   const t = useTranslations("admin.products.history");
   const locale = useLocale();
@@ -12,8 +14,11 @@ export function ProductHistory({ variantId }: { variantId: string }) {
   const ctx = { locale, yes: t("yes"), no: t("no") };
 
   return (
-    <section className="pt-3 border-t border-zinc-100 dark:border-white/[0.06]">
-      <h3 className="text-xs font-semibold text-zinc-900 dark:text-white mb-2">{t("title")}</h3>
+    <details className={`${sectionClass} group`}>
+      <summary className={`${sectionTitleClass} cursor-pointer select-none list-none flex items-center justify-between`}>
+        {t("title")}
+        <span aria-hidden className="text-zinc-400 transition-transform group-open:rotate-90">›</span>
+      </summary>
       {events === undefined ? (
         <p className="text-[11px] text-zinc-500">{t("loading")}</p>
       ) : events.length === 0 ? (
@@ -46,6 +51,6 @@ export function ProductHistory({ variantId }: { variantId: string }) {
           ))}
         </ul>
       )}
-    </section>
+    </details>
   );
 }

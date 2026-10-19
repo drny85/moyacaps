@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canSave, closeDecision, editorReducer, initialEditorState } from "./editorSession";
+import { canSave, closeDecision, editorReducer, initialEditorState, reapplyField, unsavedFields } from "./editorSession";
 import type { EditorState } from "./editorSession";
 import type { ResolvedVariant } from "./productForm";
 
@@ -106,12 +106,63 @@ describe("editorReducer", () => {
     expect(editorReducer(pending, { type: "dropSaved", variantId: "moya-snap", updatedAt: 999 })).toBe(pending);
   });
 
-  it("reloads the latest row, dropping edits", () => {
+  it("reloads the latest row, keeping the discarded edits beside it", () => {
     let state = editorReducer(editing(), { type: "edit", fn: (f) => ({ ...f, priceUsd: "99" }) });
     state = editorReducer(state, { type: "reload", row: row({ updatedAt: 400, priceUsd: 50 }) });
     expect(state.session).toMatchObject({ version: 400 });
     expect(state.form.priceUsd).toBe("50");
     expect(state.initial).toBe(state.form);
+    expect(state.unsaved?.priceUsd).toBe("99");
+    expect(unsavedFields(state.form, state.unsaved!)).toEqual(["priceUsd"]);
+  });
+
+  it("keeps nothing aside when reloading a clean form", () => {
+    const state = editorReducer(editing(), { type: "reload", row: row({ updatedAt: 400 }) });
+    expect(state.unsaved).toBeNull();
+  });
+
+  it("re-applies one discarded value at a time, then drops the set", () => {
+    let state = editorReducer(editing(), { type: "edit", fn: (f) => ({ ...f, priceUsd: "99", nameEs: "Mío" }) });
+    state = editorReducer(state, { type: "reload", row: row({ updatedAt: 400, nameEn: "Fresh" }) });
+    expect(unsavedFields(state.form, state.unsaved!)).toEqual(["nameEn", "nameEs", "priceUsd"]);
+    state = editorReducer(state, { type: "edit", fn: (f) => reapplyField(f, state.unsaved!, "priceUsd") });
+    expect(state.form).toMatchObject({ priceUsd: "99", nameEn: "Fresh", nameEs: "Moya Snap ES" });
+    state = editorReducer(state, { type: "dismissUnsaved" });
+    expect(state.unsaved).toBeNull();
+  });
+
+  it("re-applies tee options as a group", () => {
+    const colorways = [{ id: "black", nameEn: "Black", nameEs: "Negro", hex: "#000000", borderHex: "#111111" }];
+    const fresh = editorReducer(initialEditorState(), { type: "openCreate", category: "apparel" }).form;
+    const mine = { ...fresh, colorways, defaultColorway: "black" };
+    expect(unsavedFields(fresh, mine)).toEqual(["defaultColorway", "colorways"]);
+    expect(reapplyField(fresh, mine, "colorways").colorways).toEqual(colorways);
+  });
+
+  it("a save after Reload latest sends the reloaded version", () => {
+    let state = editorReducer(editing(), { type: "edit", fn: (f) => ({ ...f, priceUsd: "99" }) });
+    state = editorReducer(state, { type: "reload", row: row({ updatedAt: 400 }) });
+    expect(state.session).toEqual({ mode: "edit", variantId: "moya-snap", version: 400 });
+  });
+
+  it("adopts its own save's version and marks the form clean", () => {
+    let state = editorReducer(editing(), { type: "edit", fn: (f) => ({ ...f, priceUsd: "99" }) });
+    state = editorReducer(state, { type: "saved", updatedAt: 500 });
+    expect(state.session).toMatchObject({ version: 500 });
+    expect(state.initial).toBe(state.form);
+    expect(closeDecision(state, { saving: false, blocked: false })).toBe("close");
+  });
+
+  it("ignores a save result before the row version is known", () => {
+    let state = editorReducer(initialEditorState(), { type: "openCreate" });
+    state = editorReducer(state, { type: "created", variantId: "x" });
+    expect(editorReducer(state, { type: "saved", updatedAt: 500 })).toBe(state);
+  });
+
+  it("opens a create session for the chosen category", () => {
+    const state = editorReducer(initialEditorState(), { type: "openCreate", category: "apparel" });
+    expect(state.form.category).toBe("apparel");
+    expect(state.form.silhouette).toBe("tee");
   });
 
   it("closes", () => {

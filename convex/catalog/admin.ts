@@ -8,7 +8,7 @@ import { v, ConvexError } from "convex/values";
 import { internal } from "../_generated/api";
 import { requireAdmin } from "../lib/auth";
 import schema from "../schema";
-import { dropStatusValidator, successResult, variantWithSubscribers } from "./validators";
+import { adminProductRow, dropStatusValidator, successResult } from "./validators";
 import { getSku, getVariant, hasSkus, listSkus, setSkuStock, syncTeeAggregate } from "./inventory";
 import { deleteAlertBatch } from "./drops";
 import { deleteAllProductImages, deleteColorwayImages, scheduleFileDelete } from "./images/functions";
@@ -72,7 +72,7 @@ export const generateUploadUrlInternal = internalMutation({
 
 export const getAllProductsAdmin = query({
   args: { includeArchived: v.optional(v.boolean()) },
-  returns: v.object({ products: v.array(schema.doc("products")), variants: v.array(variantWithSubscribers) }),
+  returns: v.object({ products: v.array(schema.doc("products")), variants: v.array(adminProductRow) }),
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
     // The products table holds the single collection record seeded by seedAll.
@@ -84,6 +84,7 @@ export const getAllProductsAdmin = query({
         return {
           ...resolved,
           subscribersCount: await countDropAlerts(ctx, v.variantId),
+          skus: (await listSkus(ctx, v.variantId)).map(({ colorway, size, stock }) => ({ colorway, size, stock })),
         };
       })
     );
