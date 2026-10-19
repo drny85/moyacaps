@@ -166,3 +166,38 @@ describe("importLegacyVariantImages", () => {
     expect(await rows(t)).toHaveLength(2);
   });
 });
+
+describe("legacyImageFields", () => {
+  it("returns raw legacy image fields for every variant, archived included, never overlaid with rows", async () => {
+    const { t, file } = await setup();
+    const legacy = await file("legacy");
+    const imported = await file("imported");
+    await t.run(async (ctx) => {
+      const a = await ctx.db.query("variants").withIndex("by_variantId", (q) => q.eq("variantId", "cap-a")).unique();
+      await ctx.db.patch("variants", a!._id, { images: ["/l/1.jpg", "/l/2.jpg"], catalogShot: "/c/a.webp", storageId: legacy });
+      await ctx.db.insert("variants", { ...capBase, variantId: "cap-archived", isAvailable: false, archivedAt: 1, images: ["/l/z.jpg"] });
+      await ctx.db.insert("productImages", {
+        variantId: "cap-a", role: "lifestyle", order: 0, storageId: imported, sha256: sha("i"), width: 1, height: 1, createdAt: 0,
+      });
+    });
+    const out = await t.query(internal.catalog.images.migration.legacyImageFields, {});
+    expect(out.map((v) => v.variantId).sort()).toEqual(["cap-a", "cap-archived", "tee-x"]);
+    expect(out.find((v) => v.variantId === "cap-a")).toEqual({
+      variantId: "cap-a",
+      category: "headwear",
+      image: "/caps/x.png",
+      images: ["/l/1.jpg", "/l/2.jpg"],
+      catalogShot: "/c/a.webp",
+      storageId: legacy,
+    });
+    expect(out.find((v) => v.variantId === "tee-x")?.colorways).toEqual([{ id: "black", lifestyleImage: "/l.jpg", catalogShot: "/c.jpg" }]);
+  });
+
+  it("refuses a catalog past the scan cap", async () => {
+    const { t } = await setup();
+    await t.run(async (ctx) => {
+      for (let i = 0; i < MAX_CATALOG_VARIANTS; i++) await ctx.db.insert("variants", { ...capBase, variantId: `v${i}` });
+    });
+    await expect(t.query(internal.catalog.images.migration.legacyImageFields, {})).rejects.toThrow(/too large/);
+  });
+});

@@ -2,7 +2,7 @@
  * Moves the product images in public/ into Convex storage as `productImages` rows (ADR 0021).
  * Idempotent: re-running uploads nothing new, and never overwrites an Administrator's image.
  *
- *   bun run migrate:product-images --dev|--prod [--dry-run] [--variants-file <getVariants.json>]
+ *   bun run migrate:product-images --dev|--prod [--dry-run] [--variants-file <legacyImageFields.json>]
  *
  * --dry-run makes no network calls: it prints each source and its sha256. Without
  * --variants-file it assumes every product in catalogShots.json exists and has no extra
@@ -49,7 +49,8 @@ function setup() {
 
 function loadVariants(dryRun: boolean, variantsFile: string | undefined, convex: (fn: string, args?: object) => unknown): VariantInput[] {
   if (variantsFile) return JSON.parse(fs.readFileSync(variantsFile, "utf-8")) as VariantInput[];
-  if (!dryRun) return convex("catalog/queries:getVariants", { includeUnavailable: true }) as VariantInput[];
+  // Raw stored fields of every product, archived included (the public getVariants overlays imported rows).
+  if (!dryRun) return convex("catalog/images/migration:legacyImageFields") as VariantInput[];
   const ids = [...Object.keys(catalogShots.caps), ...Object.keys(catalogShots.tees)];
   return ids.map((variantId) => ({ variantId }));
 }

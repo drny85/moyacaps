@@ -1,7 +1,8 @@
 /**
  * Pure: which files in `public/` become `productImages` rows (ADR 0021, migration script).
- * Variant data comes from `catalog/queries:getVariants`, which already resolves images that
- * have rows to absolute URLs, so only values starting with `/` are local files still to migrate.
+ * Variant data is the raw stored fields from `catalog/images/migration:legacyImageFields`
+ * (never overlaid with rows, archived products included). Only values starting with `/` are
+ * local files; absolute URLs are skipped.
  */
 export type ImageRole = "catalog" | "lifestyle" | "angle";
 export type CapAngle = "front" | "left" | "back" | "right";
@@ -15,9 +16,12 @@ export type CatalogShotsInput = {
 export type CapsManifestInput = Record<string, { angles: Record<CapAngle, string> }>;
 export type VariantInput = {
   variantId: string;
+  category?: string;
   image?: string;
   images?: string[];
-  colorways?: { id: string; lifestyleImage?: string }[];
+  catalogShot?: string;
+  colorways?: { id: string; lifestyleImage?: string; catalogShot?: string }[];
+  storageId?: string;
 };
 
 export const ANGLE_ORDER: readonly CapAngle[] = ["front", "left", "back", "right"];

@@ -96,3 +96,21 @@ describe("collectImageSources", () => {
     expect(only.map((s) => s.colorway)).toEqual(["black"]);
   });
 });
+
+describe("collectImageSources on raw legacy fields (catalog/images/migration:legacyImageFields)", () => {
+  it("a partially migrated lifestyle list still yields every legacy source on re-run", () => {
+    // Raw fields are never overlaid with productImages rows, so the first image already imported
+    // does not hide the rest; the import itself skips it as a duplicate.
+    const raw = [
+      {
+        variantId: "cap-a",
+        category: "headwear",
+        image: "/caps/cap-a.png",
+        images: ["/caps/cap-a.png", "/lifestyle/cap-a-1.jpg", "/lifestyle/cap-a-2.jpg", "/lifestyle/cap-a-3.jpg"],
+        catalogShot: "/catalog/caps/cap-a.webp",
+      },
+    ];
+    const lifestyle = at(collectImageSources(shots, manifest, raw), "cap-a").filter((s) => s.role === "lifestyle");
+    expect(lifestyle.map((s) => s.publicPath)).toEqual(["/lifestyle/cap-a-1.jpg", "/lifestyle/cap-a-2.jpg", "/lifestyle/cap-a-3.jpg"]);
+  });
+});

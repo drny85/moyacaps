@@ -102,6 +102,41 @@ export const importImage = internalMutation({
   },
 });
 
+/**
+ * The legacy image fields of EVERY variant (archived and hidden included), exactly as stored:
+ * never overlaid with `productImages` rows, so an image imported on an earlier run cannot hide
+ * the legacy entries still to import. Source of scripts/migrate-product-images.ts.
+ */
+export const legacyImageFields = internalQuery({
+  args: {},
+  returns: v.array(
+    v.object({
+      variantId: v.string(),
+      category: v.optional(v.string()),
+      image: v.string(),
+      images: v.optional(v.array(v.string())),
+      catalogShot: v.optional(v.string()),
+      colorways: v.optional(v.array(v.object({ id: v.string(), lifestyleImage: v.string(), catalogShot: v.string() }))),
+      storageId: v.optional(v.id("_storage")),
+    }),
+  ),
+  handler: async (ctx) => {
+    const variants = await ctx.db.query("variants").take(MAX_CATALOG_VARIANTS + 1);
+    if (variants.length > MAX_CATALOG_VARIANTS) {
+      throw new ConvexError("The catalog is too large to migrate legacy images in one pass.");
+    }
+    return variants.map((variant) => ({
+      variantId: variant.variantId,
+      category: variant.category,
+      image: variant.image,
+      images: variant.images,
+      catalogShot: variant.catalogShot,
+      colorways: variant.colorways?.map((c) => ({ id: c.id, lifestyleImage: c.lifestyleImage, catalogShot: c.catalogShot })),
+      storageId: variant.storageId,
+    }));
+  },
+});
+
 /** Variants whose legacy upload has no catalog row yet; `covered` counts the ones that do. */
 export const legacyImportCandidates = internalQuery({
   args: {},
