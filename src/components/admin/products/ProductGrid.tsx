@@ -159,7 +159,9 @@ function GridBody() {
           />
           <kbd className="hidden sm:block absolute right-3 top-1/2 -translate-y-1/2 px-1.5 py-0.5 rounded border border-zinc-200 dark:border-white/10 text-[10px] font-mono text-zinc-500">/</kbd>
         </div>
-        <FilterChips filters={filters} onChange={setFilters} onClear={clear} count={(patch) => (rows ? chipCount(rows, filters, patch, now) : 0)} />
+        <FilterChips filters={filters} onChange={setFilters} onClear={clear} count={(patch) =>
+            rows && !(patch.status === "archived" && filters.status !== "archived") ? chipCount(rows, filters, patch, now) : undefined
+          } />
       </div>
 
       <FeedbackBanner banner={actions.error} onDismiss={actions.clearError} />

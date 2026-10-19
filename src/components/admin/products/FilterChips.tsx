@@ -13,11 +13,11 @@ const chipClass = (active: boolean) =>
       : "bg-white dark:bg-white/[0.03] text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-white/10 hover:border-zinc-400 dark:hover:border-white/30"
   }`;
 
-function Chip({ active, count, onClick, children }: { active: boolean; count: number; onClick: () => void; children: React.ReactNode }) {
+function Chip({ active, count, onClick, children }: { active: boolean; count?: number; onClick: () => void; children: React.ReactNode }) {
   return (
     <button type="button" aria-pressed={active} onClick={onClick} className={chipClass(active)}>
       {children}
-      <span className={`font-mono text-[10px] ${active ? "opacity-70" : "text-zinc-500"}`}>{count}</span>
+      {count !== undefined && <span className={`font-mono text-[10px] ${active ? "opacity-70" : "text-zinc-500"}`}>{count}</span>}
     </button>
   );
 }
@@ -26,7 +26,8 @@ const Divider = () => <span aria-hidden className="shrink-0 w-px h-5 bg-zinc-200
 
 /**
  * The grid's filter chips (D4). Stateless: one value per group, clicking the active chip
- * clears it. `count(patch)` is how many Products the grid would show with that chip on.
+ * clears it. `count(patch)` is how many Products the grid would show with that chip on,
+ * or undefined when the loaded rows cannot tell (archived rows load only under Archived).
  */
 export function FilterChips({
   filters,
@@ -37,7 +38,7 @@ export function FilterChips({
   filters: ProductFilters;
   onChange: (patch: Partial<ProductFilters>) => void;
   onClear: () => void;
-  count: (patch: Partial<ProductFilters>) => number;
+  count: (patch: Partial<ProductFilters>) => number | undefined;
 }) {
   const t = useTranslations("admin.products.filters");
 

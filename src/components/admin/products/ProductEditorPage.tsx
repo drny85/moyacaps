@@ -143,6 +143,7 @@ export function ProductEditorPage({ target }: { target: EditorTarget }) {
         onDismiss={editor.dismissFeedback}
         onReload={liveRow ? editor.reloadLatest : undefined}
       />
+      <FeedbackBanner banner={actions.error} onDismiss={actions.clearError} />
       {editor.unsaved && <StaleValuesPanel form={form} unsaved={editor.unsaved} onApply={editor.reapply} onDismiss={editor.dismissUnsaved} />}
 
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] gap-5 items-start">
