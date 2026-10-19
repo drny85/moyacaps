@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { launchChatUrl, launchWhatsAppText, listedCount, needsLaunchConfirm } from "./categoryLaunch";
+import { listedCount, needsLaunchConfirm } from "./categoryLaunch";
 
 describe("needsLaunchConfirm", () => {
   it("is true only when leaving live", () => {
@@ -29,22 +29,5 @@ describe("listedCount", () => {
     ];
     expect(listedCount(rows, "headwear")).toBe(2);
     expect(listedCount(rows, "apparel")).toBe(2);
-  });
-});
-
-describe("launchChatUrl", () => {
-  it("opens a WhatsApp chat with the digits of the number and an encoded message", () => {
-    expect(launchChatUrl("+1 (555) 123-4567", "Tees are live!")).toBe("https://wa.me/15551234567?text=Tees%20are%20live!");
-  });
-});
-
-describe("launchWhatsAppText", () => {
-  it("is written in the subscriber's language", () => {
-    expect(launchWhatsAppText("en", "apparel", "https://goodluckcaps.com")).toBe(
-      "Hi! Good Luck here. The tees you asked about just dropped: https://goodluckcaps.com/en/products?category=tees"
-    );
-    expect(launchWhatsAppText("es", "headwear", "https://goodluckcaps.com")).toBe(
-      "¡Hola! Te escribimos de Good Luck. Ya salieron las gorras que esperabas: https://goodluckcaps.com/es/products?category=caps"
-    );
   });
 });

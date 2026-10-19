@@ -734,11 +734,11 @@
       "statusLabel": "Estado de {name}",
       "statusHelp": {
         "live": "Los productos visibles se muestran y se pueden comprar.",
-        "coming_soon": "Los clientes ven un adelanto y se pueden registrar para recibir aviso. No se muestran productos.",
+        "coming_soon": "Los clientes ven un adelanto de Muy pronto, con cuenta regresiva si pones fecha. No se muestran productos.",
         "hidden": "La categoría desaparece de la tienda: sin enlace en el menú, sin mosaico, sin adelanto."
       },
       "scheduleLaunch": "Lanzar automáticamente en una fecha",
-      "launchAtHelp": "{name} pasa a En vivo a esta hora y se envía el correo a la lista. El adelanto muestra la cuenta regresiva.",
+      "launchAtHelp": "{name} pasa a En vivo a esta hora. El adelanto muestra la cuenta regresiva.",
       "headlineEn": "Titular del adelanto (inglés, opcional)",
       "headlineEs": "Titular del adelanto (español, opcional)",
       "headlinePlaceholder": {
@@ -757,13 +757,7 @@
       "confirmTitle": "¿Cambiar {name} a {status}?",
       "confirmBody": "{count, plural, =0 {Ningún producto visible se verá afectado.} one {# producto visible desaparecerá de la tienda.} other {# productos visibles desaparecerán de la tienda.}} Los carritos que los tengan los mostrarán como no disponibles.",
       "cancel": "Cancelar",
-      "confirm": "Sí, cambiar",
-      "waitlistTitle": "Lista de espera de {name} ({count})",
-      "waitlistSubtitle": "A los registros por correo se les escribe automáticamente cuando la categoría pasa a En vivo. Escribe tú a los de WhatsApp y márcalos como avisados.",
-      "notified": "Avisado",
-      "openChat": "Abrir chat",
-      "markNotified": "Marcar avisado",
-      "emailAtLaunch": "Correo al lanzar"
+      "confirm": "Sí, cambiar"
     }
   },
   "track": {
@@ -1051,27 +1045,14 @@
       "tees": "Playeras — Muy pronto",
       "all": "Algo viene muy pronto"
     },
-    "body": "Sé el primero. Te avisamos en cuanto salgan.",
-    "bodyAll": "La tienda abre muy pronto. Déjanos tu contacto y te avisamos en cuanto salga.",
+    "body": "Algo nuevo viene en camino. Vuelve pronto.",
+    "bodyAll": "La tienda abre muy pronto. Vuelve pronto.",
     "eyebrow": "Muy pronto",
     "countdownLabel": "Sale en",
     "days": "Días",
     "hours": "Hrs",
     "minutes": "Min",
     "seconds": "Seg",
-    "droppingNow": "Saliendo ahora…",
-    "channelEmail": "Correo",
-    "channelWhatsapp": "WhatsApp",
-    "emailPlaceholder": "tu@correo.com",
-    "whatsappPlaceholder": "Número de WhatsApp (+1 555 123 4567)",
-    "namePlaceholder": "Nombre (opcional)",
-    "contactLabel": "¿Dónde te avisamos?",
-    "submit": "Avísame",
-    "pickCategory": "Avísame de",
-    "subscribed": "Ya estás en la lista. Te avisamos primero.",
-    "alreadySubscribed": "Ya estabas en la lista.",
-    "required": "Escribe tu correo o número de WhatsApp.",
-    "failed": "No pudimos registrarte. Inténtalo de nuevo.",
-    "cardCta": "Recibir aviso"
+    "droppingNow": "Saliendo ahora…"
   }
 }

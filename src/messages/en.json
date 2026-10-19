@@ -734,11 +734,11 @@
       "statusLabel": "{name} status",
       "statusHelp": {
         "live": "Visible products are shown and can be bought.",
-        "coming_soon": "Customers see a teaser and can sign up to be told when it drops. No products are shown.",
+        "coming_soon": "Customers see a Dropping soon teaser, with a countdown if you set a date. No products are shown.",
         "hidden": "The category disappears from the store: no menu link, no tile, no teaser."
       },
       "scheduleLaunch": "Go live automatically on a date",
-      "launchAtHelp": "{name} turns Live at this time and the waitlist is emailed. The teaser counts down to it.",
+      "launchAtHelp": "{name} turns Live at this time. The teaser counts down to it.",
       "headlineEn": "Teaser headline (English, optional)",
       "headlineEs": "Teaser headline (Spanish, optional)",
       "headlinePlaceholder": {
@@ -757,13 +757,7 @@
       "confirmTitle": "Set {name} to {status}?",
       "confirmBody": "{count, plural, =0 {No listed products will be affected.} one {# listed product will disappear from the store.} other {# listed products will disappear from the store.}} Carts holding them will show them as unavailable.",
       "cancel": "Cancel",
-      "confirm": "Yes, change it",
-      "waitlistTitle": "{name} waitlist ({count})",
-      "waitlistSubtitle": "Email sign-ups are emailed automatically when the category goes Live. Message WhatsApp sign-ups yourself, then mark them notified.",
-      "notified": "Notified",
-      "openChat": "Open chat",
-      "markNotified": "Mark notified",
-      "emailAtLaunch": "Emailed at launch"
+      "confirm": "Yes, change it"
     }
   },
   "track": {
@@ -1051,27 +1045,14 @@
       "tees": "Tees — Dropping soon",
       "all": "Something's dropping soon"
     },
-    "body": "Be first in line. We'll tell you the moment they drop.",
-    "bodyAll": "The store opens soon. Leave your contact and we'll tell you the moment it drops.",
+    "body": "Something new is on the way. Check back soon.",
+    "bodyAll": "The store opens soon. Check back soon.",
     "eyebrow": "Coming soon",
     "countdownLabel": "Drops in",
     "days": "Days",
     "hours": "Hrs",
     "minutes": "Min",
     "seconds": "Sec",
-    "droppingNow": "Dropping now…",
-    "channelEmail": "Email",
-    "channelWhatsapp": "WhatsApp",
-    "emailPlaceholder": "you@example.com",
-    "whatsappPlaceholder": "WhatsApp number (+1 555 123 4567)",
-    "namePlaceholder": "Name (optional)",
-    "contactLabel": "Where should we tell you?",
-    "submit": "Notify me",
-    "pickCategory": "Notify me about",
-    "subscribed": "You're on the list. We'll tell you first.",
-    "alreadySubscribed": "You're already on the list.",
-    "required": "Enter your email or WhatsApp number.",
-    "failed": "Could not sign you up. Please try again.",
-    "cardCta": "Get notified"
+    "droppingNow": "Dropping now…"
   }
 }
