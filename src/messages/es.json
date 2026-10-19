@@ -434,6 +434,45 @@
         "stale": "Este producto cambió mientras lo editabas. Cierra esta ventana y vuelve a abrir el producto para ver la versión más reciente.",
         "archived": "Este producto está archivado. Restáurelo antes de editarlo.",
         "needs_image": "Agrega una imagen del producto antes de guardar, o oculta el producto."
+      },
+      "images": {
+        "title": "Imágenes",
+        "catalogShot": "Foto de catálogo",
+        "lifestyleShots": "Fotos lifestyle",
+        "angles": "Ángulos",
+        "angle": {
+          "front": "Frente",
+          "left": "Izquierda",
+          "back": "Atrás",
+          "right": "Derecha"
+        },
+        "empty": "Aún sin imagen",
+        "upload": "Subir",
+        "replace": "Reemplazar",
+        "remove": "Quitar",
+        "removeConfirm": "¿Quitar esta imagen?",
+        "confirmUpload": "Subir",
+        "cancel": "Cancelar",
+        "busy": "Subiendo...",
+        "removing": "Quitando...",
+        "moveUp": "Subir posición",
+        "moveDown": "Bajar posición",
+        "add": "Agregar foto lifestyle",
+        "cropHint": "La tienda recorta esta foto a 4:5. Mantén el sujeto dentro del marco.",
+        "loading": "Cargando imágenes...",
+        "saveFirst": "Guarda el producto primero para agregar imágenes.",
+        "errors": {
+          "unsupported_format": "Archivo no compatible. Usa una imagen PNG, JPEG o WebP.",
+          "too_large": "El archivo es muy grande. El máximo es 10 MB.",
+          "too_small": "La imagen es muy pequeña. El lado corto debe medir al menos 1600 px.",
+          "needs_transparency": "Las fotos de ángulo necesitan fondo transparente (PNG o WebP con alfa).",
+          "invalid_slot": "Ese espacio de imagen no es válido para este producto.",
+          "too_many": "Esta sección llegó a su límite de imágenes.",
+          "not_found": "Esa imagen ya no existe. Actualiza e inténtalo de nuevo.",
+          "invalid_order": "El orden cambió en otro lugar. Actualiza e inténtalo de nuevo.",
+          "archived": "Este producto está archivado. Restáuralo antes de cambiar imágenes.",
+          "unknown": "Algo salió mal. Inténtalo de nuevo."
+        }
       }
     },
     "drops": {

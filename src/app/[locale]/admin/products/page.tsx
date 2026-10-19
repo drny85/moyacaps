@@ -9,6 +9,7 @@ import type { FunctionReturnType } from "convex/server";
 import { ConvexError } from "convex/values";
 import { api } from "@convex/_generated/api";
 import { ProductHistory } from "@/components/admin/products/ProductHistory";
+import { ProductImagesPanel } from "@/components/admin/products/ProductImagesPanel";
 import type { Id } from "@convex/_generated/dataModel";
 import { normalizeSlug, type FieldError } from "@convex/catalog/rules";
 import {
@@ -1415,6 +1416,10 @@ export default function AdminProductsPage() {
                   <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
                   <span>{uploadProgress}</span>
                 </div>
+              )}
+
+              {editingRow && (
+                <ProductImagesPanel variantId={editingRow.variantId} colorways={editingRow.colorways} locale={locale} />
               )}
 
               {editingRow && <ProductHistory variantId={editingRow.variantId} />}

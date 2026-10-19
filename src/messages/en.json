@@ -434,6 +434,45 @@
         "stale": "This product changed while you were editing. Close this window and reopen the product to see the latest version.",
         "archived": "This product is archived. Restore it before editing.",
         "needs_image": "Add a product image before saving, or hide the product."
+      },
+      "images": {
+        "title": "Images",
+        "catalogShot": "Catalog Shot",
+        "lifestyleShots": "Lifestyle Shots",
+        "angles": "Angles",
+        "angle": {
+          "front": "Front",
+          "left": "Left",
+          "back": "Back",
+          "right": "Right"
+        },
+        "empty": "No image yet",
+        "upload": "Upload",
+        "replace": "Replace",
+        "remove": "Remove",
+        "removeConfirm": "Remove this image?",
+        "confirmUpload": "Upload",
+        "cancel": "Cancel",
+        "busy": "Uploading...",
+        "removing": "Removing...",
+        "moveUp": "Move up",
+        "moveDown": "Move down",
+        "add": "Add Lifestyle Shot",
+        "cropHint": "The storefront crops this photo to 4:5. Keep the subject inside the frame.",
+        "loading": "Loading images...",
+        "saveFirst": "Save the product first to add images.",
+        "errors": {
+          "unsupported_format": "Unsupported file. Use a PNG, JPEG or WebP image.",
+          "too_large": "File is too large. The maximum is 10 MB.",
+          "too_small": "Image is too small. The short side must be at least 1600 px.",
+          "needs_transparency": "Angle photos need a transparent background (PNG or WebP with alpha).",
+          "invalid_slot": "That image slot is not valid for this product.",
+          "too_many": "This section has reached its image limit.",
+          "not_found": "That image no longer exists. Refresh and try again.",
+          "invalid_order": "The order changed elsewhere. Refresh and try again.",
+          "archived": "This product is archived. Restore it before changing images.",
+          "unknown": "Something went wrong. Please try again."
+        }
       }
     },
     "drops": {
