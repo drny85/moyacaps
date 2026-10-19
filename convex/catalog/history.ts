@@ -31,7 +31,14 @@ export const getVariantHistory = query({
       type: e.type,
       actor: e.actor,
       createdAt: e.createdAt,
-      changes: e.changes ? (JSON.parse(e.changes) as FieldChange[]) : [],
+      // JSON drops undefined, so an added/removed field arrives with no from/to: show null.
+      changes: e.changes
+        ? (JSON.parse(e.changes) as FieldChange[]).map((c) => ({
+            field: c.field,
+            from: c.from ?? null,
+            to: c.to ?? null,
+          }))
+        : [],
     }));
   },
 });

@@ -57,6 +57,27 @@ describe("getVariantHistory", () => {
     expect(history[1].changes).toEqual([]);
   });
 
+  it("round-trips changes with an absent from or to as null", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      await recordCatalogEvent(ctx, {
+        variantId: "v2",
+        type: "updated",
+        actor: "a@b.c",
+        changes: [
+          { field: "removed", from: 1, to: undefined },
+          { field: "added", from: undefined, to: 2 },
+        ],
+      });
+    });
+    const admin = t.withIdentity({ subject: "user_admin", email: PRIMARY_ADMIN_EMAIL });
+    const history = await admin.query(api.catalog.history.getVariantHistory, { variantId: "v2" });
+    expect(history[0].changes).toEqual([
+      { field: "removed", from: 1, to: null },
+      { field: "added", from: null, to: 2 },
+    ]);
+  });
+
   it("throws without an identity", async () => {
     const t = convexTest(schema, modules);
     await expect(t.query(api.catalog.history.getVariantHistory, { variantId: "v1" })).rejects.toThrow();
