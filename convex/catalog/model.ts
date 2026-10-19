@@ -189,10 +189,13 @@ export function buildNewVariant(input: NewVariantInput, now: number) {
   };
 }
 
-/** True when the patch would leave a visible product with no image (a Product with no image must never reach the grid). */
-export function blankImageWhileVisible(existing: Doc<"variants">, patch: VariantPatch): boolean {
+/**
+ * True when the patch would leave a visible product with no image (a Product with no image must never reach the grid).
+ * `hasCatalogImage` is whether the product has a Catalog Shot row in `productImages` (ADR 0021).
+ */
+export function blankImageWhileVisible(existing: Doc<"variants">, patch: VariantPatch, hasCatalogImage = false): boolean {
   const merged = { ...existing, ...definedOnly(patch) };
-  return merged.isAvailable !== false && merged.image.trim() === "" && !merged.storageId;
+  return merged.isAvailable !== false && merged.image.trim() === "" && !merged.storageId && !hasCatalogImage;
 }
 
 /**

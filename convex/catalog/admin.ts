@@ -32,7 +32,8 @@ import {
   patchVariantAudited,
   requireActiveVariant,
   requireVariant,
-  resolveVariantWithStorageUrl,
+  hasCatalogImageRow,
+  resolveProduct,
 } from "./shared";
 
 const categoryValidator = v.union(v.literal("headwear"), v.literal("apparel"));
@@ -89,7 +90,7 @@ export const getAllProductsAdmin = query({
     const rawVariants = (await listCatalogVariants(ctx)).filter((row) => args.includeArchived || row.archivedAt === undefined);
     const variants = await Promise.all(
       rawVariants.map(async (v) => {
-        const resolved = await resolveVariantWithStorageUrl(ctx, v);
+        const resolved = await resolveProduct(ctx, v);
         return {
           ...resolved,
           subscribersCount: await countDropAlerts(ctx, v.variantId),
@@ -191,6 +192,9 @@ export const toggleVariantAvailable = mutation({
     const actor = actorEmail(await requireAdmin(ctx));
     const variant = await requireActiveVariant(ctx, args.variantId);
     const nextAvailable = nextAvailability(variant.isAvailable, args.isAvailable);
+    if (nextAvailable && blankImageWhileVisible(variant, { isAvailable: true }, await hasCatalogImageRow(ctx, variant.variantId))) {
+      throw new ConvexError({ kind: "needs_image" });
+    }
 
     await patchVariantAudited(ctx, variant, { isAvailable: nextAvailable }, "visibility_set", actor);
 
@@ -322,7 +326,7 @@ export const updateVariant = mutation({
       throw new ConvexError(TEE_STOCK_EDIT_ERROR);
     }
     throwIfInvalid(validateMerged(existing, args.patch));
-    if (blankImageWhileVisible(existing, args.patch)) {
+    if (blankImageWhileVisible(existing, args.patch, await hasCatalogImageRow(ctx, existing.variantId))) {
       throw new ConvexError({ kind: "needs_image" });
     }
 

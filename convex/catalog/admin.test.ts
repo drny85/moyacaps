@@ -270,6 +270,36 @@ describe("single-field mutations", () => {
   });
 });
 
+describe("catalog image rows count as an image", () => {
+  const blankCap = { ...cap, image: undefined };
+  const addCatalogRow = (t: ReturnType<typeof setup>["t"]) =>
+    t.run(async (ctx) => {
+      const storageId = await ctx.storage.store(new Blob(["x"]));
+      await ctx.db.insert("productImages", { variantId: cap.variantId, role: "catalog", order: 0, storageId, sha256: "a", width: 2000, height: 2500, createdAt: 1 });
+    });
+
+  it("updateVariant allows a visible product whose only image is a row", async () => {
+    const { t, admin } = setup();
+    await admin.mutation(api.catalog.admin.createVariant, blankCap);
+    const hidden = await row(t);
+    expect(hidden?.isAvailable).toBe(false);
+    const update = { variantId: cap.variantId, expectedUpdatedAt: hidden!.updatedAt!, patch: { isAvailable: true } };
+    expect(await errorData(admin.mutation(api.catalog.admin.updateVariant, update))).toEqual({ kind: "needs_image" });
+    await addCatalogRow(t);
+    await admin.mutation(api.catalog.admin.updateVariant, update);
+    expect((await row(t))?.isAvailable).toBe(true);
+  });
+
+  it("toggleVariantAvailable refuses to show a product with no image, allows one with a row", async () => {
+    const { t, admin } = setup();
+    await admin.mutation(api.catalog.admin.createVariant, blankCap);
+    const show = { variantId: cap.variantId, isAvailable: true };
+    expect(await errorData(admin.mutation(api.catalog.admin.toggleVariantAvailable, show))).toEqual({ kind: "needs_image" });
+    await addCatalogRow(t);
+    expect((await admin.mutation(api.catalog.admin.toggleVariantAvailable, show)).isAvailable).toBe(true);
+  });
+});
+
 describe("stock mutations", () => {
   it("updateVariantStock validates and audits", async () => {
     const { admin } = setup();

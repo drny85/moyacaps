@@ -1,3 +1,5 @@
+import type { CapAngleKey } from "./capsManifest";
+
 export type ProductSilhouette = "snapback" | "trucker" | "tee" | string;
 export type ProductCategory = "headwear" | "apparel" | string;
 
@@ -81,6 +83,8 @@ export interface CapVariant {
   images?: string[];
   /** 4:5 Catalog Shot for grids and cards (ADR 0016) */
   catalogShot?: string;
+  /** The four turntable photos, present only when all four are uploaded (ADR 0021) */
+  angles?: Record<CapAngleKey, string>;
   graphicImage?: string;
   printPosition?: "front" | "back";
   stock: number;

@@ -117,7 +117,7 @@ export function HeroInteractive() {
   // ── Turntable ──
   const frames: TurntableFrame[] = useMemo(() => {
     if (!activeCap) return [];
-    const angles = getCapAngleImages(activeCap.id);
+    const angles = getCapAngleImages(activeCap);
     return angles
       ? TURNTABLE_ANGLES.map((angle) => ({ src: angles[angle], label: tAngles(angle) }))
       : [{ src: activeCap.image, label: tAngles("hero") }];

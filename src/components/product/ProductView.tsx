@@ -55,7 +55,7 @@ export function ProductView({ initial }: { initial: ProductWithSkus }) {
   const colorway = product.colorways?.find((c) => c.id === selection.colorway);
   const slides = useMemo(
     () =>
-      gallerySlides(product, selection, name, tee ? null : getCapAngleImages(product.id), {
+      gallerySlides(product, selection, name, tee ? null : getCapAngleImages(product), {
         lifestyle: t("onModel"),
         artwork: t("artwork"),
         angle: (a) => (a === "left" ? t("angleLeft") : a === "back" ? t("angleBack") : t("angleRight")),

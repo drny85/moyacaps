@@ -2,7 +2,7 @@ import type { Doc } from "@convex/_generated/dataModel";
 import type { ApparelColorwayOption, CapVariant } from "@/data/caps";
 
 /** A Convex variant row (image already resolved by the query) in the client `CapVariant` shape. */
-export function toCapVariant(v: Doc<"variants">): CapVariant {
+export function toCapVariant(v: Doc<"variants"> & { angles?: CapVariant["angles"] }): CapVariant {
   const isTee = v.silhouette === "tee" || v.category === "apparel";
   return {
     id: v.variantId,
@@ -15,6 +15,7 @@ export function toCapVariant(v: Doc<"variants">): CapVariant {
     image: v.image,
     images: v.images,
     catalogShot: v.catalogShot,
+    angles: v.angles,
     graphicImage: v.graphicImage,
     printPosition: v.printPosition,
     stock: v.stock,

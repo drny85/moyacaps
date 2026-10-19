@@ -197,6 +197,11 @@ describe("blankImageWhileVisible", () => {
     expect(blankImageWhileVisible(variant({ storageId: "s1" as Id<"_storage"> }), { image: "" })).toBe(false);
     expect(blankImageWhileVisible(variant(), { priceUsd: 5 })).toBe(false);
   });
+
+  it("counts a catalog image row as an image", () => {
+    expect(blankImageWhileVisible(variant(), { image: "" }, true)).toBe(false);
+    expect(blankImageWhileVisible(variant(), { image: "" }, false)).toBe(true);
+  });
 });
 
 describe("validateMerged", () => {

@@ -8,7 +8,7 @@ import { isAdmin } from "../lib/auth";
 import { lineStockResult, productPage, resolvedVariant } from "./validators";
 import { checkStock, getVariant, hasSkus, listSkus } from "./inventory";
 import { filterCatalogVariants } from "./model";
-import { listCatalogVariants, resolveVariantWithStorageUrl } from "./shared";
+import { listCatalogVariants, resolveProduct } from "./shared";
 
 export const getVariants = query({
   args: {
@@ -22,7 +22,7 @@ export const getVariants = query({
   handler: async (ctx, args) => {
     const variants = filterCatalogVariants(await listCatalogVariants(ctx), args);
     return await Promise.all(
-      variants.map((v) => resolveVariantWithStorageUrl(ctx, v))
+      variants.map((v) => resolveProduct(ctx, v))
     );
   },
 });
@@ -40,7 +40,7 @@ export const getVariantById = query({
     if (variant.isAvailable === false && !(args.allowUnavailable && (await isAdmin(ctx)))) {
       return null;
     }
-    return await resolveVariantWithStorageUrl(ctx, variant);
+    return await resolveProduct(ctx, variant);
   },
 });
 
@@ -53,7 +53,7 @@ export const getProductBySlug = query({
     if (!variant || variant.archivedAt !== undefined) return null;
     // Hidden products (and their SKU stock) are visible to Administrators only.
     if (variant.isAvailable === false && !(args.allowUnavailable && (await isAdmin(ctx)))) return null;
-    const resolved = await resolveVariantWithStorageUrl(ctx, variant);
+    const resolved = await resolveProduct(ctx, variant);
     const skus = hasSkus(variant)
       ? (await listSkus(ctx, variant.variantId)).map((s) => ({ colorway: s.colorway, size: s.size, stock: s.stock }))
       : [];

@@ -10,7 +10,7 @@ import schema from "../schema";
 import { requireAdmin } from "../lib/auth";
 import { computedDropStatus, hasDropHistory, isUpcomingDrop } from "./model";
 import { actorEmail } from "./audit";
-import { countDropAlerts, listCatalogVariants, patchVariantAudited, requireActiveVariant, requireVariant, resolveVariantWithStorageUrl } from "./shared";
+import { countDropAlerts, listCatalogVariants, patchVariantAudited, requireActiveVariant, requireVariant, resolveProduct } from "./shared";
 import { adminDropRow, dropStatusValidator, dropSubscriberRow, variantWithSubscribers } from "./validators";
 
 /**
@@ -50,7 +50,7 @@ export const getUpcomingDrops = query({
 
     return await Promise.all(
       dropVariants.map(async (v) => {
-        const withUrl = await resolveVariantWithStorageUrl(ctx, v);
+        const withUrl = await resolveProduct(ctx, v);
         return {
           ...withUrl,
           subscribersCount: await countDropAlerts(ctx, v.variantId),
@@ -307,7 +307,7 @@ export const getAllDropsAdmin = query({
 
     return await Promise.all(
       dropVariants.map(async (v) => {
-        const withUrl = await resolveVariantWithStorageUrl(ctx, v);
+        const withUrl = await resolveProduct(ctx, v);
         return {
           ...withUrl,
           subscribersCount: await countDropAlerts(ctx, v.variantId),

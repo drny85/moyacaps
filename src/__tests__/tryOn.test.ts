@@ -37,7 +37,7 @@ const cap = (id: string, over: Partial<CapVariant> = {}): CapVariant => ({
   ...over,
 });
 
-const overlayFor = (id: string) => (id === "no-angles" ? null : `/catalog/caps/${id}/front.webp`);
+const overlayFor = ({ id }: CapVariant) => (id === "no-angles" ? null : `/catalog/caps/${id}/front.webp`);
 
 describe("tryOnCaps", () => {
   it("offers visible caps with an overlay, never tees, purchasable first", () => {
