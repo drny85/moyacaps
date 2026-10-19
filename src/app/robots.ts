@@ -1,29 +1,13 @@
 import type { MetadataRoute } from "next";
+import { siteUrl } from "@/lib/seo/site";
+
+const PRIVATE = ["/admin", "/checkout", "/account"];
 
 export default function robots(): MetadataRoute.Robots {
-  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://goodluckcaps.com").replace(/\/$/, "");
-
+  const base = siteUrl();
+  // Private areas also send `noindex` from their layouts; this keeps crawl budget off them.
   return {
-    rules: [
-      {
-        userAgent: "*",
-        allow: ["/", "/products", "/products/*", "/caps", "/caps/*", "/track", "/track/*"],
-        disallow: [
-          "/admin",
-          "/admin/*",
-          "/*/admin",
-          "/*/admin/*",
-          "/checkout",
-          "/checkout/*",
-          "/*/checkout",
-          "/*/checkout/*",
-          "/account",
-          "/account/*",
-          "/*/account",
-          "/*/account/*",
-        ],
-      },
-    ],
-    sitemap: `${siteUrl}/sitemap.xml`,
+    rules: [{ userAgent: "*", allow: "/", disallow: PRIVATE.flatMap((p) => [p, `/*${p}`]) }],
+    sitemap: `${base}/sitemap.xml`,
   };
 }

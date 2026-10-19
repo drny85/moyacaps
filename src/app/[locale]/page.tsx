@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { absoluteUrl, DEFAULT_OG_IMAGE, ogLocale, pageAlternates } from "@/lib/seo/site";
 import { HeroInteractive } from "@/components/hero/HeroInteractive";
 import { DropRadar } from "@/components/drops/DropRadar";
 import { AnatomyScroll } from "@/components/story/AnatomyScroll";
@@ -13,8 +14,7 @@ export async function generateMetadata({
   params: Promise<{ locale: string }>;
 }): Promise<Metadata> {
   const { locale } = await params;
-  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://goodluckcaps.com").replace(/\/$/, "");
-  const canonicalUrl = `${siteUrl}/${locale}`;
+  const alternates = pageAlternates(locale);
 
   const title =
     locale === "es"
@@ -26,25 +26,19 @@ export async function generateMetadata({
       ? "Tienda oficial Good Luck. Gorras snapback con bordado 3D de alta densidad y playeras heavyweight 280-300 GSM en 11 diseños con probador virtual en modelo."
       : "Official store for Good Luck. Signature 3D puff embroidery caps and heavyweight 280-300 GSM graphic tees across 11 designs with interactive model lookbook studio.";
 
-  const imageUrl = `${siteUrl}/og/home.jpg`;
+  const imageUrl = absoluteUrl(DEFAULT_OG_IMAGE);
 
   return {
     title,
     description,
-    alternates: {
-      canonical: canonicalUrl,
-      languages: {
-        en: `${siteUrl}/en`,
-        es: `${siteUrl}/es`,
-      },
-    },
+    alternates,
     openGraph: {
       type: "website",
       siteName: "Good Luck",
       title,
       description,
-      url: canonicalUrl,
-      locale: locale === "es" ? "es_ES" : "en_US",
+      url: alternates.canonical,
+      locale: ogLocale(locale),
       images: [
         {
           url: imageUrl,

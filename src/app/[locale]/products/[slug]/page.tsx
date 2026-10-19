@@ -7,6 +7,8 @@ import { toCapVariant } from "@/lib/toCapVariant";
 import { isTee } from "@/lib/shop";
 import { ProductView } from "@/components/product/ProductView";
 import { ProductJsonLd } from "@/components/seo/ProductJsonLd";
+import { productDescription, productImageUrl } from "@/lib/seo/jsonLd";
+import { ogLocale, pageAlternates } from "@/lib/seo/site";
 
 type Params = Promise<{ locale: string; slug: string }>;
 
@@ -19,36 +21,27 @@ const getProduct = cache(async (slug: string) => {
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { locale, slug } = await params;
   const doc = await getProduct(slug);
-  if (!doc) return { title: "Product not found | Good Luck" };
+  if (!doc) return { title: "Product not found | Good Luck", robots: { index: false } };
 
   const product = toCapVariant(doc);
   const tee = isTee(product);
   const name = locale === "es" ? product.nameEs : product.nameEn;
   const title = tee ? `${name} | Good Luck heavyweight tees` : `${name} | Good Luck 0880 caps`;
-  const description = tee
-    ? locale === "es"
-      ? `${name}: playera heavyweight de 280–300 GSM con corte boxy y serigrafía de alta densidad. $${product.priceUsd} USD.`
-      : `${name}: 280–300 GSM heavyweight tee with a boxy cut and high-density screen print. $${product.priceUsd} USD.`
-    : locale === "es"
-      ? `${name}: gorra Good Luck 0880 con bordado 3D de alta densidad. $${product.priceUsd} USD.`
-      : `${name}: Good Luck 0880 cap with high-density 3D puff embroidery. $${product.priceUsd} USD.`;
-
-  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://goodluckcaps.com").replace(/\/$/, "");
-  const url = (l: string) => `${siteUrl}/${l}/products/${slug}`;
-  const shot = product.catalogShot ?? product.image;
-  const imageUrl = shot.startsWith("http") ? shot : `${siteUrl}${shot.startsWith("/") ? "" : "/"}${shot}`;
+  const description = productDescription(product, locale);
+  const alternates = pageAlternates(locale, `/products/${slug}`);
+  const imageUrl = productImageUrl(product);
 
   return {
     title,
     description,
-    alternates: { canonical: url(locale), languages: { en: url("en"), es: url("es") } },
+    alternates,
     openGraph: {
       type: "website",
       siteName: "Good Luck",
       title,
       description,
-      url: url(locale),
-      locale: locale === "es" ? "es_ES" : "en_US",
+      url: alternates.canonical,
+      locale: ogLocale(locale),
       images: [{ url: imageUrl, width: 1600, height: 2000, alt: name }],
     },
     twitter: {
