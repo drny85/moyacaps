@@ -1,0 +1,132 @@
+import { ConvexError } from "convex/values";
+
+// Pure catalog rules shared by Convex mutations and the admin form.
+// Import nothing but convex/values so the Next.js client can use it.
+
+export const CATEGORIES = ["headwear", "apparel"] as const;
+export type Category = (typeof CATEGORIES)[number];
+
+export const SILHOUETTES_BY_CATEGORY: Record<Category, readonly string[]> = {
+  headwear: ["snapback", "trucker"],
+  apparel: ["tee"],
+};
+
+export const DEFAULT_TAX_CODE: Record<Category, string> = {
+  headwear: "txcd_30060006",
+  apparel: "txcd_30011000",
+};
+
+export type FieldError = {
+  field: string;
+  code: "required" | "format" | "range" | "too_long" | "mismatch" | "taken";
+};
+
+export type ProductFieldsInput = {
+  variantId?: string;
+  nameEn: string;
+  nameEs: string;
+  category: Category;
+  silhouette: string;
+  primaryHex: string;
+  secondaryHex: string;
+  priceUsd: number;
+  stock?: number;
+  taxCode?: string;
+  descriptionEn?: string;
+  descriptionEs?: string;
+  badgeTextEn?: string;
+  badgeTextEs?: string;
+};
+
+const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const HEX_RE = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
+const TAX_CODE_RE = /^txcd_\d{8}$/;
+
+const SLUG_MIN = 3;
+const SLUG_MAX = 60;
+const NAME_MAX = 80;
+const DESCRIPTION_MAX = 1000;
+const BADGE_MAX = 24;
+const PRICE_MAX = 10000;
+const STOCK_MAX = 100000;
+
+export function normalizeSlug(raw: string): string {
+  return raw
+    .trim()
+    .toLowerCase()
+    .replace(/[\s_]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+export function resolveTaxCode(category: Category, taxCode?: string): string {
+  return taxCode ?? DEFAULT_TAX_CODE[category];
+}
+
+export function throwIfInvalid(errors: FieldError[]): void {
+  if (errors.length > 0) {
+    throw new ConvexError({ kind: "validation", errors });
+  }
+}
+
+function hasAtMostTwoDecimals(n: number): boolean {
+  return Math.abs(n * 100 - Math.round(n * 100)) < 1e-6;
+}
+
+export function validateProductFields(input: ProductFieldsInput): FieldError[] {
+  const errors: FieldError[] = [];
+  const add = (field: string, code: FieldError["code"]) =>
+    errors.push({ field, code });
+
+  if (input.variantId !== undefined) {
+    const id = input.variantId;
+    if (
+      id.length < SLUG_MIN ||
+      id.length > SLUG_MAX ||
+      !SLUG_RE.test(id)
+    ) {
+      add("variantId", "format");
+    }
+  }
+
+  for (const field of ["nameEn", "nameEs"] as const) {
+    const name = input[field].trim();
+    if (name.length === 0) add(field, "required");
+    else if (name.length > NAME_MAX) add(field, "too_long");
+  }
+
+  if (!CATEGORIES.includes(input.category)) {
+    add("category", "format");
+  } else if (!SILHOUETTES_BY_CATEGORY[input.category].includes(input.silhouette)) {
+    add("silhouette", "mismatch");
+  }
+
+  for (const field of ["primaryHex", "secondaryHex"] as const) {
+    if (!HEX_RE.test(input[field])) add(field, "format");
+  }
+
+  const p = input.priceUsd;
+  if (!Number.isFinite(p) || p <= 0 || p > PRICE_MAX || !hasAtMostTwoDecimals(p)) {
+    add("priceUsd", "range");
+  }
+
+  if (input.stock !== undefined) {
+    const s = input.stock;
+    if (!Number.isInteger(s) || s < 0 || s > STOCK_MAX) add("stock", "range");
+  }
+
+  if (input.taxCode !== undefined && !TAX_CODE_RE.test(input.taxCode)) {
+    add("taxCode", "format");
+  }
+
+  for (const field of ["descriptionEn", "descriptionEs"] as const) {
+    const v = input[field];
+    if (v !== undefined && v.length > DESCRIPTION_MAX) add(field, "too_long");
+  }
+  for (const field of ["badgeTextEn", "badgeTextEs"] as const) {
+    const v = input[field];
+    if (v !== undefined && v.length > BADGE_MAX) add(field, "too_long");
+  }
+
+  return errors;
+}
