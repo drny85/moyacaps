@@ -12,9 +12,10 @@ export const inputClass =
 
 export const labelClass = "font-medium text-zinc-700 dark:text-zinc-300 block mb-1";
 
-export const sectionClass = "pt-3 border-t border-zinc-100 dark:border-white/[0.06] space-y-3";
+export const sectionClass =
+  "p-4 sm:p-5 rounded-2xl border border-zinc-200 dark:border-white/[0.06] bg-white dark:bg-[#0c0c14] shadow-xs space-y-3 text-xs";
 
-export const sectionTitleClass = "text-xs font-semibold text-zinc-900 dark:text-white";
+export const sectionTitleClass = "text-sm font-display font-bold text-zinc-900 dark:text-white";
 
 export function FieldErrorText({ error }: { error?: FieldError }) {
   const t = useTranslations("admin.products.errors");

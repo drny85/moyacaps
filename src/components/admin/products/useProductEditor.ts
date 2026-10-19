@@ -3,71 +3,66 @@
 import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import { useMutation } from "convex/react";
 import { ConvexError } from "convex/values";
-import { useTranslations } from "next-intl";
 import { api } from "@convex/_generated/api";
 import type { Category } from "@convex/catalog/rules";
-import { formToCreateArgs, formToPatch, validateForm, withCategory, withNameEn } from "@/lib/admin/productForm";
+import { formToCreateArgs, formToPatch, isFormDirty, validateForm, withCategory, withNameEn } from "@/lib/admin/productForm";
 import type { ProductFormState, ResolvedVariant } from "@/lib/admin/productForm";
 import { editorFeedback, NO_FEEDBACK, splitFieldErrors } from "@/lib/admin/editorErrors";
 import type { EditorFeedback } from "@/lib/admin/editorErrors";
-import { canSave, closeDecision, editorReducer, initialEditorState } from "@/lib/admin/editorSession";
+import { canSave, editorReducer, initialEditorState, reapplyField } from "@/lib/admin/editorSession";
+import type { EditorState } from "@/lib/admin/editorSession";
 import type { EditorDropLink } from "./useProductActions";
 
 export type StockChange = { current: number; next: number };
 
+/** Which Product the editor page edits: `/new?category=…` or `/[variantId]`. */
+export type EditorTarget = { mode: "new"; category: Category } | { mode: "edit"; variantId: string };
+
 const NO_IDS: ReadonlySet<string> = new Set();
 
+function initialState(target: EditorTarget): EditorState {
+  return target.mode === "new" ? editorReducer(initialEditorState(), { type: "openCreate", category: target.category }) : initialEditorState();
+}
+
 /**
- * Form state and save logic for the product editor. `rows` is the live admin
- * list; edit mode tracks its row so "Reload latest" can re-seed after a stale
- * save. Session transitions live in the pure `editorReducer`.
+ * Form state and save logic for the product editor page. `rows` is the live admin
+ * list (archived rows included); the session tracks its row so "Reload latest" can
+ * re-seed after a stale save. Session transitions live in the pure `editorReducer`.
  */
-export function useProductEditor(rows: ResolvedVariant[] | undefined) {
-  const t = useTranslations("admin.products");
+export function useProductEditor(target: EditorTarget, rows: ResolvedVariant[] | undefined) {
   const createVariant = useMutation(api.catalog.admin.createVariant);
   const updateVariant = useMutation(api.catalog.admin.updateVariant);
+  const restoreVariant = useMutation(api.catalog.admin.restoreVariant);
 
-  const [state, dispatch] = useReducer(editorReducer, undefined, initialEditorState);
-  const { session, form, initial } = state;
+  const [state, dispatch] = useReducer(editorReducer, target, initialState);
+  const { session, form, initial, unsaved } = state;
   const [feedback, setFeedback] = useState<EditorFeedback>(NO_FEEDBACK);
   const [saving, setSaving] = useState(false);
   const [pendingStock, setPendingStock] = useState<StockChange | null>(null);
+  const [restoring, setRestoring] = useState(false);
 
+  const targetRow = target.mode === "edit" ? rows?.find((r) => r.variantId === target.variantId) : undefined;
   const liveRow = session?.mode === "edit" ? rows?.find((r) => r.variantId === session.variantId) : undefined;
   const isNew = session?.mode === "create";
+  const isArchived = liveRow?.archivedAt !== undefined;
 
-  // Seeds a just-created product once its row arrives.
+  // Opens the edit session once the Product's row arrives.
+  useEffect(() => {
+    if (session === null && targetRow) dispatch({ type: "openEdit", row: targetRow });
+  }, [session, targetRow]);
+
+  // Seeds a just-created Product once its row arrives.
   useEffect(() => {
     if (liveRow) dispatch({ type: "rowUpdated", row: liveRow });
   }, [liveRow, session]);
 
-  const resetTransient = () => {
-    setFeedback(NO_FEEDBACK);
-    setPendingStock(null);
-  };
-
-  const openCreate = useCallback(() => {
-    resetTransient();
-    dispatch({ type: "openCreate" });
-  }, []);
-
-  const openEdit = useCallback((row: ResolvedVariant) => {
-    resetTransient();
-    dispatch({ type: "openEdit", row });
-  }, []);
-
-  const close = useCallback(() => {
-    setPendingStock(null);
-    dispatch({ type: "close" });
-  }, []);
-
-  /** Escape, Cancel and the close button: guarded by `closeDecision`. */
-  const requestClose = (blocked: boolean) => {
-    const decision = closeDecision(state, { saving, blocked: blocked || pendingStock !== null });
-    if (decision === "block") return;
-    if (decision === "confirm" && !window.confirm(t("discardConfirm"))) return;
-    close();
-  };
+  // A restore stamps a new version; the read-only form had no edits, so re-seed from the restored row.
+  useEffect(() => {
+    if (restoring && liveRow && liveRow.archivedAt === undefined) {
+      setRestoring(false);
+      dispatch({ type: "openEdit", row: liveRow });
+    }
+  }, [restoring, liveRow]);
 
   const edit = useCallback((fn: (f: ProductFormState) => ProductFormState) => dispatch({ type: "edit", fn }), []);
   const update = useCallback((changes: Partial<ProductFormState>) => edit((f) => ({ ...f, ...changes })), [edit]);
@@ -76,9 +71,23 @@ export function useProductEditor(rows: ResolvedVariant[] | undefined) {
 
   const reloadLatest = useCallback(() => {
     if (!liveRow) return;
-    resetTransient();
+    setFeedback(NO_FEEDBACK);
+    setPendingStock(null);
     dispatch({ type: "reload", row: liveRow });
   }, [liveRow]);
+
+  const reapply = useCallback(
+    (field: keyof ProductFormState) => {
+      if (unsaved) edit((f) => reapplyField(f, unsaved, field));
+    },
+    [edit, unsaved]
+  );
+
+  /** Back to the last saved values. */
+  const discard = useCallback(() => {
+    setFeedback(NO_FEEDBACK);
+    edit(() => initial);
+  }, [edit, initial]);
 
   /**
    * Links a drop change made from the editor to this session: checked against
@@ -96,7 +105,7 @@ export function useProductEditor(rows: ResolvedVariant[] | undefined) {
   };
 
   const commit = async () => {
-    if (!session || !canSave(session)) return;
+    if (!session || !canSave(session) || isArchived) return;
     setSaving(true);
     setFeedback(NO_FEEDBACK);
     try {
@@ -107,10 +116,11 @@ export function useProductEditor(rows: ResolvedVariant[] | undefined) {
       }
       if (session.version === null) return;
       const patch = formToPatch(initial, form);
-      if (Object.keys(patch).length > 0) {
-        await updateVariant({ variantId: session.variantId, expectedUpdatedAt: session.version, patch });
-      }
-      close();
+      const { updatedAt } =
+        Object.keys(patch).length > 0
+          ? await updateVariant({ variantId: session.variantId, expectedUpdatedAt: session.version, patch })
+          : { updatedAt: session.version };
+      dispatch({ type: "saved", updatedAt });
     } catch (err: unknown) {
       if (!(err instanceof ConvexError)) console.error("Failed to save product", err);
       setFeedback(editorFeedback(err instanceof ConvexError ? (err.data as unknown) : undefined));
@@ -121,7 +131,7 @@ export function useProductEditor(rows: ResolvedVariant[] | undefined) {
 
   /** Validate, then save; a cap's stock change in edit mode asks for confirmation first. */
   const requestSave = () => {
-    if (!canSave(session)) return;
+    if (!canSave(session) || saving || isArchived) return;
     const errors = validateForm(form);
     if (errors.length > 0) {
       setFeedback(splitFieldErrors(errors));
@@ -143,35 +153,53 @@ export function useProductEditor(rows: ResolvedVariant[] | undefined) {
     await commit();
   };
 
+  const restore = async () => {
+    if (!liveRow) return;
+    setFeedback(NO_FEEDBACK);
+    try {
+      await restoreVariant({ variantId: liveRow.variantId });
+      setRestoring(true);
+    } catch (err: unknown) {
+      setFeedback(editorFeedback(err instanceof ConvexError ? (err.data as unknown) : undefined));
+    }
+  };
+
   const savedColorwayIds = useMemo(
     () => (session?.mode === "edit" ? new Set(initial.colorways.map((c) => c.id)) : NO_IDS),
     [session?.mode, initial]
   );
 
   return {
-    isOpen: session !== null,
     isNew,
-    canSave: canSave(session),
+    canSave: canSave(session) && !isArchived,
+    isDirty: canSave(session) && isFormDirty(initial, form),
+    isArchived,
+    /** Still waiting for the Product's row (edit) or a created Product's row. */
+    loading: target.mode === "edit" && session === null && !(rows !== undefined && !targetRow),
+    notFound: target.mode === "edit" && rows !== undefined && session === null && !targetRow,
+    /** Set once a Product created here has its row: the page moves to its own URL. */
+    createdVariantId: target.mode === "new" && session?.mode === "edit" && session.version !== null ? session.variantId : null,
     form,
     feedback,
     saving,
     liveRow,
+    unsaved,
     savedColorwayIds,
     pendingStock,
-    openCreate,
-    openEdit,
-    close,
-    requestClose,
     update,
     edit,
     setCategory,
     setNameEn,
     reloadLatest,
+    reapply,
+    dismissUnsaved: () => dispatch({ type: "dismissUnsaved" }),
+    discard,
     dropLink,
     dismissFeedback: () => setFeedback(NO_FEEDBACK),
     requestSave,
     confirmStock,
     cancelStock: () => setPendingStock(null),
+    restore,
   };
 }
 

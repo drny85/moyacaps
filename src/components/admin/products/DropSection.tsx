@@ -6,7 +6,7 @@ import type { ResolvedVariant } from "@/lib/admin/productForm";
 import { sectionClass, sectionTitleClass } from "./editorFields";
 
 /** The product's VIP drop status; scheduling opens the shared drop dialog. */
-export function ProductDropSection({
+export function DropSection({
   row,
   locale,
   onSchedule,
