@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 import { convexTest } from "convex-test";
-import { ConvexError } from "convex/values";
+import { ConvexError, type Value } from "convex/values";
 import { describe, expect, it } from "vitest";
 import { api, internal } from "../_generated/api";
 import schema from "../schema";
@@ -97,7 +97,7 @@ describe("store settings", () => {
       throw new Error("expected throw");
     } catch (e) {
       expect(e).toBeInstanceOf(ConvexError);
-      expect((e as ConvexError<Record<string, unknown>>).data).toEqual({
+      expect((e as ConvexError<Value>).data).toEqual({
         kind: "validation",
         errors: [
           { field: "flatShippingFeeUsd", code: "range" },
