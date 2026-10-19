@@ -234,4 +234,11 @@ export default defineSchema({
   })
     .index("by_variantId_and_createdAt", ["variantId", "createdAt"])
     .index("by_createdAt", ["createdAt"]),
+  // Single-row (key "default") store-wide shipping rules; absent row means the built-in defaults.
+  store_settings: defineTable({
+    key: v.literal("default"),
+    flatShippingFeeUsd: v.number(),
+    freeShippingThresholdUnits: v.number(),
+    updatedAt: v.number(),
+  }).index("by_key", ["key"]),
 });

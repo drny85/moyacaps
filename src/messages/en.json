@@ -9,7 +9,7 @@
     "track": "Track",
     "trackShipment": "Track Shipment",
     "signIn": "Sign In",
-    "freeShippingBanner": "⚡ LIMITED DROP — FREE US EXPRESS SHIPPING ON 2+ CAPS",
+    "freeShippingBanner": "⚡ LIMITED DROP — FREE US EXPRESS SHIPPING ON {threshold}+ CAPS",
     "shop": "Shop",
     "caps": "Caps",
     "tees": "Tees",
@@ -69,6 +69,7 @@
     "exploreBtn": "View Collection",
     "freeShippingAchieved": "🎉 You unlocked Free Express Shipping!",
     "freeShippingRemaining": "Add {amount} more for Free US Express Shipping",
+    "freeShippingTag": "FREE ({threshold}+ caps)",
     "subtotal": "Subtotal",
     "shipping": "Shipping",
     "shippingFree": "FREE",
@@ -206,7 +207,7 @@
     "specFabricVal": "100% Heavyweight Brushed Cotton Twill",
     "specCare": "Care Instructions",
     "specCareVal": "Spot clean only with soft damp cloth. Air dry.",
-    "freeShipping": "Free US Express on 2+ Caps",
+    "freeShipping": "Free US Express on {threshold}+ Caps",
     "guarantee": "30-Day Hassle-Free Exchange",
     "otherColorwaysTitle": "Explore the 16 Colorways",
     "otherColorwaysSubtitle": "Switch colorways to match your personal rotation.",
@@ -334,6 +335,15 @@
       "shippingTo": "Shipping Address",
       "editShippingBtn": "Edit Address",
       "noOrdersFound": "No orders found matching this filter."
+    },
+    "settings": {
+      "title": "Shipping rules",
+      "subtitle": "Flat fee and free-shipping threshold. Customers see these in the cart and checkout; the server applies them to every order.",
+      "flatFee": "Flat shipping fee (USD)",
+      "threshold": "Free shipping at (units)",
+      "save": "Save shipping rules",
+      "saved": "Shipping rules saved.",
+      "saveFailed": "Could not save. Please try again."
     },
     "products": {
       "title": "Caps & Colorways Studio",
@@ -672,7 +682,7 @@
     "printBack": "Full back print",
     "printBody": "High-density screen print that holds up wash after wash.",
     "teeCare": "Machine wash cold inside out. Hang dry or tumble low.",
-    "shippingBody": "Ships within 24 hours with US tracking. Free US express shipping on 2 or more items. Exchanges within 30 days.",
+    "shippingBody": "Ships within 24 hours with US tracking. Free US express shipping on {threshold} or more items. Exchanges within 30 days.",
     "moreCaps": "More caps",
     "moreTees": "More tees"
   },

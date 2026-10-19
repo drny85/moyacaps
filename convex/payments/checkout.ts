@@ -58,7 +58,8 @@ async function priceCart(ctx: ActionCtx, items: CartLine[], locale: string, flow
     ),
   ]);
   const priced = validateCartLines(items, variants, lineStocks, { locale, flow, now: Date.now() });
-  const { freeShipping, shippingFee } = computeShipping(priced.totalItems);
+  const settings = await ctx.runQuery(internal.settings.functions.getStoreSettingsInternal, {});
+  const { freeShipping, shippingFee } = computeShipping(priced.totalItems, settings);
   return { ...priced, freeShipping, shippingFee, total: priced.subtotal + shippingFee };
 }
 
@@ -446,8 +447,9 @@ export const generateOrRefreshWhatsAppPaymentLink = action({
 
     const items: CheckoutLineItemInput[] = order.items || [];
     const totalCaps = items.reduce((acc: number, i: any) => acc + i.quantity, 0);
-    const { freeShipping } = computeShipping(totalCaps);
-    const shippingFee = order.shippingFee ?? computeShipping(totalCaps).shippingFee;
+    const settings = await ctx.runQuery(internal.settings.functions.getStoreSettingsInternal, {});
+    const { freeShipping, shippingFee: computedShippingFee } = computeShipping(totalCaps, settings);
+    const shippingFee = order.shippingFee ?? computedShippingFee;
     const subtotal = order.subtotal ?? items.reduce((acc: number, i: any) => acc + i.price * i.quantity, 0);
     const total = subtotal + shippingFee;
 

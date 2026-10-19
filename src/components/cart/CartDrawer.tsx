@@ -14,6 +14,7 @@ import { useAction, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { getWhatsAppOrderUrl, formatUsd } from "@/lib/whatsapp";
 import { capitalizeWords } from "@/lib/usStates";
+import { useStoreSettings } from "@/hooks/useStoreSettings";
 
 export function CartDrawer() {
   const { cart, isCartOpen, closeCart, updateQuantity, removeFromCart, clearCart, currency, clampCartToStock } = useStore();
@@ -95,9 +96,11 @@ export function CartDrawer() {
 
   const cannotCheckout = hasOutOfStockItem || hasUnreleasedDropItem;
 
-  // Free shipping threshold: 2+ caps
-  const freeShippingUnlocked = totalItems >= 2;
-  const shippingFee = freeShippingUnlocked ? 0 : 8;
+  // Display only: the server recomputes shipping from the same store settings at checkout.
+  const { flatShippingFeeUsd, freeShippingThresholdUnits } = useStoreSettings();
+  const freeShippingUnlocked = totalItems >= freeShippingThresholdUnits;
+  const shippingFee = freeShippingUnlocked ? 0 : flatShippingFeeUsd;
+  const unitsToFreeShipping = Math.max(0, freeShippingThresholdUnits - totalItems);
   const total = subtotal + shippingFee;
 
   // Open WhatsApp pre-redirect lead capture form
@@ -526,7 +529,7 @@ export function CartDrawer() {
                       <div className="flex justify-between text-zinc-500 text-[11px]">
                         <span>US Shipping</span>
                         <span className="font-mono text-emerald-600 dark:text-moya-green-light font-bold">
-                          {shippingFee === 0 ? (locale === "es" ? "GRATIS (2+ gorras)" : "FREE (2+ caps)") : `${formatUsd(shippingFee)} USD`}
+                          {shippingFee === 0 ? t("freeShippingTag", { threshold: freeShippingThresholdUnits }) : `${formatUsd(shippingFee)} USD`}
                         </span>
                       </div>
                       <div className="flex justify-between font-display font-bold text-zinc-900 dark:text-white pt-1 text-sm">
@@ -598,15 +601,15 @@ export function CartDrawer() {
                     <p className="text-zinc-700 dark:text-zinc-300 text-center">
                       {t("freeShippingRemaining", {
                         amount: locale === "es"
-                          ? `${Math.max(0, 2 - totalItems)} gorra${Math.max(0, 2 - totalItems) === 1 ? "" : "s"} más`
-                          : `${Math.max(0, 2 - totalItems)} more cap${Math.max(0, 2 - totalItems) === 1 ? "" : "s"}`,
+                          ? `${unitsToFreeShipping} gorra${unitsToFreeShipping === 1 ? "" : "s"} más`
+                          : `${unitsToFreeShipping} more cap${unitsToFreeShipping === 1 ? "" : "s"}`,
                       })}
                     </p>
                   )}
                   <div className="w-full bg-black/10 dark:bg-black/50 h-1.5 rounded-full mt-2 overflow-hidden">
                     <div
                       className="bg-gradient-to-r from-moya-red to-moya-green h-full rounded-full transition-all duration-500"
-                      style={{ width: `${Math.min(100, (totalItems / 2) * 100)}%` }}
+                      style={{ width: `${Math.min(100, (totalItems / freeShippingThresholdUnits) * 100)}%` }}
                     />
                   </div>
                 </div>

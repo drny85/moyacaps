@@ -9,7 +9,7 @@
     "track": "Rastrear",
     "trackShipment": "Rastrear Pedido",
     "signIn": "Iniciar Sesión",
-    "freeShippingBanner": "⚡ DROP EXCLUSIVO — ENVÍO EXPRESS GRATIS A EE. UU. EN 2+ GORRAS",
+    "freeShippingBanner": "⚡ DROP EXCLUSIVO — ENVÍO EXPRESS GRATIS A EE. UU. EN {threshold}+ GORRAS",
     "shop": "Tienda",
     "caps": "Gorras",
     "tees": "Playeras",
@@ -69,6 +69,7 @@
     "exploreBtn": "Explorar Catálogo",
     "freeShippingAchieved": "🎉 ¡Desbloqueaste Envío Express Gratis!",
     "freeShippingRemaining": "Agrega {amount} más para Envío Express Gratis a EE. UU.",
+    "freeShippingTag": "GRATIS ({threshold}+ gorras)",
     "subtotal": "Subtotal",
     "shipping": "Envío",
     "shippingFree": "GRATIS",
@@ -206,7 +207,7 @@
     "specFabricVal": "100% Drill de Algodón Cepillado de Alto Gramaje",
     "specCare": "Cuidados",
     "specCareVal": "Limpieza localizada con paño húmedo. Secar a la sombra.",
-    "freeShipping": "Envío Express Gratis a EE. UU. en 2 o más gorras",
+    "freeShipping": "Envío Express Gratis a EE. UU. en {threshold} o más gorras",
     "guarantee": "30 días para cambios y devoluciones sin costo",
     "otherColorwaysTitle": "Explora los 16 Colores",
     "otherColorwaysSubtitle": "Encuentra el contraste ideal para tu rotación.",
@@ -334,6 +335,15 @@
       "shippingTo": "Dirección de Destino",
       "editShippingBtn": "Editar Dirección",
       "noOrdersFound": "No se encontraron órdenes con este filtro."
+    },
+    "settings": {
+      "title": "Reglas de envío",
+      "subtitle": "Tarifa fija y mínimo para envío gratis. Los clientes las ven en el carrito y el pago; el servidor las aplica a cada pedido.",
+      "flatFee": "Tarifa fija de envío (USD)",
+      "threshold": "Envío gratis desde (unidades)",
+      "save": "Guardar reglas de envío",
+      "saved": "Reglas de envío guardadas.",
+      "saveFailed": "No se pudo guardar. Inténtalo de nuevo."
     },
     "products": {
       "title": "Estudio de Gorras y Combinaciones",
@@ -672,7 +682,7 @@
     "printBack": "Estampado completo en la espalda",
     "printBody": "Serigrafía de alta densidad que aguanta lavado tras lavado.",
     "teeCare": "Lavar en frío al revés. Secar colgada o en secadora a baja temperatura.",
-    "shippingBody": "Se envía en 24 horas con rastreo en EE. UU. Envío exprés gratis en EE. UU. con 2 o más artículos. Cambios dentro de 30 días.",
+    "shippingBody": "Se envía en 24 horas con rastreo en EE. UU. Envío exprés gratis en EE. UU. con {threshold} o más artículos. Cambios dentro de 30 días.",
     "moreCaps": "Más gorras",
     "moreTees": "Más playeras"
   },

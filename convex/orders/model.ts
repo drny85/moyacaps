@@ -5,6 +5,7 @@
  */
 import type { Doc } from "../_generated/dataModel";
 import { randomDigitString } from "../lib/ids";
+import type { ShippingSettings } from "../settings/model";
 
 type Order = Doc<"orders">;
 
@@ -133,15 +134,16 @@ export function orderSessionIds(order: { stripeSessionIds?: string[]; stripeSess
 // ── Totals and shipping ──────────────────────────────────────────────────────
 
 /**
- * Canonical free-shipping rule: 2+ items ship free, otherwise flat $8 US express.
+ * Canonical free-shipping rule: at or above the threshold ships free, otherwise the flat fee.
+ * The rules come from store_settings (see settings/model.ts); this stays pure.
  * Single source of truth for all checkout and reservation paths.
  */
-export const FREE_SHIPPING_THRESHOLD_CAPS = 2;
-export const FLAT_SHIPPING_FEE_USD = 8;
-
-export function computeShipping(totalUnits: number): { freeShipping: boolean; shippingFee: number } {
-  const freeShipping = totalUnits >= FREE_SHIPPING_THRESHOLD_CAPS;
-  return { freeShipping, shippingFee: freeShipping ? 0 : FLAT_SHIPPING_FEE_USD };
+export function computeShipping(
+  totalUnits: number,
+  settings: ShippingSettings,
+): { freeShipping: boolean; shippingFee: number } {
+  const freeShipping = totalUnits >= settings.freeShippingThresholdUnits;
+  return { freeShipping, shippingFee: freeShipping ? 0 : settings.flatShippingFeeUsd };
 }
 
 // ── Lookups ──────────────────────────────────────────────────────────────────

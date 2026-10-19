@@ -5,6 +5,8 @@ import Image from "next/image";
 import { Link } from "@/i18n/routing";
 import { useTranslations, useLocale } from "next-intl";
 import { useStore } from "@/store/useStore";
+import { useStoreSettings } from "@/hooks/useStoreSettings";
+import { formatUsd } from "@/lib/whatsapp";
 import { useSafeUser, SafeSignInButton } from "@/lib/useSafeUser";
 import { useAction, useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
@@ -52,8 +54,9 @@ export default function CheckoutPage() {
   const subtotal = cart.reduce((sum, item) => {
     return sum + item.priceUsd * item.quantity;
   }, 0);
-  const freeShipping = totalItems >= 2;
-  const shippingFee = freeShipping ? 0 : 8;
+  const { flatShippingFeeUsd, freeShippingThresholdUnits } = useStoreSettings();
+  const freeShipping = totalItems >= freeShippingThresholdUnits;
+  const shippingFee = freeShipping ? 0 : flatShippingFeeUsd;
   const total = subtotal + shippingFee;
 
   const handleCheckout = async () => {
@@ -265,7 +268,7 @@ export default function CheckoutPage() {
                 <div className="flex justify-between text-zinc-500">
                   <span>{t("shipping")}</span>
                   <span className="font-mono font-bold text-emerald-600 dark:text-moya-green-light">
-                    {freeShipping ? t("freeShipping") : `$${shippingFee}.00 ${currency}`}
+                    {freeShipping ? t("freeShipping") : `${formatUsd(shippingFee)} ${currency}`}
                   </span>
                 </div>
                 <div className="flex justify-between text-[11px] text-zinc-500">

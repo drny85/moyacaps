@@ -4,6 +4,7 @@ import { useTranslations, useLocale } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { Link, usePathname, useRouter } from "@/i18n/routing";
 import { useStore } from "@/store/useStore";
+import { useStoreSettings } from "@/hooks/useStoreSettings";
 import { ShoppingBag, Globe, Menu, X, User, Package, Shield } from "lucide-react";
 import { Suspense, useState, useEffect, useRef } from "react";
 import { m, AnimatePresence } from "framer-motion";
@@ -60,6 +61,7 @@ export function Navbar() {
   }, [mobileMenuOpen]);
 
   const { cart, toggleCart } = useStore();
+  const { freeShippingThresholdUnits } = useStoreSettings();
   const totalItems = isMounted ? cart.reduce((sum, item) => sum + item.quantity, 0) : 0;
 
   if (pathname.startsWith("/admin")) {
@@ -73,7 +75,7 @@ export function Navbar() {
       {/* ── Announcement bar (static: read once by screen readers, no motion cost) ── */}
       <div className="bg-moya-red-deep text-white">
         <p className="mx-auto max-w-7xl truncate px-4 py-2 text-center font-display text-[10px] font-semibold tracking-wider sm:text-xs">
-          {t("freeShippingBanner")}
+          {t("freeShippingBanner", { threshold: freeShippingThresholdUnits })}
         </p>
       </div>
 

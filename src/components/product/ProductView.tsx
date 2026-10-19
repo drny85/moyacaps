@@ -13,6 +13,7 @@ import { getCapAngleImages } from "@/lib/capAngles";
 import { applyShop, DEFAULT_STATE, isTee } from "@/lib/shop";
 import { gallerySlides, initialSelection, type Selection, type SkuStock } from "@/lib/productOptions";
 import { useCapVariants } from "@/hooks/useCapVariants";
+import { useStoreSettings } from "@/hooks/useStoreSettings";
 import { ProductGallery } from "@/components/product/ProductGallery";
 import { ProductPurchase } from "@/components/product/ProductPurchase";
 import { ProductCard } from "@/components/catalog/ProductCard";
@@ -28,6 +29,7 @@ export function ProductView({ initial }: { initial: ProductWithSkus }) {
   const t = useTranslations("product");
   const tPdp = useTranslations("pdp");
   const locale = useLocale();
+  const { freeShippingThresholdUnits } = useStoreSettings();
   const [query, setQuery, querySync] = useUrlQuery();
   const [now] = useState(() => Date.now());
 
@@ -154,7 +156,7 @@ export function ProductView({ initial }: { initial: ProductWithSkus }) {
                 </>
               )}
               <Detail title={t("detailsShipping")}>
-                <p>{t("shippingBody")}</p>
+                <p>{t("shippingBody", { threshold: freeShippingThresholdUnits })}</p>
               </Detail>
             </div>
           </div>
