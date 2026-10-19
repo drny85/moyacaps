@@ -16,6 +16,25 @@ import { DeferredOverlays } from "@/components/layout/DeferredOverlays";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { OrganizationJsonLd } from "@/components/seo/OrganizationJsonLd";
 import { HtmlDocument } from "@/components/layout/HtmlDocument";
+import { CatalogProvider } from "@/components/providers/CatalogProvider";
+import { queryForStaticRender } from "@/lib/server/convexStatic";
+import { toCapVariant } from "@/lib/toCapVariant";
+import { api } from "@convex/_generated/api";
+import type { CapVariant } from "@/data/caps";
+
+// Same interval as the product pages (ADR 0020) so the seeded catalog refreshes with them
+export const revalidate = 300;
+
+/** Never fails the render: the live Convex query fills the catalog on the client. */
+async function loadCatalogSeed(): Promise<CapVariant[]> {
+  try {
+    const rows = await queryForStaticRender(api.catalog.queries.getVariants, {});
+    return rows.map(toCapVariant);
+  } catch (error) {
+    console.error("Catalog seed fetch failed; rendering with an empty seed", error);
+    return [];
+  }
+}
 
 export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
@@ -38,6 +57,7 @@ export default async function LocaleLayout({
 
   // Storefront copy only; auth-area segments add the rest (FullMessagesProvider, ADR 0018)
   const messages = pickNamespaces(await getMessages(), STOREFRONT_NAMESPACES);
+  const catalogSeed = await loadCatalogSeed();
 
   return (
     <HtmlDocument lang={locale}>
@@ -46,6 +66,7 @@ export default async function LocaleLayout({
         <ClerkClientProvider>
           <ConvexClientProvider>
             <UserSyncProvider>
+              <CatalogProvider seed={catalogSeed}>
               <SmoothScrollProvider>
                 <MotionProvider>
                   <div className="flex min-h-screen flex-col pb-20 md:pb-0 print:pb-0 print:min-h-0">
@@ -60,6 +81,7 @@ export default async function LocaleLayout({
                   </div>
                 </MotionProvider>
               </SmoothScrollProvider>
+              </CatalogProvider>
             </UserSyncProvider>
           </ConvexClientProvider>
         </ClerkClientProvider>
