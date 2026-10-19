@@ -99,7 +99,9 @@ describe("throwIfInvalid", () => {
       expect.unreachable();
     } catch (e) {
       expect(e).toBeInstanceOf(ConvexError);
-      expect((e as ConvexError<unknown>).data).toEqual({ kind: "validation", errors });
+      if (!(e instanceof ConvexError)) throw e;
+      const data: unknown = e.data;
+      expect(data).toEqual({ kind: "validation", errors });
     }
   });
 });
