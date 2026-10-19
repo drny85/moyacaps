@@ -7,6 +7,9 @@ import type { ProductCardVM, Pill } from "@/lib/admin/productCard";
 import type { ResolvedVariant } from "@/lib/admin/productForm";
 import { ProductCardMenu } from "./ProductCardMenu";
 
+/** Swatches shown before "+N". */
+const MAX_SWATCHES = 6;
+
 export type ProductCardHandlers = {
   onStock: (row: ResolvedVariant, delta: number) => void;
   onSkus: (variantId: string) => void;
@@ -116,6 +119,22 @@ export function ProductCard({
       <div className="p-3 flex-1 flex flex-col gap-1">
         <p className="text-sm font-semibold text-zinc-900 dark:text-white leading-tight line-clamp-2">{vm.name}</p>
         <p className="text-[10px] font-mono text-zinc-500 truncate">{vm.slug}</p>
+        {vm.swatches.length > 0 && (
+          <ul className="flex flex-wrap items-center gap-1 pt-0.5" aria-label={t("colors")}>
+            {vm.swatches.slice(0, MAX_SWATCHES).map((s) => (
+              <li
+                key={s.id}
+                title={s.name}
+                aria-label={s.name}
+                className="w-4 h-4 rounded-full border-2 shadow-sm"
+                style={{ backgroundColor: s.hex, borderColor: s.borderHex ?? s.hex }}
+              />
+            ))}
+            {vm.swatches.length > MAX_SWATCHES && (
+              <li className="text-[10px] font-mono text-zinc-500">+{vm.swatches.length - MAX_SWATCHES}</li>
+            )}
+          </ul>
+        )}
         <div className="flex items-center justify-between text-xs font-mono mt-auto pt-1">
           <span className="font-bold text-zinc-900 dark:text-white">{vm.priceLabel}</span>
           <span className={`font-bold ${STOCK_TONE[vm.stockLevel]}`}>{t("stock", { count: vm.stock })}</span>

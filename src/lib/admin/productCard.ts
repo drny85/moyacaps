@@ -10,6 +10,9 @@ import type { StockLevel } from "./stockLevel";
 
 export type Pill = "hidden" | "featured" | "drop" | "attention";
 
+/** One color the Product comes in: an Apparel Colorway, or a Cap's crown (fill) and visor (ring). */
+export type Swatch = { id: string; name: string; hex: string; borderHex?: string };
+
 export type ProductCardVM = {
   id: string;
   name: string;
@@ -24,6 +27,7 @@ export type ProductCardVM = {
   attention: AttentionReason[];
   archived: boolean;
   isTee: boolean;
+  swatches: Swatch[];
 };
 
 const nonBlank = (url: string | undefined) => (url && url.trim() !== "" ? url : undefined);
@@ -32,6 +36,16 @@ const nonBlank = (url: string | undefined) => (url && url.trim() !== "" ? url : 
 function cardImage(p: AdminProduct): string | undefined {
   const defaultShot = p.colorways?.find((c) => c.id === p.defaultColorway)?.catalogShot ?? p.colorways?.[0]?.catalogShot;
   return nonBlank(p.catalogShot) ?? nonBlank(defaultShot) ?? nonBlank(p.image);
+}
+
+/** The colors a Product comes in: a tee's Apparel Colorways in order, or one two-tone swatch for a cap. */
+function swatchesOf(p: AdminProduct, name: string, locale: string, isTee: boolean): Swatch[] {
+  if (isTee) {
+    return (p.colorways ?? [])
+      .filter((c): c is typeof c & { hex: string } => Boolean(c.hex))
+      .map((c) => ({ id: c.id, name: (locale === "es" ? c.nameEs : c.nameEn) || c.id, hex: c.hex, borderHex: c.borderHex }));
+  }
+  return p.primaryHex ? [{ id: p.variantId, name, hex: p.primaryHex, borderHex: p.secondaryHex }] : [];
 }
 
 /** "Oct 24, 6 PM": minutes only when not on the hour. */
@@ -72,9 +86,11 @@ export function toProductCard(p: AdminProduct, locale: string, now: number): Pro
   if (drop) pills.push("drop");
   if (attention.length > 0) pills.push("attention");
 
+  const name = locale === "es" ? p.nameEs : p.nameEn;
+  const isTee = categoryOf(p) === "apparel";
   return {
     id: p.variantId,
-    name: locale === "es" ? p.nameEs : p.nameEn,
+    name,
     slug: p.variantId,
     priceLabel: formatPrice(p.priceUsd),
     stock,
@@ -84,6 +100,7 @@ export function toProductCard(p: AdminProduct, locale: string, now: number): Pro
     drop,
     attention,
     archived: p.archivedAt !== undefined,
-    isTee: categoryOf(p) === "apparel",
+    isTee,
+    swatches: swatchesOf(p, name, locale, isTee),
   };
 }

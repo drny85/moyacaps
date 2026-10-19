@@ -563,6 +563,7 @@
         "clear": "Clear"
       },
       "card": {
+        "colors": "Colors",
         "open": "Edit {name}",
         "menu": "More actions for {name}",
         "edit": "Edit",

@@ -8,8 +8,8 @@ export type AdminProduct = Pick<
   ResolvedVariant,
   "variantId" | "nameEn" | "nameEs" | "silhouette" | "image" | "stock" | "priceUsd" | "isAvailable" | "isFeatured" | "subscribersCount" | "skus"
 > &
-  Partial<Pick<ResolvedVariant, "category" | "catalogShot" | "angles" | "defaultColorway" | "archivedAt" | "isDrop" | "dropDate" | "dropStatus">> & {
-    colorways?: { id: string; nameEn: string; nameEs: string; catalogShot: string }[];
+  Partial<Pick<ResolvedVariant, "category" | "catalogShot" | "angles" | "defaultColorway" | "archivedAt" | "isDrop" | "dropDate" | "dropStatus" | "primaryHex" | "secondaryHex">> & {
+    colorways?: { id: string; nameEn: string; nameEs: string; catalogShot: string; hex?: string; borderHex?: string }[];
   };
 
 /** Lower-case and strip accents, so "GÓTICO" and "gotico" compare equal. */

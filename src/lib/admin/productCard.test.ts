@@ -47,4 +47,27 @@ describe("toProductCard", () => {
   it("formats a fractional price with cents", () => {
     expect(toProductCard(capRow({ priceUsd: 44.5 }), "en", NOW).priceLabel).toBe("$44.50");
   });
+
+  it("lists a tee's Apparel Colorways as swatches, in order, named in the admin's locale", () => {
+    const row = teeRow({
+      colorways: [
+        { id: "black", nameEn: "Vintage Washed Black", nameEs: "Negro Deslavado", catalogShot: "", hex: "#111111", borderHex: "#333333" },
+        { id: "white", nameEn: "Crisp White", nameEs: "Blanco", catalogShot: "", hex: "#fafafa", borderHex: "#dddddd" },
+      ],
+    });
+    expect(toProductCard(row, "es", NOW).swatches).toEqual([
+      { id: "black", name: "Negro Deslavado", hex: "#111111", borderHex: "#333333" },
+      { id: "white", name: "Blanco", hex: "#fafafa", borderHex: "#dddddd" },
+    ]);
+  });
+
+  it("shows a cap's crown and visor colors as one two-tone swatch", () => {
+    const card = toProductCard(capRow({ primaryHex: "#000000", secondaryHex: "#ff0000" }), "en", NOW);
+    expect(card.swatches).toEqual([{ id: "negro-rojo", name: "Black Red", hex: "#000000", borderHex: "#ff0000" }]);
+  });
+
+  it("skips colorways without a hex", () => {
+    expect(toProductCard(teeRow(), "en", NOW).swatches).toEqual([]);
+    expect(toProductCard(capRow(), "en", NOW).swatches).toEqual([]);
+  });
 });
