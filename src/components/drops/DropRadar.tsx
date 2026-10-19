@@ -30,28 +30,10 @@ import { useStore } from "@/store/useStore";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 import type { CapVariant } from "@/data/caps";
 import { EASE } from "@/lib/motion";
-
-interface TimeRemaining {
-  days: number;
-  hours: number;
-  minutes: number;
-  seconds: number;
-  totalMs: number;
-  isLive: boolean;
-}
+import { timeRemaining, type TimeRemaining } from "@/lib/countdown";
 
 function calculateTimeRemaining(targetTimestamp: number): TimeRemaining {
-  const diff = targetTimestamp - Date.now();
-  if (diff <= 0) {
-    return { days: 0, hours: 0, minutes: 0, seconds: 0, totalMs: 0, isLive: true };
-  }
-
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-  const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
-  const minutes = Math.floor((diff / 1000 / 60) % 60);
-  const seconds = Math.floor((diff / 1000) % 60);
-
-  return { days, hours, minutes, seconds, totalMs: diff, isLive: false };
+  return timeRemaining(targetTimestamp, Date.now());
 }
 
 /** Odometer digit: the new value rolls in from below as the old one rolls out */

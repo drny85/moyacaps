@@ -50,3 +50,20 @@ export function activeNavKey(items: readonly NavItem[], pathname: string, search
   }
   return best?.key ?? null;
 }
+
+const CATEGORY_NAV: Partial<Record<NavKey, "headwear" | "apparel">> = { caps: "headwear", tees: "apparel" };
+
+/**
+ * PRIMARY_NAV for the current Category Status (ADR 0022): a Hidden category's link is
+ * removed and a Coming Soon one is flagged `soon` for its badge.
+ */
+export function launchNav(
+  items: readonly NavItem[],
+  launches: Record<"headwear" | "apparel", { status: "live" | "coming_soon" | "hidden" }>
+): (NavItem & { soon: boolean })[] {
+  return items.flatMap((item) => {
+    const category = CATEGORY_NAV[item.key];
+    const status = category ? launches[category].status : "live";
+    return status === "hidden" ? [] : [{ ...item, soon: status === "coming_soon" }];
+  });
+}

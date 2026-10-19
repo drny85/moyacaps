@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { CapVariant } from "../data/caps";
-import { categoryEntries, pickFeatured } from "../lib/homepage";
+import { categoryEntries, homeTiles, pickFeatured } from "../lib/homepage";
 
 const NOW = Date.UTC(2026, 9, 17);
 
@@ -76,5 +76,23 @@ describe("categoryEntries", () => {
     const entries = categoryEntries([cap("c1"), cap("c2", { isFeatured: true })], { caps: "c1" });
     expect(entries).toHaveLength(1);
     expect(entries[0].image).toBe("/catalog/caps/c1.webp");
+  });
+});
+
+describe("homeTiles (ADR 0022)", () => {
+  const entries = categoryEntries([cap("c1"), tee("t1")]);
+  const live = { headwear: { status: "live" as const }, apparel: { status: "live" as const } };
+
+  it("shows each live category's tile", () => {
+    expect(homeTiles(entries, live).map((t) => [t.kind, t.category])).toEqual([["live", "caps"], ["live", "tees"]]);
+  });
+
+  it("shows a Dropping soon tile for a coming_soon category and nothing for a hidden one", () => {
+    const tiles = homeTiles(categoryEntries([cap("c1")]), { headwear: { status: "hidden" }, apparel: { status: "coming_soon" } });
+    expect(tiles).toEqual([{ kind: "soon", category: "tees" }]);
+  });
+
+  it("leaves out a live category with no products", () => {
+    expect(homeTiles(categoryEntries([cap("c1")]), live).map((t) => t.category)).toEqual(["caps"]);
   });
 });

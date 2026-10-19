@@ -17,7 +17,8 @@
     "menu": "Open menu",
     "closeMenu": "Close menu",
     "primary": "Main",
-    "search": "Search"
+    "search": "Search",
+    "soon": "Soon"
   },
   "checkout": {
     "title": "Securing Your Order",
@@ -976,7 +977,8 @@
     "viewTee": "View tee",
     "asShown": "Colour as shown",
     "otherColours": "{count, plural, one {Sold in # colour} other {Sold in # colours}}",
-    "closeCard": "Close"
+    "closeCard": "Close",
+    "droppingSoon": "Dropping soon"
   },
   "tryOn": {
     "metaTitle": "Try on a cap | Good Luck 0880",
@@ -1042,5 +1044,34 @@
     "navigate": "to move",
     "open": "to open",
     "dismiss": "to close"
+  },
+  "launch": {
+    "headline": {
+      "caps": "Caps — Dropping soon",
+      "tees": "Tees — Dropping soon",
+      "all": "Something's dropping soon"
+    },
+    "body": "Be first in line. We'll tell you the moment they drop.",
+    "bodyAll": "The store opens soon. Leave your contact and we'll tell you the moment it drops.",
+    "eyebrow": "Coming soon",
+    "countdownLabel": "Drops in",
+    "days": "Days",
+    "hours": "Hrs",
+    "minutes": "Min",
+    "seconds": "Sec",
+    "droppingNow": "Dropping now…",
+    "channelEmail": "Email",
+    "channelWhatsapp": "WhatsApp",
+    "emailPlaceholder": "you@example.com",
+    "whatsappPlaceholder": "WhatsApp number (+1 555 123 4567)",
+    "namePlaceholder": "Name (optional)",
+    "contactLabel": "Where should we tell you?",
+    "submit": "Notify me",
+    "pickCategory": "Notify me about",
+    "subscribed": "You're on the list. We'll tell you first.",
+    "alreadySubscribed": "You're already on the list.",
+    "required": "Enter your email or WhatsApp number.",
+    "failed": "Could not sign you up. Please try again.",
+    "cardCta": "Get notified"
   }
 }

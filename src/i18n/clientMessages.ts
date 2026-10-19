@@ -16,6 +16,7 @@ export const STOREFRONT_NAMESPACES = [
   "anatomy",
   "dropRadar",
   "dropAlert",
+  "launch",
   "shop",
   "product",
   "pdp",

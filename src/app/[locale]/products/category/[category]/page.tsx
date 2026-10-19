@@ -5,6 +5,9 @@ import { routing } from "@/i18n/routing";
 import { ShopView } from "@/components/shop/ShopView";
 import { shopMetadata } from "@/lib/server/shopMetadata";
 import { isShopCategory, SHOP_CATEGORIES } from "@/lib/shopRoutes";
+import { api } from "@convex/_generated/api";
+import { queryForStaticRender } from "@/lib/server/convexStatic";
+import { statusFor } from "@/lib/launch";
 
 type Params = Promise<{ locale: string; category: string }>;
 
@@ -26,6 +29,8 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
 export default async function ShopCategoryPage({ params }: { params: Params }) {
   const { locale, category } = await params;
   if (!isShopCategory(category)) notFound();
+  // A Hidden category is gone from the store (ADR 0022); Coming Soon renders its teaser in ShopView.
+  if (statusFor(await queryForStaticRender(api.settings.functions.getStorefrontLaunch, {}), category) === "hidden") notFound();
   setRequestLocale(locale);
   return (
     <main className="min-h-screen">

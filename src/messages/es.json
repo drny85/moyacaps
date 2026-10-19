@@ -17,7 +17,8 @@
     "menu": "Abrir menú",
     "closeMenu": "Cerrar menú",
     "primary": "Principal",
-    "search": "Buscar"
+    "search": "Buscar",
+    "soon": "Pronto"
   },
   "checkout": {
     "title": "Asegurando tu Pedido",
@@ -976,7 +977,8 @@
     "viewTee": "Ver playera",
     "asShown": "Color como se muestra",
     "otherColours": "{count, plural, one {Disponible en # color} other {Disponible en # colores}}",
-    "closeCard": "Cerrar"
+    "closeCard": "Cerrar",
+    "droppingSoon": "Muy pronto"
   },
   "tryOn": {
     "metaTitle": "Pruébate una gorra | Good Luck 0880",
@@ -1042,5 +1044,34 @@
     "navigate": "para moverte",
     "open": "para abrir",
     "dismiss": "para cerrar"
+  },
+  "launch": {
+    "headline": {
+      "caps": "Gorras — Muy pronto",
+      "tees": "Playeras — Muy pronto",
+      "all": "Algo viene muy pronto"
+    },
+    "body": "Sé el primero. Te avisamos en cuanto salgan.",
+    "bodyAll": "La tienda abre muy pronto. Déjanos tu contacto y te avisamos en cuanto salga.",
+    "eyebrow": "Muy pronto",
+    "countdownLabel": "Sale en",
+    "days": "Días",
+    "hours": "Hrs",
+    "minutes": "Min",
+    "seconds": "Seg",
+    "droppingNow": "Saliendo ahora…",
+    "channelEmail": "Correo",
+    "channelWhatsapp": "WhatsApp",
+    "emailPlaceholder": "tu@correo.com",
+    "whatsappPlaceholder": "Número de WhatsApp (+1 555 123 4567)",
+    "namePlaceholder": "Nombre (opcional)",
+    "contactLabel": "¿Dónde te avisamos?",
+    "submit": "Avísame",
+    "pickCategory": "Avísame de",
+    "subscribed": "Ya estás en la lista. Te avisamos primero.",
+    "alreadySubscribed": "Ya estabas en la lista.",
+    "required": "Escribe tu correo o número de WhatsApp.",
+    "failed": "No pudimos registrarte. Inténtalo de nuevo.",
+    "cardCta": "Recibir aviso"
   }
 }
