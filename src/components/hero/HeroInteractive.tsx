@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { m, useMotionValue, useMotionValueEvent, useScroll, useTransform, type MotionValue } from "framer-motion";
+import { m, useMotionValue, useMotionValueEvent, useScroll, useSpring, useTransform, type MotionValue } from "framer-motion";
 import { ArrowRight, Rotate3d } from "lucide-react";
 import { useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
@@ -13,7 +13,17 @@ import { useReducedMotionSafe } from "@/hooks/useMotionPrefs";
 import { useMinuteClock } from "@/hooks/useMinuteClock";
 import { CapTurntable, type TurntableFrame } from "@/components/viewer/CapTurntable";
 import { getCapAngleImages, TURNTABLE_ANGLES } from "@/lib/capAngles";
-import { HERO_LAYERS, HINT_HIDE_PROGRESS, heroScrollProgress, platterAngle, scrub, type Range } from "@/lib/heroMotion";
+import {
+  HERO_LAYERS,
+  HINT_HIDE_PROGRESS,
+  POSTER_LAYERS,
+  POSTER_POINTER,
+  heroScrollProgress,
+  platterAngle,
+  pointerOffset,
+  scrub,
+  type Range,
+} from "@/lib/heroMotion";
 import { isTee } from "@/lib/shop";
 import { DURATION, EASE, SPRING, STAGGER } from "@/lib/motion";
 
@@ -324,30 +334,142 @@ export function HeroInteractive() {
   );
 }
 
-/** The hero's headline and a way into the Shop, for when there is no cap to put on the turntable. */
+/** A layer's pointer lean in px: the sprung -1..1 pointer scaled by how far that layer travels. */
+function useLean(leanX: MotionValue<number>, leanY: MotionValue<number>, depth: number) {
+  return { x: useTransform(leanX, (v) => v * depth), y: useTransform(leanY, (v) => v * depth) };
+}
+
+/**
+ * The poster hero, for when there is no cap to put on the turntable (Caps not Live, ADR 0022).
+ * Layers at different depths: scrolling sinks the outlined "0880", splits the two headline
+ * lines and lifts the copy away; on a mouse, every layer leans toward the pointer by its depth.
+ * Transform and opacity only; all of it rests under reduced motion (ADR 0016).
+ */
 function HeroPoster() {
   const t = useTranslations("hero");
+  const sectionRef = useRef<HTMLElement>(null);
+  const reduceMotion = useReducedMotionSafe();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const motionOn = mounted && !reduceMotion;
+
+  // Scroll progress in hero heights, set only from scroll/resize callbacks (see HeroInteractive)
+  const { scrollY } = useScroll();
+  const progress = useMotionValue(0);
+  useEffect(() => {
+    const el = sectionRef.current;
+    if (!el) return;
+    let heroHeight = 0;
+    const update = () => progress.set(heroScrollProgress(scrollY.get(), heroHeight));
+    const measure = () => {
+      heroHeight = el.offsetHeight;
+      update();
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    const unsubscribe = scrollY.on("change", update);
+    return () => {
+      ro.disconnect();
+      unsubscribe();
+    };
+  }, [scrollY, progress]);
+
+  const ghostY = useScrubbed(progress, POSTER_LAYERS.ghost.y, motionOn);
+  const ghostRotate = useScrubbed(progress, POSTER_LAYERS.ghost.rotate, motionOn);
+  const ghostScale = useScrubbed(progress, POSTER_LAYERS.ghost.scale, motionOn);
+  const ghostOpacity = useScrubbed(progress, POSTER_LAYERS.ghost.opacity, motionOn);
+  const glowY = useScrubbed(progress, POSTER_LAYERS.glow.y, motionOn);
+  const glowScale = useScrubbed(progress, POSTER_LAYERS.glow.scale, motionOn);
+  const line1Y = useScrubbed(progress, POSTER_LAYERS.line1.y, motionOn);
+  const line1X = useScrubbed(progress, POSTER_LAYERS.line1.x, motionOn);
+  const line2Y = useScrubbed(progress, POSTER_LAYERS.line2.y, motionOn);
+  const line2X = useScrubbed(progress, POSTER_LAYERS.line2.x, motionOn);
+  const copyY = useScrubbed(progress, POSTER_LAYERS.copy.y, motionOn);
+  const copyOpacity = useScrubbed(progress, POSTER_LAYERS.copy.opacity, motionOn);
+
+  // Pointer lean: -1..1 from the hero's centre, sprung so the layers trail the cursor
+  const pointerX = useMotionValue(0);
+  const pointerY = useMotionValue(0);
+  const leanX = useSpring(pointerX, SPRING.tilt);
+  const leanY = useSpring(pointerY, SPRING.tilt);
+  const ghostLean = useLean(leanX, leanY, POSTER_POINTER.ghost);
+  const glowLean = useLean(leanX, leanY, POSTER_POINTER.glow);
+  const line1Lean = useLean(leanX, leanY, POSTER_POINTER.line1);
+  const line2Lean = useLean(leanX, leanY, POSTER_POINTER.line2);
+
+  const onPointerMove = (e: React.PointerEvent<HTMLElement>) => {
+    if (!motionOn || e.pointerType !== "mouse") return;
+    const offset = pointerOffset(e.clientX, e.clientY, e.currentTarget.getBoundingClientRect());
+    pointerX.set(offset.x);
+    pointerY.set(offset.y);
+  };
+  const onPointerLeave = () => {
+    pointerX.set(0);
+    pointerY.set(0);
+  };
+
   return (
-    <section id="hero" className="relative overflow-clip px-4 pb-14 pt-10 sm:px-6 sm:pb-20 sm:pt-16 lg:px-8">
+    <section
+      ref={sectionRef}
+      id="hero"
+      onPointerMove={onPointerMove}
+      onPointerLeave={onPointerLeave}
+      className="relative overflow-clip px-4 pb-16 pt-12 sm:px-6 sm:pb-24 sm:pt-20 lg:px-8"
+    >
       <div className="relative mx-auto flex w-full max-w-7xl flex-col items-center text-center">
-        <p
-          aria-hidden
-          className="ghost-type pointer-events-none absolute top-0 select-none whitespace-nowrap font-poster text-[clamp(10rem,48vw,26rem)] leading-none"
-        >
-          0880
-        </p>
+        {/* Far back: a red glow that follows the pointer furthest, then the outlined series number */}
+        <m.div aria-hidden style={{ y: glowY, scale: glowScale }} className="pointer-events-none absolute left-1/2 top-[8%] -ml-[min(36vw,22rem)]">
+          <m.div
+            style={{ x: glowLean.x, y: glowLean.y }}
+            className="h-[min(72vw,44rem)] w-[min(72vw,44rem)] rounded-full bg-[radial-gradient(closest-side,rgba(225,29,72,0.28),transparent)]"
+          />
+        </m.div>
+        <div aria-hidden style={delay(0.3)} className="intro-settle pointer-events-none absolute inset-x-0 top-0 flex justify-center">
+          <m.p
+            style={{ y: ghostY, rotate: ghostRotate, scale: ghostScale, opacity: ghostOpacity }}
+            className="select-none whitespace-nowrap font-poster text-[clamp(10rem,48vw,26rem)] leading-none"
+          >
+            <m.span style={{ x: ghostLean.x, y: ghostLean.y }} className="ghost-type block">
+              0880
+            </m.span>
+          </m.p>
+        </div>
+
         <h1 className="relative font-poster uppercase tracking-tight text-zinc-950 dark:text-white">
-          <span className="block text-[clamp(2.6rem,13.4vw,6rem)] leading-[0.86]">{t("titlePrefix")}</span>
-          <span className="block text-[clamp(3.6rem,21vw,8.75rem)] leading-[0.86] text-moya-red">{t("titleHighlight")}</span>
+          <m.span style={{ y: line1Y, x: line1X }} className="block">
+            <m.span style={{ x: line1Lean.x, y: line1Lean.y }} className="block overflow-hidden pb-[0.06em] text-[clamp(2.6rem,13.4vw,6rem)] leading-[0.86]">
+              <span className="intro-rise block" style={delay(0.1)}>
+                {t("titlePrefix")}
+              </span>
+            </m.span>
+          </m.span>
+          <m.span style={{ y: line2Y, x: line2X }} className="block">
+            <m.span
+              style={{ x: line2Lean.x, y: line2Lean.y }}
+              className="block overflow-hidden pb-[0.06em] text-[clamp(3.6rem,21vw,8.75rem)] leading-[0.86] text-moya-red"
+            >
+              <span className="intro-rise block" style={delay(0.22)}>
+                {t("titleHighlight")}
+              </span>
+            </m.span>
+          </m.span>
         </h1>
-        <p className="relative mt-5 max-w-md text-[15px] leading-relaxed text-zinc-600 dark:text-zinc-400">{t("posterSubtitle")}</p>
-        <Link
-          href="/products"
-          className="relative mt-7 inline-flex h-12 items-center gap-2 rounded-full bg-zinc-950 px-6 font-display text-[15px] font-semibold text-white dark:bg-white dark:text-zinc-950"
-        >
-          {t("ctaShopAll")}
-          <ArrowRight className="h-4 w-4" />
-        </Link>
+
+        <m.div style={{ y: copyY, opacity: copyOpacity }} className="relative flex flex-col items-center">
+          <p className="intro-fade mt-5 max-w-md text-[15px] leading-relaxed text-zinc-600 dark:text-zinc-400" style={delay(0.45)}>
+            {t("posterSubtitle")}
+          </p>
+          <div className="intro-fade" style={delay(0.58)}>
+            <Link
+              href="/products"
+              className="group mt-7 inline-flex h-12 items-center gap-2 rounded-full bg-zinc-950 px-6 font-display text-[15px] font-semibold text-white transition-transform hover:-translate-y-0.5 dark:bg-white dark:text-zinc-950"
+            >
+              {t("ctaShopAll")}
+              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+            </Link>
+          </div>
+        </m.div>
       </div>
     </section>
   );

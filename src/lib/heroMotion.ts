@@ -62,3 +62,29 @@ export function platterAngle(index: number, frameCount: number): number {
   if (frameCount <= 0) return 0;
   return (index / frameCount) * 360;
 }
+
+/**
+ * Scroll travel for the poster hero (no cap on show, ADR 0022): the outlined "0880" sinks
+ * slowest at the back, the two headline lines split sideways, the copy rises and fades first.
+ */
+export const POSTER_LAYERS = {
+  ghost: { y: [0, 240] as Range, rotate: [-6, 4] as Range, scale: [1, 1.2] as Range, opacity: [1, 0.15] as Range },
+  glow: { y: [0, 160] as Range, scale: [1, 1.5] as Range },
+  line1: { y: [0, 120] as Range, x: [0, -70] as Range },
+  line2: { y: [0, 60] as Range, x: [0, 70] as Range },
+  copy: { y: [0, -40] as Range, opacity: [1, 0] as Range },
+} as const;
+
+/** How far each poster layer follows the pointer, in px at the box edge: the back moves least. */
+export const POSTER_POINTER = { ghost: 14, glow: 40, line1: 10, line2: 22 } as const;
+
+/** The pointer's position in a box as x and y in [-1, 1] (0 at the centre); 0 for an unmeasured box. */
+export function pointerOffset(
+  clientX: number,
+  clientY: number,
+  box: { left: number; top: number; width: number; height: number }
+): { x: number; y: number } {
+  if (box.width <= 0 || box.height <= 0) return { x: 0, y: 0 };
+  const axis = (pos: number, start: number, size: number) => Math.max(-1, Math.min(1, ((pos - start) / size) * 2 - 1));
+  return { x: axis(clientX, box.left, box.width), y: axis(clientY, box.top, box.height) };
+}
