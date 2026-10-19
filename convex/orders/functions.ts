@@ -1,6 +1,6 @@
 /**
  * Order core: the payment-event audit log, internal lookups used by actions, and the
- * customer-facing order reads and edits. Settlement, WhatsApp reservations, the admin
+ * customer-facing order reads and edits. Settlement, the admin
  * order desk, fulfillment and analytics live in their own modules (ADR 0017).
  */
 import { mutation, query, internalMutation, internalQuery } from "../_generated/server";
@@ -70,7 +70,7 @@ export const createOrder = mutation({
     shippingFee: v.optional(v.number()),
     total: v.number(),
     status: orderStatusValidator,
-    paymentMethod: v.union(v.literal("stripe"), v.literal("whatsapp")),
+    paymentMethod: v.literal("stripe"),
     stripeSessionId: v.optional(v.string()),
     trackingNumber: v.optional(v.string()),
   },
@@ -78,6 +78,9 @@ export const createOrder = mutation({
   handler: async (ctx, args) => {
     // Only administrators or verified system processes can create orders directly
     await requireAdmin(ctx);
+    if (args.status === "whatsapp_initiated") {
+      throw new ConvexError("WhatsApp reservations are no longer created (ADR 0023).");
+    }
 
     const orderId = await ctx.db.insert("orders", {
       ...args,
@@ -89,14 +92,13 @@ export const createOrder = mutation({
       await deductStock(ctx, args.items);
     }
 
-    // Schedule admin order alert if paid or whatsapp
-    if (args.status === "paid" || args.paymentMethod === "whatsapp" || args.status === "whatsapp_initiated") {
+    // Schedule admin order alert if paid
+    if (args.status === "paid") {
       await ctx.scheduler.runAfter(0, internal.notifications.emails.sendAdminOrderAlert, {
         orderNumber: args.orderNumber,
         total: args.total,
         currency: args.currency,
         paymentMethod: args.paymentMethod,
-        isWhatsAppPending: args.status === "whatsapp_initiated" || args.paymentMethod === "whatsapp",
         customerName: args.customerName,
         customerEmail: args.customerEmail,
         customerPhone: args.customerPhone,

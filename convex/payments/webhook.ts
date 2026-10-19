@@ -115,19 +115,8 @@ export const syncCheckoutSession = action({
     // session with no order contract is rejected, so this repair path cannot be used to
     // mint orders for unrelated session ids.
     const metadata = session.metadata || {};
-    const isWhatsAppOrder = metadata.isWhatsAppOrder === "true";
     if (!metadata.orderNumber || !metadata.itemsJson) {
       return { success: false, status: "unrecognized_session" };
-    }
-
-    if (isWhatsAppOrder) {
-      // WhatsApp leads must already exist in the DB; the webhook owns their settlement.
-      const existing = await ctx.runQuery(internal.orders.functions.getOrderByNumberInternal, {
-        orderNumber: metadata.orderNumber,
-      });
-      if (!existing) {
-        return { success: false, status: "unknown_order" };
-      }
     }
 
     if (session.payment_status === "paid") {
@@ -313,14 +302,6 @@ export const fulfillStripeWebhook = internalAction({
       stripeSessionId: sessionId,
       details: `Stripe ${event.type}`,
     });
-
-    // Payment link expired at Stripe: if the reservation window also elapsed, release stock
-    // immediately instead of waiting for the scheduled job.
-    if (event.type === "checkout.session.expired" && order.status === "whatsapp_initiated") {
-      await ctx.runMutation(internal.orders.whatsapp.expireWhatsAppOrderLead, {
-        orderId: order._id,
-      });
-    }
 
     return { received: true };
   },

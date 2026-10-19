@@ -27,7 +27,6 @@ export interface AdminOrderAlertProps {
   total: number;
   currency: string;
   paymentMethod: string;
-  isWhatsAppPending?: boolean;
   customerName?: string;
   customerEmail?: string;
   customerPhone?: string;
@@ -51,8 +50,6 @@ export function AdminOrderAlertEmail({
   orderNumber = "GL-TEST1234",
   total = 85.0,
   currency = "USD",
-  paymentMethod = "stripe",
-  isWhatsAppPending = false,
   customerName = "Valued Customer",
   customerEmail = "customer@example.com",
   customerPhone = "+1 (555) 000-0000",
@@ -76,9 +73,8 @@ export function AdminOrderAlertEmail({
   adminDashboardUrl = "https://goodluckcaps.com/admin/orders",
   createdAt = Date.now(),
 }: AdminOrderAlertProps) {
-  const isWhatsApp = paymentMethod === "whatsapp" || isWhatsAppPending;
-  const badgeBg = isWhatsApp ? "#d97706" : "#059669";
-  const badgeText = isWhatsApp ? "ACTION REQUIRED: WhatsApp Payment" : "PAID - Stripe Verified";
+  const badgeBg = "#059669";
+  const badgeText = "PAID - Stripe Verified";
 
   const dateStr = new Date(createdAt).toLocaleString("en-US", {
     dateStyle: "medium",
@@ -89,9 +85,7 @@ export function AdminOrderAlertEmail({
     <Html>
       <Head />
       <Preview>
-        {isWhatsApp
-          ? `[WhatsApp Order] Action required for #${orderNumber} (${currency} ${total.toFixed(2)})`
-          : `[New Order] #${orderNumber} received (${currency} ${total.toFixed(2)})`}
+        {`[New Order] #${orderNumber} received (${currency} ${total.toFixed(2)})`}
       </Preview>
       <Body style={main}>
         <Container style={container}>

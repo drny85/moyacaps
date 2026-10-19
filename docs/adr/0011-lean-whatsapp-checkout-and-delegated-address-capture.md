@@ -1,3 +1,7 @@
+---
+status: superseded by ADR 0023
+---
+
 # ADR 0011: Lean WhatsApp Concierge Submission & Delegated Address / Tax Capture
 
 ## Context

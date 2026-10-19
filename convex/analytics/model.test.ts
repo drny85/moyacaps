@@ -53,8 +53,7 @@ describe("computeAnalytics", () => {
     expect(result.paymentBreakdown).toEqual({ stripe: { revenue: 408, orders: 2 }, whatsapp: { revenue: 200, orders: 1 } });
   });
 
-  it("tracks the open WhatsApp pipeline and status counts", () => {
-    expect(result.whatsappPipeline).toEqual({ value: 50, count: 1 });
+  it("counts every status, including legacy WhatsApp reservations", () => {
     expect(result.statusCounts).toMatchObject({ paid: 2, delivered: 1, whatsapp_initiated: 1, cancelled: 1, pending: 0 });
   });
 
@@ -82,19 +81,17 @@ describe("computeAnalytics", () => {
 });
 
 describe("computeAttentionStats", () => {
-  it("counts the paid and WhatsApp queues, overdue paid orders and low stock (≤ 2)", () => {
+  it("counts the paid queue, overdue paid orders and low stock (≤ 2)", () => {
     const stats = computeAttentionStats(
       [{ createdAt: NOW }, { createdAt: NOW - 2 * DAY }, {}],
-      [{}, {}],
       NOW,
       [variant("cap", 2), variant("tee", 3)],
       NOW
     );
     expect(stats).toEqual({
-      totalActionRequired: 5,
+      totalActionRequired: 3,
       unfulfilledPaid: 3,
       overduePaid: 2,
-      pendingWhatsApp: 2,
       lowStockCount: 1,
       lowStockVariants: [{ variantId: "cap", nameEn: "cap", nameEs: "cap", stock: 2 }],
       latestOrderTimestamp: NOW,
@@ -112,7 +109,7 @@ describe("archived products", () => {
   });
 
   it("computeAttentionStats ignores them in the low-stock list", () => {
-    const result = computeAttentionStats([], [], 0, [variant("cap", 1), archived], NOW);
+    const result = computeAttentionStats([], 0, [variant("cap", 1), archived], NOW);
     expect(result.lowStockVariants.map((v) => v.variantId)).toEqual(["cap"]);
   });
 });

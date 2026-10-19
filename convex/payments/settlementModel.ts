@@ -181,7 +181,6 @@ export function settlementFromSession(
     taxDetails,
     total: (session.amount_total || 0) / 100,
     ...(options.webhookEventId !== undefined ? { webhookEventId: options.webhookEventId } : {}),
-    isWhatsAppOrder: metadata.isWhatsAppOrder === "true",
   };
 }
 

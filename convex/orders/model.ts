@@ -1,5 +1,5 @@
 /**
- * Pure order rules (ADR 0006, ADR 0007, ADR 0010): the status state machine, stock
+ * Pure order rules (ADR 0006, ADR 0007, ADR 0023): the status state machine, stock
  * holds, totals and shipping, replay guards, lookups and the customer-facing
  * projections. No database access; covered by orderModel.test.ts.
  */
@@ -29,7 +29,7 @@ export function isPaidLike(status: string): boolean {
   return status === "paid" || status === "dispatched" || status === "delivered";
 }
 
-/** Stock is held (deducted or reserved) while the order is settled or a WhatsApp reservation. */
+/** Stock is held while the order is settled, or a legacy WhatsApp reservation (ADR 0023) not yet cancelled. */
 export function holdsStock(status: string): boolean {
   return isPaidLike(status) || status === "whatsapp_initiated";
 }
@@ -40,8 +40,8 @@ export type AdminStatusChange =
 
 /**
  * Administrator status change (`orders/desk:updateOrderStatusAdmin`). Settled orders never
- * regress into lead/pending states (stranded stock, double-settlement windows), and WhatsApp
- * reservations settle only through the dedicated payment flows.
+ * regress into lead/pending states (stranded stock, double-settlement windows), and a legacy
+ * WhatsApp reservation (ADR 0023) can only be cancelled, never settled here.
  */
 export function planAdminStatusChange(previous: OrderStatus, next: OrderStatus): AdminStatusChange {
   const wasPaidLike = isPaidLike(previous);
@@ -51,7 +51,7 @@ export function planAdminStatusChange(previous: OrderStatus, next: OrderStatus):
   if (previous === "whatsapp_initiated" && isPaidLike(next)) {
     return {
       ok: false,
-      error: "Use 'Mark as Paid (Zelle)' or the Stripe payment link flow to settle a WhatsApp reservation.",
+      error: "WhatsApp reservations can no longer be settled (ADR 0023); cancel it instead.",
     };
   }
   let stock: "deduct" | "release" | "none" = "none";
@@ -67,17 +67,18 @@ export function planAdminStatusChange(previous: OrderStatus, next: OrderStatus):
 export type StripeSettlementDecision = "replay" | "double_settlement" | "cancelled" | "settle";
 
 /**
- * What a completed Stripe session does to an order that already exists: replays and
- * settlements on already-settled WhatsApp orders or cancelled orders are flagged for a
- * human, never applied.
+ * What a completed Stripe session does to an order that already exists. A settled order
+ * paid again by its own session is a replay (never re-applied, so a dispatched order cannot
+ * regress to paid); paid by a different session it is a double settlement, and a payment
+ * on a cancelled order is flagged too. Both go to a human, never applied.
  */
 export function decideStripeSettlement(
-  existing: Pick<Order, "status" | "paymentMethod" | "webhookEventIds">,
-  incoming: { webhookEventId?: string; isWhatsAppOrder?: boolean }
+  existing: Pick<Order, "status" | "stripeSessionId" | "webhookEventIds">,
+  incoming: { webhookEventId?: string; stripeSessionId: string }
 ): StripeSettlementDecision {
   if (hasProcessedWebhookEvent(existing, incoming.webhookEventId)) return "replay";
-  if (isPaidLike(existing.status) && (incoming.isWhatsAppOrder || existing.paymentMethod === "whatsapp")) {
-    return "double_settlement";
+  if (isPaidLike(existing.status)) {
+    return existing.stripeSessionId === incoming.stripeSessionId ? "replay" : "double_settlement";
   }
   if (existing.status === "cancelled") return "cancelled";
   return "settle";

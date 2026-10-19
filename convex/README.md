@@ -7,8 +7,8 @@ A function's API path follows its file: `convex/orders/desk.ts` → `api.orders.
 | ---------------- | --------------------------------------------------------------------- |
 | `lib/`           | Cross-domain helpers, no functions (`auth.ts` admin checks, `ids.ts`) |
 | `users/`         | User mirror: functions, Clerk mapper (`clerk.ts`), Clerk webhook      |
-| `catalog/`       | Products, variants, SKUs, inventory, reservations, drops, migrations  |
-| `orders/`        | Order lifecycle: customer, admin desk, fulfillment, settlement, WhatsApp |
+| `catalog/`       | Products, variants, SKUs, inventory, drops, migrations                |
+| `orders/`        | Order lifecycle: customer, admin desk, fulfillment, settlement, migrations |
 | `payments/`      | Stripe: checkout, refunds, webhook, settlement and checkout models    |
 | `shipping/`      | Shippo rates and labels                                               |
 | `notifications/` | Resend emails and their React templates                               |
@@ -23,6 +23,6 @@ Conventions:
 
 ## Legacy path shims
 
-`whatsappOrders.ts`, `emails.ts`, `drops.ts` and `stripeCheckout.ts` at the root only
+`emails.ts`, `drops.ts` and `stripeCheckout.ts` at the root only
 re-export functions that may already be scheduled under their old paths. Delete them
-after the refactor has been live in prod longer than the WhatsApp reservation hold.
+after the refactor has been live in prod longer than 24 hours.

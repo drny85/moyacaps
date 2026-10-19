@@ -22,8 +22,6 @@ export function computeAnalytics(orders: Doc<"orders">[], allVariants: Doc<"vari
   let stripeOrdersCount = 0;
   let whatsappRevenue = 0;
   let whatsappPaidCount = 0;
-  let whatsappPipelineValue = 0;
-  let whatsappPipelineCount = 0;
 
   const statusCounts: Record<string, number> = {
     pending: 0,
@@ -31,7 +29,6 @@ export function computeAnalytics(orders: Doc<"orders">[], allVariants: Doc<"vari
     dispatched: 0,
     delivered: 0,
     cancelled: 0,
-    whatsapp_initiated: 0,
   };
 
   const variantSalesMap: Record<string, { name: string; units: number; revenue: number; image: string }> = {};
@@ -71,9 +68,6 @@ export function computeAnalytics(orders: Doc<"orders">[], allVariants: Doc<"vari
         dailyMap[orderDate].revenue += o.total;
         dailyMap[orderDate].orders += 1;
       }
-    } else if (o.status === "whatsapp_initiated") {
-      whatsappPipelineValue += o.total;
-      whatsappPipelineCount += 1;
     }
   }
 
@@ -104,12 +98,9 @@ export function computeAnalytics(orders: Doc<"orders">[], allVariants: Doc<"vari
     completedOrdersCount,
     totalOrdersCount: orders.length,
     aov,
-    whatsappPipeline: {
-      value: whatsappPipelineValue,
-      count: whatsappPipelineCount,
-    },
     paymentBreakdown: {
       stripe: { revenue: stripeRevenue, orders: stripeOrdersCount },
+      // Historical WhatsApp/Zelle sales (ADR 0023): no new ones are created.
       whatsapp: { revenue: whatsappRevenue, orders: whatsappPaidCount },
     },
     statusCounts,
@@ -124,10 +115,9 @@ export function computeAnalytics(orders: Doc<"orders">[], allVariants: Doc<"vari
   };
 }
 
-/** Order-desk attention counters over the bounded paid / WhatsApp queues. */
+/** Order-desk attention counters over the bounded paid queue. */
 export function computeAttentionStats(
   paidOrders: Array<{ createdAt?: number }>,
-  whatsappOrders: unknown[],
   latestOrderTimestamp: number,
   allVariants: Doc<"variants">[],
   now: number
@@ -135,7 +125,6 @@ export function computeAttentionStats(
   const variants = allVariants.filter((v) => v.archivedAt === undefined);
   const twentyFourHoursAgo = now - ONE_DAY_MS;
   const unfulfilledPaid = paidOrders.length;
-  const pendingWhatsApp = whatsappOrders.length;
   const overduePaid = paidOrders.filter((o) => (o.createdAt || 0) < twentyFourHoursAgo).length;
 
   const lowStockVariants = variants
@@ -148,10 +137,9 @@ export function computeAttentionStats(
     }));
 
   return {
-    totalActionRequired: unfulfilledPaid + pendingWhatsApp,
+    totalActionRequired: unfulfilledPaid,
     unfulfilledPaid,
     overduePaid,
-    pendingWhatsApp,
     lowStockCount: lowStockVariants.length,
     lowStockVariants,
     latestOrderTimestamp,
@@ -167,7 +155,6 @@ export const analyticsValidator = v.object({
   completedOrdersCount: v.number(),
   totalOrdersCount: v.number(),
   aov: v.number(),
-  whatsappPipeline: v.object({ value: v.number(), count: v.number() }),
   paymentBreakdown: v.object({ stripe: revenueCount, whatsapp: revenueCount }),
   statusCounts: v.record(v.string(), v.number()),
   topVariants: v.array(
@@ -198,7 +185,6 @@ export const attentionStatsValidator = v.object({
   totalActionRequired: v.number(),
   unfulfilledPaid: v.number(),
   overduePaid: v.number(),
-  pendingWhatsApp: v.number(),
   lowStockCount: v.number(),
   lowStockVariants: v.array(v.object({ variantId: v.string(), nameEn: v.string(), nameEs: v.string(), stock: v.number() })),
   latestOrderTimestamp: v.number(),

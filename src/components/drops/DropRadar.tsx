@@ -394,12 +394,12 @@ export function DropRadar() {
               <span>{locale === "es" ? "SEGURIDAD Y APARTADOS" : "PAYMENT & CONCIERGE"}</span>
             </div>
             <div className="font-display font-bold text-sm text-zinc-900 dark:text-white">
-              {locale === "es" ? "Stripe y WhatsApp Hold" : "Stripe & WhatsApp Hold"}
+              {locale === "es" ? "Pago seguro con Stripe" : "Secure Stripe Checkout"}
             </div>
             <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
               {locale === "es"
-                ? "Pago con tarjeta cifrado o apartado de 24 horas vía Concierge."
-                : "Encrypted card checkout or 24-hour concierge reservation."}
+                ? "Pago con tarjeta cifrado; impuestos y envío calculados al pagar."
+                : "Encrypted card checkout; tax and shipping calculated at payment."}
             </p>
           </div>
         </div>

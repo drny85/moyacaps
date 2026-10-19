@@ -40,7 +40,6 @@ import {
   XCircle,
   RotateCcw,
   Lock,
-  CreditCard,
   FileText,
   Download,
 } from "lucide-react";
@@ -119,28 +118,9 @@ export default function TrackOrderPage() {
     window.open(getWhatsAppTrackingUrl(orderNumber, locale), "_blank");
   };
 
-  // Live countdown of the 24h WhatsApp stock hold (core mechanic of the concierge flow).
-  const [nowTs, setNowTs] = useState<number>(() => Date.now());
-  useEffect(() => {
-    const id = setInterval(() => setNowTs(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, []);
-  const reservationMsLeft =
-    orderResult?.status === "whatsapp_initiated" && orderResult.reservationExpiresAt
-      ? orderResult.reservationExpiresAt - nowTs
-      : 0;
-  const formatHoldDuration = (ms: number) => {
-    const total = Math.max(0, Math.floor(ms / 1000));
-    const h = Math.floor(total / 3600);
-    const m = Math.floor((total % 3600) / 60);
-    const s = total % 60;
-    return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
-  };
-
   const getStatusStep = (status: string) => {
     switch (status) {
       case "pending":
-      case "whatsapp_initiated":
         return 1;
       case "paid":
         return 2;
@@ -279,10 +259,6 @@ export default function TrackOrderPage() {
                         <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-mono font-bold bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30">
                           <Truck className="w-4 h-4" /> {t("statusDispatched")}
                         </span>
-                      ) : orderResult.status === "whatsapp_initiated" ? (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-mono font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
-                          <Clock className="w-4 h-4" /> {t("statusAwaitingLink")}
-                        </span>
                       ) : orderResult.status === "pending" ? (
                         <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-mono font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
                           <Clock className="w-4 h-4" /> {t("statusPlaced")}
@@ -371,52 +347,6 @@ export default function TrackOrderPage() {
                             {t("statusDelivered")}
                           </span>
                         </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* ── WhatsApp Concierge Payment Card (If awaiting payment) ── */}
-                  {orderResult.status === "whatsapp_initiated" && (
-                    <div className="p-5 rounded-2xl bg-amber-500/[0.08] border border-amber-500/25 space-y-3">
-                      <div className="flex items-start gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 mt-0.5">
-                          <Clock className="w-5 h-5" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-display font-bold text-sm text-zinc-900 dark:text-white">
-                            {t("conciergeCardTitle")}
-                          </h4>
-                          <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-1 leading-relaxed">
-                            {t("conciergeCardDesc")}
-                          </p>
-                          {reservationMsLeft > 0 && (
-                            <p className="text-[11px] font-mono font-bold text-amber-600 dark:text-amber-400 mt-2">
-                              {locale === "es" ? "Inventario reservado por" : "Stock reserved for"}{" "}
-                              {formatHoldDuration(reservationMsLeft)}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="flex flex-wrap items-center gap-2.5 pt-1">
-                        {orderResult.paymentUrl && (
-                          <a
-                            href={orderResult.paymentUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-display font-bold tracking-wider transition-all shadow-md shadow-emerald-600/20 active:scale-[0.98]"
-                          >
-                            <CreditCard className="w-3.5 h-3.5" />
-                            <span>{t("payOnlineNow")}</span>
-                          </a>
-                        )}
-                        <button
-                          onClick={() => handleOpenWhatsAppConcierge(orderResult.orderNumber)}
-                          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-xs font-display font-bold tracking-wider transition-all shadow-md hover:opacity-90 active:scale-[0.98]"
-                        >
-                          <MessageCircle className="w-3.5 h-3.5 text-emerald-500" />
-                          <span>{t("conciergeWhatsAppBtn")}</span>
-                        </button>
                       </div>
                     </div>
                   )}

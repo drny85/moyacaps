@@ -75,82 +75,7 @@ async function teeStock(tt: T) {
   });
 }
 
-function teeLead(tt: T, line: { quantity?: number; colorway?: string; size?: string }) {
-  const qty = line.quantity ?? 1;
-  return tt.mutation(internal.orders.whatsapp.createWhatsAppOrderLead, {
-    items: [
-      {
-        variantId: "T1",
-        name: "Tee T1 (Size: L) • washed-black",
-        quantity: qty,
-        price: 160,
-        image: "/shirts/t1.jpg",
-        ...(line.colorway ? { colorway: line.colorway } : {}),
-        ...(line.size ? { size: line.size } : {}),
-      },
-    ],
-    currency: "USD",
-    subtotal: 160 * qty,
-    shippingFee: 0,
-    total: 160 * qty,
-    customerName: "Test Buyer",
-    customerEmail: "buyer@test.com",
-    clerkUserId: "user_cust",
-  });
-}
-
 describe("Tee SKU inventory (ADR 0015)", () => {
-  it("a reservation deducts only its SKU and keeps the tee aggregate equal to the SKU sum", async () => {
-    const tt = t();
-    await seedTee(tt, { "washed-black/L": 3, "washed-black/M": 2, "crisp-white/L": 4, "crisp-white/M": 1 });
-
-    await teeLead(tt, { colorway: "washed-black", size: "L", quantity: 2 });
-
-    expect(await skuStock(tt, "washed-black", "L")).toBe(1);
-    expect(await skuStock(tt, "crisp-white", "L")).toBe(4);
-    expect(await teeStock(tt)).toBe(8);
-    await drain(tt);
-  });
-
-  it("refuses to oversell a SKU even when the tee aggregate has enough units", async () => {
-    const tt = t();
-    await seedTee(tt, { "washed-black/L": 1, "washed-black/M": 0, "crisp-white/L": 9, "crisp-white/M": 9 });
-
-    await expect(teeLead(tt, { colorway: "washed-black", size: "L", quantity: 2 })).rejects.toThrow(
-      /Insufficient stock/
-    );
-    await expect(teeLead(tt, { colorway: "washed-black", size: "M" })).rejects.toThrow(/sold out/);
-    expect(await teeStock(tt)).toBe(19);
-  });
-
-  it("requires a colorway and size the tee actually offers", async () => {
-    const tt = t();
-    await seedTee(tt, { "washed-black/L": 5, "washed-black/M": 5, "crisp-white/L": 5, "crisp-white/M": 5 });
-
-    await expect(teeLead(tt, {})).rejects.toThrow(/valid colorway and size/);
-    await expect(teeLead(tt, { colorway: "washed-black", size: "XXXL" })).rejects.toThrow(
-      /valid colorway and size/
-    );
-    await expect(teeLead(tt, { colorway: "heather-grey", size: "L" })).rejects.toThrow(
-      /valid colorway and size/
-    );
-  });
-
-  it("an expired reservation releases units back to the same SKU", async () => {
-    const tt = t();
-    await seedTee(tt, { "washed-black/L": 3, "washed-black/M": 0, "crisp-white/L": 0, "crisp-white/M": 0 });
-    const lead = await teeLead(tt, { colorway: "washed-black", size: "L", quantity: 2 });
-
-    await tt.run(async (ctx) => {
-      await ctx.db.patch(lead.orderId, { reservationExpiresAt: Date.now() - 1000 });
-    });
-    await tt.mutation(internal.orders.whatsapp.expireWhatsAppOrderLead, { orderId: lead.orderId });
-
-    expect(await skuStock(tt, "washed-black", "L")).toBe(3);
-    expect(await teeStock(tt)).toBe(3);
-    await drain(tt);
-  });
-
   it("a direct Stripe settlement deducts the purchased SKU", async () => {
     const tt = t();
     await seedTee(tt, { "washed-black/L": 0, "washed-black/M": 0, "crisp-white/L": 0, "crisp-white/M": 4 });
@@ -174,7 +99,6 @@ describe("Tee SKU inventory (ADR 0015)", () => {
       shippingFee: 0,
       total: 480,
       webhookEventId: "evt_tee1",
-      isWhatsAppOrder: false,
     });
     expect(await skuStock(tt, "crisp-white", "M")).toBe(1);
     expect(await teeStock(tt)).toBe(1);
@@ -251,7 +175,6 @@ describe("adjustStock edge cases", () => {
       shippingFee: 0,
       total: 80,
       webhookEventId: "evt_missing_sku",
-      isWhatsAppOrder: false,
     });
     expect(warn.mock.calls.some(([msg]) => String(msg).includes("no SKU T1 crisp-white/M"))).toBe(true);
     warn.mockRestore();

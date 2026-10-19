@@ -12,10 +12,10 @@ import { Shippo } from "shippo";
 export const ATELIER_ORIGIN_ADDRESS = {
   name: "Good Luck Atelier",
   company: "Good Luck 0880",
-  street1: "1 Broadway",
-  city: "New York",
+  street1: "1450 Clay Ave",
+  city: "Bronx",
   state: "NY",
-  zip: "10004",
+  zip: "10456",
   country: "US",
   phone: "6462251912",
   email: "concierge@goodluckcaps.com",

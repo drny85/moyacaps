@@ -19,36 +19,6 @@ const rows = (t: ReturnType<typeof setup>["t"]) => t.run((ctx) => ctx.db.query("
 const events = (t: ReturnType<typeof setup>["t"]) =>
   t.run((ctx) => ctx.db.query("catalog_events").take(20));
 
-async function whatsappLeadShippingFee(t: ReturnType<typeof setup>["t"], qty: number): Promise<number> {
-  await t.run((ctx) =>
-    ctx.db.insert("variants", {
-      variantId: "V1",
-      isAvailable: true,
-      nameEn: "Cap V1",
-      nameEs: "Gorra V1",
-      silhouette: "snapback",
-      primaryHex: "#000000",
-      secondaryHex: "#ffffff",
-      image: "/img.png",
-      stock: 10,
-      priceUsd: 100,
-      isFeatured: false,
-    }),
-  );
-  const lead = await t.mutation(internal.orders.whatsapp.createWhatsAppOrderLead, {
-    items: [{ variantId: "V1", name: "Cap V1", quantity: qty, price: 100, image: "/img.png" }],
-    currency: "USD",
-    subtotal: qty * 100,
-    shippingFee: 999, // ignored: the server recomputes
-    total: 999,
-    customerName: "Test Buyer",
-    customerEmail: "buyer@test.com",
-    clerkUserId: "user_cust",
-  });
-  await t.finishAllScheduledFunctions(() => {});
-  return lead.shippingFee;
-}
-
 describe("store settings", () => {
   it("reads the defaults when no row exists", async () => {
     const { t } = setup();
@@ -108,16 +78,6 @@ describe("store settings", () => {
     }
   });
 
-  it("a WhatsApp order uses the stored fee and threshold", async () => {
-    const { t, admin } = setup();
-    await admin.mutation(api.settings.functions.updateStoreSettings, { flatShippingFeeUsd: 5, freeShippingThresholdUnits: 3 });
-    expect(await whatsappLeadShippingFee(t, 2)).toBe(5);
-  });
-
-  it("a WhatsApp order falls back to the default $8 with no settings row", async () => {
-    const { t } = setup();
-    expect(await whatsappLeadShippingFee(t, 1)).toBe(8);
-  });
 });
 
 describe("category launch", () => {

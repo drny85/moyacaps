@@ -25,7 +25,7 @@ function session(overrides: Record<string, unknown> = {}): Stripe.Checkout.Sessi
       address: { line1: "1 Main St", line2: null, city: "New York", state: "NY", postal_code: "10001", country: "US" },
     },
     invoice: { id: "in_1", invoice_pdf: "https://pdf", hosted_invoice_url: "https://hosted" },
-    metadata: { orderNumber: "GL-ABC-1", clerkUserId: "user_1", subtotal: "200", shippingFee: "0", isWhatsAppOrder: "false" },
+    metadata: { orderNumber: "GL-ABC-1", clerkUserId: "user_1", subtotal: "200", shippingFee: "0" },
     total_details: {
       amount_tax: 1600,
       breakdown: {
@@ -115,7 +115,6 @@ describe("settlementFromSession", () => {
       taxDetails: { amount: 16, rate: 8.88, jurisdiction: "New York, NYC Sales Tax" },
       total: 216,
       webhookEventId: "evt_1",
-      isWhatsAppOrder: false,
     });
   });
 
@@ -142,10 +141,6 @@ describe("settlementFromSession", () => {
     expect(args.customerEmail).toBeUndefined();
   });
 
-  it("flags WhatsApp sessions", () => {
-    const wa = session({ metadata: { orderNumber: "GL-WA-1", isWhatsAppOrder: "true" } });
-    expect(settlementFromSession(wa, [], { useClientReference: true }).isWhatsAppOrder).toBe(true);
-  });
 });
 
 describe("refundFromCharge", () => {
