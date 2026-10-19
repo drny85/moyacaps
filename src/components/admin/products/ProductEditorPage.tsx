@@ -148,7 +148,7 @@ export function ProductEditorPage({ target }: { target: EditorTarget }) {
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] gap-5 items-start">
         <fieldset disabled={isArchived} className="min-w-0 space-y-4">
           {liveRow && !isNew ? (
-            <ProductImagesPanel variantId={liveRow.variantId} colorways={liveRow.colorways} locale={locale} />
+            <ProductImagesPanel variantId={liveRow.variantId} colorways={liveRow.colorways} defaultColorway={liveRow.defaultColorway} locale={locale} />
           ) : (
             <div className={`${sectionClass} flex flex-col items-center justify-center text-center gap-2 aspect-[4/5] max-h-[28rem]`}>
               <ImagePlus className="w-10 h-10 text-zinc-400" />
@@ -168,6 +168,17 @@ export function ProductEditorPage({ target }: { target: EditorTarget }) {
                 savedColorwayIds={editor.savedColorwayIds}
                 printPosition={liveRow?.printPosition}
                 locale={locale}
+                saved={
+                  liveRow && !isNew
+                    ? {
+                        variantId: liveRow.variantId,
+                        productName: locale === "es" ? liveRow.nameEs : liveRow.nameEn,
+                        skus: liveRow.skus,
+                        colorways: liveRow.colorways ?? [],
+                        sizes: liveRow.sizes ?? [],
+                      }
+                    : undefined
+                }
                 onChange={editor.edit}
               />
             )}

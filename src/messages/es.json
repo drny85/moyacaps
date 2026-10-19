@@ -436,7 +436,7 @@
         "title": "Imágenes",
         "catalogShot": "Foto de catálogo",
         "lifestyleShots": "Fotos lifestyle",
-        "angles": "Ángulos",
+        "angles": "Fotos de ángulo",
         "angle": {
           "front": "Frente",
           "left": "Izquierda",
@@ -454,7 +454,7 @@
         "removing": "Quitando...",
         "moveUp": "Subir posición",
         "moveDown": "Bajar posición",
-        "add": "Agregar foto lifestyle",
+        "add": "Agregar foto de estilo",
         "cropHint": "La tienda recorta esta foto a 4:5. Mantén el sujeto dentro del marco.",
         "loading": "Cargando imágenes...",
         "errors": {
@@ -469,7 +469,23 @@
           "needs_image": "Un producto visible necesita una foto de catálogo. Sube otra primero, o oculta el producto.",
           "archived": "Este producto está archivado. Restáuralo antes de cambiar imágenes.",
           "unknown": "Algo salió mal. Inténtalo de nuevo."
-        }
+        },
+        "dropOrTap": "Arrastra o toca para subir",
+        "reviewTitle": "Revisar {slot}",
+        "checklist": "Revisión de la imagen",
+        "checks": {
+          "type": "PNG, JPEG o WebP",
+          "size": "{maxMb} MB o menos",
+          "shortSide": "Lado corto de al menos {minPx} px",
+          "alpha": "Fondo transparente"
+        },
+        "adviceOnly": "La guía solo orienta. El archivo se sube tal cual, nunca se recorta ni se modifica.",
+        "lifestyleN": "Foto de estilo {n}",
+        "moveEarlier": "Mover la foto de estilo {n} antes",
+        "moveLater": "Mover la foto de estilo {n} después",
+        "colorwayTabs": "Colores de playera",
+        "missingCatalog": "Aún sin foto de catálogo",
+        "anglesIncomplete": "Incompleto: no aparece en Try-On"
       },
       "eyebrow": "Estudio de Catálogo e Inventario",
       "dropsDesk": "Mesa de Drops VIP",
@@ -549,8 +565,8 @@
         "preview": "Ver en la tienda"
       },
       "teeOptions": {
-        "colorways": "Colores",
-        "add": "Agregar Color",
+        "colorways": "Colores de playera",
+        "add": "Agregar color de playera",
         "remove": "Quitar color",
         "id": "ID del Color",
         "idLocked": "El ID de un color guardado no se puede cambiar.",
@@ -560,7 +576,7 @@
         "borderHex": "Borde",
         "empty": "Aún no hay colores. Agrega al menos uno.",
         "sizes": "Tallas",
-        "defaultColorway": "Color Predeterminado",
+        "defaultColorway": "Color de playera principal",
         "fabricEn": "Tela (Inglés)",
         "fabricEs": "Tela (Español)",
         "fitEn": "Corte (Inglés)",
@@ -569,7 +585,9 @@
         "printPositions": {
           "front": "Frente",
           "back": "Espalda"
-        }
+        },
+        "skuStock": "Stock por SKU",
+        "skuAfterCreate": "Guarda el producto primero para fijar el stock por SKU."
       },
       "discardConfirm": "¿Descartar los cambios sin guardar de este producto?",
       "grid": {
@@ -694,6 +712,15 @@
         "sizes": "Tallas",
         "defaultColorway": "Color de playera principal",
         "colorways": "Colores de playera"
+      },
+      "skuMatrix": {
+        "colorway": "Color de playera",
+        "total": "Total",
+        "cellLabel": "Stock de {colorway} / {size}",
+        "saveToAdd": "Guarda el producto para agregar este SKU",
+        "blocked": "Tiene stock: ponlo en 0 antes de quitarlo",
+        "hint": "{total} piezas en total. Cada celda se guarda sola al confirmar.",
+        "empty": "Agrega un color de playera y una talla para tener SKUs."
       }
     },
     "drops": {

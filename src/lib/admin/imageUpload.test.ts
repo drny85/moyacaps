@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { imageErrorCode, preflightImage } from "./imageUpload";
+import { imageErrorCode, preflightImage, preflightSummary } from "./imageUpload";
 
 const u32be = (n: number) => [(n >>> 24) & 255, (n >>> 16) & 255, (n >>> 8) & 255, n & 255];
 const ascii = (s: string) => [...s].map((c) => c.charCodeAt(0));
@@ -52,5 +52,24 @@ describe("imageErrorCode", () => {
     expect(imageErrorCode({ kind: "image_rule", code: "nope" })).toBe("unknown");
     expect(imageErrorCode("boom")).toBe("unknown");
     expect(imageErrorCode(undefined)).toBe("unknown");
+  });
+});
+
+describe("preflightSummary", () => {
+  const header = (width: number, height: number, hasAlpha = false) => ({ format: "png" as const, width, height, hasAlpha });
+  const ids = (checks: { id: string; pass: boolean }[]) => checks.map((c) => `${c.id}:${c.pass ? "pass" : "fail"}`);
+
+  it("checks type, size and short side for a Catalog Shot", () => {
+    expect(ids(preflightSummary({ role: "catalog", bytes: 1000, header: header(2000, 2500) }))).toEqual(["type:pass", "size:pass", "shortSide:pass"]);
+    expect(ids(preflightSummary({ role: "lifestyle", bytes: 11 * 1024 * 1024, header: header(1000, 2500) }))).toEqual(["type:pass", "size:fail", "shortSide:fail"]);
+  });
+
+  it("checks transparency instead of the short side for an Angle Shot", () => {
+    expect(ids(preflightSummary({ role: "angle", bytes: 1000, header: header(500, 500, true) }))).toEqual(["type:pass", "size:pass", "alpha:pass"]);
+    expect(ids(preflightSummary({ role: "angle", bytes: 1000, header: header(500, 500) }))).toEqual(["type:pass", "size:pass", "alpha:fail"]);
+  });
+
+  it("fails everything that needs a header when the type is unknown", () => {
+    expect(ids(preflightSummary({ role: "catalog", bytes: 1000, header: null }))).toEqual(["type:fail", "size:pass", "shortSide:fail"]);
   });
 });

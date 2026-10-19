@@ -436,7 +436,7 @@
         "title": "Images",
         "catalogShot": "Catalog Shot",
         "lifestyleShots": "Lifestyle Shots",
-        "angles": "Angles",
+        "angles": "Angle Shots",
         "angle": {
           "front": "Front",
           "left": "Left",
@@ -469,7 +469,23 @@
           "needs_image": "A visible product needs a Catalog Shot. Upload another one first, or hide the product.",
           "archived": "This product is archived. Restore it before changing images.",
           "unknown": "Something went wrong. Please try again."
-        }
+        },
+        "dropOrTap": "Drop or tap to upload",
+        "reviewTitle": "Review {slot}",
+        "checklist": "Upload checks",
+        "checks": {
+          "type": "PNG, JPEG or WebP",
+          "size": "{maxMb} MB or smaller",
+          "shortSide": "Short side at least {minPx} px",
+          "alpha": "Transparent background"
+        },
+        "adviceOnly": "The guide only advises. The file is uploaded as is, never cropped or changed.",
+        "lifestyleN": "Lifestyle Shot {n}",
+        "moveEarlier": "Move Lifestyle Shot {n} earlier",
+        "moveLater": "Move Lifestyle Shot {n} later",
+        "colorwayTabs": "Apparel Colorways",
+        "missingCatalog": "No Catalog Shot yet",
+        "anglesIncomplete": "Incomplete: hidden from Try-On"
       },
       "eyebrow": "Catalog & Inventory Studio",
       "dropsDesk": "VIP Drops Desk",
@@ -549,8 +565,8 @@
         "preview": "Preview on live store"
       },
       "teeOptions": {
-        "colorways": "Colorways",
-        "add": "Add Colorway",
+        "colorways": "Apparel Colorways",
+        "add": "Add Apparel Colorway",
         "remove": "Remove colorway",
         "id": "Colorway ID",
         "idLocked": "A saved colorway's ID cannot change.",
@@ -560,7 +576,7 @@
         "borderHex": "Border",
         "empty": "No colorways yet. Add at least one.",
         "sizes": "Sizes",
-        "defaultColorway": "Default Colorway",
+        "defaultColorway": "Default Apparel Colorway",
         "fabricEn": "Fabric (English)",
         "fabricEs": "Fabric (Spanish)",
         "fitEn": "Fit (English)",
@@ -569,7 +585,9 @@
         "printPositions": {
           "front": "Front",
           "back": "Back"
-        }
+        },
+        "skuStock": "Stock per SKU",
+        "skuAfterCreate": "Save the Product first to set stock per SKU."
       },
       "discardConfirm": "Discard your unsaved changes to this product?",
       "grid": {
@@ -694,6 +712,15 @@
         "sizes": "Sizes",
         "defaultColorway": "Default Apparel Colorway",
         "colorways": "Apparel Colorways"
+      },
+      "skuMatrix": {
+        "colorway": "Apparel Colorway",
+        "total": "Total",
+        "cellLabel": "Stock for {colorway} / {size}",
+        "saveToAdd": "Save the Product to add this SKU",
+        "blocked": "Holds stock: set it to 0 before removing",
+        "hint": "{total} units in all. Each cell saves on its own after you confirm.",
+        "empty": "Add an Apparel Colorway and a size to get SKUs."
       }
     },
     "drops": {
