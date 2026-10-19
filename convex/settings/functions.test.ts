@@ -160,3 +160,62 @@ describe("category launch", () => {
     ).rejects.toThrow(ConvexError);
   });
 });
+
+describe("scheduled category launch", () => {
+  const jobs = (t: ReturnType<typeof setup>["t"]) => t.run((ctx) => ctx.db.system.query("_scheduled_functions").take(20));
+  const goLiveJobs = async (t: ReturnType<typeof setup>["t"]) =>
+    (await jobs(t)).filter((j) => j.name.endsWith("goLive"));
+
+  it("setCategoryLaunch with launchAt schedules goLive at that time and cancels the previous job", async () => {
+    const { t, admin } = setup();
+    const first = Date.now() + 60_000;
+    const second = Date.now() + 120_000;
+    await admin.mutation(api.settings.functions.setCategoryLaunch, { category: "apparel", status: "coming_soon", launchAt: first });
+    await admin.mutation(api.settings.functions.setCategoryLaunch, { category: "apparel", status: "coming_soon", launchAt: second });
+
+    const scheduled = await goLiveJobs(t);
+    expect(scheduled.map((j) => [j.scheduledTime, j.state.kind])).toEqual([
+      [first, "canceled"],
+      [second, "pending"],
+    ]);
+    expect(scheduled[1].args[0]).toEqual({ category: "apparel", launchAt: second });
+  });
+
+  it("clearing launchAt cancels the job", async () => {
+    const { t, admin } = setup();
+    await admin.mutation(api.settings.functions.setCategoryLaunch, { category: "apparel", status: "coming_soon", launchAt: Date.now() + 60_000 });
+    await admin.mutation(api.settings.functions.setCategoryLaunch, { category: "apparel", status: "coming_soon" });
+    expect((await goLiveJobs(t)).map((j) => j.state.kind)).toEqual(["canceled"]);
+  });
+
+  it("goLive ignores a stale launchAt", async () => {
+    const { t, admin } = setup();
+    const launchAt = Date.now() + 60_000;
+    await admin.mutation(api.settings.functions.setCategoryLaunch, { category: "apparel", status: "coming_soon", launchAt });
+    await t.mutation(internal.settings.functions.goLive, { category: "apparel", launchAt: launchAt - 1 });
+    expect((await t.query(api.settings.functions.getStorefrontLaunch, {})).apparel).toEqual({ status: "coming_soon", launchAt });
+  });
+
+  it("goLive sets live, keeps no date and schedules revalidateStorefront", async () => {
+    const { t, admin } = setup();
+    const launchAt = Date.now() + 60_000;
+    await admin.mutation(api.settings.functions.setCategoryLaunch, { category: "apparel", status: "coming_soon", launchAt, headlineEn: "Soon" });
+    await t.mutation(internal.settings.functions.goLive, { category: "apparel", launchAt });
+
+    expect((await t.query(api.settings.functions.getStorefrontLaunch, {})).apparel).toEqual({ status: "live", headlineEn: "Soon" });
+    expect((await jobs(t)).filter((j) => j.name.endsWith("revalidateStorefront")).length).toBeGreaterThanOrEqual(2);
+    expect((await events(t)).map((e) => e.type)).toEqual(["category_launch_set", "category_launch_set"]);
+  });
+
+  it("every manual change schedules a storefront refresh", async () => {
+    const { t, admin } = setup();
+    await admin.mutation(api.settings.functions.setCategoryLaunch, { category: "headwear", status: "hidden" });
+    expect((await jobs(t)).filter((j) => j.name.endsWith("revalidateStorefront"))).toHaveLength(1);
+  });
+
+  it("getStorefrontLaunch never returns launchJobId", async () => {
+    const { t, admin } = setup();
+    await admin.mutation(api.settings.functions.setCategoryLaunch, { category: "apparel", status: "coming_soon", launchAt: Date.now() + 60_000 });
+    expect(Object.keys((await t.query(api.settings.functions.getStorefrontLaunch, {})).apparel).sort()).toEqual(["launchAt", "status"]);
+  });
+});
