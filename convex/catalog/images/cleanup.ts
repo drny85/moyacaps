@@ -19,11 +19,16 @@ export const sweepOrphans = internalMutation({
       .query("_storage")
       .paginate({ numItems: SWEEP_BATCH_SIZE, cursor: args.cursor ?? null });
 
-    const legacyIds = await legacyVariantStorageIds(ctx);
+    const legacy = await legacyVariantStorageIds(ctx);
+    if (legacy.truncated) {
+      // Incomplete reference set: deleting could destroy a still-used image. Skip until the scan fits.
+      console.warn("[image-cleanup] variants exceed the scan cap; sweep skipped, nothing deleted.");
+      return { scanned: page.page.length, deleted: 0 };
+    }
     let deleted = 0;
     for (const file of page.page) {
       if (now - file._creationTime < ORPHAN_AGE_MS) continue;
-      if (await isStorageIdReferenced(ctx, file._id, legacyIds)) continue;
+      if (await isStorageIdReferenced(ctx, file._id, legacy)) continue;
       await deleteStorageQuietly(ctx, file._id);
       deleted += 1;
     }

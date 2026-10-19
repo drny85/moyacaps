@@ -6,27 +6,37 @@
  */
 import type { Id } from "../../_generated/dataModel";
 import type { QueryCtx } from "../../_generated/server";
-import { listCatalogVariants } from "../shared";
+import { MAX_CATALOG_VARIANTS } from "../shared";
 
-/** Legacy single-image `variants.storageId` values (dropped in a later task); catalog-sized scan. */
-export async function legacyVariantStorageIds(ctx: QueryCtx): Promise<Set<Id<"_storage">>> {
+export type LegacyStorageIds = { ids: Set<Id<"_storage">>; truncated: boolean };
+
+/**
+ * Legacy single-image `variants.storageId` values (dropped in a later task); catalog-sized scan.
+ * `truncated` means the catalog outgrew the scan cap, so `ids` is incomplete.
+ */
+export async function legacyVariantStorageIds(ctx: QueryCtx): Promise<LegacyStorageIds> {
+  const variants = await ctx.db.query("variants").take(MAX_CATALOG_VARIANTS + 1);
   const ids = new Set<Id<"_storage">>();
-  for (const variant of await listCatalogVariants(ctx)) {
+  for (const variant of variants.slice(0, MAX_CATALOG_VARIANTS)) {
     if (variant.storageId) ids.add(variant.storageId);
   }
-  return ids;
+  return { ids, truncated: variants.length > MAX_CATALOG_VARIANTS };
 }
 
-/** Pass `legacyIds` (from `legacyVariantStorageIds`) to reuse one variant scan across many checks. */
+/**
+ * Fails safe: with a truncated variant scan an unlisted id counts as referenced.
+ * Pass `legacy` (from `legacyVariantStorageIds`) to reuse one variant scan across many checks.
+ */
 export async function isStorageIdReferenced(
   ctx: QueryCtx,
   storageId: Id<"_storage">,
-  legacyIds?: ReadonlySet<Id<"_storage">>,
+  legacy?: LegacyStorageIds,
 ): Promise<boolean> {
   const row = await ctx.db
     .query("productImages")
     .withIndex("by_storageId", (q) => q.eq("storageId", storageId))
     .first();
   if (row) return true;
-  return (legacyIds ?? (await legacyVariantStorageIds(ctx))).has(storageId);
+  const { ids, truncated } = legacy ?? (await legacyVariantStorageIds(ctx));
+  return truncated || ids.has(storageId);
 }

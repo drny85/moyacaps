@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { internal } from "../../_generated/api";
 import type { Id } from "../../_generated/dataModel";
 import schema from "../../schema";
+import { MAX_CATALOG_VARIANTS } from "../shared";
 import { ORPHAN_AGE_MS } from "./cleanup";
 
 const modules = import.meta.glob("/convex/**/*.ts");
@@ -79,6 +80,29 @@ describe("sweepOrphans", () => {
 
     const second = await t.mutation(internal.catalog.images.cleanup.sweepOrphans, next);
     expect(second).toEqual({ scanned: 1, deleted: 1 });
-    expect(await t.run(async (ctx) => await ctx.db.system.query("_scheduled_functions").collect())).toHaveLength(1);
+    // Still the one entry from page 1: the last page (isDone) schedules no continuation.
+    const after = await t.run(async (ctx) => await ctx.db.system.query("_scheduled_functions").collect());
+    expect(after.map((s) => s._id)).toEqual([scheduled[0]._id]);
+  });
+
+  it("deletes nothing when the variant scan is truncated", async () => {
+    const t = convexTest(schema, modules);
+    const legacyRef = await store(t, "legacy-beyond-cap");
+    await t.run(async (ctx) => {
+      for (let i = 0; i < MAX_CATALOG_VARIANTS; i++) {
+        await ctx.db.insert("variants", { ...variantBase, variantId: `v${i}` });
+      }
+      await ctx.db.insert("variants", { ...variantBase, variantId: "v-last", storageId: legacyRef });
+    });
+    const now = (await createdAt(t, legacyRef)) + ORPHAN_AGE_MS + HOUR;
+
+    const result = await t.mutation(internal.catalog.images.cleanup.sweepOrphans, { now });
+
+    expect(result).toEqual({ scanned: 1, deleted: 0 });
+    expect(await exists(t, legacyRef)).toBe(true);
+    expect(await t.run(async (ctx) => await ctx.db.system.query("_scheduled_functions").collect())).toHaveLength(0);
+
+    await t.mutation(internal.catalog.images.functions.deleteStorageFile, { storageId: legacyRef });
+    expect(await exists(t, legacyRef)).toBe(true);
   });
 });
