@@ -1,5 +1,6 @@
 import type { Doc } from "@convex/_generated/dataModel";
 import type { ApparelColorwayOption, CapVariant } from "@/data/caps";
+import { nonBlank } from "./productCopy";
 
 /** A Convex variant row (image already resolved by the query) in the client `CapVariant` shape. */
 export function toCapVariant(v: Doc<"variants"> & { angles?: CapVariant["angles"] }): CapVariant {
@@ -21,8 +22,10 @@ export function toCapVariant(v: Doc<"variants"> & { angles?: CapVariant["angles"
     priceUsd: v.priceUsd,
     isFeatured: v.isFeatured,
     isAvailable: v.isAvailable !== false,
-    tagEn: v.badgeTextEn,
-    tagEs: v.badgeTextEs,
+    tagEn: nonBlank(v.badgeTextEn),
+    tagEs: nonBlank(v.badgeTextEs),
+    descriptionEn: v.descriptionEn,
+    descriptionEs: v.descriptionEs,
     isDrop: v.isDrop,
     dropDate: v.dropDate,
     dropBadgeTextEn: v.dropBadgeTextEn,

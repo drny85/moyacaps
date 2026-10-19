@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { CAP_VARIANTS, type CapVariant } from "../../data/caps";
 import { absoluteUrl, languageAlternates, pageAlternates, siteUrl } from "./site";
-import { breadcrumbJsonLd, productJsonLd, serializeJsonLd, websiteJsonLd } from "./jsonLd";
+import { breadcrumbJsonLd, productDescription, productJsonLd, serializeJsonLd, websiteJsonLd } from "./jsonLd";
 import { buildSitemap, STATIC_PAGES } from "./sitemap";
 
 const BASE = "https://example.com";
@@ -87,5 +87,17 @@ describe("sitemap", () => {
     const entry = entries.find((e) => e.url === `${BASE}/en/products/${cap.id}`)!;
     expect(entry.images?.[0]).toMatch(/^https?:\/\//);
     expect(entry.alternates?.languages).toHaveProperty("x-default");
+  });
+});
+
+describe("productDescription admin override", () => {
+  const base = { id: "x", nameEn: "X", nameEs: "X", silhouette: "snapback", primaryHex: "#000", secondaryHex: "#fff", image: "/x.png", stock: 1, priceUsd: 10 } as const;
+
+  it("uses the Administrator description when set, falling back across locales", () => {
+    expect(productDescription({ ...base, descriptionEn: "Custom" }, "es")).toBe("Custom");
+  });
+
+  it("keeps the generated copy when the description is blank", () => {
+    expect(productDescription({ ...base, descriptionEn: "", descriptionEs: " " }, "en")).toContain("Good Luck 0880 cap");
   });
 });

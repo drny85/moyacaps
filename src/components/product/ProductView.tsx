@@ -9,6 +9,7 @@ import type { Doc } from "@convex/_generated/dataModel";
 import { Link } from "@/i18n/routing";
 import { useUrlQuery } from "@/components/routing/useUrlQuery";
 import { toCapVariant } from "@/lib/toCapVariant";
+import { customDescription } from "@/lib/productCopy";
 import { getCapAngleImages } from "@/lib/capAngles";
 import { applyShop, DEFAULT_STATE, isTee } from "@/lib/shop";
 import { gallerySlides, initialSelection, type Selection, type SkuStock } from "@/lib/productOptions";
@@ -39,6 +40,7 @@ export function ProductView({ initial }: { initial: ProductWithSkus }) {
   const skus: SkuStock[] = doc.skus;
   const tee = isTee(product);
   const name = locale === "es" ? product.nameEs : product.nameEn;
+  const description = customDescription(product, locale);
 
   // The choice lives in the URL; the static page renders the default until it is read (ADR 0020)
   const selection = useMemo<Selection>(() => {
@@ -105,6 +107,11 @@ export function ProductView({ initial }: { initial: ProductWithSkus }) {
                 ${product.priceUsd}
                 <span className="ml-1.5 text-sm font-medium text-zinc-500">USD</span>
               </p>
+              {description && (
+                <p className="mt-4 whitespace-pre-line text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
+                  {description}
+                </p>
+              )}
             </header>
 
             <ProductPurchase product={product} skus={skus} selection={selection} onSelect={select} now={now} />

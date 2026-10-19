@@ -100,6 +100,9 @@ export interface CapVariant {
   dropStatus?: string;
   /** Epoch ms the product was added (Convex _creationTime); drives "Newest" sorting */
   createdAt?: number;
+  /** Administrator-written description; empty/blank means unset */
+  descriptionEn?: string;
+  descriptionEs?: string;
   fabricEn?: string;
   fabricEs?: string;
   fitEn?: string;
