@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Link, usePathname, useRouter } from "@/i18n/routing";
 import { useStore } from "@/store/useStore";
 import { useStoreSettings } from "@/hooks/useStoreSettings";
-import { ShoppingBag, Globe, Menu, X, User, Package, Shield } from "lucide-react";
+import { ShoppingBag, Globe, Menu, X, User, Package, Shield, Search } from "lucide-react";
 import { Suspense, useState, useEffect, useRef } from "react";
 import { m, AnimatePresence } from "framer-motion";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
@@ -60,7 +60,7 @@ export function Navbar() {
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [mobileMenuOpen]);
 
-  const { cart, toggleCart } = useStore();
+  const { cart, toggleCart, openSearch } = useStore();
   const { freeShippingThresholdUnits } = useStoreSettings();
   const totalItems = isMounted ? cart.reduce((sum, item) => sum + item.quantity, 0) : 0;
 
@@ -146,6 +146,17 @@ export function Navbar() {
                 <span>Admin</span>
               </Link>
             )}
+
+            {/* Search (plan 0006) */}
+            <button
+              type="button"
+              onClick={openSearch}
+              aria-label={t("search")}
+              aria-keyshortcuts="/"
+              className="w-10 h-10 rounded-xl flex items-center justify-center text-zinc-700 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+            >
+              <Search className="w-5 h-5" />
+            </button>
 
             {/* Account / Vault */}
             <div className="flex items-center">

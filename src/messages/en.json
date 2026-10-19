@@ -16,7 +16,8 @@
     "tryOn": "Try-On",
     "menu": "Open menu",
     "closeMenu": "Close menu",
-    "primary": "Main"
+    "primary": "Main",
+    "search": "Search"
   },
   "checkout": {
     "title": "Securing Your Order",
@@ -881,5 +882,26 @@
     "tilt": "Tilt",
     "moveX": "Left / right",
     "moveY": "Up / down"
+  },
+  "search": {
+    "title": "Search",
+    "placeholder": "Search caps and tees",
+    "label": "Search products",
+    "close": "Close search",
+    "clear": "Clear",
+    "recent": "Recent searches",
+    "clearRecent": "Clear",
+    "featured": "Featured",
+    "results": "{count, plural, =0 {No results} one {# result} other {# results}}",
+    "noResults": "Nothing matches “{query}”",
+    "didYouMean": "Did you mean",
+    "seeAll": "See all in the Shop",
+    "browseShop": "Browse the Shop",
+    "cap": "Cap",
+    "tee": "Tee",
+    "hint": "Press / to search",
+    "navigate": "to move",
+    "open": "to open",
+    "dismiss": "to close"
   }
 }

@@ -77,6 +77,11 @@ interface StoreState {
   openTryOn: (cap?: CapVariant | null) => void;
   closeTryOn: () => void;
 
+  // Product search (plan 0006)
+  isSearchOpen: boolean;
+  openSearch: () => void;
+  closeSearch: () => void;
+
   // Share Notification Toast
   shareToast: {
     isOpen: boolean;
@@ -274,6 +279,10 @@ export const useStore = create<StoreState>()(
         set({ isTryOnOpen: true, tryOnTargetCap: cap }),
       closeTryOn: () =>
         set({ isTryOnOpen: false, tryOnTargetCap: null }),
+
+      isSearchOpen: false,
+      openSearch: () => set({ isSearchOpen: true }),
+      closeSearch: () => set({ isSearchOpen: false }),
 
       shareToast: null,
       showShareToast: (data) =>
