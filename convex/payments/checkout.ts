@@ -448,8 +448,9 @@ export const generateOrRefreshWhatsAppPaymentLink = action({
     const items: CheckoutLineItemInput[] = order.items || [];
     const totalCaps = items.reduce((acc: number, i: any) => acc + i.quantity, 0);
     const settings = await ctx.runQuery(internal.settings.functions.getStoreSettingsInternal, {});
-    const { freeShipping, shippingFee: computedShippingFee } = computeShipping(totalCaps, settings);
-    const shippingFee = order.shippingFee ?? computedShippingFee;
+    // The stored fee was fixed at reservation time; label the rate from what is actually charged.
+    const shippingFee = order.shippingFee ?? computeShipping(totalCaps, settings).shippingFee;
+    const freeShipping = shippingFee === 0;
     const subtotal = order.subtotal ?? items.reduce((acc: number, i: any) => acc + i.price * i.quantity, 0);
     const total = subtotal + shippingFee;
 

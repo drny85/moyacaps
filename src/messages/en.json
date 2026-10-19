@@ -544,6 +544,7 @@
     "tooLong": "Input is too long"
   },
   "dropRadar": {
+    "freeShippingOn": "Free On {threshold}+ Caps",
     "badge": "VAULT SURVEILLANCE // RADAR",
     "title": "Upcoming Limited Drops",
     "subtitle": "High-heat colorways scheduled for release. Once the countdown expires, vault gates unlock instantly.",

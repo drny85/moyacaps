@@ -544,6 +544,7 @@
     "tooLong": "El texto es demasiado largo"
   },
   "dropRadar": {
+    "freeShippingOn": "Gratis en {threshold}+ Gorras",
     "badge": "VIGILANCIA DE BÓVEDA // RADAR",
     "title": "Próximos Lanzamientos Limitados",
     "subtitle": "Ediciones exclusivas programadas para liberación. Al expirar la cuenta regresiva, el acceso a la bóveda se desbloquea al instante.",
