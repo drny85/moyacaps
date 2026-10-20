@@ -20,6 +20,9 @@ export interface OrderItemProp {
   quantity: number;
   price: number;
   image?: string;
+  // Tee lines only (ADR 0015).
+  colorway?: string;
+  size?: string;
 }
 
 export interface AdminOrderAlertProps {

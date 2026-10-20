@@ -14,12 +14,13 @@ import {
   Column,
 } from "@react-email/components";
 import { OrderItemProp } from "./AdminOrderAlert";
+import { careGuide, deliveredCopy, POLICY_LINE } from "../orderEmails";
 
 export interface OrderDeliveredEmailProps {
   orderNumber: string;
   customerName?: string;
-  carrier: string;
-  trackingNumber: string;
+  carrier?: string;
+  trackingNumber?: string;
   deliveredLocation?: string;
   deliveredDetails?: string;
   storeTrackingUrl?: string;
@@ -28,8 +29,8 @@ export interface OrderDeliveredEmailProps {
 }
 
 export function OrderDeliveredEmail({
-  orderNumber = "GL-0880-9921",
-  customerName = "Valued Collector",
+  orderNumber = "GL-1001",
+  customerName = "Valued Customer",
   carrier = "USPS",
   trackingNumber = "9400111899223344556677",
   deliveredLocation = "In or at the mailbox • New York, NY",
@@ -37,17 +38,19 @@ export function OrderDeliveredEmail({
   storeTrackingUrl = "https://goodluckcaps.com/track",
   items = [
     {
-      name: "Good Luck Signature 0880 Cap",
+      name: "Good Luck Signature Cap",
       quantity: 1,
       price: 185.0,
     },
   ],
-  supportEmail = "concierge@goodluckcaps.com",
+  supportEmail = "orders@goodluckcaps.com",
 }: OrderDeliveredEmailProps) {
+  const text = deliveredCopy(orderNumber);
+  const careTips = careGuide(items);
   return (
     <Html>
       <Head />
-      <Preview>Your Good Luck order #{orderNumber} has been delivered!</Preview>
+      <Preview>{text.preview}</Preview>
       <Body style={main}>
         <Container style={container}>
           {/* Header Brand */}
@@ -55,17 +58,17 @@ export function OrderDeliveredEmail({
             <Text style={brandTitle}>
               GOOD<span style={{ color: "#D4AF37" }}>LUCK</span>
             </Text>
-            <Text style={brandSubtitle}>0880 ATELIER • DELIVERY CONFIRMATION</Text>
+            <Text style={brandSubtitle}>DELIVERY CONFIRMATION</Text>
           </Section>
 
           {/* Delivery Announcement */}
           <Section style={welcomeSection}>
-            <Text style={badge}>DELIVERED</Text>
+            <Text style={badge}>{text.badge}</Text>
             <Heading as="h1" style={greetingHeading}>
-              Your Piece Has Arrived
+              {text.heading}
             </Heading>
             <Text style={greetingText}>
-              Greetings {customerName}, courier scanning confirms that order <strong>#{orderNumber}</strong> has been successfully delivered.
+              Hi {customerName}, {text.body}
             </Text>
           </Section>
 
@@ -75,7 +78,7 @@ export function OrderDeliveredEmail({
               <Column>
                 <Text style={metaLabel}>COURIER & TRACKING</Text>
                 <Text style={metaValueHighlight}>
-                  {carrier} • {trackingNumber}
+                  {[carrier, trackingNumber].filter(Boolean).join(" • ") || "Delivered"}
                 </Text>
               </Column>
             </Row>
@@ -95,21 +98,17 @@ export function OrderDeliveredEmail({
             </Section>
           </Section>
 
-          {/* Headwear Care Guide */}
+          {/* Care Guide (caps, tees or both, from the package contents) */}
           <Section style={card}>
             <Heading as="h3" style={sectionTitle}>
-              Headwear Care & Preservation
+              Care Guide
             </Heading>
             <Hr style={divider} />
-            <Text style={careItem}>
-              <strong>1. Crown Preservation:</strong> Store your cap upright on a crown mold, hook, or flat surface to preserve its structured silhouette.
-            </Text>
-            <Text style={careItem}>
-              <strong>2. Moisture & Heat:</strong> Keep away from excessive humidity or direct extreme heat. If exposed to rain, reshape the crown gently and let air-dry at room temperature.
-            </Text>
-            <Text style={careItem}>
-              <strong>3. Spot Cleaning:</strong> Clean gently with a soft bristle brush or a damp lint-free cloth. Never machine wash.
-            </Text>
+            {careTips.map((tip, idx) => (
+              <Text key={idx} style={careItem}>
+                <strong>{tip.title}:</strong> {tip.body}
+              </Text>
+            ))}
           </Section>
 
           {/* Package Summary */}
@@ -137,13 +136,16 @@ export function OrderDeliveredEmail({
           {/* Concierge Footer */}
           <Section style={footerSection}>
             <Text style={footerText}>
-              Did not receive your package or need concierge assistance? Reply directly or contact us at{" "}
+              {POLICY_LINE}
+            </Text>
+            <Text style={footerText}>
+              Did not receive your package? Reply to this email or write to{" "}
               <Link href={`mailto:${supportEmail}`} style={footerLink}>
                 {supportEmail}
               </Link>
             </Text>
             <Text style={footerCopyright}>
-              © {new Date().getFullYear()} Good Luck 0880 Atelier. All rights reserved.
+              © {new Date().getFullYear()} Good Luck. All rights reserved.
             </Text>
           </Section>
         </Container>

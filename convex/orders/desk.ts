@@ -19,7 +19,9 @@ import {
   reservationValidator,
 } from "../payments/refundModel";
 import { readLedger, reserveRefund } from "../payments/refundLedger";
-import { findOrderByTypedNumber, releaseStock, scheduleSessionExpiry } from "./shared";
+import { findOrderByTypedNumber, hasEmail, releaseStock, scheduleSessionExpiry } from "./shared";
+import { carrierTrackingNumber } from "./trackingNumber";
+import { cancellationNotice, manualMoveEmail } from "../notifications/orderEmails";
 import {
   fulfillmentStatusValidator,
   hasSettled,
@@ -220,7 +222,8 @@ export const updateShippingAddressAdmin = mutation({
  * Administrative cancellation; called by payments/refunds:cancelAndRefundOrderAdmin. Units go
  * back only if nothing shipped (status.ts planCancellation). With `refundStripe`, a full refund
  * of whatever is left is reserved in the ledger for the action to send to Stripe; when nothing
- * can be refunded the cancellation still goes ahead and says why.
+ * can be refunded the cancellation still goes ahead and says why. A Customer who paid gets an
+ * "order cancelled" email; an Order never paid for gets none.
  */
 export const cancelOrderAdmin = internalMutation({
   args: {
@@ -278,15 +281,31 @@ export const cancelOrderAdmin = internalMutation({
       details: args.reason,
     });
 
-    if (!refundPlan) return { orderNumber: order.orderNumber, stockReleased: plan.releaseStock, refund: null };
-    if (!refundPlan.ok) {
+    const refund =
+      refundPlan?.ok === true
+        ? await reserveRefund(ctx, order, refundPlan.plan, {
+            requestId: cancellationRequestId(order._id),
+            actor: admin.subject,
+            reason: args.reason || "Administrative cancellation",
+          })
+        : null;
+
+    if (hasSettled(order) && hasEmail(order.customerEmail)) {
+      await ctx.scheduler.runAfter(0, internal.notifications.emails.sendCustomerNotice, {
+        orderNumber: order.orderNumber,
+        customerEmail: order.customerEmail,
+        customerName: order.customerName,
+        notice: cancellationNotice({
+          orderNumber: order.orderNumber,
+          by: "administrator",
+          refundCents: refund?.amountCents ?? null,
+        }),
+      });
+    }
+
+    if (refundPlan && !refundPlan.ok) {
       return { orderNumber: order.orderNumber, stockReleased: plan.releaseStock, refund: null, refundSkipped: refundPlan.error };
     }
-    const refund = await reserveRefund(ctx, order, refundPlan.plan, {
-      requestId: cancellationRequestId(order._id),
-      actor: admin.subject,
-      reason: args.reason || "Administrative cancellation",
-    });
     return { orderNumber: order.orderNumber, stockReleased: plan.releaseStock, refund };
   },
 });
@@ -294,7 +313,9 @@ export const cancelOrderAdmin = internalMutation({
 /**
  * Administrator sets Fulfillment Status by hand (manual dispatch, confirm or revert delivery).
  * Payment Status is never touched; a change into or out of delivered locks out carrier
- * overwrites. Cancelling goes through payments/refunds:cancelAndRefundOrderAdmin.
+ * overwrites. A move into in transit or delivered sends the same shipped or delivered email a
+ * carrier scan would (orderEmails.ts manualMoveEmail). Cancelling goes through
+ * payments/refunds:cancelAndRefundOrderAdmin.
  */
 export const updateFulfillmentStatusAdmin = mutation({
   args: {
@@ -340,6 +361,30 @@ export const updateFulfillmentStatusAdmin = mutation({
       actor: admin.subject,
       details: `fulfillment ${previous} → ${args.fulfillmentStatus}`,
     });
+
+    const email = manualMoveEmail(previous, plan.fulfillmentStatus);
+    if (email && hasEmail(order.customerEmail)) {
+      const carrier = (args.carrier ?? order.carrier) || undefined;
+      const trackingNumber = (args.trackingNumber ?? carrierTrackingNumber(order)) || undefined;
+      const recipient = { orderNumber: order.orderNumber, customerName: order.customerName, customerEmail: order.customerEmail };
+      if (email === "dispatched") {
+        await ctx.scheduler.runAfter(0, internal.notifications.emails.sendOrderDispatchedEmail, {
+          ...recipient,
+          stage: "in_transit",
+          carrier,
+          trackingNumber,
+          shippingAddress: order.shippingAddress,
+          items: order.items,
+        });
+      } else {
+        await ctx.scheduler.runAfter(0, internal.notifications.emails.sendOrderDeliveredEmail, {
+          ...recipient,
+          carrier,
+          trackingNumber,
+          items: order.items,
+        });
+      }
+    }
 
     return { success: true, orderId: args.orderId, fulfillmentStatus: plan.fulfillmentStatus };
   },

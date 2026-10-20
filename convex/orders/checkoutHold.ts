@@ -114,8 +114,8 @@ export const attachCheckoutSession = internalMutation({
 
 /**
  * INTERNAL: release a Checkout Hold. Callers invoke this only after Stripe has reported the
- * session expired (webhook event, or an expire/retrieve response), or when no session was
- * ever created. Idempotent: a hold already settled, released or replaced is left alone.
+ * session expired or its delayed payment failed (webhook event, or an expire/retrieve
+ * response), or when no session was ever created. Idempotent: a hold already settled, released or replaced is left alone.
  */
 export const releaseCheckoutHold = internalMutation({
   args: {
@@ -124,6 +124,7 @@ export const releaseCheckoutHold = internalMutation({
     stripeSessionId: v.optional(v.string()),
     reason: v.union(
       v.literal("session_expired"),
+      v.literal("async_payment_failed"),
       v.literal("session_creation_failed"),
       v.literal("replaced"),
       v.literal("abandoned"),

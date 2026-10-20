@@ -67,7 +67,7 @@ export function AdminDisputeAlertEmail({
           <Section style={header}>
             <Row>
               <Column>
-                <Text style={brandLabel}>GOOD LUCK 0880</Text>
+                <Text style={brandLabel}>GOOD LUCK</Text>
                 <Text style={subHeader}>SECURITY & DISPUTE ALERT</Text>
               </Column>
               <Column align="right">

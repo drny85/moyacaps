@@ -50,6 +50,7 @@ export type RefundLine = Infer<typeof refundLineValidator>;
 export const reservationValidator = v.object({
   refundId: v.id("order_refunds"),
   orderNumber: v.string(),
+  kind: refundKindValidator,
   stripeSessionId: v.string(),
   amountCents: v.number(),
   idempotencyKey: v.string(),

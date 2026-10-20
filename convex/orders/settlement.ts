@@ -28,12 +28,14 @@ import {
   mirrorStripeCustomerToUser,
 } from "./shared";
 import { orderItemValidator, shippingAddressValidator, successResult } from "./validators";
+import { moneyTakenAlert } from "../notifications/orderEmails";
 
 /**
  * Plan 0008 PR 4: a paid Order whose shipping address is outside the Fulfillment Territory
  * stays settled (the money was taken) but is flagged so an Administrator refunds it before
  * packing: an adminNotes line, an `out_of_territory` payment event and an admin alert email.
- * Never refunds by itself. Runs once per settlement (replays return before it).
+ * Never refunds by itself. Runs once per settlement (replays return before it). Returns whether
+ * it flagged the Order, so the receipt says it will be refunded instead of packed.
  */
 async function flagIfOutOfTerritory(
   ctx: MutationCtx,
@@ -48,13 +50,13 @@ async function flagIfOutOfTerritory(
     webhookEventId?: string;
     stripeSessionId: string;
   }
-): Promise<void> {
-  if (!settled.shippingAddress) return;
+): Promise<boolean> {
+  if (!settled.shippingAddress) return false;
   const verdict = checkFulfillmentTerritory(settled.shippingAddress);
-  if (verdict.inTerritory) return;
+  if (verdict.inTerritory) return false;
 
   const order = await ctx.db.get(orderId);
-  if (!order) return;
+  if (!order) return false;
   await ctx.db.patch(orderId, {
     adminNotes: appendNote(order.adminNotes, outOfTerritoryNote(verdict, settled.total, settled.currency)),
     updatedAt: Date.now(),
@@ -77,6 +79,7 @@ async function flagIfOutOfTerritory(
     customerEmail: settled.customerEmail,
     shippingAddress: settled.shippingAddress,
   });
+  return true;
 }
 
 /**
@@ -300,6 +303,15 @@ export const createOrUpdateStripeOrder = internalMutation({
           ),
           updatedAt: Date.now(),
         });
+        await ctx.scheduler.runAfter(0, internal.notifications.emails.sendAdminAlert, {
+          alert: moneyTakenAlert({
+            kind: "double_settlement",
+            orderNumber: existing.orderNumber,
+            stripeSessionId: args.stripeSessionId,
+            total: args.total,
+            currency: args.currency,
+          }),
+        });
         return existing._id;
       }
 
@@ -320,6 +332,15 @@ export const createOrUpdateStripeOrder = internalMutation({
             `⚠️ Payment received on cancelled order via session ${args.stripeSessionId}. Re-create or refund manually.`
           ),
           updatedAt: Date.now(),
+        });
+        await ctx.scheduler.runAfter(0, internal.notifications.emails.sendAdminAlert, {
+          alert: moneyTakenAlert({
+            kind: "cancelled",
+            orderNumber: existing.orderNumber,
+            stripeSessionId: args.stripeSessionId,
+            total: args.total,
+            currency: args.currency,
+          }),
         });
         return existing._id;
       }
@@ -365,7 +386,7 @@ export const createOrUpdateStripeOrder = internalMutation({
         details: JSON.stringify({ total: args.total, tax: args.tax }),
       });
 
-      await flagIfOutOfTerritory(ctx, existing._id, {
+      const outOfTerritory = await flagIfOutOfTerritory(ctx, existing._id, {
         ...args,
         orderNumber: existing.orderNumber,
         shippingAddress: args.shippingAddress ?? existing.shippingAddress,
@@ -392,18 +413,21 @@ export const createOrUpdateStripeOrder = internalMutation({
           createdAt: existing.createdAt,
         });
       }
-      if (wasAwaitingPayment && hasEmail(args.customerEmail)) {
+      // A session without an email (e.g. the success-page sync) still reaches the email Pay recorded.
+      const receiptEmail = args.customerEmail ?? existing.customerEmail;
+      if (wasAwaitingPayment && hasEmail(receiptEmail)) {
         await ctx.scheduler.runAfter(0, internal.notifications.emails.sendCustomerReceipt, {
           orderNumber: existing.orderNumber,
           total: args.total,
           currency: args.currency,
           customerName: args.customerName ?? existing.customerName,
-          customerEmail: args.customerEmail,
+          customerEmail: receiptEmail,
           shippingAddress: args.shippingAddress ?? existing.shippingAddress,
           items: existing.items,
           subtotal: args.subtotal ?? existing.subtotal,
           shippingFee: args.shippingFee ?? existing.shippingFee,
           tax: args.tax,
+          outOfTerritory,
         });
       }
 
@@ -452,7 +476,7 @@ export const createOrUpdateStripeOrder = internalMutation({
       details: JSON.stringify({ total: args.total, tax: args.tax }),
     });
 
-    await flagIfOutOfTerritory(ctx, orderId, args);
+    const outOfTerritory = await flagIfOutOfTerritory(ctx, orderId, args);
 
     // Schedule Admin Order Alert for new paid Stripe order
     await ctx.scheduler.runAfter(0, internal.notifications.emails.sendAdminOrderAlert, {
@@ -484,6 +508,7 @@ export const createOrUpdateStripeOrder = internalMutation({
         subtotal: args.subtotal,
         shippingFee: args.shippingFee,
         tax: args.tax,
+        outOfTerritory,
       });
     }
 

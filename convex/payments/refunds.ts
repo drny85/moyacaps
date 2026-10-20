@@ -14,6 +14,7 @@ import { internal } from "../_generated/api";
 import { getStripe, refundCheckoutSession } from "./stripeClient";
 import { requireAdminInAction } from "../lib/auth";
 import { adminRefundRequestValidator, formatCents, refundErrorOutcome, type Reservation } from "./refundModel";
+import { refundProblemAlert } from "../notifications/orderEmails";
 
 const refundOutcomeValidator = v.object({
   refundId: v.id("order_refunds"),
@@ -25,8 +26,9 @@ type RefundOutcome = typeof refundOutcomeValidator.type;
 
 /**
  * Send a reserved refund to Stripe and record the result. A final Stripe refusal fails the
- * ledger row (freeing its lines); an ambiguous error (network, outage) leaves it pending so a
- * retry reuses the same idempotency key and can never refund twice.
+ * ledger row (freeing its lines; refundLedger.failRefund alerts the Administrator); an
+ * ambiguous error (network, outage) leaves it pending so a retry reuses the same idempotency
+ * key and can never refund twice, and alerts the Administrator to retry it.
  */
 async function sendRefund(ctx: ActionCtx, reservation: Reservation, actor: string): Promise<RefundOutcome> {
   const base = { refundId: reservation.refundId, amountCents: reservation.amountCents };
@@ -51,6 +53,16 @@ async function sendRefund(ctx: ActionCtx, reservation: Reservation, actor: strin
       await ctx.runMutation(internal.payments.refundLedger.failRefund, { refundId: reservation.refundId, error: message });
       return { ...base, status: "failed", error: message };
     }
+    await ctx.scheduler.runAfter(0, internal.notifications.emails.sendAdminAlert, {
+      alert: refundProblemAlert({
+        orderNumber: reservation.orderNumber,
+        refundId: reservation.refundId,
+        kind: reservation.kind,
+        amountCents: reservation.amountCents,
+        problem: "pending",
+        error: message,
+      }),
+    });
     return { ...base, status: "pending", error: message };
   }
 }
