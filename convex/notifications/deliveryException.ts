@@ -36,6 +36,6 @@ export function deliveryExceptionCopy(
       : `A delivery problem with your Good Luck order #${orderNumber}`,
     badge: returned ? "RETURNED TO SENDER" : "DELIVERY UPDATE",
     heading: returned ? "Your package is on its way back to us" : "The carrier couldn't deliver your package",
-    body: "We're on it. Our team will contact you to confirm your address and either send it again or refund you. Reply to this email if anything changed.",
+    body: "We're on it. Our team will contact you to confirm your address and either send it again or refund you. Write to us at orders@goodluckcaps.com if anything changed.",
   };
 }

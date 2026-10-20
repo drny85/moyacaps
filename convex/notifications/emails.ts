@@ -43,7 +43,7 @@ function adminEmail(): string {
   }
   return recipient.email;
 }
-// Customer emails say "reply to this email": replies go to the orders inbox, not the sender.
+// If a Customer replies anyway, the reply goes to the orders inbox, not the sending address.
 const CUSTOMER_REPLY_TO = [SUPPORT_EMAIL];
 
 const shippingAddressValidator = v.optional(

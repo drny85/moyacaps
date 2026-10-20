@@ -1,6 +1,6 @@
 import React from "react";
 import { Section, Heading, Text, Link, Hr } from "@react-email/components";
-import { careGuide, deliveredCopy } from "../orderEmails";
+import { careGuide, deliveredCopy, SUPPORT_EMAIL } from "../orderEmails";
 import { BaseEmailLayout } from "./layout/BaseEmailLayout";
 import { OrderSummary, type OrderItemProp } from "./layout/OrderSummary";
 import { badgeStyle, colors, styles } from "./layout/tokens";
@@ -76,7 +76,7 @@ export function OrderDeliveredEmail({
 
       {items && items.length > 0 && <OrderSummary title="Package contents" items={items} currency="USD" />}
 
-      <Text style={missing}>Didn't get your package? Reply to this email and we'll sort it out.</Text>
+      <Text style={missing}>Didn't get your package? Write to us at {SUPPORT_EMAIL} and we'll sort it out.</Text>
     </BaseEmailLayout>
   );
 }

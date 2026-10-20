@@ -18,7 +18,6 @@ import {
   type CheckoutVariant,
   type LineStock,
   INVOICE_FOOTER,
-  RETURN_POLICY_SUMMARY,
 } from "./checkoutModel";
 
 const NOW = 1_800_000_000_000;
@@ -242,10 +241,10 @@ describe("Stripe fragments", () => {
     }
   });
 
-  it("INVOICE_FOOTER states the 30-day Returns policy, not final sale", () => {
-    expect(INVOICE_FOOTER).toContain(RETURN_POLICY_SUMMARY);
-    expect(INVOICE_FOOTER).toMatch(/30 days of delivery/);
+  it("INVOICE_FOOTER promises no returns window and no final sale (policy not decided yet)", () => {
+    expect(INVOICE_FOOTER).not.toMatch(/30 days|returns?\b/i);
     expect(INVOICE_FOOTER).not.toMatch(/final sale/i);
+    expect(INVOICE_FOOTER).toContain("orders@goodluckcaps.com");
   });
 
   it("toStripeAddress requires a street and forces US", () => {

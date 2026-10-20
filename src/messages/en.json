@@ -83,7 +83,7 @@
     "tax": "Sales Tax",
     "total": "Total",
     "checkoutStripe": "Checkout with Card / Apple Pay",
-    "secureCheckout": "Guaranteed Authentic • 30-Day Returns",
+    "secureCheckout": "Guaranteed Authentic",
     "stockAdjusted": "Quantity adjusted to match live stock",
     "onlyXAvailable": "Only {count} available",
     "soldOutItem": "Sold Out"
@@ -182,7 +182,6 @@
     "specCare": "Care Instructions",
     "specCareVal": "Spot clean only with soft damp cloth. Air dry.",
     "freeShipping": "Free US Shipping on {threshold}+ Items",
-    "guarantee": "Returns within 30 days of delivery, unworn with tags",
     "otherColorwaysTitle": "Explore the 16 Colorways",
     "otherColorwaysSubtitle": "Switch colorways to match your personal rotation.",
     "inspectBlueprint": "Full Blueprint Specs",
@@ -923,7 +922,7 @@
     "printBack": "Full back print",
     "printBody": "High-density screen print that holds up wash after wash.",
     "teeCare": "Machine wash cold inside out. Hang dry or tumble low.",
-    "shippingBody": "Ships within 24 hours. Standard shipping with US tracking arrives in 2–5 business days, free on {threshold} or more items. Returns within 30 days of delivery, unworn with tags, for a refund. You pay return shipping unless the item is defective or wrong. To exchange, return the item and place a new order.",
+    "shippingBody": "Ships within 24 hours. Standard shipping with US tracking arrives in 2–5 business days, free on {threshold} or more items. Problem with your order? Contact us and we'll make it right.",
     "moreCaps": "More caps",
     "moreTees": "More tees"
   },
