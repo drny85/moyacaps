@@ -104,6 +104,8 @@ export const createCheckoutSession = action({
     currency: v.string(),
     locale: v.string(),
     origin: v.string(),
+    // Deprecated and ignored: the Order's owner comes from the auth token only. Kept so a
+    // frontend built before this change still validates while Convex deploys ahead of it.
     clerkUserId: v.optional(v.string()),
     customerEmail: v.optional(v.string()),
     // The cart's previous open Checkout Session: expired (and its hold released) first.
@@ -122,12 +124,10 @@ export const createCheckoutSession = action({
       throw new ConvexError(emptyCartError("checkout", args.locale));
     }
 
-    // Try to resolve authenticated user identity from Clerk JWT
-    let resolvedClerkId = args.clerkUserId;
+    // The Order's owner is the signed-in caller, never a client-sent id: anyone could
+    // otherwise attach an Order to another account. No identity means a guest Order.
     const identity = await ctx.auth.getUserIdentity();
-    if (identity?.subject) {
-      resolvedClerkId = identity.subject;
-    }
+    const resolvedClerkId = identity?.subject;
 
     const stripe = getStripe();
 
