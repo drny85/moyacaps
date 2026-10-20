@@ -8,6 +8,7 @@ import { render } from "@react-email/render";
 import React from "react";
 import { AdminOrderAlertEmail } from "./templates/AdminOrderAlert";
 import { AdminDisputeAlertEmail } from "./templates/AdminDisputeAlert";
+import { AdminTerritoryAlertEmail } from "./templates/AdminTerritoryAlert";
 import { CustomerReceiptEmail } from "./templates/CustomerReceipt";
 import { OrderDispatchedEmail } from "./templates/OrderDispatchedEmail";
 import { OrderDeliveredEmail } from "./templates/OrderDeliveredEmail";
@@ -300,6 +301,51 @@ export const sendAdminDisputeAlert = internalAction({
     } catch (err: any) {
       console.error(
         `[AdminDisputeAlert] Failed to send dispute alert for order ${args.orderNumber}:`,
+        err?.message || err
+      );
+      return { success: false, error: err?.message || String(err) };
+    }
+  },
+});
+
+/**
+ * Alerts the store administrator that a paid Order ships outside the Fulfillment Territory,
+ * so it is refunded before packing (plan 0008 PR 4). Never refunds by itself.
+ */
+export const sendAdminTerritoryAlert = internalAction({
+  args: {
+    orderNumber: v.string(),
+    total: v.number(),
+    currency: v.string(),
+    reason: v.string(),
+    customerName: v.optional(v.string()),
+    customerEmail: v.optional(v.string()),
+    shippingAddress: shippingAddressValidator,
+  },
+  returns: emailResult,
+  handler: async (ctx, args) => {
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://goodluckcaps.com";
+      const html = await render(
+        React.createElement(AdminTerritoryAlertEmail, {
+          ...args,
+          adminDashboardUrl: `${baseUrl}/admin/orders/${args.orderNumber}`,
+        })
+      );
+
+      const emailId = await resend.sendEmail(ctx, {
+        from: DEFAULT_SENDER,
+        to: DEFAULT_ADMIN_EMAIL,
+        subject: `⚠️ [Refund Before Packing] Order #${args.orderNumber} ships outside the Fulfillment Territory`,
+        html,
+        idempotencyKey: `territory-${args.orderNumber}`,
+      });
+
+      console.log(`[AdminTerritoryAlert] Dispatched territory alert for order ${args.orderNumber}, emailId: ${emailId}`);
+      return { success: true, emailId };
+    } catch (err: any) {
+      console.error(
+        `[AdminTerritoryAlert] Failed to send territory alert for order ${args.orderNumber}:`,
         err?.message || err
       );
       return { success: false, error: err?.message || String(err) };

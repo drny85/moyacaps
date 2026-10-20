@@ -103,6 +103,45 @@ describe("backfillAvailability", () => {
   });
 });
 
+describe("backfillTaxCodes (plan 0008 PR 4)", () => {
+  it("fills missing categories and tax codes, keeps stored ones, and lists unknown categories", async () => {
+    const { t } = setup();
+    const { category: _category, ...legacy } = cap;
+    await t.run(async (ctx) => {
+      await ctx.db.insert("variants", { ...legacy, variantId: "legacy-cap" });
+      await ctx.db.insert("variants", { ...legacy, variantId: "legacy-tee", silhouette: "tee" });
+      await ctx.db.insert("variants", { ...cap, variantId: "custom", taxCode: "txcd_99999999" });
+      await ctx.db.insert("variants", { ...cap, variantId: "hoodie", category: "hoodies" });
+    });
+
+    const first = await t.mutation(internal.catalog.migrations.backfillTaxCodes, {});
+    expect(first).toEqual({ patched: 2, needsReview: ["hoodie"], isDone: true });
+    const rows = await t.run((ctx) => ctx.db.query("variants").collect());
+    const byId = Object.fromEntries(rows.map((r) => [r.variantId, [r.category, r.taxCode]]));
+    expect(byId).toEqual({
+      "legacy-cap": ["headwear", "txcd_30060006"],
+      "legacy-tee": ["apparel", "txcd_30011000"],
+      custom: ["headwear", "txcd_99999999"],
+      hoodie: ["hoodies", undefined],
+    });
+
+    expect(await t.mutation(internal.catalog.migrations.backfillTaxCodes, {})).toEqual({
+      patched: 0,
+      needsReview: ["hoodie"],
+      isDone: true,
+    });
+  });
+
+  it("seedAll gives every product a category and tax code", async () => {
+    const { t, admin } = setup();
+    await admin.mutation(api.catalog.migrations.seedAll, {});
+    const rows = await t.run((ctx) => ctx.db.query("variants").take(500));
+    for (const row of rows) {
+      expect(row.taxCode).toBe(row.category === "apparel" ? "txcd_30011000" : "txcd_30060006");
+    }
+  });
+});
+
 describe("seedAll visibility (ADR 0022)", () => {
   it("seeds visible products unless the seed row hides them", async () => {
     const { t, admin } = setup();
