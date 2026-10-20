@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations, useLocale } from "next-intl";
-import { MessageCircle, ShieldCheck, RotateCcw, Truck } from "lucide-react";
+import { MessageCircle, ShieldCheck, Truck } from "lucide-react";
 import { useStore } from "@/store/useStore";
 import { BrandMark } from "./BrandMark";
 import { usePathname } from "@/i18n/routing";
@@ -88,11 +88,6 @@ export function Footer() {
             <span className="flex items-center gap-1.5">
               <ShieldCheck className="w-3.5 h-3.5 text-moya-green" />
               <span className="font-display font-semibold">Secure Checkout</span>
-            </span>
-            <span className="text-zinc-300 dark:text-zinc-700">•</span>
-            <span className="flex items-center gap-1.5">
-              <RotateCcw className="w-3.5 h-3.5 text-moya-violet" />
-              <span className="font-display font-semibold">{locale === "es" ? "Devoluciones en 30 Días" : "30-Day Returns"}</span>
             </span>
             <span className="text-zinc-300 dark:text-zinc-700">•</span>
             <span className="flex items-center gap-1.5">
