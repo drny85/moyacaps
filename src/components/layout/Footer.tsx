@@ -4,7 +4,7 @@ import { useTranslations, useLocale } from "next-intl";
 import { MessageCircle, ShieldCheck, Truck } from "lucide-react";
 import { useStore } from "@/store/useStore";
 import { BrandMark } from "./BrandMark";
-import { usePathname } from "@/i18n/routing";
+import { Link, usePathname } from "@/i18n/routing";
 import { getWhatsAppConciergeUrl } from "@/lib/whatsapp";
 
 export function Footer() {
@@ -61,6 +61,15 @@ export function Footer() {
         {/* Copyright */}
         <div className="text-xs text-zinc-500 dark:text-zinc-600 text-center md:text-right">
           <p>© {new Date().getFullYear()} Good Luck. {t("rights")}</p>
+          <nav aria-label={t("legalNav")} className="mt-2 flex items-center justify-center md:justify-end gap-3">
+            <Link href="/terms" className="hover:text-zinc-900 dark:hover:text-white underline-offset-2 hover:underline transition-colors">
+              {t("terms")}
+            </Link>
+            <span className="text-zinc-300 dark:text-zinc-700">•</span>
+            <Link href="/privacy" className="hover:text-zinc-900 dark:hover:text-white underline-offset-2 hover:underline transition-colors">
+              {t("privacy")}
+            </Link>
+          </nav>
           <p className="text-[10px] text-zinc-400 dark:text-zinc-700 mt-1 font-display">
             Crafted for streetwear connoisseurs
           </p>
