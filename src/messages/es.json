@@ -83,7 +83,7 @@
     "tax": "Impuesto estimado",
     "total": "Total",
     "checkoutStripe": "Pagar con Tarjeta / Apple Pay",
-    "secureCheckout": "Garantía de Autenticidad • Devoluciones en 30 Días",
+    "secureCheckout": "Garantía de Autenticidad",
     "stockAdjusted": "Cantidad ajustada al inventario disponible",
     "onlyXAvailable": "Solo {count} disponibles",
     "soldOutItem": "Agotado"
@@ -182,7 +182,6 @@
     "specCare": "Cuidados",
     "specCareVal": "Limpieza localizada con paño húmedo. Secar a la sombra.",
     "freeShipping": "Envío gratis a EE. UU. en {threshold} o más artículos",
-    "guarantee": "Devoluciones dentro de 30 días desde la entrega, sin usar y con etiquetas",
     "otherColorwaysTitle": "Explora los 16 Colores",
     "otherColorwaysSubtitle": "Encuentra el contraste ideal para tu rotación.",
     "inspectBlueprint": "Especificaciones Completas",
@@ -923,7 +922,7 @@
     "printBack": "Estampado completo en la espalda",
     "printBody": "Serigrafía de alta densidad que aguanta lavado tras lavado.",
     "teeCare": "Lavar en frío al revés. Secar colgada o en secadora a baja temperatura.",
-    "shippingBody": "Se envía en 24 horas. El envío estándar con rastreo en EE. UU. llega en 2–5 días hábiles, gratis con {threshold} o más artículos. Devoluciones dentro de 30 días desde la entrega, sin usar y con etiquetas, para un reembolso. Tú pagas el envío de la devolución, salvo que el artículo llegue defectuoso o equivocado. Para un cambio, devuelve el artículo y haz un pedido nuevo.",
+    "shippingBody": "Se envía en 24 horas. El envío estándar con rastreo en EE. UU. llega en 2–5 días hábiles, gratis con {threshold} o más artículos. ¿Algún problema con tu pedido? Escríbenos y lo resolvemos.",
     "moreCaps": "Más gorras",
     "moreTees": "Más playeras"
   },
