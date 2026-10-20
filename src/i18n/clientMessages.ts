@@ -26,7 +26,10 @@ export const STOREFRONT_NAMESPACES = [
   "search",
 ] as const;
 
-/** Namespaces only used under checkout, account, track and admin */
+/**
+ * Namespaces only used under checkout, account, track and admin, plus `legal`, which the
+ * Terms and Privacy pages read on the server only (it never reaches the browser).
+ */
 export const ROUTE_SCOPED_NAMESPACES = [
   "checkout",
   "checkoutSuccess",
@@ -34,6 +37,7 @@ export const ROUTE_SCOPED_NAMESPACES = [
   "track",
   "validation",
   "admin",
+  "legal",
 ] as const;
 
 export type Messages = Record<string, unknown>;

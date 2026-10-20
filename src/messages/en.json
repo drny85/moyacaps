@@ -148,7 +148,10 @@
     "tagline": "Unapologetic headwear crafted for the bold.",
     "support": "Need assistance? Chat directly with our fulfillment team on WhatsApp.",
     "rights": "All rights reserved. Good Luck Co.",
-    "currencyNote": "Prices shown in {currency}. Dual currency supported."
+    "currencyNote": "Prices shown in {currency}. Dual currency supported.",
+    "terms": "Terms & Conditions",
+    "privacy": "Privacy Policy",
+    "legalNav": "Legal"
   },
   "pdp": {
     "breadcrumbHome": "Home",
@@ -1023,5 +1026,233 @@
     "minutes": "Min",
     "seconds": "Sec",
     "droppingNow": "Dropping now…"
+  },
+  "legal": {
+    "lastUpdated": "Last updated: {date}",
+    "terms": {
+      "metaTitle": "Terms & Conditions | Good Luck",
+      "metaDescription": "The terms for buying caps and tees from Good Luck: orders, pricing, shipping, cancellations, drops and more.",
+      "title": "Terms & Conditions",
+      "intro": "These terms apply when you use goodluckcaps.com or buy from us. By placing an order, you agree to them. We kept them short and in plain language.",
+      "sections": {
+        "seller": {
+          "heading": "Who we are",
+          "body": [
+            "Good Luck is a streetwear store based in New York that sells caps and heavyweight tees online. \"We\", \"us\" and \"our\" mean Good Luck. \"You\" means you, the customer."
+          ]
+        },
+        "eligibility": {
+          "heading": "Who can buy",
+          "body": [
+            "You must be at least 18, or the age of majority where you live, to place an order. If you are younger, a parent or guardian must place the order for you.",
+            "You need a shipping address in one of the 50 US states or Washington, DC."
+          ]
+        },
+        "orders": {
+          "heading": "Orders",
+          "body": [
+            "Placing an order is an offer to buy. We accept your order when your payment goes through, and we email you a confirmation.",
+            "While you are at checkout, we hold your items for a short time. If checkout expires, the hold ends and the items go back on sale.",
+            "We may cancel an order and refund it in full if we can't fill it: for example, if an item sells out, a price or listing was wrong, the address is outside the area we ship to, or the order looks fraudulent."
+          ]
+        },
+        "pricing": {
+          "heading": "Prices and taxes",
+          "body": [
+            "All prices are in US dollars. Sales tax is calculated at checkout by our payment processor, Stripe, based on your shipping address. The shipping fee, if any, is shown at checkout before you pay.",
+            "We try to keep every price and description accurate. Colors on screen can differ a little from the real product."
+          ]
+        },
+        "payment": {
+          "heading": "Payment",
+          "body": [
+            "Payments are handled by Stripe on its secure checkout page. We never see or store your full card number. You agree that the payment method you use is yours or that you are allowed to use it."
+          ]
+        },
+        "shipping": {
+          "heading": "Shipping",
+          "body": [
+            "We ship only to the 50 US states and Washington, DC. We don't ship to US territories (such as Puerto Rico or Guam), military addresses (APO, FPO, DPO) or other countries.",
+            "We offer one option, Standard shipping, which usually arrives in 2–5 business days once your order ships. Delivery times are estimates, not guarantees. We email you tracking when your order ships, and you can also check it on our Track Order page.",
+            "Please check your address at checkout. If you are signed in, you can change it from your account until we buy the shipping label. Risk of loss passes to you when the carrier delivers your order."
+          ]
+        },
+        "cancellations": {
+          "heading": "Cancellations",
+          "body": [
+            "If you are signed in, you can cancel a paid order from your account until it ships. We refund it in full to your original payment method. If you checked out as a guest, or your order has already shipped, email us at <email>{address}</email>."
+          ]
+        },
+        "returns": {
+          "heading": "Returns and problems with your order",
+          "body": [
+            "Our returns policy is coming soon and will be posted on this page.",
+            "If your order arrives damaged or defective, or you received the wrong item, email us at <email>{address}</email> with your order number and we'll help."
+          ]
+        },
+        "drops": {
+          "heading": "Limited drops",
+          "body": [
+            "Many of our products are released in limited drops. Quantities are limited, and we may not restock an item. We may limit how many of an item one customer can buy.",
+            "Drop dates can change, and we may postpone or cancel a drop. Signing up for a drop or launch alert does not reserve an item."
+          ]
+        },
+        "ip": {
+          "heading": "Our designs and content",
+          "body": [
+            "The Good Luck name, logos, designs, photos and site content belong to us. You may view and share them for personal, non-commercial use. Please don't copy, sell or reuse them without our written permission.",
+            "Try-On shows a preview of how a cap might look on you. It is an approximation, not a guarantee of fit or color."
+          ]
+        },
+        "use": {
+          "heading": "Using the site",
+          "body": [
+            "Please don't use the site to break the law, place fraudulent orders, use bots or other automated tools to buy products, scrape the site, or try to interfere with how it works. We may cancel orders or block access if you do."
+          ]
+        },
+        "liability": {
+          "heading": "Disclaimers and limits of liability",
+          "body": [
+            "We provide the site as is. To the fullest extent the law allows, we don't make promises about the site beyond what these terms say, and we are not liable for indirect or consequential damages.",
+            "To the fullest extent the law allows, our total liability for any claim about an order is limited to the amount you paid for that order. Nothing in these terms limits any rights you have under law that can't be waived."
+          ]
+        },
+        "law": {
+          "heading": "Governing law",
+          "body": [
+            "These terms are governed by the laws of the State of New York. Any dispute will be handled in the state or federal courts located in New York."
+          ]
+        },
+        "changes": {
+          "heading": "Changes to these terms",
+          "body": [
+            "We may update these terms from time to time. When we do, we change the date at the top of this page. The terms in place when you place an order apply to that order."
+          ]
+        },
+        "contact": {
+          "heading": "Contact",
+          "body": [
+            "Questions about these terms or your order? Email us at <email>{address}</email>."
+          ]
+        }
+      }
+    },
+    "privacy": {
+      "metaTitle": "Privacy Policy | Good Luck",
+      "metaDescription": "What personal information Good Luck collects, how we use it, who helps us, and the choices you have.",
+      "title": "Privacy Policy",
+      "intro": "This policy explains what personal information we collect when you use goodluckcaps.com, why we collect it, and the choices you have. Good Luck is a small store based in New York.",
+      "sections": {
+        "collect": {
+          "heading": "What we collect",
+          "body": [
+            "We collect only what we need to run the store:"
+          ],
+          "list": [
+            "Order details: your name, email, phone number, shipping and billing address, the items you buy, and the amounts paid, including tax. You enter these on Stripe's checkout page.",
+            "Account details: if you sign in, your email and, if you add them, your name, phone number and profile photo.",
+            "Drop and launch alerts: the email or WhatsApp number you sign up with, your name if you give it, your language, and the drop or category you chose.",
+            "Messages you send us by email or WhatsApp.",
+            "Basic technical data, such as your IP address and browser type, which our hosting provider processes to deliver and protect the site."
+          ]
+        },
+        "tryOn": {
+          "heading": "Try-On photos",
+          "body": [
+            "Try-On runs entirely on your device. Your photo is never uploaded or saved by us, and it is gone when you close the page. To run, Try-On downloads its face-detection code from the jsDelivr network; your photo is not sent with that request."
+          ]
+        },
+        "use": {
+          "heading": "How we use it",
+          "body": [
+            "We use your information to:"
+          ],
+          "list": [
+            "Process, ship and track your orders, and handle cancellations and refunds.",
+            "Send emails about your order, such as confirmations, shipping updates and refunds.",
+            "Tell you about a drop or launch you signed up for.",
+            "Answer your questions and give support.",
+            "Prevent fraud, keep the site secure, and meet our tax, accounting and legal duties."
+          ]
+        },
+        "providers": {
+          "heading": "Who helps us",
+          "body": [
+            "We share personal information only with companies that help us run the store, and only what each one needs:"
+          ],
+          "list": [
+            "Stripe: payments, sales tax, receipts and invoices.",
+            "Clerk: sign-in and accounts.",
+            "Convex: the database where we keep orders, accounts and alert sign-ups.",
+            "Resend: sending our emails.",
+            "Shippo and the carriers USPS, UPS and FedEx: shipping labels, delivery and tracking.",
+            "Vercel: hosting the website.",
+            "WhatsApp (Meta): if you choose to chat with us there.",
+            "jsDelivr: delivering the Try-On face-detection code."
+          ]
+        },
+        "noSale": {
+          "heading": "We don't sell your information",
+          "body": [
+            "We don't sell your personal information, and we don't share it for targeted advertising. The site has no advertising pixels and no third-party analytics or tracking tools."
+          ]
+        },
+        "marketing": {
+          "heading": "Marketing emails",
+          "body": [
+            "We send marketing emails only if you sign up for a drop or launch alert. Each launch email has an unsubscribe link, or you can email us at <email>{address}</email> to stop them. Emails about an order you placed will still reach you."
+          ]
+        },
+        "cookies": {
+          "heading": "Cookies and local storage",
+          "body": [
+            "We use only what the site needs to work:"
+          ],
+          "list": [
+            "Local storage on your device keeps your bag, your theme and display settings, and your recent searches.",
+            "A cookie remembers your language.",
+            "If you sign in, Clerk sets cookies to keep you signed in.",
+            "Stripe's checkout page runs on Stripe's own site, under Stripe's privacy policy."
+          ]
+        },
+        "retention": {
+          "heading": "How long we keep it",
+          "body": [
+            "We keep order records for as long as we need them for tax, accounting and audit purposes, even if you close your account. We keep account details while your account is open, and alert sign-ups until you unsubscribe or ask us to remove them."
+          ]
+        },
+        "security": {
+          "heading": "Security",
+          "body": [
+            "The site uses HTTPS, card payments are handled by Stripe, and only our staff can open the store's order tools. No system is perfectly secure, but we work to protect your information."
+          ]
+        },
+        "children": {
+          "heading": "Children",
+          "body": [
+            "The site is not directed to children under 13, and we don't knowingly collect their personal information. If you think a child has given us information, email us at <email>{address}</email> and we'll delete it."
+          ]
+        },
+        "rights": {
+          "heading": "Your privacy rights",
+          "body": [
+            "Depending on where you live, including California under the CCPA/CPRA, you may have the right to know what personal information we have about you, to get a copy of it, to correct it, to have it deleted, and to opt out of its sale or sharing. We don't sell or share it, so there is nothing to opt out of.",
+            "To make a request, email us at <email>{address}</email> from the email address you used with us. We may ask you to confirm details to verify it's you. You can also use an authorized agent. We won't treat you differently for using these rights. We may keep some records, such as orders, when the law requires it."
+          ]
+        },
+        "changes": {
+          "heading": "Changes to this policy",
+          "body": [
+            "We may update this policy from time to time. When we do, we change the date at the top of this page."
+          ]
+        },
+        "contact": {
+          "heading": "Contact",
+          "body": [
+            "Questions or requests about your privacy? Email us at <email>{address}</email>."
+          ]
+        }
+      }
+    }
   }
 }

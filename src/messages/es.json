@@ -148,7 +148,10 @@
     "tagline": "Gorras con carácter sin pedir disculpas.",
     "support": "¿Dudas o pedidos especiales? Escríbenos directo por WhatsApp a nuestro equipo.",
     "rights": "Todos los derechos reservados. Good Luck Co.",
-    "currencyNote": "Precios expresados en {currency}. Conversión disponible."
+    "currencyNote": "Precios expresados en {currency}. Conversión disponible.",
+    "terms": "Términos y Condiciones",
+    "privacy": "Política de Privacidad",
+    "legalNav": "Legal"
   },
   "pdp": {
     "breadcrumbHome": "Inicio",
@@ -1023,5 +1026,233 @@
     "minutes": "Min",
     "seconds": "Seg",
     "droppingNow": "Saliendo ahora…"
+  },
+  "legal": {
+    "lastUpdated": "Última actualización: {date}",
+    "terms": {
+      "metaTitle": "Términos y Condiciones | Good Luck",
+      "metaDescription": "Los términos para comprar gorras y playeras en Good Luck: pedidos, precios, envíos, cancelaciones, drops y más.",
+      "title": "Términos y Condiciones",
+      "intro": "Estos términos aplican cuando usas goodluckcaps.com o nos compras. Al hacer un pedido, los aceptas. Los escribimos cortos y en lenguaje sencillo.",
+      "sections": {
+        "seller": {
+          "heading": "Quiénes somos",
+          "body": [
+            "Good Luck es una tienda de streetwear con sede en Nueva York que vende gorras y playeras de algodón grueso en línea. \"Nosotros\" y \"nuestro\" se refieren a Good Luck. \"Tú\" eres tú, el cliente."
+          ]
+        },
+        "eligibility": {
+          "heading": "Quién puede comprar",
+          "body": [
+            "Debes tener al menos 18 años, o la mayoría de edad donde vives, para hacer un pedido. Si eres menor, tu madre, padre o tutor debe hacer el pedido por ti.",
+            "Necesitas una dirección de envío en uno de los 50 estados de EE. UU. o en Washington, DC."
+          ]
+        },
+        "orders": {
+          "heading": "Pedidos",
+          "body": [
+            "Hacer un pedido es una oferta de compra. Aceptamos tu pedido cuando se completa tu pago, y te enviamos una confirmación por correo.",
+            "Mientras estás en el checkout, apartamos tus artículos por poco tiempo. Si el checkout vence, el apartado termina y los artículos vuelven a la venta.",
+            "Podemos cancelar un pedido y reembolsarlo completo si no podemos surtirlo: por ejemplo, si un artículo se agota, un precio o una publicación estaba mal, la dirección está fuera de la zona a la que enviamos, o el pedido parece fraudulento."
+          ]
+        },
+        "pricing": {
+          "heading": "Precios e impuestos",
+          "body": [
+            "Todos los precios están en dólares estadounidenses. El impuesto sobre las ventas lo calcula en el checkout nuestro procesador de pagos, Stripe, según tu dirección de envío. El costo de envío, si aplica, se muestra en el checkout antes de pagar.",
+            "Procuramos que cada precio y descripción sea correcto. Los colores en pantalla pueden variar un poco respecto al producto real."
+          ]
+        },
+        "payment": {
+          "heading": "Pago",
+          "body": [
+            "Los pagos los procesa Stripe en su página de pago segura. Nunca vemos ni guardamos el número completo de tu tarjeta. Confirmas que el método de pago que usas es tuyo o que tienes permiso para usarlo."
+          ]
+        },
+        "shipping": {
+          "heading": "Envíos",
+          "body": [
+            "Solo enviamos a los 50 estados de EE. UU. y a Washington, DC. No enviamos a territorios de EE. UU. (como Puerto Rico o Guam), a direcciones militares (APO, FPO, DPO) ni a otros países.",
+            "Ofrecemos una opción, Envío Estándar, que normalmente llega en 2 a 5 días hábiles después de que sale tu pedido. Los tiempos de entrega son estimados, no garantizados. Te enviamos el rastreo por correo cuando sale tu pedido, y también puedes consultarlo en nuestra página Rastrear Pedido.",
+            "Revisa tu dirección en el checkout. Si iniciaste sesión, puedes cambiarla desde tu cuenta hasta que compremos la etiqueta de envío. El riesgo de pérdida pasa a ti cuando la paquetería entrega tu pedido."
+          ]
+        },
+        "cancellations": {
+          "heading": "Cancelaciones",
+          "body": [
+            "Si iniciaste sesión, puedes cancelar un pedido pagado desde tu cuenta hasta que se envíe. Te lo reembolsamos completo a tu método de pago original. Si compraste como invitado, o tu pedido ya salió, escríbenos a <email>{address}</email>."
+          ]
+        },
+        "returns": {
+          "heading": "Devoluciones y problemas con tu pedido",
+          "body": [
+            "Nuestra política de devoluciones viene pronto y la publicaremos en esta página.",
+            "Si tu pedido llega dañado o defectuoso, o recibiste un artículo equivocado, escríbenos a <email>{address}</email> con tu número de pedido y te ayudamos."
+          ]
+        },
+        "drops": {
+          "heading": "Drops limitados",
+          "body": [
+            "Muchos de nuestros productos salen en drops limitados. Las cantidades son limitadas y es posible que no reabastezcamos un artículo. Podemos limitar cuántas piezas de un artículo puede comprar cada cliente.",
+            "Las fechas de los drops pueden cambiar, y podemos posponer o cancelar un drop. Registrarte a una alerta de drop o lanzamiento no aparta ningún artículo."
+          ]
+        },
+        "ip": {
+          "heading": "Nuestros diseños y contenido",
+          "body": [
+            "El nombre Good Luck, los logotipos, diseños, fotos y el contenido del sitio son nuestros. Puedes verlos y compartirlos para uso personal y no comercial. No los copies, vendas ni reutilices sin nuestro permiso por escrito.",
+            "Try-On muestra una vista previa de cómo podría verse una gorra en ti. Es una aproximación, no una garantía de talla ni de color."
+          ]
+        },
+        "use": {
+          "heading": "Uso del sitio",
+          "body": [
+            "No uses el sitio para violar la ley, hacer pedidos fraudulentos, usar bots u otras herramientas automáticas para comprar productos, extraer datos del sitio, ni para intentar afectar su funcionamiento. Si lo haces, podemos cancelar pedidos o bloquear el acceso."
+          ]
+        },
+        "liability": {
+          "heading": "Exención y límites de responsabilidad",
+          "body": [
+            "Ofrecemos el sitio tal como está. En la medida máxima que permita la ley, no hacemos promesas sobre el sitio más allá de lo que dicen estos términos, y no somos responsables de daños indirectos o consecuentes.",
+            "En la medida máxima que permita la ley, nuestra responsabilidad total por cualquier reclamo sobre un pedido se limita a lo que pagaste por ese pedido. Nada en estos términos limita los derechos que tengas por ley y que no se puedan renunciar."
+          ]
+        },
+        "law": {
+          "heading": "Ley aplicable",
+          "body": [
+            "Estos términos se rigen por las leyes del Estado de Nueva York. Cualquier disputa se resolverá en los tribunales estatales o federales ubicados en Nueva York."
+          ]
+        },
+        "changes": {
+          "heading": "Cambios a estos términos",
+          "body": [
+            "Podemos actualizar estos términos de vez en cuando. Cuando lo hagamos, cambiaremos la fecha al inicio de esta página. Los términos vigentes al momento de tu pedido son los que aplican a ese pedido."
+          ]
+        },
+        "contact": {
+          "heading": "Contacto",
+          "body": [
+            "¿Preguntas sobre estos términos o tu pedido? Escríbenos a <email>{address}</email>."
+          ]
+        }
+      }
+    },
+    "privacy": {
+      "metaTitle": "Política de Privacidad | Good Luck",
+      "metaDescription": "Qué información personal recopila Good Luck, cómo la usamos, quién nos ayuda y qué opciones tienes.",
+      "title": "Política de Privacidad",
+      "intro": "Esta política explica qué información personal recopilamos cuando usas goodluckcaps.com, para qué la usamos y qué opciones tienes. Good Luck es una tienda pequeña con sede en Nueva York.",
+      "sections": {
+        "collect": {
+          "heading": "Qué recopilamos",
+          "body": [
+            "Solo recopilamos lo necesario para operar la tienda:"
+          ],
+          "list": [
+            "Datos del pedido: tu nombre, correo, teléfono, direcciones de envío y facturación, los artículos que compras y los montos pagados, incluidos los impuestos. Los ingresas en la página de pago de Stripe.",
+            "Datos de tu cuenta: si inicias sesión, tu correo y, si los agregas, tu nombre, teléfono y foto de perfil.",
+            "Alertas de drops y lanzamientos: el correo o número de WhatsApp con el que te registras, tu nombre si lo das, tu idioma y el drop o la categoría que elegiste.",
+            "Los mensajes que nos envías por correo o WhatsApp.",
+            "Datos técnicos básicos, como tu dirección IP y tipo de navegador, que nuestro proveedor de hosting procesa para servir y proteger el sitio."
+          ]
+        },
+        "tryOn": {
+          "heading": "Fotos de Try-On",
+          "body": [
+            "Try-On funciona completamente en tu dispositivo. Nunca subimos ni guardamos tu foto, y desaparece al cerrar la página. Para funcionar, Try-On descarga su código de detección de rostro desde la red de jsDelivr; tu foto no se envía con esa solicitud."
+          ]
+        },
+        "use": {
+          "heading": "Cómo la usamos",
+          "body": [
+            "Usamos tu información para:"
+          ],
+          "list": [
+            "Procesar, enviar y rastrear tus pedidos, y gestionar cancelaciones y reembolsos.",
+            "Enviarte correos sobre tu pedido, como confirmaciones, avisos de envío y reembolsos.",
+            "Avisarte de un drop o lanzamiento al que te registraste.",
+            "Responder tus preguntas y darte soporte.",
+            "Prevenir fraudes, mantener seguro el sitio y cumplir nuestras obligaciones fiscales, contables y legales."
+          ]
+        },
+        "providers": {
+          "heading": "Quién nos ayuda",
+          "body": [
+            "Solo compartimos información personal con empresas que nos ayudan a operar la tienda, y solo lo que cada una necesita:"
+          ],
+          "list": [
+            "Stripe: pagos, impuesto sobre las ventas, recibos y facturas.",
+            "Clerk: inicio de sesión y cuentas.",
+            "Convex: la base de datos donde guardamos pedidos, cuentas y registros de alertas.",
+            "Resend: el envío de nuestros correos.",
+            "Shippo y las paqueterías USPS, UPS y FedEx: etiquetas de envío, entrega y rastreo.",
+            "Vercel: el hosting del sitio web.",
+            "WhatsApp (Meta): si decides chatear con nosotros ahí.",
+            "jsDelivr: la entrega del código de detección de rostro de Try-On."
+          ]
+        },
+        "noSale": {
+          "heading": "No vendemos tu información",
+          "body": [
+            "No vendemos tu información personal ni la compartimos para publicidad dirigida. El sitio no tiene píxeles publicitarios ni herramientas de analítica o rastreo de terceros."
+          ]
+        },
+        "marketing": {
+          "heading": "Correos de marketing",
+          "body": [
+            "Solo enviamos correos de marketing si te registras a una alerta de drop o lanzamiento. Cada correo de lanzamiento incluye un enlace para darte de baja, o puedes escribirnos a <email>{address}</email> para dejar de recibirlos. Los correos sobre un pedido que hiciste te seguirán llegando."
+          ]
+        },
+        "cookies": {
+          "heading": "Cookies y almacenamiento local",
+          "body": [
+            "Solo usamos lo que el sitio necesita para funcionar:"
+          ],
+          "list": [
+            "El almacenamiento local de tu dispositivo guarda tu bolsa, tu tema y ajustes de visualización, y tus búsquedas recientes.",
+            "Una cookie recuerda tu idioma.",
+            "Si inicias sesión, Clerk usa cookies para mantener tu sesión abierta.",
+            "La página de pago de Stripe funciona en el propio sitio de Stripe, bajo la política de privacidad de Stripe."
+          ]
+        },
+        "retention": {
+          "heading": "Cuánto tiempo la guardamos",
+          "body": [
+            "Guardamos los registros de pedidos el tiempo que los necesitemos para fines fiscales, contables y de auditoría, aunque cierres tu cuenta. Guardamos los datos de tu cuenta mientras esté abierta, y los registros de alertas hasta que te des de baja o nos pidas eliminarlos."
+          ]
+        },
+        "security": {
+          "heading": "Seguridad",
+          "body": [
+            "El sitio usa HTTPS, los pagos con tarjeta los procesa Stripe, y solo nuestro personal puede abrir las herramientas de pedidos de la tienda. Ningún sistema es perfectamente seguro, pero trabajamos para proteger tu información."
+          ]
+        },
+        "children": {
+          "heading": "Menores",
+          "body": [
+            "El sitio no está dirigido a menores de 13 años, y no recopilamos a sabiendas su información personal. Si crees que un menor nos dio información, escríbenos a <email>{address}</email> y la eliminaremos."
+          ]
+        },
+        "rights": {
+          "heading": "Tus derechos de privacidad",
+          "body": [
+            "Según donde vivas, incluida California bajo la CCPA/CPRA, puedes tener derecho a saber qué información personal tenemos sobre ti, a obtener una copia, a corregirla, a que la eliminemos y a optar por que no se venda ni se comparta. No la vendemos ni la compartimos, así que no hay nada de qué excluirte.",
+            "Para hacer una solicitud, escríbenos a <email>{address}</email> desde el correo que usaste con nosotros. Podemos pedirte que confirmes algunos datos para verificar que eres tú. También puedes usar un agente autorizado. No te trataremos de forma distinta por ejercer estos derechos. Podemos conservar algunos registros, como los pedidos, cuando la ley lo exija."
+          ]
+        },
+        "changes": {
+          "heading": "Cambios a esta política",
+          "body": [
+            "Podemos actualizar esta política de vez en cuando. Cuando lo hagamos, cambiaremos la fecha al inicio de esta página."
+          ]
+        },
+        "contact": {
+          "heading": "Contacto",
+          "body": [
+            "¿Preguntas o solicitudes sobre tu privacidad? Escríbenos a <email>{address}</email>."
+          ]
+        }
+      }
+    }
   }
 }

@@ -23,6 +23,8 @@ export const STATIC_PAGES: Page[] = [
   { path: "/products?category=tees", changeFrequency: "daily", priority: 0.8 },
   { path: "/try-on", changeFrequency: "monthly", priority: 0.6 },
   { path: "/track", changeFrequency: "yearly", priority: 0.3 },
+  { path: "/terms", changeFrequency: "yearly", priority: 0.2 },
+  { path: "/privacy", changeFrequency: "yearly", priority: 0.2 },
 ];
 
 type Launches = Record<"headwear" | "apparel", { status: "live" | "coming_soon" | "hidden" }>;
