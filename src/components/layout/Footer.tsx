@@ -92,12 +92,12 @@ export function Footer() {
             <span className="text-zinc-300 dark:text-zinc-700">•</span>
             <span className="flex items-center gap-1.5">
               <RotateCcw className="w-3.5 h-3.5 text-moya-violet" />
-              <span className="font-display font-semibold">30-Day Returns</span>
+              <span className="font-display font-semibold">{locale === "es" ? "Devoluciones en 30 Días" : "30-Day Returns"}</span>
             </span>
             <span className="text-zinc-300 dark:text-zinc-700">•</span>
             <span className="flex items-center gap-1.5">
               <Truck className="w-3.5 h-3.5 text-moya-gold" />
-              <span className="font-display font-semibold">Express Shipping</span>
+              <span className="font-display font-semibold">{locale === "es" ? "Envío con Rastreo" : "Tracked Shipping"}</span>
             </span>
           </div>
         </div>

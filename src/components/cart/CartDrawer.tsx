@@ -12,6 +12,7 @@ import { api } from "../../../convex/_generated/api";
 import { formatUsd } from "@/lib/whatsapp";
 import { useStoreSettings } from "@/hooks/useStoreSettings";
 import { cartVariantIds } from "@/lib/cartVariantIds";
+import { findLineVariant, isUnreleasedDrop, lineOverStock, lineStock } from "@/lib/cartStock";
 import { useCardCheckout } from "@/hooks/useCardCheckout";
 
 export function CartDrawer() {
@@ -45,22 +46,16 @@ export function CartDrawer() {
     return sum + item.priceUsd * item.quantity;
   }, 0);
 
-  // Check if any cart item exceeds live stock or is unavailable
+  // Check if any cart item exceeds live stock (tees by SKU) or is unavailable
   const hasOutOfStockItem = cart.some((item) => {
-    const variant = convexVariants?.find((v) => v.variantId === (item.variantId || item.id));
-    if (!variant) return false;
-    return variant.isAvailable === false || variant.stock <= 0 || item.quantity > variant.stock;
+    const variant = convexVariants && findLineVariant(item, convexVariants);
+    return variant ? lineOverStock(item, variant) : false;
   });
 
   // Check if any cart item is an unreleased upcoming drop
   const hasUnreleasedDropItem = cart.some((item) => {
-    const variant = convexVariants?.find((v) => v.variantId === (item.variantId || item.id));
-    if (!variant) return false;
-    return Boolean(
-      variant.isDrop &&
-      variant.dropStatus !== "live" &&
-      ((typeof variant.dropDate === "number" && Date.now() < variant.dropDate) || variant.dropStatus === "scheduled")
-    );
+    const variant = convexVariants && findLineVariant(item, convexVariants);
+    return variant ? isUnreleasedDrop(variant, Date.now()) : false;
   });
 
   const cannotCheckout = hasOutOfStockItem || hasUnreleasedDropItem;
@@ -183,8 +178,8 @@ export function CartDrawer() {
                     </div>
                   ) : (
                     cart.map((item) => {
-                      const variant = convexVariants?.find((v) => v.variantId === (item.variantId || item.id));
-                      const stock = variant ? (typeof variant.stock === "number" ? variant.stock : 0) : (item.maxStock ?? 99);
+                      const variant = convexVariants && findLineVariant(item, convexVariants);
+                      const stock = variant ? lineStock(item, variant) : (item.maxStock ?? 99);
                       const isOutOfStock = stock <= 0;
                       const isAtMaxStock = item.quantity >= stock;
 
