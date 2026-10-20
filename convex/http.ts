@@ -2,6 +2,8 @@ import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 import { clerkUsersWebhook } from "./users/clerkWebhook";
+import { oneClickUnsubscribe, unsubscribeRedirect } from "./notifications/unsubscribeHttp";
+import { UNSUBSCRIBE_HTTP_PATH } from "./notifications/unsubscribe";
 
 const http = httpRouter();
 
@@ -34,6 +36,10 @@ http.route({
   method: "POST",
   handler: clerkUsersWebhook,
 });
+
+/** Marketing email `List-Unsubscribe`: one-click POST (RFC 8058) and a GET that redirects to the page. */
+http.route({ path: UNSUBSCRIBE_HTTP_PATH, method: "POST", handler: oneClickUnsubscribe });
+http.route({ path: UNSUBSCRIBE_HTTP_PATH, method: "GET", handler: unsubscribeRedirect });
 
 /**
  * Shippo Carrier Tracking Webhook:

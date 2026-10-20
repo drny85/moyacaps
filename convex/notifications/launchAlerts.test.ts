@@ -4,6 +4,8 @@ import { describe, expect, it } from "vitest";
 import { api, internal } from "../_generated/api";
 import schema from "../schema";
 import { PRIMARY_ADMIN_EMAIL } from "../lib/auth";
+import type { Id } from "../_generated/dataModel";
+import { isUnsubscribeToken } from "./unsubscribe";
 
 const modules = import.meta.glob("/convex/**/*.ts");
 
@@ -144,5 +146,170 @@ describe("sign-up input limits", () => {
       category: "apparel", contact: "a@b.com", channel: "email", locale: "en",
     });
     expect((await alerts(t))[0].clerkUserId).toBe("user_real");
+  });
+});
+
+type Recipient = { contact: string; unsubscribeToken: string };
+const sentTo = async (t: T) =>
+  (await sendJobs(t)).flatMap((j) => (j.args[0] as { recipients: Recipient[] }).recipients);
+const tokenOf = async (t: T, id: Id<"drop_alerts">) => (await t.run((ctx) => ctx.db.get("drop_alerts", id)))!.unsubscribeToken!;
+const unsubscribe = (t: T, token: string) => t.mutation(api.notifications.launchAlerts.unsubscribe, { token });
+
+describe("unsubscribe", () => {
+  it("every new sign-up gets its own token", async () => {
+    const { t, admin } = setup();
+    await teesComingSoon(admin);
+    await signUp(t, "a@x.com");
+    await signUp(t, "b@x.com");
+    const tokens = (await alerts(t)).map((a) => a.unsubscribeToken);
+    expect(tokens.every(isUnsubscribeToken)).toBe(true);
+    expect(new Set(tokens).size).toBe(2);
+  });
+
+  it("opts out once, idempotently, and returns no PII", async () => {
+    const { t, admin } = setup();
+    await teesComingSoon(admin);
+    const { id } = await signUp(t, "a@x.com");
+    const token = await tokenOf(t, id);
+
+    expect(await unsubscribe(t, token)).toEqual({ status: "unsubscribed" });
+    const at = (await alerts(t))[0].unsubscribedAt;
+    expect(at).toEqual(expect.any(Number));
+    expect(await unsubscribe(t, token)).toEqual({ status: "already_unsubscribed" });
+    expect((await alerts(t))[0].unsubscribedAt).toBe(at);
+  });
+
+  it("rejects malformed and unknown tokens without touching anyone", async () => {
+    const { t, admin } = setup();
+    await teesComingSoon(admin);
+    await signUp(t, "a@x.com");
+    expect(await unsubscribe(t, "")).toEqual({ status: "not_found" });
+    expect(await unsubscribe(t, "not-a-token")).toEqual({ status: "not_found" });
+    expect(await unsubscribe(t, "A".repeat(43))).toEqual({ status: "not_found" });
+    expect((await alerts(t))[0].unsubscribedAt).toBeUndefined();
+  });
+
+  it("an unsubscribed reader gets no launch email; others still do", async () => {
+    const { t, admin } = setup();
+    await teesComingSoon(admin);
+    const { id } = await signUp(t, "gone@x.com");
+    await signUp(t, "stays@x.com");
+    await unsubscribe(t, await tokenOf(t, id));
+
+    await t.mutation(internal.notifications.launchAlerts.claimLaunchEmails, { category: "apparel" });
+    expect((await sentTo(t)).map((r) => r.contact)).toEqual(["stays@x.com"]);
+    const gone = (await alerts(t)).find((a) => a.contact === "gone@x.com")!;
+    expect(gone.notifiedAt).toBeUndefined();
+  });
+
+  it("a waitlist where everyone unsubscribed sends nothing and does not loop", async () => {
+    const { t, admin } = setup();
+    await teesComingSoon(admin);
+    const { id } = await signUp(t, "gone@x.com");
+    await unsubscribe(t, await tokenOf(t, id));
+    await t.mutation(internal.notifications.launchAlerts.claimLaunchEmails, { category: "apparel" });
+    const jobs = await t.run((ctx) => ctx.db.system.query("_scheduled_functions").take(20));
+    expect(jobs.filter((j) => /sendLaunchEmails|claimLaunchEmails/.test(j.name))).toEqual([]);
+  });
+
+  it("covers the contact's other sign-ups on the same channel, nobody else's", async () => {
+    const { t, admin } = setup();
+    await teesComingSoon(admin);
+    await admin.mutation(api.settings.functions.setCategoryLaunch, { category: "headwear", status: "coming_soon" });
+    const { id } = await signUp(t, "a@x.com");
+    await signUp(t, "a@x.com", "email", "headwear");
+    await signUp(t, "b@x.com", "email", "headwear");
+    await unsubscribe(t, await tokenOf(t, id));
+
+    const out = (await alerts(t)).map((a) => [a.contact, a.category, a.unsubscribedAt !== undefined]);
+    expect(out).toEqual([
+      ["a@x.com", "apparel", true],
+      ["a@x.com", "headwear", true],
+      ["b@x.com", "headwear", false],
+    ]);
+    await t.mutation(internal.notifications.launchAlerts.claimLaunchEmails, { category: "headwear" });
+    expect((await sentTo(t)).map((r) => r.contact)).toEqual(["b@x.com"]);
+  });
+
+  it("the launch send carries each reader's token, minting one for a legacy row", async () => {
+    const { t, admin } = setup();
+    await teesComingSoon(admin);
+    const { id } = await signUp(t, "new@x.com");
+    await t.run((ctx) =>
+      ctx.db.insert("drop_alerts", { category: "apparel", contact: "old@x.com", channel: "email", locale: "es", createdAt: 1 })
+    );
+    await t.mutation(internal.notifications.launchAlerts.claimLaunchEmails, { category: "apparel" });
+
+    const byContact = Object.fromEntries((await sentTo(t)).map((r) => [r.contact, r.unsubscribeToken]));
+    expect(byContact["new@x.com"]).toBe(await tokenOf(t, id));
+    expect(isUnsubscribeToken(byContact["old@x.com"])).toBe(true);
+    const old = (await alerts(t)).find((a) => a.contact === "old@x.com")!;
+    expect(old.unsubscribeToken).toBe(byContact["old@x.com"]);
+  });
+});
+
+describe("backfillUnsubscribeTokens", () => {
+  it("gives every row a token in batches, keeps existing ones, and is idempotent", async () => {
+    const { t, admin } = setup();
+    await teesComingSoon(admin);
+    const { id } = await signUp(t, "has@x.com");
+    const kept = await tokenOf(t, id);
+    await t.run(async (ctx) => {
+      for (let i = 0; i < 250; i++) {
+        await ctx.db.insert("drop_alerts", { variantId: "V1", contact: `p${i}@x.com`, channel: "email", locale: "en", createdAt: i });
+      }
+    });
+
+    const first = await t.mutation(internal.notifications.launchAlerts.backfillUnsubscribeTokens, {});
+    expect(first).toEqual({ patched: 199, isDone: false });
+    await t.finishAllScheduledFunctions(() => {});
+
+    const rows = await t.run((ctx) => ctx.db.query("drop_alerts").take(300));
+    expect(rows).toHaveLength(251);
+    expect(rows.every((r) => isUnsubscribeToken(r.unsubscribeToken))).toBe(true);
+    expect(new Set(rows.map((r) => r.unsubscribeToken)).size).toBe(251);
+    expect(rows.find((r) => r._id === id)!.unsubscribeToken).toBe(kept);
+
+    expect(await t.mutation(internal.notifications.launchAlerts.backfillUnsubscribeTokens, {})).toEqual({ patched: 0, isDone: false });
+    await t.finishAllScheduledFunctions(() => {});
+    expect((await t.run((ctx) => ctx.db.query("drop_alerts").take(300))).map((r) => r.unsubscribeToken)).toEqual(
+      rows.map((r) => r.unsubscribeToken)
+    );
+  });
+});
+
+describe("one-click unsubscribe HTTP route", () => {
+  it("POST (RFC 8058) opts the reader out", async () => {
+    const { t, admin } = setup();
+    await teesComingSoon(admin);
+    const { id } = await signUp(t, "a@x.com");
+    const token = await tokenOf(t, id);
+
+    const res = await t.fetch(`/unsubscribe?token=${token}&locale=en`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: "List-Unsubscribe=One-Click",
+    });
+    expect(res.status).toBe(200);
+    expect((await alerts(t))[0].unsubscribedAt).toEqual(expect.any(Number));
+    expect((await t.fetch(`/unsubscribe?token=${token}`, { method: "POST" })).status).toBe(200);
+  });
+
+  it("POST with an unknown token is a 404", async () => {
+    const { t } = setup();
+    expect((await t.fetch(`/unsubscribe?token=${"A".repeat(43)}`, { method: "POST" })).status).toBe(404);
+    expect((await t.fetch("/unsubscribe", { method: "POST" })).status).toBe(404);
+  });
+
+  it("GET changes nothing and redirects to the page in the reader's language", async () => {
+    const { t, admin } = setup();
+    await teesComingSoon(admin);
+    const { id } = await signUp(t, "a@x.com");
+    const token = await tokenOf(t, id);
+
+    const res = await t.fetch(`/unsubscribe?token=${token}&locale=es`, { method: "GET", redirect: "manual" });
+    expect(res.status).toBe(303);
+    expect(res.headers.get("Location")).toMatch(new RegExp(`/es/unsubscribe\\?token=${token}$`));
+    expect((await alerts(t))[0].unsubscribedAt).toBeUndefined();
   });
 });

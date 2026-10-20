@@ -27,7 +27,8 @@ export const STOREFRONT_NAMESPACES = [
 ] as const;
 
 /**
- * Namespaces only used under checkout, account, track and admin, plus `legal`, which the
+ * Namespaces only used under checkout, account, track and admin, plus `unsubscribe`, which its
+ * page reads on the server and hands to its client component as props, and `legal`, which the
  * Terms and Privacy pages read on the server only (it never reaches the browser).
  */
 export const ROUTE_SCOPED_NAMESPACES = [
@@ -37,6 +38,7 @@ export const ROUTE_SCOPED_NAMESPACES = [
   "track",
   "validation",
   "admin",
+  "unsubscribe",
   "legal",
 ] as const;
 

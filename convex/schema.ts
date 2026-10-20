@@ -268,12 +268,18 @@ export default defineSchema({
     locale: v.union(v.literal("en"), v.literal("es")),
     createdAt: v.number(),
     notifiedAt: v.optional(v.number()),
+    // One-click unsubscribe (notifications/unsubscribe.ts). Optional only until
+    // notifications/launchAlerts:backfillUnsubscribeTokens has run; new rows always get one.
+    unsubscribeToken: v.optional(v.string()),
+    unsubscribedAt: v.optional(v.number()),
   })
     .index("by_variantId", ["variantId"])
     .index("by_variant_contact", ["variantId", "contact"])
     .index("by_createdAt", ["createdAt"])
+    .index("by_contact", ["contact"])
+    .index("by_unsubscribeToken", ["unsubscribeToken"])
     .index("by_category_and_contact", ["category", "contact"])
-    .index("by_category_and_channel_and_notifiedAt", ["category", "channel", "notifiedAt"]),
+    .index("by_category_and_channel_and_notifiedAt_and_unsubscribedAt", ["category", "channel", "notifiedAt", "unsubscribedAt"]),
   // Append-only audit trail of admin catalog writes. `changes` is a JSON string of FieldChange[].
   catalog_events: defineTable({
     variantId: v.optional(v.string()),

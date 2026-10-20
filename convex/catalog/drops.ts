@@ -10,6 +10,7 @@ import schema from "../schema";
 import { requireAdmin } from "../lib/auth";
 import { computedDropStatus, hasDropHistory, isCustomerVisible, isUpcomingDrop } from "./model";
 import { getCategoryLaunches } from "../settings/launch";
+import { generateUnsubscribeToken } from "../notifications/unsubscribe";
 import { actorEmail } from "./audit";
 import { countDropAlerts, listCatalogVariants, patchVariantAudited, requireActiveVariant, requireVariant, requireVersion, resolveProduct } from "./shared";
 import { adminDropRow, dropStatusValidator, dropSubscriberRow, variantWithSubscribers } from "./validators";
@@ -100,6 +101,7 @@ export const subscribeToDropAlert = mutation({
       clerkUserId: args.clerkUserId,
       locale: args.locale,
       createdAt: Date.now(),
+      unsubscribeToken: generateUnsubscribeToken(),
     });
 
     return { success: true, alreadySubscribed: false, id };

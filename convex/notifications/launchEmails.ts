@@ -3,11 +3,12 @@
 /** Sends the "now live" emails for a category's waitlist (ADR 0022). Rows were stamped by `claimLaunchEmails`. */
 import { v } from "convex/values";
 import React from "react";
-import { render } from "@react-email/render";
+import { renderEmail } from "./templates/layout/renderEmail";
 import { internalAction } from "../_generated/server";
 import { resend } from "./emails";
 import { categoryValidator } from "../settings/launch";
 import { CategoryLaunchEmail, categoryLaunchSubject } from "./templates/CategoryLaunchEmail";
+import { launchEmailUnsubscribe } from "./unsubscribe";
 
 const SENDER = process.env.RESEND_FROM_EMAIL || "Good Luck Alerts <onboarding@resend.dev>";
 const SHOP_CATEGORY = { headwear: "caps", apparel: "tees" } as const;
@@ -21,6 +22,7 @@ export const sendLaunchEmails = internalAction({
         contact: v.string(),
         locale: v.union(v.literal("en"), v.literal("es")),
         name: v.optional(v.string()),
+        unsubscribeToken: v.string(),
       })
     ),
   },
@@ -31,12 +33,23 @@ export const sendLaunchEmails = internalAction({
       if (!r.contact.includes("@")) continue;
       try {
         const shopUrl = `${baseUrl}/${r.locale}/products?category=${SHOP_CATEGORY[category]}`;
-        const html = await render(React.createElement(CategoryLaunchEmail, { locale: r.locale, category, name: r.name, shopUrl }));
+        // Marketing email: a working opt-out link in the signature and one-click headers (RFC 8058).
+        const unsubscribe = launchEmailUnsubscribe({
+          siteUrl: baseUrl,
+          convexSiteUrl: process.env.CONVEX_SITE_URL,
+          locale: r.locale,
+          token: r.unsubscribeToken,
+        });
+        const email = await renderEmail(
+          React.createElement(CategoryLaunchEmail, { locale: r.locale, category, name: r.name, shopUrl, unsubscribeUrl: unsubscribe.pageUrl })
+        );
         await resend.sendEmail(ctx, {
           from: SENDER,
           to: r.contact,
           subject: categoryLaunchSubject(r.locale, category),
-          html,
+          html: email.html,
+          text: email.text,
+          headers: unsubscribe.headers,
           idempotencyKey: `category-launch-${r.id}`,
         });
       } catch (error) {

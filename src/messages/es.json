@@ -83,7 +83,7 @@
     "tax": "Impuesto estimado",
     "total": "Total",
     "checkoutStripe": "Pagar con Tarjeta / Apple Pay",
-    "secureCheckout": "Garantía de Autenticidad • Devoluciones en 30 Días",
+    "secureCheckout": "Garantía de Autenticidad",
     "stockAdjusted": "Cantidad ajustada al inventario disponible",
     "onlyXAvailable": "Solo {count} disponibles",
     "soldOutItem": "Agotado"
@@ -185,7 +185,6 @@
     "specCare": "Cuidados",
     "specCareVal": "Limpieza localizada con paño húmedo. Secar a la sombra.",
     "freeShipping": "Envío gratis a EE. UU. en {threshold} o más artículos",
-    "guarantee": "Devoluciones dentro de 30 días desde la entrega, sin usar y con etiquetas",
     "otherColorwaysTitle": "Explora los 16 Colores",
     "otherColorwaysSubtitle": "Encuentra el contraste ideal para tu rotación.",
     "inspectBlueprint": "Especificaciones Completas",
@@ -926,7 +925,7 @@
     "printBack": "Estampado completo en la espalda",
     "printBody": "Serigrafía de alta densidad que aguanta lavado tras lavado.",
     "teeCare": "Lavar en frío al revés. Secar colgada o en secadora a baja temperatura.",
-    "shippingBody": "Se envía en 24 horas. El envío estándar con rastreo en EE. UU. llega en 2–5 días hábiles, gratis con {threshold} o más artículos. Devoluciones dentro de 30 días desde la entrega, sin usar y con etiquetas, para un reembolso. Tú pagas el envío de la devolución, salvo que el artículo llegue defectuoso o equivocado. Para un cambio, devuelve el artículo y haz un pedido nuevo.",
+    "shippingBody": "Se envía en 24 horas. El envío estándar con rastreo en EE. UU. llega en 2–5 días hábiles, gratis con {threshold} o más artículos. ¿Algún problema con tu pedido? Escríbenos y lo resolvemos.",
     "moreCaps": "Más gorras",
     "moreTees": "Más playeras"
   },
@@ -1026,6 +1025,20 @@
     "minutes": "Min",
     "seconds": "Seg",
     "droppingNow": "Saliendo ahora…"
+  },
+  "unsubscribe": {
+    "metaTitle": "Darse de baja | Good Luck",
+    "working": "Dándote de baja…",
+    "doneTitle": "Te diste de baja",
+    "doneBody": "Ya no recibirás avisos de lanzamientos ni de drops de Good Luck. Los correos sobre tus pedidos, como recibos y avisos de envío, siguen llegando.",
+    "alreadyTitle": "Ya te habías dado de baja",
+    "alreadyBody": "No te enviaremos avisos de lanzamientos ni de drops. No tienes que hacer nada más.",
+    "invalidTitle": "Este enlace no funciona",
+    "invalidBody": "El enlace para darte de baja está incompleto o ya no es válido. Usa el enlace Darse de baja al final de tu correo más reciente de Good Luck.",
+    "errorTitle": "Algo salió mal",
+    "errorBody": "No pudimos darte de baja en este momento. Inténtalo de nuevo.",
+    "retry": "Intentar de nuevo",
+    "backToShop": "Volver a la tienda"
   },
   "legal": {
     "lastUpdated": "Última actualización: {date}",
