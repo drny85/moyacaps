@@ -1,7 +1,7 @@
 /**
  * Stripe settlement writes (ADR 0006, ADR 0010): paid sessions become paid orders,
  * refunds and disputes are recorded, and Stripe customer/invoice ids are attached.
- * Called only by the Stripe actions (stripeWebhook, stripeCheckout).
+ * Called only by the Stripe actions (payments/webhook, payments/checkout).
  */
 import { internalMutation } from "../_generated/server";
 import { v } from "convex/values";
