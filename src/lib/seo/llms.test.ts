@@ -12,10 +12,12 @@ const SHIPPING = { flatShippingFeeUsd: 8, freeShippingThresholdUnits: 2 };
 describe("llms.txt", () => {
   const txt = buildLlmsTxt({ products: [cap, tee], launches: ALL_LIVE, shipping: SHIPPING, base: BASE });
 
-  it("starts with the brand as an H1 and a blockquote summary", () => {
+  it("starts with the brand as an H1 and a blockquote summary that defines 0880", () => {
     const [h1, , summary] = txt.split("\n");
     expect(h1).toBe("# Good Luck");
     expect(summary.startsWith("> ")).toBe(true);
+    expect(summary).toContain("nobody saw anything");
+    expect(txt).toContain(`${BASE}/en/about`);
   });
 
   it("links each live product with its price", () => {

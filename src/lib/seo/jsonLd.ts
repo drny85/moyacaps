@@ -20,7 +20,8 @@ export function organizationJsonLd(base: string): JsonLd {
     alternateName: "Good Luck Co.",
     url: base,
     logo: `${base}/brand/logo-512.png`,
-    description: "New York streetwear brand selling signature 0880 caps with high-density 3D puff embroidery and heavyweight graphic tees.",
+    description:
+      "New York streetwear brand. 0880 is Dominican street slang for “nobody saw anything,” the unwritten code of silence. Signature 0880 caps with high-density 3D puff embroidery and heavyweight graphic tees.",
     areaServed: "US",
     sameAs: [INSTAGRAM_URL],
     contactPoint: {

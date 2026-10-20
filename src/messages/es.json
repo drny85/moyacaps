@@ -91,7 +91,7 @@
   "story": {
     "eyebrow": "EL MITO 0880",
     "title": "La Suerte y el Carácter Rebelde",
-    "part1": "Good Luck nace de la unión entre la superstición y la cultura urbana de la calle. La herradura orientada hacia arriba retiene la fortuna; el trébol de cuatro hojas desafía las probabilidades; el diablo con su tridente te recuerda jamás dar un paso atrás.",
+    "part1": "0880 es jerga callejera dominicana para “nadie vio nada,” el código de silencio no escrito. Good Luck nace de la unión entre la superstición y la cultura urbana de la calle. La herradura orientada hacia arriba retiene la fortuna; el trébol de cuatro hojas desafía las probabilidades; el diablo con su tridente te recuerda jamás dar un paso atrás.",
     "part2": "Cada gorra se fabrica con algodón de máxima resistencia teñido a medida y refuerzo de corona frontal para garantizar que conserve su horma perfecta con el paso del tiempo.",
     "stat1Label": "Puntadas Táctiles",
     "stat1Value": "38,000+",
@@ -151,7 +151,8 @@
     "currencyNote": "Precios expresados en {currency}. Conversión disponible.",
     "terms": "Términos y Condiciones",
     "privacy": "Política de Privacidad",
-    "legalNav": "Legal"
+    "legalNav": "Legal",
+    "about": "Sobre nosotros"
   },
   "pdp": {
     "breadcrumbHome": "Inicio",
@@ -1265,6 +1266,35 @@
             "¿Preguntas o solicitudes sobre tu privacidad? Escríbenos a <email>{address}</email>."
           ]
         }
+      }
+    }
+  },
+  "about": {
+    "metaTitle": "Qué Significa 0880 | Sobre Good Luck",
+    "metaDescription": "En la jerga callejera dominicana, 0880 significa “nadie vio nada”: el código de silencio no escrito. Good Luck 0880 es una marca de streetwear de Nueva York con gorras de bordado 3D y playeras heavyweight.",
+    "eyebrow": "Sobre Good Luck",
+    "title": "Qué Significa 0880",
+    "lead": "En la jerga callejera dominicana, 0880 significa “nadie vio nada.” Se refiere a un código de silencio no escrito: un muro estricto de testigos que se quedan callados sobre lo que pasó.",
+    "sections": {
+      "brand": {
+        "heading": "La marca",
+        "body": "Good Luck 0880 es una marca de streetwear de Nueva York construida sobre ese código. Vendemos gorras y playeras heavyweight en línea, en inglés y español."
+      },
+      "symbols": {
+        "heading": "Los símbolos",
+        "body": "La herradura hacia arriba retiene la fortuna. El trébol de cuatro hojas desafía las probabilidades. El diablo con su tridente significa no dar nunca un paso atrás."
+      },
+      "make": {
+        "heading": "Lo que hacemos",
+        "body": "Gorras con bordado 3D de alta densidad y corona estructurada y reforzada, y playeras heavyweight con corte boxy y estampado de alta densidad."
+      },
+      "shipping": {
+        "heading": "Dónde enviamos",
+        "body": "Enviamos a los 50 estados de EE. UU. y Washington, DC."
+      },
+      "contact": {
+        "heading": "Contacto",
+        "body": "Escríbenos a <email>{address}</email> o búscanos en <ig>Instagram</ig>."
       }
     }
   }

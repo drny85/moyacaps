@@ -74,6 +74,7 @@ describe("structured data", () => {
     expect(ld.description).toMatch(/tees/i);
     expect(ld.areaServed).toBe("US");
     expect(ld.sameAs).toEqual(["https://www.instagram.com/goodluckcaps/"]);
+    expect(ld.description).toContain("nobody saw anything");
   });
 
   it("has no sitelinks SearchAction pointing at a product slug", () => {
@@ -93,6 +94,7 @@ describe("sitemap", () => {
   it("lists every static page and visible product once per locale", () => {
     expect(entries).toHaveLength((STATIC_PAGES.length + 2) * 2);
     expect(urls).toContain(`${BASE}/es/products/${tee.id}`);
+    expect(urls).toContain(`${BASE}/es/about`);
     expect(new Set(urls).size).toBe(urls.length);
   });
 

@@ -22,6 +22,7 @@ export const STATIC_PAGES: Page[] = [
   { path: "/products?category=caps", changeFrequency: "daily", priority: 0.8 },
   { path: "/products?category=tees", changeFrequency: "daily", priority: 0.8 },
   { path: "/try-on", changeFrequency: "monthly", priority: 0.6 },
+  { path: "/about", changeFrequency: "yearly", priority: 0.5 },
   { path: "/track", changeFrequency: "yearly", priority: 0.3 },
   { path: "/terms", changeFrequency: "yearly", priority: 0.2 },
   { path: "/privacy", changeFrequency: "yearly", priority: 0.2 },

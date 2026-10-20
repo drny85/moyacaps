@@ -63,6 +63,10 @@ export function Footer() {
         <div className="text-xs text-zinc-500 dark:text-zinc-600 text-center md:text-right">
           <p>© {new Date().getFullYear()} Good Luck. {t("rights")}</p>
           <nav aria-label={t("legalNav")} className="mt-2 flex items-center justify-center md:justify-end gap-3">
+            <Link href="/about" className="hover:text-zinc-900 dark:hover:text-white underline-offset-2 hover:underline transition-colors">
+              {t("about")}
+            </Link>
+            <span className="text-zinc-300 dark:text-zinc-700">•</span>
             <Link href="/terms" className="hover:text-zinc-900 dark:hover:text-white underline-offset-2 hover:underline transition-colors">
               {t("terms")}
             </Link>
