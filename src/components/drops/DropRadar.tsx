@@ -361,15 +361,15 @@ export function DropRadar() {
           <div className="p-4 rounded-2xl glass-dark border border-black/5 dark:border-white/5 space-y-1">
             <div className="flex items-center gap-2 text-[10px] font-mono text-zinc-500 font-bold uppercase">
               <Truck className="w-3.5 h-3.5 text-moya-red" />
-              <span>{locale === "es" ? "ENVÍO EXPRESS EE. UU." : "US DOMESTIC EXPRESS"}</span>
+              <span>{locale === "es" ? "ENVÍO ESTÁNDAR EE. UU." : "US STANDARD SHIPPING"}</span>
             </div>
             <div className="font-display font-bold text-sm text-zinc-900 dark:text-white">
               {t("freeShippingOn", { threshold: freeShippingThresholdUnits })}
             </div>
             <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
               {locale === "es"
-                ? "Entrega express rastreada en los 50 estados de EE. UU."
-                : "Tracked express courier delivery across all 50 US states."}
+                ? "Entrega rastreada en 2–5 días hábiles en los 50 estados y DC."
+                : "Tracked delivery in 2–5 business days across all 50 states and DC."}
             </p>
           </div>
 

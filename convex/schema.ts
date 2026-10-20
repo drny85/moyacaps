@@ -229,7 +229,7 @@ export default defineSchema({
     orderNumber: v.string(),
     // lead_created | link_generated | link_dispatched | stripe_settled | zelle_settled |
     // double_settlement_attempted | session_expired | charge_refunded | dispute_created |
-    // cancelled | refunded | webhook_orphan | inventory_released
+    // cancelled | refunded | webhook_orphan | inventory_released | out_of_territory
     type: v.string(),
     stripeEventId: v.optional(v.string()),
     stripeSessionId: v.optional(v.string()),

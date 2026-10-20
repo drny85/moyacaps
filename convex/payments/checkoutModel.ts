@@ -1,12 +1,13 @@
 /**
  * Pure checkout rules shared by the Stripe checkout actions (ADR 0002, ADR 0010, ADR 0015):
- * cart validation with bilingual errors, line naming, tax codes, and the Stripe line
+ * cart validation with bilingual errors, line naming, category tax codes, and the Stripe line
  * item / shipping / customer fragments. Only Stripe *types* are imported, so this module
  * runs anywhere and is covered by checkoutModel.test.ts.
  */
 import { ConvexError } from "convex/values";
 import type Stripe from "stripe";
 import { isPurchaseBlockedByDrop } from "../catalog/model";
+import { CATEGORIES, DEFAULT_TAX_CODE, type Category } from "../catalog/rules";
 
 export type CheckoutLineItemInput = {
   variantId: string;
@@ -163,6 +164,12 @@ export function validateCartLines(
       throw new ConvexError(copy.insufficient(es, variantName, stock));
     }
 
+    // Stripe Tax needs a code per line; refuse before any Checkout Hold is placed.
+    const taxCode = productTaxCode(variant);
+    if (!taxCode) {
+      throw new ConvexError(missingTaxCodeError(variantName, es));
+    }
+
     const unitPrice: number = typeof variant.priceUsd === "number" ? variant.priceUsd : FALLBACK_UNIT_PRICE_USD;
 
     totalItems += qty;
@@ -174,7 +181,7 @@ export function validateCartLines(
       quantity: qty,
       price: unitPrice,
       image: variant.image,
-      taxCode: variant.taxCode,
+      taxCode,
       category: variant.category,
       silhouette: variant.silhouette,
       ...(item.colorway ? { colorway: item.colorway } : {}),
@@ -186,42 +193,32 @@ export function validateCartLines(
 }
 
 /**
- * Resolves the appropriate Stripe Product Tax Code (PTC).
- * - "txcd_30060006": Hats, caps, beanies, headwear
- * - "txcd_30011000": Clothing & footwear (hoodies, sweaters, sweatshirts, t-shirts, jackets)
+ * Stripe Product Tax Code for a line: the variant's own `taxCode`, else its category's
+ * (Caps `txcd_30060006`, Tees `txcd_30011000`). No name or silhouette guessing; null when
+ * the product has neither, and checkout refuses it.
  */
-export function resolveProductTaxCode(item: {
-  taxCode?: string;
-  category?: string;
-  silhouette?: string;
-  name?: string;
-}): string {
-  if (item.taxCode && item.taxCode.trim().length > 0) {
-    return item.taxCode.trim();
-  }
+export function productTaxCode(item: { taxCode?: string; category?: string }): string | null {
+  const own = item.taxCode?.trim();
+  if (own) return own;
+  const category = item.category as Category | undefined;
+  return category && (CATEGORIES as readonly string[]).includes(category) ? DEFAULT_TAX_CODE[category] : null;
+}
 
-  const descriptor = `${item.category || ""} ${item.silhouette || ""} ${item.name || ""}`.toLowerCase();
+/** Bilingual message for a product checkout cannot tax (a catalog mistake, not the Customer's). */
+export function missingTaxCodeError(variantName: string, es: boolean): string {
+  return es
+    ? `"${variantName}" no se puede comprar en este momento. Escríbenos a soporte.`
+    : `"${variantName}" can't be purchased right now. Please contact support.`;
+}
 
-  // General apparel (hoodies, sweaters, knitwear, jackets, shirts)
-  if (
-    descriptor.includes("hoodie") ||
-    descriptor.includes("sweater") ||
-    descriptor.includes("sweatshirt") ||
-    descriptor.includes("jacket") ||
-    descriptor.includes("fleece") ||
-    descriptor.includes("tee") ||
-    descriptor.includes("t-shirt") ||
-    descriptor.includes("shirt") ||
-    descriptor.includes("pant") ||
-    descriptor.includes("short") ||
-    descriptor.includes("clothing") ||
-    descriptor.includes("apparel")
-  ) {
-    return "txcd_30011000"; // Clothing & Footwear
-  }
-
-  // Default to Hats & Headwear for Good Luck Caps
-  return "txcd_30060006"; // Hats
+/** `productTaxCode`, throwing the bilingual ConvexError when the product has no code. */
+export function resolveProductTaxCode(
+  item: { taxCode?: string; category?: string; name: string },
+  locale = "en"
+): string {
+  const code = productTaxCode(item);
+  if (!code) throw new ConvexError(missingTaxCodeError(item.name, locale === "es"));
+  return code;
 }
 
 /**
@@ -250,7 +247,8 @@ export function buildLineItems(
 }
 
 /**
- * Single shipping option with free/paid presentation. Shared across checkout paths.
+ * The one shipping option: standard shipping, 2–5 business days, free at or above the
+ * unit threshold and the flat fee otherwise. Shared across checkout paths.
  */
 export function buildShippingOptions(
   shippingFee: number,
@@ -263,14 +261,14 @@ export function buildShippingOptions(
       amount: Math.round(shippingFee * 100),
       currency: "usd",
     },
-    display_name: freeShipping ? "Free US Express Delivery" : "US Tracked Express Courier",
+    display_name: freeShipping ? "Free standard shipping" : "Standard shipping",
     tax_code: "txcd_92010001", // Shipping / delivery fee
     tax_behavior: "exclusive",
   };
   if (withDeliveryEstimate) {
     shippingRate.delivery_estimate = {
       minimum: { unit: "business_day", value: 2 },
-      maximum: { unit: "business_day", value: 4 },
+      maximum: { unit: "business_day", value: 5 },
     };
   }
   return [{ shipping_rate_data: shippingRate }];
@@ -295,8 +293,11 @@ export function itemSummary(items: Array<{ quantity: number; name: string }>): s
   return items.map((i) => `${i.quantity}x ${i.name}`).slice(0, 3).join(", ").slice(0, 450);
 }
 
-export const INVOICE_FOOTER =
-  "Good Luck 0880 | Bespoke NYC Headwear | Support: goodluckcaps.com | All limited drop items are serialized and final sale.";
+/** The Returns policy in one line, for Stripe-hosted pages and invoices. */
+export const RETURN_POLICY_SUMMARY =
+  "Returns within 30 days of delivery, unworn with tags, for a refund. Return shipping is paid by the customer unless the item is defective or wrong.";
+
+export const INVOICE_FOOTER = `Good Luck 0880 | NYC Headwear | Support: goodluckcaps.com | ${RETURN_POLICY_SUMMARY}`;
 
 /** "(1 item)" / "(3 caps)" style suffix used in invoice and payment descriptions. */
 export const countLabel = (count: number, noun: "item" | "cap") => `(${count} ${noun}${count > 1 ? "s" : ""})`;
