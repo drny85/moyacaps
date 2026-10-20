@@ -27,6 +27,7 @@ import {
   SUPPORT_EMAIL,
 } from "./orderEmails";
 import { PRIMARY_ADMIN_EMAIL, requireAdminInAction } from "../lib/auth";
+import { resolveAdminRecipient } from "./adminRecipient";
 
 export const resend = new Resend(components.resend, {
   testMode: false,
@@ -34,8 +35,14 @@ export const resend = new Resend(components.resend, {
 
 const DEFAULT_SENDER =
   process.env.RESEND_FROM_EMAIL || "Good Luck Alerts <onboarding@resend.dev>";
-const DEFAULT_ADMIN_EMAIL =
-  process.env.ADMIN_NOTIFICATION_EMAIL || PRIMARY_ADMIN_EMAIL;
+/** The admin alerts inbox, read at send time so ADMIN_NOTIFICATION_EMAIL changes apply at once. */
+function adminEmail(): string {
+  const recipient = resolveAdminRecipient(process.env.ADMIN_NOTIFICATION_EMAIL, PRIMARY_ADMIN_EMAIL);
+  if (!recipient.fromEnv) {
+    console.warn("[Email] ADMIN_NOTIFICATION_EMAIL is not set to one valid address; sending admin alerts to the primary Administrator.");
+  }
+  return recipient.email;
+}
 // Customer emails say "reply to this email": replies go to the orders inbox, not the sender.
 const CUSTOMER_REPLY_TO = [SUPPORT_EMAIL];
 
@@ -91,7 +98,7 @@ export const sendAdminOrderAlert = internalAction({
   returns: emailResult,
   handler: async (ctx, args) => {
     try {
-      const recipient = DEFAULT_ADMIN_EMAIL;
+      const recipient = adminEmail();
       const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://goodluckcaps.com";
       const adminDashboardUrl = `${baseUrl}/admin/orders/${args.orderNumber}`;
 
@@ -209,7 +216,7 @@ export const sendTestAdminOrderAlert = action({
   handler: async (ctx, args) => {
     const identity = await requireAdminInAction(ctx);
 
-    const recipient = args.targetEmail || DEFAULT_ADMIN_EMAIL;
+    const recipient = args.targetEmail || adminEmail();
     const testOrderNum = `TEST-${Math.floor(1000 + Math.random() * 9000)}`;
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://goodluckcaps.com";
     const adminDashboardUrl = `${baseUrl}/admin/orders/${testOrderNum}`;
@@ -284,7 +291,7 @@ export const sendAdminDisputeAlert = internalAction({
   returns: emailResult,
   handler: async (ctx, args) => {
     try {
-      const recipient = DEFAULT_ADMIN_EMAIL;
+      const recipient = adminEmail();
       const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://goodluckcaps.com";
       const adminDashboardUrl = `${baseUrl}/admin/orders/${args.orderNumber}`;
       const stripeDisputeUrl = `https://dashboard.stripe.com/disputes/${args.disputeId}`;
@@ -359,7 +366,7 @@ export const sendAdminTerritoryAlert = internalAction({
 
       const emailId = await resend.sendEmail(ctx, {
         from: DEFAULT_SENDER,
-        to: DEFAULT_ADMIN_EMAIL,
+        to: adminEmail(),
         subject: `⚠️ [Refund Before Packing] Order #${args.orderNumber} ships outside the Fulfillment Territory`,
         html,
         idempotencyKey: `territory-${args.orderNumber}`,
@@ -552,7 +559,7 @@ export const sendDeliveryExceptionEmails = internalAction({
       }
     };
 
-    const administrator = await send("administrator", DEFAULT_ADMIN_EMAIL);
+    const administrator = await send("administrator", adminEmail());
     const customer =
       args.customerEmail && args.customerEmail.includes("@") ? await send("customer", args.customerEmail) : undefined;
     return { administrator, ...(customer && { customer }) };
@@ -622,7 +629,7 @@ export const sendAdminAlert = internalAction({
       );
       const emailId = await resend.sendEmail(ctx, {
         from: DEFAULT_SENDER,
-        to: DEFAULT_ADMIN_EMAIL,
+        to: adminEmail(),
         subject: args.alert.subject,
         html,
         idempotencyKey: args.alert.idempotencyKey,
