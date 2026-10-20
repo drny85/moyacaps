@@ -155,8 +155,6 @@ describe("API surface lockdown (security regression locks)", () => {
     (() => {
       // @ts-expect-error attachStripeCustomerInternal must remain internal
       void api.orders.settlement.attachStripeCustomerInternal;
-      // @ts-expect-error unsetLegacyOrderStatus must remain internal
-      void api.orders.migrations.unsetLegacyOrderStatus;
       // @ts-expect-error cancelOrder must remain internal
       void api.orders.functions.cancelOrder;
       // @ts-expect-error cancelOrderAdmin must remain internal

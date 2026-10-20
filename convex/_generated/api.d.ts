@@ -55,7 +55,6 @@ import type * as orders_deskFilters from "../orders/deskFilters.js";
 import type * as orders_fulfillment from "../orders/fulfillment.js";
 import type * as orders_labels from "../orders/labels.js";
 import type * as orders_functions from "../orders/functions.js";
-import type * as orders_migrations from "../orders/migrations.js";
 import type * as orders_model from "../orders/model.js";
 import type * as orders_settlement from "../orders/settlement.js";
 import type * as orders_shared from "../orders/shared.js";
@@ -137,7 +136,6 @@ declare const fullApi: ApiFromModules<{
   "orders/fulfillment": typeof orders_fulfillment;
   "orders/labels": typeof orders_labels;
   "orders/functions": typeof orders_functions;
-  "orders/migrations": typeof orders_migrations;
   "orders/model": typeof orders_model;
   "orders/settlement": typeof orders_settlement;
   "orders/shared": typeof orders_shared;
