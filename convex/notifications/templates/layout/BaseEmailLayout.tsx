@@ -1,6 +1,6 @@
 import React from "react";
 import { Html, Head, Preview, Body, Container, Section, Img, Text, Link, Hr } from "@react-email/components";
-import { BRAND, LOGO_ALT, LOGO_URL, SITE_URL, STORE_ADDRESS, SUPPORT_EMAIL, type EmailLocale } from "./brand";
+import { BRAND, BRAND_RED, LOGO_URL, SITE_URL, SUPPORT_EMAIL, type EmailLocale } from "./brand";
 import { layoutStrings } from "./strings";
 import { colors, fonts } from "./tokens";
 
@@ -40,9 +40,26 @@ export function BaseEmailLayout({
       <Body style={body}>
         <Container style={container}>
           <Section style={header}>
-            <Link href={siteUrl}>
-              <Img src={LOGO_URL} alt={LOGO_ALT} width="72" height="72" style={logo} />
-            </Link>
+            {/* Same lockup as the storefront footer: mark, GOOD (white) LUCK (red), 0880 badge. */}
+            <table role="presentation" align="center" cellPadding={0} cellSpacing={0} style={{ margin: "0 auto" }}>
+              <tbody>
+                <tr>
+                  <td style={{ verticalAlign: "middle", paddingRight: "8px" }}>
+                    <Link href={siteUrl}>
+                      <Img src={LOGO_URL} alt="" width="28" height="28" style={logo} />
+                    </Link>
+                  </td>
+                  <td style={{ verticalAlign: "middle" }}>
+                    <Link href={siteUrl} style={wordmark}>
+                      GOOD<span style={{ color: BRAND_RED }}>LUCK</span>
+                    </Link>
+                  </td>
+                  <td style={{ verticalAlign: "middle", paddingLeft: "8px" }}>
+                    <span style={badge0880}>0880</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </Section>
 
           {children}
@@ -67,7 +84,6 @@ export function BaseEmailLayout({
                   {SUPPORT_EMAIL}
                 </Link>
               </Text>
-              <Text style={footerAddress}>{STORE_ADDRESS}</Text>
               {unsubscribeUrl && (
                 <Text style={footerAddress}>
                   {t.unsubscribeReason}{" "}
@@ -93,7 +109,27 @@ export default BaseEmailLayout;
 const body = { backgroundColor: colors.background, fontFamily: fonts.sans, margin: "0 auto", padding: "32px 0" };
 const container = { margin: "0 auto", padding: "0 20px", maxWidth: "580px" };
 const header = { textAlign: "center" as const, padding: "0 0 20px 0" };
-const logo = { display: "inline-block", margin: "0 auto", borderRadius: "16px" };
+const logo = { display: "block", border: 0 };
+const wordmark = {
+  fontSize: "20px",
+  fontWeight: "800",
+  letterSpacing: "-0.3px",
+  color: colors.text,
+  textDecoration: "none",
+  lineHeight: "28px",
+};
+const badge0880 = {
+  display: "inline-block",
+  fontFamily: fonts.mono,
+  fontSize: "9px",
+  fontWeight: "700",
+  lineHeight: "12px",
+  padding: "2px 6px",
+  borderRadius: "6px",
+  color: "#FB7185",
+  backgroundColor: "rgba(159, 18, 57, 0.3)",
+  border: "1px solid rgba(225, 29, 72, 0.3)",
+};
 const rule = { borderColor: colors.border, margin: "8px 0 20px 0" };
 const footer = { textAlign: "center" as const, padding: "0 0 8px 0" };
 const footerBrand = { fontSize: "13px", fontWeight: "700", letterSpacing: "3px", color: colors.text, margin: "0 0 8px 0" };

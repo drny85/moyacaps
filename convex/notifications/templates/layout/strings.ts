@@ -17,8 +17,8 @@ export type LayoutStrings = {
 const en: LayoutStrings = {
   shop: "Shop",
   trackOrder: "Track order",
-  questions: "Questions? Reply to this email or write to",
-  policy: "Standard shipping 2–5 business days · 30-day returns for unworn items",
+  questions: "Questions? Write to us at",
+  policy: "Standard shipping 2–5 business days",
   adminFooter: "Good Luck store operations · internal alert, do not forward to customers",
   unsubscribe: "Unsubscribe",
   unsubscribeReason: "You are receiving this because you asked to be notified by Good Luck.",
@@ -27,8 +27,8 @@ const en: LayoutStrings = {
 const es: LayoutStrings = {
   shop: "Tienda",
   trackOrder: "Rastrear pedido",
-  questions: "¿Preguntas? Responde a este correo o escribe a",
-  policy: "Envío estándar de 2 a 5 días hábiles · devoluciones en 30 días sin usar",
+  questions: "¿Preguntas? Escríbenos a",
+  policy: "Envío estándar de 2 a 5 días hábiles",
   adminFooter: "Operaciones de la tienda Good Luck · alerta interna, no reenviar a clientes",
   unsubscribe: "Darse de baja",
   unsubscribeReason: "Recibes este correo porque pediste que Good Luck te avisara.",

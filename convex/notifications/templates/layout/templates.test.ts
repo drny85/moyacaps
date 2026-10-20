@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import React from "react";
 import { renderEmail } from "./renderEmail";
-import { STORE_ADDRESS, SUPPORT_EMAIL, LOGO_URL } from "./brand";
+import { BRAND_RED, SUPPORT_EMAIL, LOGO_URL } from "./brand";
 import { layoutStrings } from "./strings";
 import { AdminAlertEmail } from "../AdminAlertEmail";
 import { AdminDisputeAlertEmail } from "../AdminDisputeAlert";
@@ -154,13 +154,20 @@ describe("every email is wrapped in BaseEmailLayout", () => {
       expect(html).not.toContain("Good Luck 0880");
       expect(html).not.toMatch(/background-color:\s*(#09090b|#0a0a0a|#111111)|Operations HQ/i);
 
+      // Storefront lockup: GOOD (white) + LUCK (brand red) + 0880 badge beside the logo.
+      expect(html).toMatch(new RegExp(`GOOD<span[^>]*color:\\s*${BRAND_RED}[^>]*>LUCK</span>`, "i"));
+      expect(html).toContain(">0880<");
+      // Not yet: no postal address, no returns window, no "reply to this email".
+      expect(html).not.toMatch(/Clay Ave|30-day|30 days|30 días|reply to this email|responde a este correo/i);
+      expect(text).not.toMatch(/Clay Ave|30-day|30 days|reply to this email/i);
+
       if (audience === "customer") {
-        expect(html).toContain(STORE_ADDRESS);
         expect(html).toContain(`mailto:${SUPPORT_EMAIL}`);
+        expect(html).toContain(t.policy);
         expect(html).not.toContain(t.adminFooter);
       } else {
         expect(html).toContain(t.adminFooter);
-        expect(html).not.toContain(STORE_ADDRESS);
+        expect(html).not.toContain(t.policy);
       }
 
       expect(text.length).toBeGreaterThan(50);

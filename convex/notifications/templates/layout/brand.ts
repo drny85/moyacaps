@@ -6,11 +6,10 @@ export { BRAND, POLICY_LINE, SUPPORT_EMAIL } from "../../orderEmails";
 
 export const SITE_URL = "https://goodluckcaps.com";
 
-/** Hosted PNG (Gmail does not render SVG). Clients that block images show the alt text. */
+/** Hosted PNG (Gmail does not render SVG). Decorative: the GOOD LUCK wordmark beside it carries the name. */
 export const LOGO_URL = `${SITE_URL}/brand/logo-512.png`;
-export const LOGO_ALT = "GOOD LUCK";
 
-/** Postal address: required by CAN-SPAM in marketing email, shown in every customer signature. */
-export const STORE_ADDRESS = "1450 Clay Ave, Bronx, NY 10456";
+/** Brand red (the storefront's moya-red), used for the wordmark under the logo. */
+export const BRAND_RED = "#E11D48";
 
 export type EmailLocale = "en" | "es";
