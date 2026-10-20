@@ -49,6 +49,14 @@ describe("llms.txt", () => {
     expect(txt).toContain("https://www.instagram.com/goodluckcaps/");
   });
 
+  it("summarizes the final-sale return policy, with no returns window", () => {
+    const returns = txt.slice(txt.indexOf("## Returns"), txt.indexOf("## Policies"));
+    expect(returns).toMatch(/All sales are final/);
+    expect(returns).toMatch(/never delivered: full refund/);
+    expect(returns).toMatch(/defective/);
+    expect(returns).not.toMatch(/\d+ days?/);
+  });
+
   it("still describes the store when the catalog is unavailable", () => {
     const bare = buildLlmsTxt({ products: [], launches: undefined, shipping: undefined, base: BASE });
     expect(bare).toContain("# Good Luck");
