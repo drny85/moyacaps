@@ -130,6 +130,13 @@ describe("productDescription admin override", () => {
     expect(productDescription({ ...base, descriptionEn: "Custom" }, "es")).toBe("Custom");
   });
 
+  it("states a tee's own fabric instead of a fixed GSM range", () => {
+    const shirt = { ...base, silhouette: "tee", fabricEn: "Heavyweight 300 GSM Combed Cotton", fabricEs: "Algodón 300 GSM" } as const;
+    expect(productDescription(shirt, "en")).toContain("Heavyweight 300 GSM Combed Cotton");
+    expect(productDescription(shirt, "es")).toContain("Algodón 300 GSM");
+    expect(productDescription({ ...base, silhouette: "tee" }, "en")).not.toMatch(/GSM/);
+  });
+
   it("keeps the generated copy when the description is blank", () => {
     expect(productDescription({ ...base, descriptionEn: "", descriptionEs: " " }, "en")).toContain("Good Luck 0880 cap");
   });

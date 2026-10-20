@@ -54,7 +54,8 @@ export async function generateMetadata({
       title,
       description,
       images: [imageUrl],
-      creator: process.env.NEXT_PUBLIC_TWITTER_HANDLE || "@goodluckcaps",
+      // Only a real X account: x.com/goodluckcaps does not exist
+      ...(process.env.NEXT_PUBLIC_TWITTER_HANDLE ? { creator: process.env.NEXT_PUBLIC_TWITTER_HANDLE } : {}),
     },
   };
 }

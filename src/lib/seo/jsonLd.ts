@@ -51,9 +51,11 @@ export function productDescription(product: CapVariant, locale: string): string 
   const name = locale === "es" ? product.nameEs : product.nameEn;
   const price = `$${product.priceUsd} USD`;
   if (isTee(product)) {
+    // Weight varies by tee, so quote this tee's own fabric line rather than a store-wide GSM figure
+    const fabric = (locale === "es" ? product.fabricEs : product.fabricEn)?.trim();
     return locale === "es"
-      ? `${name}: playera heavyweight de 280–300 GSM con corte boxy y serigrafía de alta densidad. ${price}.`
-      : `${name}: 280–300 GSM heavyweight tee with a boxy cut and high-density screen print. ${price}.`;
+      ? `${name}: playera heavyweight con corte boxy y serigrafía de alta densidad.${fabric ? ` ${fabric}.` : ""} ${price}.`
+      : `${name}: heavyweight tee with a boxy cut and high-density screen print.${fabric ? ` ${fabric}.` : ""} ${price}.`;
   }
   return locale === "es"
     ? `${name}: gorra Good Luck 0880 con bordado 3D de alta densidad. ${price}.`
