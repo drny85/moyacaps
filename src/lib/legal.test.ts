@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import en from "../messages/en.json";
 import es from "../messages/es.json";
 import { SUPPORT_EMAIL as EMAIL_SUPPORT_ADDRESS } from "../../convex/notifications/orderEmails";
-import { buildSitemap } from "./seo/sitemap";
+import { buildSitemap, NONE_LIVE } from "./seo/sitemap";
 import { countItems, formatLastUpdated, LEGAL_LAST_UPDATED, LEGAL_SECTIONS, SUPPORT_EMAIL } from "./legal";
 
 /** Every key path in a message tree; arrays count as one leaf per item so lengths must match. */
@@ -73,7 +73,7 @@ describe("legal facts", () => {
   });
 
   it("lists both pages in the sitemap in every locale", () => {
-    const urls = buildSitemap([], "https://example.com", new Date(0)).map((e) => e.url);
+    const urls = buildSitemap([], "https://example.com", new Date(0), NONE_LIVE).map((e) => e.url);
     for (const locale of ["en", "es"]) {
       expect(urls).toContain(`https://example.com/${locale}/terms`);
       expect(urls).toContain(`https://example.com/${locale}/privacy`);

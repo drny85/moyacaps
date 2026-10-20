@@ -11,5 +11,7 @@ export async function POST(request: Request) {
     return new Response(null, { status: 401 });
   }
   revalidatePath("/[locale]", "layout");
+  // sitemap.xml sits outside [locale]; without this it lists hidden products for up to an hour
+  revalidatePath("/sitemap.xml");
   return new Response(null, { status: 204 });
 }
