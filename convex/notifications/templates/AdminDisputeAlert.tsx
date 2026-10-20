@@ -13,6 +13,7 @@ import {
   Row,
   Column,
 } from "@react-email/components";
+import { formatStoreDateTime } from "../../lib/storeTime";
 
 export interface AdminDisputeAlertProps {
   orderNumber: string;
@@ -48,13 +49,7 @@ export function AdminDisputeAlertEmail({
     : `🚨 URGENT: Payment dispute opened for Order #${orderNumber} (${currency} $${total.toFixed(2)})`;
 
   const dueByFormatted = evidenceDueBy
-    ? new Date(evidenceDueBy).toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      })
+    ? formatStoreDateTime(evidenceDueBy)
     : "Review in Stripe Dashboard";
 
   return (

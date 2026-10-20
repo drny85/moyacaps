@@ -5,6 +5,7 @@
  */
 import type { Doc } from "../_generated/dataModel";
 import { appendNote } from "./model";
+import { formatStoreDateTime } from "../lib/storeTime";
 import { fulfillmentAfterScan, statusPatch, type FulfillmentStatus, type StatusSource } from "./status";
 
 export type TrackingScan = {
@@ -73,7 +74,7 @@ export function planTrackingUpdate(order: TrackedOrder, scan: TrackingScan, now:
 
   if (trackingStatus === "FAILURE" || trackingStatus === "RETURNED") {
     patch.trackingFailedAt = now;
-    const alertLine = `⚠️ [Carrier ${trackingStatus}] ${scan.statusDetails || "Exception encountered during transit"} (${locationStr || ""}) at ${scan.statusDate || new Date(now).toISOString()}`;
+    const alertLine = `⚠️ [Carrier ${trackingStatus}] ${scan.statusDetails || "Exception encountered during transit"} (${locationStr || ""}) at ${scan.statusDate || formatStoreDateTime(now)}`;
     patch.adminNotes = appendNote(order.adminNotes, alertLine).trim();
     return {
       trackingStatus,

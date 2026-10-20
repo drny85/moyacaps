@@ -29,6 +29,7 @@ import {
 } from "./shared";
 import { orderItemValidator, shippingAddressValidator, successResult } from "./validators";
 import { moneyTakenAlert } from "../notifications/orderEmails";
+import { formatStoreDate } from "../lib/storeTime";
 
 /**
  * Plan 0008 PR 4: a paid Order whose shipping address is outside the Fulfillment Territory
@@ -190,7 +191,7 @@ export const recordStripeDisputeInternal = internalMutation({
 
     if (args.action === "opened") {
       const dueStr = args.evidenceDueBy
-        ? new Date(args.evidenceDueBy).toLocaleDateString()
+        ? formatStoreDate(args.evidenceDueBy)
         : "deadline unknown";
       const disputeMsg = `⚠️ CHARGEBACK DISPUTE: $${args.amount.toFixed(2)} ${args.currency} (${args.reason || "general"}). Status: ${args.status}. Due by: ${dueStr}. Respond in Stripe Dashboard.`;
 

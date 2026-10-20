@@ -271,7 +271,7 @@ describe("Returns", () => {
   });
 
   it("is refused once the window closed", () => {
-    expect(error(planReturn(delivered(0), [], ret("unwanted", false), 31 * DAY))).toBe("The 30-day Return window closed on 1970-01-31.");
+    expect(error(planReturn(delivered(0), [], ret("unwanted", false), 31 * DAY))).toBe("The 30-day Return window closed on Jan 30, 1970.");
   });
 
   it("a change of mind needs the items unworn with tags", () => {

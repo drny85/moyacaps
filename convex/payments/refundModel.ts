@@ -16,6 +16,7 @@ import { v, type Infer } from "convex/values";
 import type { Doc } from "../_generated/dataModel";
 import { latestLabelPurchasedAt, type LabelSource } from "../orders/labels";
 import { statusAxes, type StatusSource, type Transition } from "../orders/status";
+import { formatStoreDate } from "../lib/storeTime";
 
 // ── Ledger shapes ────────────────────────────────────────────────────────────
 
@@ -383,7 +384,7 @@ export function planReturn(
   const closesAt = returnWindowClosesAt(order);
   if (closesAt === undefined) return { ok: false, error: "Order has no label or delivery date to start the Return window." };
   if (nowMs > closesAt) {
-    return { ok: false, error: `The ${RETURN_WINDOW_DAYS}-day Return window closed on ${new Date(closesAt).toISOString().slice(0, 10)}.` };
+    return { ok: false, error: `The ${RETURN_WINDOW_DAYS}-day Return window closed on ${formatStoreDate(closesAt)}.` };
   }
   if (request.reason === "unwanted" && !request.unwornWithTags) {
     return { ok: false, error: "A Return needs the items unworn with tags." };
