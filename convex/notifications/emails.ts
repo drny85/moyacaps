@@ -12,6 +12,8 @@ import { AdminTerritoryAlertEmail } from "./templates/AdminTerritoryAlert";
 import { CustomerReceiptEmail } from "./templates/CustomerReceipt";
 import { OrderDispatchedEmail } from "./templates/OrderDispatchedEmail";
 import { OrderDeliveredEmail } from "./templates/OrderDeliveredEmail";
+import { DeliveryExceptionEmail } from "./templates/DeliveryExceptionEmail";
+import { deliveryExceptionCopy, type EmailAudience } from "./deliveryException";
 import { PRIMARY_ADMIN_EMAIL, requireAdminInAction } from "../lib/auth";
 
 export const resend = new Resend(components.resend, {
@@ -467,5 +469,60 @@ export const sendOrderDeliveredEmail = internalAction({
   },
 });
 
+/**
+ * Delivery Exception or returned to sender (CONTEXT.md): emails the Administrator (Reship or
+ * refund) and, when the order has an email, the Customer. Each send is independent and idempotent.
+ */
+export const sendDeliveryExceptionEmails = internalAction({
+  args: {
+    orderNumber: v.string(),
+    kind: v.union(v.literal("delivery_exception"), v.literal("returned")),
+    customerName: v.optional(v.string()),
+    customerEmail: v.optional(v.string()),
+    carrier: v.string(),
+    trackingNumber: v.string(),
+    details: v.optional(v.string()),
+    location: v.optional(v.string()),
+  },
+  returns: v.object({ administrator: emailResult, customer: v.optional(emailResult) }),
+  handler: async (ctx, args) => {
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://goodluckcaps.com";
+    const send = async (audience: EmailAudience, to: string) => {
+      try {
+        const copy = deliveryExceptionCopy(args.kind, audience, args.orderNumber);
+        const isAdmin = audience === "administrator";
+        const html = await render(
+          React.createElement(DeliveryExceptionEmail, {
+            orderNumber: args.orderNumber,
+            greetingName: isAdmin ? undefined : args.customerName?.split(" ")[0],
+            copy,
+            carrier: args.carrier,
+            trackingNumber: args.trackingNumber,
+            details: args.details,
+            location: args.location,
+            actionUrl: isAdmin
+              ? `${baseUrl}/admin/orders/${args.orderNumber}`
+              : `${baseUrl}/track?order=${encodeURIComponent(args.orderNumber)}`,
+            actionLabel: isAdmin ? "Open order" : "Track your order",
+          })
+        );
+        const emailId = await resend.sendEmail(ctx, {
+          from: DEFAULT_SENDER,
+          to,
+          subject: copy.subject,
+          html,
+          idempotencyKey: `${args.kind}-${audience}-${args.orderNumber}-${args.trackingNumber}`,
+        });
+        return { success: true, emailId };
+      } catch (err: any) {
+        console.error(`[DeliveryException] ${audience} email for ${args.orderNumber} failed:`, err?.message || err);
+        return { success: false, error: err?.message || String(err) };
+      }
+    };
 
-
+    const administrator = await send("administrator", DEFAULT_ADMIN_EMAIL);
+    const customer =
+      args.customerEmail && args.customerEmail.includes("@") ? await send("customer", args.customerEmail) : undefined;
+    return { administrator, ...(customer && { customer }) };
+  },
+});

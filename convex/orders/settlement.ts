@@ -16,7 +16,6 @@ import {
   appendNote,
   decideStripeSettlement,
   hasProcessedWebhookEvent,
-  newTrackingNumber,
   settlementStockAction,
   withWebhookEventId,
 } from "./model";
@@ -102,7 +101,8 @@ export const recordWebhookEventIdInternal = internalMutation({
  * INTERNAL: record a Stripe refund on the order. Sets Payment Status to "refunded" (if 100%
  * refunded) or "partially_refunded", updates refundedAmount, and audits the event. Fulfillment
  * Status is never touched: a delivered order that gets refunded stays delivered.
- * NOTE: Does NOT restock physical inventory automatically (manual inspection required for physical apparel).
+ * Never Restocks: that is a per-line Administrator choice made when the refund is issued
+ * (payments/refundLedger.ts commitRefund). Ledger refunds and Dashboard refunds both land here.
  */
 export const recordStripeRefundInternal = internalMutation({
   args: {
@@ -147,7 +147,7 @@ export const recordStripeRefundInternal = internalMutation({
         2
       )} processed via Stripe${args.stripeChargeId ? ` (${args.stripeChargeId})` : ""}. Total refunded: $${refund.refundedAmount.toFixed(
         2
-      )}. Physical inventory retained (manual restock required).`,
+      )}.`,
       actor: "stripe_webhook",
     });
 
@@ -346,7 +346,6 @@ export const createOrUpdateStripeOrder = internalMutation({
         stripeSessionId: args.stripeSessionId,
         stripeSessionIds: appendBoundedId(existing.stripeSessionIds, args.stripeSessionId),
         webhookEventIds: withWebhookEventId(existing, args.webhookEventId),
-        trackingNumber: existing.trackingNumber ?? newTrackingNumber(),
         updatedAt: Date.now(),
       });
       if (stock === "deduct") await deductStock(ctx, existing.items);
@@ -437,7 +436,6 @@ export const createOrUpdateStripeOrder = internalMutation({
       invoicePdfUrl: args.invoicePdfUrl,
       hostedInvoiceUrl: args.hostedInvoiceUrl,
       webhookEventIds: args.webhookEventId ? [args.webhookEventId] : undefined,
-      trackingNumber: newTrackingNumber(),
       createdAt: Date.now(),
     });
 

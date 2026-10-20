@@ -8,14 +8,21 @@ import { v, ConvexError } from "convex/values";
 import { internal } from "../_generated/api";
 import { isAdminRow, isAllowlistedAdmin, requireAdmin } from "../lib/auth";
 import { confirmationView, guestTrackingView, isUnpaidCheckout, orderHoldsStock, ownerTrackingView } from "./model";
-import { canEditShippingAddress, planCancellation, statusAxes, statusPatch, withStatusAxes } from "./status";
+import { canEditShippingAddress, planCustomerCancellation, statusAxes, statusPatch, withStatusAxes } from "./status";
+import {
+  cancellationReleaseLines,
+  cancellationRequestId,
+  planFullRefund,
+  reservationValidator,
+} from "../payments/refundModel";
+import { carrierTrackingNumber } from "./trackingNumber";
+import { readLedger, reserveRefund } from "../payments/refundLedger";
 import {
   deductStock,
   findOrderByTypedNumber,
   getOrderByNumber,
   getOrderByStripeSessionId,
   releaseStock,
-  scheduleSessionExpiry,
 } from "./shared";
 import {
   confirmationViewValidator,
@@ -187,7 +194,10 @@ export const getOrdersByClerkId = query({
       .take(MAX_ACCOUNT_ORDERS);
 
     // Customers only see confirmed purchases (never unpaid or abandoned checkouts)
-    return orders.filter((o) => !isUnpaidCheckout(o)).map(withStatusAxes);
+    // A legacy GL-TRK placeholder is not a carrier Tracking Number: never shown as one.
+    return orders
+      .filter((o) => !isUnpaidCheckout(o))
+      .map((o) => ({ ...withStatusAxes(o), trackingNumber: carrierTrackingNumber(o) }));
   },
 });
 
@@ -231,20 +241,18 @@ export const updateShippingAddress = mutation({
   },
 });
 
-/** Customer self-service cancellation; called by stripeRefunds:cancelAndRefundOrder. */
+/**
+ * Customer Cancellation (CONTEXT.md); called by payments/refunds:cancelAndRefundOrder. The
+ * signed-in owner of a paid, unfulfilled Order cancels it: its units go back and a full refund
+ * is reserved in the ledger for the action to send to Stripe. Identity comes from the auth
+ * token only; guests cancel through support.
+ */
 export const cancelOrder = internalMutation({
   args: {
     orderId: v.id("orders"),
-    clerkUserId: v.string(),
     reason: v.optional(v.string()),
   },
-  returns: v.object({
-    success: v.boolean(),
-    stripeSessionId: v.optional(v.string()),
-    orderNumber: v.string(),
-    total: v.number(),
-    currency: v.string(),
-  }),
+  returns: v.object({ orderNumber: v.string(), refund: reservationValidator }),
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
@@ -256,31 +264,26 @@ export const cancelOrder = internalMutation({
       throw new ConvexError("Order not found");
     }
 
-    const isOwner = identity.subject === args.clerkUserId && order.clerkUserId === identity.subject;
-    if (!isOwner) {
-      await requireAdmin(ctx);
-    }
-
-    // The self-service path keeps the Customer's rules even when an Administrator drives it.
-    const plan = planCancellation(order, "customer", orderHoldsStock(order));
+    const plan = planCustomerCancellation(order, identity.subject);
     if (!plan.ok) {
       throw new ConvexError(plan.error);
     }
+    // The cancellation promises a full refund: refuse before cancelling if one cannot be sent.
+    const ledger = await readLedger(ctx, order._id);
+    const refundPlan = planFullRefund(order, ledger);
+    if (!refundPlan.ok) {
+      throw new ConvexError(`${refundPlan.error} Please contact support.`);
+    }
 
-    // Restore stock only if it was actually deducted or held at checkout
     if (plan.releaseStock) {
-      await releaseStock(ctx, order.items);
+      await releaseStock(ctx, cancellationReleaseLines(order, ledger));
     }
 
     const now = Date.now();
     await ctx.db.patch(args.orderId, {
-      ...statusPatch(order, { cancelledAt: now, cancellationReason: isOwner ? "customer" : "administrator" }),
+      ...statusPatch(order, { cancelledAt: now, cancellationReason: "customer" }),
       updatedAt: now,
     });
-
-    if (order.stripeSessionId) {
-      await scheduleSessionExpiry(ctx, args.orderId);
-    }
 
     await ctx.runMutation(internal.orders.functions.recordPaymentEvent, {
       orderId: args.orderId,
@@ -290,13 +293,12 @@ export const cancelOrder = internalMutation({
       details: args.reason,
     });
 
-    return {
-      success: true,
-      stripeSessionId: order.stripeSessionId,
-      orderNumber: order.orderNumber,
-      total: order.total,
-      currency: order.currency,
-    };
+    const refund = await reserveRefund(ctx, order, refundPlan.plan, {
+      requestId: cancellationRequestId(order._id),
+      actor: identity.subject,
+      reason: "Customer Cancellation",
+    });
+    return { orderNumber: order.orderNumber, refund };
   },
 });
 

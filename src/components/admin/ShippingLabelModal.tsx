@@ -32,6 +32,8 @@ export interface ShippingLabelModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: (message: string) => void;
+  /** Buy a new label for an Order in delivery exception or returned to sender (CONTEXT.md "Reship"). */
+  reship?: boolean;
 }
 
 const BOX_PRESETS = [
@@ -69,6 +71,7 @@ export function ShippingLabelModal({
   isOpen,
   onClose,
   onSuccess,
+  reship = false,
 }: ShippingLabelModalProps) {
   const getRates = useAction(api.shipping.functions.getShippingRates);
   const buyLabel = useAction(api.shipping.functions.buyShippingLabel);
@@ -179,8 +182,8 @@ export function ShippingLabelModal({
 
     setIsEditingAddress(!hasValidAddress);
 
-    // If order already has a shipping label, populate it
-    if (order.shippingLabelUrl && order.trackingNumber) {
+    // If order already has a shipping label, populate it (a Reship buys a fresh one instead)
+    if (!reship && order.shippingLabelUrl && order.trackingNumber) {
       setPurchasedLabel({
         trackingNumber: order.trackingNumber,
         labelUrl: order.shippingLabelUrl,
@@ -207,7 +210,7 @@ export function ShippingLabelModal({
         setRates([]);
       }
     }
-  }, [isOpen, order?._id]);
+  }, [isOpen, order?._id, reship]);
 
   const handleSaveAddress = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -323,6 +326,7 @@ export function ShippingLabelModal({
         amount: chosenRate.amount,
         estimatedDays: chosenRate.estimatedDays,
         parcel: dimensions,
+        ...(reship && { reship: true }),
       });
 
       if (res.success) {
@@ -335,7 +339,7 @@ export function ShippingLabelModal({
 
         if (onSuccess) {
           onSuccess(
-            `Shipping label purchased! Tracking ${res.trackingNumber} assigned via ${res.carrier}. Customer dispatch email sent.`
+            `${reship ? "Reship label" : "Shipping label"} purchased! Tracking ${res.trackingNumber} assigned via ${res.carrier}. Customer dispatch email sent.`
           );
         }
       }
@@ -377,7 +381,7 @@ export function ShippingLabelModal({
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="font-display font-bold text-lg text-white">
-                  Multi-Carrier Shipping & Labels
+                  {reship ? "Reship: New Label" : "Multi-Carrier Shipping & Labels"}
                 </h3>
                 {isSandboxMode && (
                   <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">

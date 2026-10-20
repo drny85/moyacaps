@@ -10,7 +10,8 @@ import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { getCarrierTrackingUrl } from "@/lib/tracking";
 import { getWhatsAppConciergeUrl } from "@/lib/whatsapp";
-import { isCancellableOrder, isShippedOrder } from "@/lib/orderStatus";
+import { isAddressEditable, isShippedOrder } from "@/lib/orderStatus";
+import { customerCancellationAllowed } from "@convex/orders/status";
 import { OrderStatusBadges } from "@/components/orders/OrderStatusBadges";
 import {
   Package,
@@ -139,7 +140,6 @@ export default function AccountOrdersPage() {
       setIsProcessingCancel(true);
       const data = await cancelAndRefund({
         orderId: cancellingOrder._id,
-        clerkUserId: user.id,
         reason: cancelReason,
       });
 
@@ -283,7 +283,8 @@ export default function AccountOrdersPage() {
       <div className="space-y-6">
         {ordersToDisplay.length > 0 ? (
           ordersToDisplay.map((ord: any) => {
-            const isCancellable = isCancellableOrder(ord);
+            const isCancellable = customerCancellationAllowed(ord);
+            const canEditAddress = isAddressEditable(ord);
             const isShipped = isShippedOrder(ord);
 
             return (
@@ -389,7 +390,7 @@ export default function AccountOrdersPage() {
                     </div>
 
                     {/* Pre-Dispatch: Edit Address Button */}
-                    {isCancellable && (
+                    {canEditAddress && (
                       <button
                         onClick={() => handleOpenEditAddress(ord)}
                         className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl glass-dark hover:bg-black/5 dark:hover:bg-white/10 text-xs font-display font-bold text-zinc-700 dark:text-zinc-300 border border-black/[0.06] dark:border-white/[0.06] transition-colors shrink-0 self-start sm:self-auto"
@@ -408,6 +409,8 @@ export default function AccountOrdersPage() {
                       ? "Eligible for address modification & instant refund prior to courier handover."
                       : isShipped
                       ? "In transit with courier. For delivery inquiries or returns, reach Concierge."
+                      : canEditAddress
+                      ? "Not shipped yet. To cancel this order, reach Concierge."
                       : "Order finalized."}
                   </div>
 

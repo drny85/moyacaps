@@ -338,7 +338,7 @@ describe("each axis stays independent", () => {
     const tt = t();
     await seedVariant(tt, "V1", 5);
     const orderId = await settle(tt, "GL-IND-5");
-    await admin(tt).mutation(internal.orders.desk.cancelOrderAdmin, { orderId, reason: "test" });
+    await admin(tt).mutation(internal.orders.desk.cancelOrderAdmin, { orderId, refundStripe: false, reason: "test" });
     const order = await getOrder(tt, "GL-IND-5");
     expect(lifecycle(order)).toEqual({ payment: "paid", fulfillment: "unfulfilled", cancelled: true });
     expect(order?.cancellationReason).toBe("administrator");
@@ -363,7 +363,7 @@ describe("admin desk on the two axes", () => {
     await scan(tt, "9400DESK", "DELIVERED");
     await refund(tt, shipped, "GL-DESK-SHIPPED", 100, true, "evt_desk_full");
     const cancelled = await settle(tt, "GL-DESK-CANCELLED");
-    await admin(tt).mutation(internal.orders.desk.cancelOrderAdmin, { orderId: cancelled });
+    await admin(tt).mutation(internal.orders.desk.cancelOrderAdmin, { orderId: cancelled, refundStripe: false });
 
     const list = async (status?: string) =>
       (await admin(tt).query(api.orders.desk.getAllOrdersAdmin, { clientTime: Date.now(), status }))

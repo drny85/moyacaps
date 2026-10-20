@@ -9,6 +9,7 @@
  */
 import { v } from "convex/values";
 import type { Doc } from "../_generated/dataModel";
+import { isCarrierTrackingNumber } from "./trackingNumber";
 
 // ── The two axes and the cancelled marker ────────────────────────────────────
 
@@ -224,8 +225,10 @@ export type CancellationActor = "customer" | "administrator";
 
 /**
  * Cancelling an Order. A Customer may cancel only before anything ships; an Administrator any
- * time. Cancelling gives back the units the Order holds. Payment Status is left alone: the
- * refund that may follow records itself.
+ * time. Units go back to Available Inventory only while nothing has shipped: the Order still
+ * holds them and they never left the building. A shipped Order's units come back only through
+ * a Restock on a refund or Return (an explicit Administrator choice). Payment Status is left
+ * alone: the refund that may follow records itself.
  */
 export function planCancellation(
   order: StatusSource,
@@ -240,7 +243,45 @@ export function planCancellation(
       error: "Cannot cancel an order that has already been dispatched. Please request a return via concierge.",
     };
   }
-  return { ok: true, releaseStock: holdsStock };
+  return { ok: true, releaseStock: holdsStock && axes.fulfillmentStatus === "unfulfilled" };
+}
+
+/** Why a Customer may not cancel an Order themselves, or undefined when they may (ownership aside). */
+function customerCancellationBlock(order: StatusSource): string | undefined {
+  const axes = statusAxes(order);
+  if (axes.cancelledAt !== undefined) return "Order is already cancelled";
+  if (axes.paymentStatus === "disputed") return "This order has an open payment dispute. Please contact support.";
+  if (axes.paymentStatus !== "paid") return "This order can no longer be cancelled online. Please contact support.";
+  if (axes.fulfillmentStatus !== "unfulfilled") {
+    return "Cannot cancel an order that has already been dispatched. Please request a return via concierge.";
+  }
+  return undefined;
+}
+
+/**
+ * Whether the Customer Cancellation button shows: a paid (never refunded, not disputed),
+ * unfulfilled, not cancelled Order. Ownership is the caller's to check (the account page
+ * lists only the signed-in Customer's own Orders); the server checks it in planCustomerCancellation.
+ */
+export function customerCancellationAllowed(order: StatusSource): boolean {
+  return customerCancellationBlock(order) === undefined;
+}
+
+/**
+ * Customer Cancellation (CONTEXT.md): the signed-in owner of a paid, unfulfilled Order cancels
+ * it for a full automatic refund, and its units go back. `callerSubject` is the server-derived
+ * identity (never an argument the client sends). A guest Order has no owner account, so it is
+ * cancelled through support.
+ */
+export function planCustomerCancellation(
+  order: StatusSource & { clerkUserId?: string },
+  callerSubject: string
+): Transition<{ releaseStock: boolean }> {
+  if (!order.clerkUserId) return { ok: false, error: "Guest orders are cancelled through support. Please contact us." };
+  if (order.clerkUserId !== callerSubject) return { ok: false, error: "Forbidden: Cannot cancel another customer's order." };
+  const block = customerCancellationBlock(order);
+  if (block) return { ok: false, error: block };
+  return { ok: true, releaseStock: settledHoldsStock(order) };
 }
 
 // ── Fulfillment axis ─────────────────────────────────────────────────────────
@@ -252,14 +293,50 @@ export function canChangeFulfillment(order: StatusSource): boolean {
   return hasSettled(order);
 }
 
+/** Fulfillment Statuses a Reship starts from: the carrier could not deliver, or sent it back. */
+export const RESHIP_FROM: readonly FulfillmentStatus[] = ["delivery_exception", "returned"];
+
 /**
- * Buying a shipping label. A delivered Order stays delivered; any other settled Order moves
- * to label purchased. Payment Status is never touched.
+ * Buying a shipping label (plan 0008 "Fulfillment"). Requires a paid or partially refunded,
+ * not cancelled, not disputed Order with nothing shipped yet. The one exception is a Reship:
+ * a new label for an Order in delivery exception or returned to sender. Either way the Order
+ * moves to label purchased. Buying a label never moves stock and never touches Payment Status.
  */
-export function planLabelPurchase(order: StatusSource): Transition<{ fulfillmentStatus: FulfillmentStatus }> {
-  if (!canChangeFulfillment(order)) return { ok: false, error: AWAITING_PAYMENT_ERROR };
-  const current = statusAxes(order).fulfillmentStatus;
-  return { ok: true, fulfillmentStatus: current === "delivered" ? "delivered" : "label_purchased" };
+export function planLabelPurchase(
+  order: StatusSource,
+  options: { reship?: boolean } = {}
+): Transition<{ fulfillmentStatus: "label_purchased"; reship: boolean }> {
+  const axes = statusAxes(order);
+  const reship = options.reship === true;
+  if (axes.cancelledAt !== undefined) return { ok: false, error: "Order is cancelled: no label can be bought." };
+  switch (axes.paymentStatus) {
+    case "awaiting_payment":
+      return { ok: false, error: AWAITING_PAYMENT_ERROR };
+    case "disputed":
+      return { ok: false, error: "Payment is disputed: labels are blocked until the dispute closes." };
+    case "refunded":
+      return { ok: false, error: "Order is fully refunded: no label can be bought." };
+  }
+  const current = axes.fulfillmentStatus;
+  if (reship) {
+    if (!RESHIP_FROM.includes(current)) {
+      return { ok: false, error: "Reship is only for a delivery exception or a return to sender." };
+    }
+  } else if (current !== "unfulfilled") {
+    if (RESHIP_FROM.includes(current)) {
+      return { ok: false, error: `Order is ${current.replace(/_/g, " ")}: use Reship to buy a new label.` };
+    }
+    return { ok: false, error: `A label was already bought: order is ${current.replace(/_/g, " ")}.` };
+  }
+  return { ok: true, fulfillmentStatus: "label_purchased", reship };
+}
+
+/** What the label button offers for this Order: a first label, a Reship, or nothing (with why). */
+export function labelAction(order: StatusSource): { action: "buy" | "reship" } | { action: null; reason: string } {
+  const first = planLabelPurchase(order);
+  if (first.ok) return { action: "buy" };
+  if (planLabelPurchase(order, { reship: true }).ok) return { action: "reship" };
+  return { action: null, reason: first.error };
 }
 
 /** Carrier scan codes (Shippo `tracking_status.status`). */
@@ -313,11 +390,6 @@ export type LegacyEvidence = {
   /** When a `cancelled` payment event was recorded, if any. */
   cancelledAt?: number;
 };
-
-/** Settlement used to mint a placeholder `GL-TRK-` number for every paid Order: not a shipment. */
-function isCarrierTrackingNumber(trackingNumber: string | undefined): boolean {
-  return Boolean(trackingNumber && !trackingNumber.startsWith("GL-TRK-"));
-}
 
 /** Fulfillment of a refunded or cancelled Order, read from what the carrier and label left behind. */
 function inferredFulfillment(order: StatusSource): FulfillmentStatus {

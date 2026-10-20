@@ -8,7 +8,10 @@ import {
   legacyStatusAxes,
   PAYMENT_STATUSES,
   paymentStatusFromRefunds,
+  customerCancellationAllowed,
+  labelAction,
   planCancellation,
+  planCustomerCancellation,
   planDispute,
   planLabelPurchase,
   planManualFulfillmentChange,
@@ -130,9 +133,13 @@ describe("Payment axis", () => {
 });
 
 describe("cancelled marker", () => {
-  it("an Administrator may cancel at any stage; units go back only if the Order holds them", () => {
-    expect(planCancellation(axes("paid", "delivered"), "administrator", true)).toEqual({ ok: true, releaseStock: true });
+  it("an Administrator may cancel at any stage; units go back only if the Order holds them and nothing shipped", () => {
+    expect(planCancellation(axes("paid", "unfulfilled"), "administrator", true)).toEqual({ ok: true, releaseStock: true });
     expect(planCancellation(axes("refunded", "unfulfilled"), "administrator", false)).toEqual({ ok: true, releaseStock: false });
+    // A shipped Order's units come back only through a Restock (an explicit Administrator choice).
+    for (const f of FULFILLMENT_STATUSES.filter((f) => f !== "unfulfilled")) {
+      expect(planCancellation(axes("paid", f), "administrator", true)).toEqual({ ok: true, releaseStock: false });
+    }
   });
 
   it("a Customer may cancel only before anything ships", () => {
@@ -150,11 +157,83 @@ describe("cancelled marker", () => {
   });
 });
 
+describe("Customer Cancellation", () => {
+  const owned = (paymentStatus: PaymentStatus, fulfillmentStatus: FulfillmentStatus, extra: StatusSource = {}) => ({
+    ...axes(paymentStatus, fulfillmentStatus, extra),
+    clerkUserId: "user_owner",
+  });
+
+  it("the signed-in owner cancels a paid, unfulfilled Order and its units go back", () => {
+    expect(planCustomerCancellation(owned("paid", "unfulfilled"), "user_owner")).toEqual({ ok: true, releaseStock: true });
+    expect(customerCancellationAllowed(owned("paid", "unfulfilled"))).toBe(true);
+  });
+
+  it("guests and other accounts are refused", () => {
+    const guest = axes("paid", "unfulfilled");
+    expect(planCustomerCancellation(guest, "user_owner")).toEqual({
+      ok: false,
+      error: "Guest orders are cancelled through support. Please contact us.",
+    });
+    expect(planCustomerCancellation(owned("paid", "unfulfilled"), "user_other").ok).toBe(false);
+  });
+
+  it("is refused once anything shipped, money moved back, a dispute opened, or it was cancelled", () => {
+    const refused: StatusSource[] = [
+      ...FULFILLMENT_STATUSES.filter((f) => f !== "unfulfilled").map((f) => owned("paid", f)),
+      owned("partially_refunded", "unfulfilled"),
+      owned("refunded", "unfulfilled"),
+      owned("disputed", "unfulfilled"),
+      owned("awaiting_payment", "unfulfilled"),
+      owned("paid", "unfulfilled", { cancelledAt: 1 }),
+    ];
+    for (const order of refused) {
+      expect(planCustomerCancellation({ ...order, clerkUserId: "user_owner" }, "user_owner").ok).toBe(false);
+      expect(customerCancellationAllowed(order)).toBe(false);
+    }
+  });
+});
+
 describe("Fulfillment axis", () => {
-  it("a label moves a settled Order to label purchased; delivered stays delivered", () => {
-    expect(planLabelPurchase(axes("paid", "unfulfilled"))).toEqual({ ok: true, fulfillmentStatus: "label_purchased" });
-    expect(planLabelPurchase(axes("partially_refunded", "returned"))).toEqual({ ok: true, fulfillmentStatus: "label_purchased" });
-    expect(planLabelPurchase(axes("paid", "delivered"))).toEqual({ ok: true, fulfillmentStatus: "delivered" });
+  it("a label moves a paid or partially refunded, unfulfilled Order to label purchased", () => {
+    const ok = { ok: true, fulfillmentStatus: "label_purchased", reship: false };
+    expect(planLabelPurchase(axes("paid", "unfulfilled"))).toEqual(ok);
+    expect(planLabelPurchase(axes("partially_refunded", "unfulfilled"))).toEqual(ok);
+  });
+
+  it("a label is refused for a cancelled, disputed, refunded or already shipped Order", () => {
+    const refused = (order: StatusSource, pattern: RegExp) => {
+      const plan = planLabelPurchase(order);
+      expect(plan.ok).toBe(false);
+      if (!plan.ok) expect(plan.error).toMatch(pattern);
+    };
+    refused(axes("paid", "unfulfilled", { cancelledAt: 1 }), /cancelled/);
+    refused(axes("disputed", "unfulfilled"), /disputed/);
+    refused(axes("refunded", "unfulfilled"), /fully refunded/);
+    for (const f of ["label_purchased", "in_transit", "delivered"] as const) refused(axes("paid", f), /already bought/);
+    refused(axes("paid", "delivery_exception"), /use Reship/);
+    refused(axes("paid", "returned"), /use Reship/);
+  });
+
+  it("a Reship buys a new label only after a delivery exception or a return to sender", () => {
+    const ok = { ok: true, fulfillmentStatus: "label_purchased", reship: true };
+    expect(planLabelPurchase(axes("paid", "delivery_exception"), { reship: true })).toEqual(ok);
+    expect(planLabelPurchase(axes("partially_refunded", "returned"), { reship: true })).toEqual(ok);
+    for (const f of ["unfulfilled", "label_purchased", "in_transit", "delivered"] as const) {
+      expect(planLabelPurchase(axes("paid", f), { reship: true }).ok).toBe(false);
+    }
+    // The payment and cancellation gates hold for a Reship too.
+    expect(planLabelPurchase(axes("disputed", "returned"), { reship: true }).ok).toBe(false);
+    expect(planLabelPurchase(axes("paid", "returned", { cancelledAt: 1 }), { reship: true }).ok).toBe(false);
+  });
+
+  it("the label button offers a first label, a Reship, or nothing with the reason", () => {
+    expect(labelAction(axes("paid", "unfulfilled"))).toEqual({ action: "buy" });
+    expect(labelAction(axes("paid", "delivery_exception"))).toEqual({ action: "reship" });
+    expect(labelAction(axes("disputed", "unfulfilled"))).toEqual({
+      action: null,
+      reason: "Payment is disputed: labels are blocked until the dispute closes.",
+    });
+    expect(labelAction(axes("paid", "in_transit")).action).toBeNull();
   });
 
   it("nothing moves on the Fulfillment axis before the Order is paid", () => {

@@ -170,6 +170,12 @@ describe("API surface lockdown (security regression locks)", () => {
       void api.orders.checkoutHold.placeCheckoutHold;
       // @ts-expect-error releaseCheckoutHold must remain internal
       void api.orders.checkoutHold.releaseCheckoutHold;
+      // @ts-expect-error reserveAdminRefund must remain internal
+      void api.payments.refundLedger.reserveAdminRefund;
+      // @ts-expect-error commitRefund must remain internal
+      void api.payments.refundLedger.commitRefund;
+      // @ts-expect-error failRefund must remain internal
+      void api.payments.refundLedger.failRefund;
     });
     expect(true).toBe(true);
   });
@@ -211,11 +217,8 @@ describe("Settlement guards (double-payment prevention)", () => {
   it("settling a cancelled order is refused and flagged", async () => {
     const tt = t();
     await seedVariant(tt, "V1", 5);
-    const order = await seedOrder(tt, "V1", { stripeSessionId: null });
-    await customer(tt).mutation(internal.orders.functions.cancelOrder, {
-      orderId: order.orderId,
-      clerkUserId: "user_cust",
-    });
+    const order = await seedOrder(tt, "V1");
+    await customer(tt).mutation(internal.orders.functions.cancelOrder, { orderId: order.orderId });
 
     await settleStripe(tt, order.orderNumber, "cs_test_late", { eventId: "evt_late2" });
 
@@ -472,7 +475,7 @@ describe("Checkout Hold (ADR 0024)", () => {
     const tt = t();
     await seedVariant(tt, "V1", 5);
     const orderId = await placeHold(tt, "GL-HOLD-ADM", [{ variantId: "V1", quantity: 2 }]);
-    await admin(tt).mutation(internal.orders.desk.cancelOrderAdmin, { orderId });
+    await admin(tt).mutation(internal.orders.desk.cancelOrderAdmin, { orderId, refundStripe: false });
     expect(await getStock(tt, "V1")).toBe(5);
     expect(lifecycle(await getOrder(tt, "GL-HOLD-ADM"))).toEqual({
       payment: "awaiting_payment",
