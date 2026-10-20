@@ -37,7 +37,7 @@ export function AdminTerritoryAlertEmail({
       <Preview>{`Refund before packing: Order #${orderNumber} ships outside the Fulfillment Territory`}</Preview>
       <Body style={main}>
         <Container style={container}>
-          <Text style={brandLabel}>GOOD LUCK 0880</Text>
+          <Text style={brandLabel}>GOOD LUCK</Text>
           <Text style={subHeader}>FULFILLMENT TERRITORY ALERT</Text>
           <Hr style={divider} />
 

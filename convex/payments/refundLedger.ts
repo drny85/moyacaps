@@ -28,6 +28,8 @@ import {
   type ReturnReason,
 } from "./refundModel";
 import { decideRefundFailure } from "./refundFailureModel";
+import { hasEmail } from "../orders/shared";
+import { refundIssuedNotice, refundProblemAlert } from "../notifications/orderEmails";
 
 type Order = Doc<"orders">;
 type RefundRow = Doc<"order_refunds">;
@@ -57,6 +59,7 @@ function toReservation(row: RefundRow, order: Order): Reservation {
   return {
     refundId: row._id,
     orderNumber: row.orderNumber,
+    kind: row.kind,
     stripeSessionId: order.stripeSessionId,
     amountCents: row.amountCents,
     idempotencyKey: row.idempotencyKey,
@@ -154,6 +157,8 @@ export const reserveAdminRefund = internalMutation({
 /**
  * INTERNAL: Stripe accepted the refund. Marks it issued and Restocks the lines the
  * Administrator chose. Stock moves only here, after the money is confirmed, and only once.
+ * Emails the Customer a "refund issued" notice (not for a cancellation's refund, which the
+ * cancellation email already announced).
  */
 export const commitRefund = internalMutation({
   args: { refundId: v.id("order_refunds"), stripeRefundId: v.string() },
@@ -186,11 +191,29 @@ export const commitRefund = internalMutation({
         restockedUnits > 0 ? `, restocked ${restockedUnits} unit(s)` : ""
       }${row.lines.some((l) => l.restock) && !restock ? ", restock skipped (order cancelled)" : ""}`,
     });
+
+    const notice = refundIssuedNotice({
+      orderNumber: order.orderNumber,
+      refundId: row._id,
+      kind: row.kind,
+      amountCents: row.amountCents,
+    });
+    if (notice && hasEmail(order.customerEmail)) {
+      await ctx.scheduler.runAfter(0, internal.notifications.emails.sendCustomerNotice, {
+        orderNumber: order.orderNumber,
+        customerEmail: order.customerEmail,
+        customerName: order.customerName,
+        notice,
+      });
+    }
     return { committed: true, restockedUnits };
   },
 });
 
-/** INTERNAL: Stripe refused the refund. The row fails and frees the lines it reserved. */
+/**
+ * INTERNAL: Stripe refused the refund. The row fails and frees the lines it reserved, and the
+ * Administrator is alerted that the Customer was not refunded.
+ */
 export const failRefund = internalMutation({
   args: { refundId: v.id("order_refunds"), error: v.string() },
   returns: v.object({ failed: v.boolean() }),
@@ -209,6 +232,16 @@ export const failRefund = internalMutation({
         details: `${row.kind} refund ${formatCents(row.amountCents)} failed: ${args.error}`,
       });
     }
+    await ctx.scheduler.runAfter(0, internal.notifications.emails.sendAdminAlert, {
+      alert: refundProblemAlert({
+        orderNumber: row.orderNumber,
+        refundId: row._id,
+        kind: row.kind,
+        amountCents: row.amountCents,
+        problem: "failed",
+        error: args.error,
+      }),
+    });
     return { failed: true };
   },
 });
@@ -230,8 +263,9 @@ async function rowForStripeRefund(ctx: QueryCtx, stripeRefundId: string, ledgerR
 /**
  * INTERNAL: Stripe failed or canceled a refund after accepting it (`refund.failed`,
  * `refund.updated`). The row fails, which frees its lines; the Order gets a `refund_failed`
- * payment event and an adminNotes line. Stock is not reversed: a Restock done on issue stays,
- * and the note asks the Administrator to check stock. Replay-safe on the event id.
+ * payment event, an adminNotes line and an Administrator alert. Stock is not reversed: a
+ * Restock done on issue stays, and the note asks the Administrator to check stock. Replay-safe
+ * on the event id.
  */
 export const failIssuedRefundFromStripe = internalMutation({
   args: {
@@ -282,6 +316,16 @@ export const failIssuedRefundFromStripe = internalMutation({
       stripeEventId: webhookEventId,
       actor: "stripe",
       details: decision.details,
+    });
+    await ctx.scheduler.runAfter(0, internal.notifications.emails.sendAdminAlert, {
+      alert: refundProblemAlert({
+        orderNumber: order.orderNumber,
+        refundId: row._id,
+        kind: row.kind,
+        amountCents: row.amountCents,
+        problem: "failed",
+        error: decision.error,
+      }),
     });
     return { failed: true, restockedUnits: decision.restockedUnits };
   },

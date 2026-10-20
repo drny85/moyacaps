@@ -13,6 +13,7 @@ import {
   Row,
   Column,
 } from "@react-email/components";
+import { formatStoreDateTime } from "../../lib/storeTime";
 
 export interface OrderItemProp {
   variantId?: string;
@@ -20,6 +21,9 @@ export interface OrderItemProp {
   quantity: number;
   price: number;
   image?: string;
+  // Tee lines only (ADR 0015).
+  colorway?: string;
+  size?: string;
 }
 
 export interface AdminOrderAlertProps {
@@ -76,10 +80,7 @@ export function AdminOrderAlertEmail({
   const badgeBg = "#059669";
   const badgeText = "PAID - Stripe Verified";
 
-  const dateStr = new Date(createdAt).toLocaleString("en-US", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
+  const dateStr = formatStoreDateTime(createdAt);
 
   return (
     <Html>

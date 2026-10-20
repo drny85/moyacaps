@@ -14,12 +14,15 @@ import {
   Column,
 } from "@react-email/components";
 import { OrderItemProp } from "./AdminOrderAlert";
+import { dispatchedCopy, POLICY_LINE, type ShipmentCopy } from "../orderEmails";
 
 export interface OrderDispatchedEmailProps {
   orderNumber: string;
   customerName?: string;
-  carrier: string;
-  trackingNumber: string;
+  // Copy for the stage this email announces (orderEmails.ts dispatchedCopy).
+  copy?: ShipmentCopy;
+  carrier?: string;
+  trackingNumber?: string;
   carrierTrackingUrl?: string;
   storeTrackingUrl?: string;
   estimatedDelivery?: string;
@@ -36,8 +39,9 @@ export interface OrderDispatchedEmailProps {
 }
 
 export function OrderDispatchedEmail({
-  orderNumber = "GL-0880-9921",
-  customerName = "Valued Collector",
+  orderNumber = "GL-1001",
+  customerName = "Valued Customer",
+  copy,
   carrier = "USPS",
   trackingNumber = "9400111899223344556677",
   carrierTrackingUrl = "https://tools.usps.com",
@@ -52,19 +56,20 @@ export function OrderDispatchedEmail({
   },
   items = [
     {
-      name: "Good Luck Signature 0880 Cap",
+      name: "Good Luck Signature Cap",
       quantity: 1,
       price: 185.0,
     },
   ],
-  supportEmail = "concierge@goodluckcaps.com",
+  supportEmail = "orders@goodluckcaps.com",
 }: OrderDispatchedEmailProps) {
   const directTracking = carrierTrackingUrl || storeTrackingUrl;
+  const text = copy ?? dispatchedCopy("label_purchased", orderNumber, carrier);
 
   return (
     <Html>
       <Head />
-      <Preview>Your Good Luck order #{orderNumber} has been dispatched via {carrier}!</Preview>
+      <Preview>{text.preview}</Preview>
       <Body style={main}>
         <Container style={container}>
           {/* Header Brand */}
@@ -72,17 +77,17 @@ export function OrderDispatchedEmail({
             <Text style={brandTitle}>
               GOOD<span style={{ color: "#D4AF37" }}>LUCK</span>
             </Text>
-            <Text style={brandSubtitle}>0880 ATELIER • DISPATCH CONFIRMATION</Text>
+            <Text style={brandSubtitle}>SHIPPING UPDATE</Text>
           </Section>
 
           {/* Dispatch Announcement */}
           <Section style={welcomeSection}>
-            <Text style={badge}>ON ITS WAY</Text>
+            <Text style={badge}>{text.badge}</Text>
             <Heading as="h1" style={greetingHeading}>
-              Your Order Has Been Dispatched
+              {text.heading}
             </Heading>
             <Text style={greetingText}>
-              Greetings {customerName}, your handcrafted piece from Good Luck 0880 has been carefully packed and handed to <strong>{carrier}</strong>.
+              Hi {customerName}, order <strong>#{orderNumber}</strong>. {text.body}
             </Text>
           </Section>
 
@@ -99,18 +104,21 @@ export function OrderDispatchedEmail({
               </Column>
             </Row>
 
-            <Hr style={dividerSubtle} />
-
-            <Text style={trackingLabel}>TRACKING NUMBER</Text>
-            <Text style={trackingNumberText}>{trackingNumber}</Text>
+            {trackingNumber && (
+              <>
+                <Hr style={dividerSubtle} />
+                <Text style={trackingLabel}>TRACKING NUMBER</Text>
+                <Text style={trackingNumberText}>{trackingNumber}</Text>
+              </>
+            )}
 
             <Section style={{ textAlign: "center", marginTop: 24, marginBottom: 8 }}>
               <Link href={directTracking} style={primaryButton}>
-                Track Shipment Directly →
+                Track your package →
               </Link>
             </Section>
             <Text style={trackingHelpText}>
-              Or visit our atelier portal at{" "}
+              Or track it at{" "}
               <Link href={storeTrackingUrl} style={inlineLink}>
                 goodluckcaps.com/track
               </Link>
@@ -162,13 +170,16 @@ export function OrderDispatchedEmail({
           {/* Footer */}
           <Section style={footerSection}>
             <Text style={footerText}>
-              Need assistance with your delivery? Contact our concierge at{" "}
+              {POLICY_LINE}
+            </Text>
+            <Text style={footerText}>
+              Questions about your delivery? Reply to this email or write to{" "}
               <Link href={`mailto:${supportEmail}`} style={footerLink}>
                 {supportEmail}
               </Link>
             </Text>
             <Text style={footerCopyright}>
-              © {new Date().getFullYear()} Good Luck 0880. All rights reserved.
+              © {new Date().getFullYear()} Good Luck. All rights reserved.
             </Text>
           </Section>
         </Container>

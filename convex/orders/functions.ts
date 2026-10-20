@@ -18,17 +18,17 @@ import {
 import { carrierTrackingNumber } from "./trackingNumber";
 import { readLedger, reserveRefund } from "../payments/refundLedger";
 import {
-  deductStock,
   findOrderByTypedNumber,
   getOrderByNumber,
   getOrderByStripeSessionId,
+  hasEmail,
   releaseStock,
 } from "./shared";
+import { cancellationNotice, customerCancellationAlert } from "../notifications/orderEmails";
 import {
   confirmationViewValidator,
   guestTrackingViewValidator,
   orderDoc,
-  orderItemValidator,
   ownerTrackingViewValidator,
   shippingAddressValidator,
   successResult,
@@ -60,62 +60,6 @@ export const recordPaymentEvent = internalMutation({
       createdAt: Date.now(),
     });
     return { success: true };
-  },
-});
-
-export const createOrder = mutation({
-  args: {
-    orderNumber: v.string(),
-    customerEmail: v.optional(v.string()),
-    customerName: v.optional(v.string()),
-    customerPhone: v.optional(v.string()),
-    clerkUserId: v.optional(v.string()),
-    shippingAddress: v.optional(shippingAddressValidator),
-    items: v.array(orderItemValidator),
-    currency: v.string(),
-    subtotal: v.optional(v.number()),
-    shippingFee: v.optional(v.number()),
-    total: v.number(),
-    paymentStatus: v.union(v.literal("awaiting_payment"), v.literal("paid")),
-    paymentMethod: v.literal("stripe"),
-    stripeSessionId: v.optional(v.string()),
-    trackingNumber: v.optional(v.string()),
-  },
-  returns: v.id("orders"),
-  handler: async (ctx, args) => {
-    // Only administrators or verified system processes can create orders directly
-    await requireAdmin(ctx);
-
-    const orderId = await ctx.db.insert("orders", {
-      ...args,
-      fulfillmentStatus: "unfulfilled",
-      createdAt: Date.now(),
-    });
-
-    // Decrement stock if paid
-    if (args.paymentStatus === "paid") {
-      await deductStock(ctx, args.items);
-    }
-
-    // Schedule admin order alert if paid
-    if (args.paymentStatus === "paid") {
-      await ctx.scheduler.runAfter(0, internal.notifications.emails.sendAdminOrderAlert, {
-        orderNumber: args.orderNumber,
-        total: args.total,
-        currency: args.currency,
-        paymentMethod: args.paymentMethod,
-        customerName: args.customerName,
-        customerEmail: args.customerEmail,
-        customerPhone: args.customerPhone,
-        shippingAddress: args.shippingAddress,
-        items: args.items,
-        subtotal: args.subtotal,
-        shippingFee: args.shippingFee,
-        createdAt: Date.now(),
-      });
-    }
-
-    return orderId;
   },
 });
 
@@ -245,7 +189,8 @@ export const updateShippingAddress = mutation({
  * Customer Cancellation (CONTEXT.md); called by payments/refunds:cancelAndRefundOrder. The
  * signed-in owner of a paid, unfulfilled Order cancels it: its units go back and a full refund
  * is reserved in the ledger for the action to send to Stripe. Identity comes from the auth
- * token only; guests cancel through support.
+ * token only; guests cancel through support. The Customer gets an "order cancelled" email and
+ * the Administrator an alert not to pack it.
  */
 export const cancelOrder = internalMutation({
   args: {
@@ -297,6 +242,23 @@ export const cancelOrder = internalMutation({
       requestId: cancellationRequestId(order._id),
       actor: identity.subject,
       reason: "Customer Cancellation",
+    });
+
+    if (hasEmail(order.customerEmail)) {
+      await ctx.scheduler.runAfter(0, internal.notifications.emails.sendCustomerNotice, {
+        orderNumber: order.orderNumber,
+        customerEmail: order.customerEmail,
+        customerName: order.customerName,
+        notice: cancellationNotice({ orderNumber: order.orderNumber, by: "customer", refundCents: refund.amountCents }),
+      });
+    }
+    await ctx.scheduler.runAfter(0, internal.notifications.emails.sendAdminAlert, {
+      alert: customerCancellationAlert({
+        orderNumber: order.orderNumber,
+        refundCents: refund.amountCents,
+        stockReleased: plan.releaseStock,
+        reason: args.reason,
+      }),
     });
     return { orderNumber: order.orderNumber, refund };
   },

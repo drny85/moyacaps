@@ -20,6 +20,7 @@ import {
 } from "./settlementModel";
 import { refundFailureFromEvent } from "./refundFailureModel";
 import { hasSettled, isCancelled } from "../orders/status";
+import { unlinkedDisputeAlert } from "../notifications/orderEmails";
 
 /** Hydrate a paid session's line items, using live variants for compact metadata. */
 async function sessionItems(ctx: ActionCtx, metadata: Record<string, string> | null | undefined) {
@@ -244,6 +245,21 @@ export const fulfillStripeWebhook = internalAction({
 
     if (!order) {
       console.warn(`Stripe ${event.type} could not be linked to an order (session: ${sessionId || "none"}); ignoring.`);
+      // A dispute still needs a response in Stripe even when no order matches it.
+      if (event.type === "charge.dispute.created" || event.type === "charge.dispute.closed") {
+        const dispute = event.data.object as Stripe.Dispute;
+        const { amount, currency } = disputeFigures(dispute);
+        await ctx.scheduler.runAfter(0, internal.notifications.emails.sendAdminAlert, {
+          alert: unlinkedDisputeAlert({
+            disputeId: dispute.id,
+            status: dispute.status,
+            amount,
+            currency,
+            reason: dispute.reason || undefined,
+            paymentIntent: typeof dispute.payment_intent === "string" ? dispute.payment_intent : undefined,
+          }),
+        });
+      }
       return { received: true };
     }
 
@@ -307,13 +323,14 @@ export const fulfillStripeWebhook = internalAction({
       return { received: true };
     }
 
-    // Checkout Hold (ADR 0024): Stripe says the session expired unpaid, so the Order awaiting payment
-    // is cancelled and its units go back. The mutation ignores a settled or replaced hold.
-    if (event.type === "checkout.session.expired" && !hasSettled(order) && !isCancelled(order)) {
+    // Checkout Hold (ADR 0024): Stripe says the session expired unpaid, or its delayed payment
+    // (e.g. a bank debit) failed, so the Order awaiting payment is cancelled and its units go
+    // back. The mutation ignores a settled or replaced hold.
+    if (!hasSettled(order) && !isCancelled(order)) {
       await ctx.runMutation(internal.orders.checkoutHold.releaseCheckoutHold, {
         orderId: order._id,
         stripeSessionId: sessionId,
-        reason: "session_expired",
+        reason: event.type === "checkout.session.expired" ? "session_expired" : "async_payment_failed",
         webhookEventId: event.id,
       });
     }

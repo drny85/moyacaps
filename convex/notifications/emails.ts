@@ -13,7 +13,19 @@ import { CustomerReceiptEmail } from "./templates/CustomerReceipt";
 import { OrderDispatchedEmail } from "./templates/OrderDispatchedEmail";
 import { OrderDeliveredEmail } from "./templates/OrderDeliveredEmail";
 import { DeliveryExceptionEmail } from "./templates/DeliveryExceptionEmail";
+import { CustomerNoticeEmail } from "./templates/CustomerNoticeEmail";
+import { AdminAlertEmail } from "./templates/AdminAlertEmail";
 import { deliveryExceptionCopy, type EmailAudience } from "./deliveryException";
+import {
+  adminAlertValidator,
+  customerNoticeValidator,
+  deliveredCopy,
+  deliveredIdempotencyKey,
+  dispatchedCopy,
+  dispatchedIdempotencyKey,
+  receiptCopy,
+  SUPPORT_EMAIL,
+} from "./orderEmails";
 import { PRIMARY_ADMIN_EMAIL, requireAdminInAction } from "../lib/auth";
 
 export const resend = new Resend(components.resend, {
@@ -24,6 +36,8 @@ const DEFAULT_SENDER =
   process.env.RESEND_FROM_EMAIL || "Good Luck Alerts <onboarding@resend.dev>";
 const DEFAULT_ADMIN_EMAIL =
   process.env.ADMIN_NOTIFICATION_EMAIL || PRIMARY_ADMIN_EMAIL;
+// Customer emails say "reply to this email": replies go to the orders inbox, not the sender.
+const CUSTOMER_REPLY_TO = [SUPPORT_EMAIL];
 
 const shippingAddressValidator = v.optional(
   v.object({
@@ -42,6 +56,9 @@ const orderItemValidator = v.object({
   quantity: v.number(),
   price: v.number(),
   image: v.optional(v.string()),
+  // Tee lines carry a colorway and size (ADR 0015); a scheduled email must accept the stored line.
+  colorway: v.optional(v.string()),
+  size: v.optional(v.string()),
 });
 
 /** Result of a scheduled transactional email; failures are reported, not thrown. */
@@ -131,6 +148,8 @@ export const sendCustomerReceipt = internalAction({
     subtotal: v.optional(v.number()),
     shippingFee: v.optional(v.number()),
     tax: v.optional(v.number()),
+    // Settlement flagged the address outside the Fulfillment Territory: say it will be refunded.
+    outOfTerritory: v.optional(v.boolean()),
   },
   returns: emailResult,
   handler: async (ctx, args) => {
@@ -143,8 +162,10 @@ export const sendCustomerReceipt = internalAction({
       const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://goodluckcaps.com";
       const trackingUrl = `${baseUrl}/track?order=${encodeURIComponent(args.orderNumber)}`;
 
+      const copy = receiptCopy(args.orderNumber, args.outOfTerritory ?? false);
       const html = await render(
         React.createElement(CustomerReceiptEmail, {
+          copy,
           orderNumber: args.orderNumber,
           total: args.total,
           currency: args.currency,
@@ -155,14 +176,15 @@ export const sendCustomerReceipt = internalAction({
           shippingFee: args.shippingFee,
           tax: args.tax,
           trackingUrl,
-          supportEmail: "orders@goodluckcaps.com",
+          supportEmail: SUPPORT_EMAIL,
         })
       );
 
       const emailId = await resend.sendEmail(ctx, {
         from: DEFAULT_SENDER,
         to: args.customerEmail,
-        subject: `Your Good Luck Order Confirmation #${args.orderNumber}`,
+        replyTo: CUSTOMER_REPLY_TO,
+        subject: copy.subject,
         html,
         idempotencyKey: `customer-receipt-${args.orderNumber}`,
       });
@@ -356,15 +378,18 @@ export const sendAdminTerritoryAlert = internalAction({
 });
 
 /**
- * Sends dispatch & tracking notification email to the customer upon label generation.
+ * Sends the dispatch email: "packed and ready to ship" when a label is bought, "has shipped"
+ * when an Administrator moves the order in transit by hand (orderEmails.ts dispatchedCopy).
  */
 export const sendOrderDispatchedEmail = internalAction({
   args: {
     orderNumber: v.string(),
     customerName: v.optional(v.string()),
     customerEmail: v.string(),
-    carrier: v.string(),
-    trackingNumber: v.string(),
+    // Omitted means label_purchased (emails scheduled before this field existed).
+    stage: v.optional(v.union(v.literal("label_purchased"), v.literal("in_transit"))),
+    carrier: v.optional(v.string()),
+    trackingNumber: v.optional(v.string()),
     carrierTrackingUrl: v.optional(v.string()),
     estimatedDelivery: v.optional(v.string()),
     shippingAddress: shippingAddressValidator,
@@ -381,27 +406,31 @@ export const sendOrderDispatchedEmail = internalAction({
       const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://goodluckcaps.com";
       const storeTrackingUrl = `${baseUrl}/track?order=${encodeURIComponent(args.orderNumber)}`;
 
+      const stage = args.stage ?? "label_purchased";
+      const copy = dispatchedCopy(stage, args.orderNumber, args.carrier);
       const html = await render(
         React.createElement(OrderDispatchedEmail, {
           orderNumber: args.orderNumber,
           customerName: args.customerName || "Valued Customer",
-          carrier: args.carrier,
+          copy,
+          carrier: args.carrier || "Carrier",
           trackingNumber: args.trackingNumber,
           carrierTrackingUrl: args.carrierTrackingUrl,
           storeTrackingUrl,
           estimatedDelivery: args.estimatedDelivery || "2–5 Business Days",
           shippingAddress: args.shippingAddress,
           items: args.items,
-          supportEmail: "orders@goodluckcaps.com",
+          supportEmail: SUPPORT_EMAIL,
         })
       );
 
       const emailId = await resend.sendEmail(ctx, {
         from: DEFAULT_SENDER,
         to: args.customerEmail,
-        subject: `Your Good Luck Cap has Dispatched! #${args.orderNumber} (${args.carrier} ${args.trackingNumber})`,
+        replyTo: CUSTOMER_REPLY_TO,
+        subject: copy.subject,
         html,
-        idempotencyKey: `customer-dispatched-${args.orderNumber}-${args.trackingNumber}`,
+        idempotencyKey: dispatchedIdempotencyKey(stage, args.orderNumber, args.trackingNumber),
       });
 
       console.log(`[OrderDispatchedEmail] Sent dispatch email for ${args.orderNumber} to ${args.customerEmail}, emailId: ${emailId}`);
@@ -414,15 +443,16 @@ export const sendOrderDispatchedEmail = internalAction({
 });
 
 /**
- * Sends celebratory delivery confirmation email with headwear care instructions to customer.
+ * Sends the delivery confirmation with a care guide for what was in the package, from a carrier
+ * DELIVERED scan or an Administrator marking the order delivered by hand.
  */
 export const sendOrderDeliveredEmail = internalAction({
   args: {
     orderNumber: v.string(),
     customerName: v.optional(v.string()),
     customerEmail: v.string(),
-    carrier: v.string(),
-    trackingNumber: v.string(),
+    carrier: v.optional(v.string()),
+    trackingNumber: v.optional(v.string()),
     deliveredLocation: v.optional(v.string()),
     deliveredDetails: v.optional(v.string()),
     items: v.optional(v.array(orderItemValidator)),
@@ -441,23 +471,24 @@ export const sendOrderDeliveredEmail = internalAction({
       const html = await render(
         React.createElement(OrderDeliveredEmail, {
           orderNumber: args.orderNumber,
-          customerName: args.customerName || "Valued Collector",
+          customerName: args.customerName || "Valued Customer",
           carrier: args.carrier,
           trackingNumber: args.trackingNumber,
           deliveredLocation: args.deliveredLocation || "Delivery Destination",
           deliveredDetails: args.deliveredDetails || "Courier scan confirmed successful drop-off",
           storeTrackingUrl,
           items: args.items,
-          supportEmail: "orders@goodluckcaps.com",
+          supportEmail: SUPPORT_EMAIL,
         })
       );
 
       const emailId = await resend.sendEmail(ctx, {
         from: DEFAULT_SENDER,
         to: args.customerEmail,
-        subject: `Your Good Luck Piece Has Arrived! #${args.orderNumber} Delivered`,
+        replyTo: CUSTOMER_REPLY_TO,
+        subject: deliveredCopy(args.orderNumber).subject,
         html,
-        idempotencyKey: `customer-delivered-${args.orderNumber}-${args.trackingNumber}`,
+        idempotencyKey: deliveredIdempotencyKey(args.orderNumber, args.trackingNumber),
       });
 
       console.log(`[OrderDeliveredEmail] Sent delivery confirmation email for ${args.orderNumber} to ${args.customerEmail}, emailId: ${emailId}`);
@@ -509,6 +540,7 @@ export const sendDeliveryExceptionEmails = internalAction({
         const emailId = await resend.sendEmail(ctx, {
           from: DEFAULT_SENDER,
           to,
+          ...(!isAdmin && { replyTo: CUSTOMER_REPLY_TO }),
           subject: copy.subject,
           html,
           idempotencyKey: `${args.kind}-${audience}-${args.orderNumber}-${args.trackingNumber}`,
@@ -524,5 +556,82 @@ export const sendDeliveryExceptionEmails = internalAction({
     const customer =
       args.customerEmail && args.customerEmail.includes("@") ? await send("customer", args.customerEmail) : undefined;
     return { administrator, ...(customer && { customer }) };
+  },
+});
+
+/**
+ * A Customer notice built by orderEmails.ts (order cancelled, refund issued). The scheduling
+ * mutation chose the copy and the idempotency key; this only renders and sends.
+ */
+export const sendCustomerNotice = internalAction({
+  args: {
+    orderNumber: v.string(),
+    customerEmail: v.string(),
+    customerName: v.optional(v.string()),
+    notice: customerNoticeValidator,
+  },
+  returns: emailResult,
+  handler: async (ctx, args) => {
+    try {
+      if (!args.customerEmail.includes("@")) {
+        console.warn(`[CustomerNotice] Skipped: invalid email for order ${args.orderNumber}`);
+        return { success: false, reason: "invalid_email" };
+      }
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://goodluckcaps.com";
+      const html = await render(
+        React.createElement(CustomerNoticeEmail, {
+          notice: args.notice,
+          greetingName: args.customerName?.split(" ")[0],
+          actionUrl: `${baseUrl}/track?order=${encodeURIComponent(args.orderNumber)}`,
+        })
+      );
+      const emailId = await resend.sendEmail(ctx, {
+        from: DEFAULT_SENDER,
+        to: args.customerEmail,
+        replyTo: CUSTOMER_REPLY_TO,
+        subject: args.notice.subject,
+        html,
+        idempotencyKey: args.notice.idempotencyKey,
+      });
+      console.log(`[CustomerNotice] ${args.notice.idempotencyKey} queued, emailId: ${emailId}`);
+      return { success: true, emailId };
+    } catch (err: any) {
+      console.error(`[CustomerNotice] ${args.notice.idempotencyKey} failed:`, err?.message || err);
+      return { success: false, error: err?.message || String(err) };
+    }
+  },
+});
+
+/**
+ * An Administrator alert built by orderEmails.ts (Customer Cancellation, failed or pending
+ * refund, money taken on a refused settlement, unlinked dispute).
+ */
+export const sendAdminAlert = internalAction({
+  args: { alert: adminAlertValidator },
+  returns: emailResult,
+  handler: async (ctx, args) => {
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://goodluckcaps.com";
+      const { orderNumber } = args.alert;
+      const html = await render(
+        React.createElement(AdminAlertEmail, {
+          alert: args.alert,
+          actionUrl: orderNumber ? `${baseUrl}/admin/orders/${orderNumber}` : "https://dashboard.stripe.com/disputes",
+          actionLabel: orderNumber ? "Open order" : "Open Stripe disputes",
+        })
+      );
+      const emailId = await resend.sendEmail(ctx, {
+        from: DEFAULT_SENDER,
+        to: DEFAULT_ADMIN_EMAIL,
+        subject: args.alert.subject,
+        html,
+        idempotencyKey: args.alert.idempotencyKey,
+      });
+      console.log(`[AdminAlert] ${args.alert.idempotencyKey} queued, emailId: ${emailId}`);
+      return { success: true, emailId };
+    } catch (err: any) {
+      console.error(`[AdminAlert] ${args.alert.idempotencyKey} failed:`, err?.message || err);
+      return { success: false, error: err?.message || String(err) };
+    }
   },
 });

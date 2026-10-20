@@ -14,6 +14,7 @@ import {
   Column,
 } from "@react-email/components";
 import { OrderItemProp } from "./AdminOrderAlert";
+import { receiptCopy, type ReceiptCopy } from "../orderEmails";
 
 export interface CustomerReceiptProps {
   orderNumber: string;
@@ -34,6 +35,8 @@ export interface CustomerReceiptProps {
   tax?: number;
   trackingUrl?: string;
   supportEmail?: string;
+  // Heading and greeting (orderEmails.ts receiptCopy); defaults to the "preparing your order" copy.
+  copy?: ReceiptCopy;
 }
 
 export function CustomerReceiptEmail({
@@ -60,7 +63,9 @@ export function CustomerReceiptEmail({
   tax = 0.0,
   trackingUrl = "https://goodluckcaps.com/track",
   supportEmail = "orders@goodluckcaps.com",
+  copy,
 }: CustomerReceiptProps) {
+  const text = copy ?? receiptCopy(orderNumber, false);
   return (
     <Html>
       <Head />
@@ -78,10 +83,10 @@ export function CustomerReceiptEmail({
           {/* Greeting */}
           <Section style={welcomeSection}>
             <Heading as="h1" style={greetingHeading}>
-              Thank You for Your Order!
+              {text.heading}
             </Heading>
             <Text style={greetingText}>
-              Hi {customerName}, we&apos;re preparing your order <strong>#{orderNumber}</strong>. We&apos;ll notify you with tracking information as soon as your package ships.
+              Hi {customerName}, {text.body}
             </Text>
           </Section>
 
