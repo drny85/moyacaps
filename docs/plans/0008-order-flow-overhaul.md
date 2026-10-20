@@ -2,6 +2,20 @@
 
 Decisions from the 2026-10-19 order-flow review, cart through delivery. Rationale lives in ADR 0023 (remove WhatsApp ordering) and ADR 0024 (Checkout Hold, split status); terms in `CONTEXT.md`.
 
+**Status: shipped 2026-10-20.** Every PR below is merged and deployed to Convex prod, with prod backfills run.
+
+| Step | PR | Prod data step |
+| --- | --- | --- |
+| 1. Remove WhatsApp ordering | #8 | `cancelOpenWhatsAppReservations`: 0 open |
+| 2. Checkout Hold | #9, #14 (back-link fix) | none |
+| 3. Split status | #13 | `backfillOrderStatusAxes`: 1 order |
+| 4. Tax and territory | #12 | `backfillTaxCodes`: 16 patched, 0 to review |
+| 5. Fulfillment and money back | #15, #16 (`refund.failed` / `refund.updated`) | none |
+| 6. Cart and copy | #11 | none |
+| Cleanup | #10 (legacy shims), #17 + #18 (drop legacy `orders.status`) | `unsetLegacyOrderStatus`: 1 order |
+
+Follow-ups not yet built: recompute Payment Status after a refund fails at Stripe, and an admin alert email for a failed refund.
+
 ## Decisions
 
 **Checkout and stock**
