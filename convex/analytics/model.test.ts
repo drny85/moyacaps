@@ -44,8 +44,7 @@ describe("computeAnalytics", () => {
     order({ total: 999, cancelledAt: NOW }),
     order({ total: 300, createdAt: NOW - 10 * DAY }),
     order({ total: 70, paymentStatus: "partially_refunded", fulfillmentStatus: "delivered", refundedAmount: 10 }),
-    // Not yet backfilled: read through the legacy status.
-    order({ total: 40, paymentStatus: undefined, fulfillmentStatus: undefined, status: "dispatched", createdAt: NOW - 10 * DAY, items: [{ variantId: "old", name: "Old", quantity: 1, price: 40, image: "/o.png" }] }),
+    order({ total: 40, fulfillmentStatus: "in_transit", createdAt: NOW - 10 * DAY, items: [{ variantId: "old", name: "Old", quantity: 1, price: 40, image: "/o.png" }] }),
   ];
   const result = computeAnalytics(orders, [variant("cap", 0), variant("tee", 4), variant("big", 30)], NOW);
 

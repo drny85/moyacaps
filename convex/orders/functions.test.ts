@@ -6,7 +6,7 @@ import schema from "../schema";
 import { PRIMARY_ADMIN_EMAIL } from "../lib/auth";
 import type { TestConvex } from "convex-test";
 import type { Doc } from "../_generated/dataModel";
-import { legacyStatusAxes } from "./status";
+import type { StatusAxes } from "./status";
 
 const modules = import.meta.glob("/convex/**/*.ts");
 
@@ -77,21 +77,24 @@ function lifecycle(order: Doc<"orders"> | null | undefined) {
   };
 }
 
-/**
- * Seed an Order. `status` is shorthand for the matching axes (orders/status.ts mapping); a
- * `whatsapp_initiated` or `legacy` Order is stored the old way, with only the single status.
- */
+/** Shorthand for the axes a seeded Order starts with. */
+const SEED_AXES = {
+  pending: { paymentStatus: "awaiting_payment", fulfillmentStatus: "unfulfilled" },
+  paid: { paymentStatus: "paid", fulfillmentStatus: "unfulfilled" },
+  dispatched: { paymentStatus: "paid", fulfillmentStatus: "in_transit" },
+} satisfies Record<string, StatusAxes>;
+
+/** Seed an Order. `status` picks its starting axes (SEED_AXES). */
 async function seedOrder(
   t: T,
   variantId: string,
   opts: {
     qty?: number;
     email?: string;
-    status?: "pending" | "paid" | "dispatched" | "cancelled" | "whatsapp_initiated";
+    status?: keyof typeof SEED_AXES;
     paymentMethod?: "stripe" | "whatsapp";
     stripeSessionId?: string | null;
     orderNumber?: string;
-    legacy?: boolean;
   } = {}
 ) {
   const qty = opts.qty ?? 1;
@@ -99,8 +102,8 @@ async function seedOrder(
   const orderNumber = opts.orderNumber ?? `GL-TEST-${Math.floor(Math.random() * 1e6)}`;
   const stripeSessionId = opts.stripeSessionId === null ? undefined : (opts.stripeSessionId ?? "cs_test_demo1");
   const orderId = await t.run(async (ctx) => {
-    // Settled orders and legacy reservations hold their units, as in production.
-    if (status === "paid" || status === "dispatched" || status === "whatsapp_initiated") {
+    // Settled orders hold their units, as in production.
+    if (status === "paid" || status === "dispatched") {
       const variant = await ctx.db
         .query("variants")
         .withIndex("by_variantId", (q) => q.eq("variantId", variantId))
@@ -117,7 +120,7 @@ async function seedOrder(
       subtotal: qty * 100,
       shippingFee: 0,
       total: qty * 100,
-      ...(opts.legacy || status === "whatsapp_initiated" ? { status } : legacyStatusAxes({ status })),
+      ...SEED_AXES[status],
       paymentMethod: opts.paymentMethod ?? "stripe",
       stripeSessionId,
       paymentUrl: stripeSessionId ? "https://checkout.stripe.com/c/pay/cs_test_demo" : undefined,
@@ -152,8 +155,8 @@ describe("API surface lockdown (security regression locks)", () => {
     (() => {
       // @ts-expect-error attachStripeCustomerInternal must remain internal
       void api.orders.settlement.attachStripeCustomerInternal;
-      // @ts-expect-error cancelOpenWhatsAppReservations must remain internal
-      void api.orders.migrations.cancelOpenWhatsAppReservations;
+      // @ts-expect-error unsetLegacyOrderStatus must remain internal
+      void api.orders.migrations.unsetLegacyOrderStatus;
       // @ts-expect-error cancelOrder must remain internal
       void api.orders.functions.cancelOrder;
       // @ts-expect-error cancelOrderAdmin must remain internal
@@ -303,7 +306,7 @@ describe("Checkout Hold (ADR 0024)", () => {
     const order = await getOrder(tt, "GL-HOLD-1");
     expect(order?._id).toBe(orderId);
     expect(lifecycle(order)).toEqual({ payment: "awaiting_payment", fulfillment: "unfulfilled", cancelled: false });
-    expect(order?.status).toBeUndefined();
+    expect(order).not.toHaveProperty("status");
     expect(order?.stripeSessionId).toBe("cs_hold1");
     expect(order?.checkoutHoldExpiresAt).toBeGreaterThan(Date.now());
     expect(await getStock(tt, "V1")).toBe(3);
@@ -519,35 +522,6 @@ describe("updateFulfillmentStatusAdmin", () => {
         fulfillmentStatus: "in_transit",
       })
     ).rejects.toThrow(/Unauthorized|Forbidden/);
-    await drain(tt);
-  });
-});
-
-describe("WhatsApp cutover migration (ADR 0023)", () => {
-  it("cancels open reservations, releases their stock and leaves paid WhatsApp orders alone", async () => {
-    const tt = t();
-    await seedVariant(tt, "V1", 5);
-    const open1 = await seedOrder(tt, "V1", { status: "whatsapp_initiated", paymentMethod: "whatsapp", stripeSessionId: null });
-    const open2 = await seedOrder(tt, "V1", { status: "whatsapp_initiated", paymentMethod: "whatsapp", stripeSessionId: null, qty: 2 });
-    const paid = await seedOrder(tt, "V1", { status: "paid", paymentMethod: "whatsapp", stripeSessionId: null, legacy: true });
-    expect(await getStock(tt, "V1")).toBe(1);
-
-    const res = await tt.mutation(internal.orders.migrations.cancelOpenWhatsAppReservations, {});
-    expect(res).toEqual({ cancelled: 2, done: true });
-
-    expect(lifecycle(await getOrder(tt, open1.orderNumber))).toEqual({
-      payment: "awaiting_payment",
-      fulfillment: "unfulfilled",
-      cancelled: true,
-    });
-    expect((await getOrder(tt, open2.orderNumber))?.cancellationReason).toBe("whatsapp_retired");
-    expect((await getOrder(tt, paid.orderNumber))?.status).toBe("paid");
-    expect(await getStock(tt, "V1")).toBe(4);
-    expect((await getEvents(tt, open1.orderId)).map((e) => e.type)).toContain("cancelled");
-
-    const again = await tt.mutation(internal.orders.migrations.cancelOpenWhatsAppReservations, {});
-    expect(again).toEqual({ cancelled: 0, done: true });
-    expect(await getStock(tt, "V1")).toBe(4);
     await drain(tt);
   });
 });

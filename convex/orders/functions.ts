@@ -8,7 +8,7 @@ import { v, ConvexError } from "convex/values";
 import { internal } from "../_generated/api";
 import { isAdminRow, isAllowlistedAdmin, requireAdmin } from "../lib/auth";
 import { confirmationView, guestTrackingView, isUnpaidCheckout, orderHoldsStock, ownerTrackingView } from "./model";
-import { canEditShippingAddress, planCustomerCancellation, statusAxes, statusPatch, withStatusAxes } from "./status";
+import { canEditShippingAddress, planCustomerCancellation, statusAxes, statusPatch } from "./status";
 import {
   cancellationReleaseLines,
   cancellationRequestId,
@@ -197,7 +197,7 @@ export const getOrdersByClerkId = query({
     // A legacy GL-TRK placeholder is not a carrier Tracking Number: never shown as one.
     return orders
       .filter((o) => !isUnpaidCheckout(o))
-      .map((o) => ({ ...withStatusAxes(o), trackingNumber: carrierTrackingNumber(o) }));
+      .map((o) => ({ ...o, trackingNumber: carrierTrackingNumber(o) }));
   },
 });
 

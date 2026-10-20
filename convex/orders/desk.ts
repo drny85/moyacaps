@@ -27,7 +27,6 @@ import {
   planManualFulfillmentChange,
   statusAxes,
   statusPatch,
-  withStatusAxes,
 } from "./status";
 import { orderDoc, shippingAddressValidator, successResult } from "./validators";
 
@@ -110,8 +109,7 @@ export const getOrderDetailAdmin = query({
       return null;
     }
     await requireAdmin(ctx);
-    const order = await findOrderByTypedNumber(ctx, args.orderNumber);
-    return order ? withStatusAxes(order) : null;
+    return await findOrderByTypedNumber(ctx, args.orderNumber);
   },
 });
 
@@ -150,7 +148,7 @@ export const getAllOrdersAdmin = query({
       orders = orders.filter((o) => matchesOrderSearch(o, search));
     }
 
-    return orders.map(withStatusAxes);
+    return orders;
   },
 });
 
