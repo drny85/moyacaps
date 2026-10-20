@@ -1,9 +1,11 @@
 /**
- * Pure carrier-tracking rules (ADR 0012): how a tracking webhook scan changes an order.
- * Covered by trackingModel.test.ts.
+ * Pure carrier-tracking rules (ADR 0012, ADR 0024): how a tracking webhook scan changes an
+ * order. A scan moves only Fulfillment Status (status.ts `fulfillmentAfterScan`), never
+ * Payment Status. Covered by tracking.test.ts.
  */
 import type { Doc } from "../_generated/dataModel";
 import { appendNote } from "./model";
+import { fulfillmentAfterScan, statusPatch, type FulfillmentStatus, type StatusSource } from "./status";
 
 export type TrackingScan = {
   trackingNumber: string;
@@ -15,21 +17,23 @@ export type TrackingScan = {
   location?: { city?: string; state?: string; zip?: string; country?: string };
 };
 
-type TrackedOrder = Pick<Doc<"orders">, "status" | "carrier" | "adminNotes" | "manualStatusOverride">;
+type TrackedOrder = StatusSource & Pick<Partial<Doc<"orders">>, "carrier" | "adminNotes" | "manualStatusOverride">;
 
 export type TrackingPlan = {
   trackingStatus: string;
   locationStr?: string;
   patch: Record<string, unknown>;
   event?: { type: string; details: string };
-  /** DELIVERED scan moved a dispatched order to delivered: send the delivery email. */
+  /** Fulfillment Status after the scan, when the scan moved it. */
+  fulfillmentStatus?: FulfillmentStatus;
+  /** DELIVERED scan moved a shipped order to delivered: send the delivery email. */
   delivered: boolean;
 };
 
 /**
- * DELIVERED moves a dispatched order to delivered unless an Administrator locked it
- * (manualStatusOverride). FAILURE/RETURNED flag the order for staff. Every scan updates
- * the tracking fields.
+ * TRANSIT, DELIVERED, FAILURE and RETURNED move Fulfillment Status (in transit, delivered,
+ * delivery exception, returned) unless an Administrator locked it (manualStatusOverride).
+ * FAILURE/RETURNED always flag the order for staff. Every scan updates the tracking fields.
  */
 export function planTrackingUpdate(order: TrackedOrder, scan: TrackingScan, now: number): TrackingPlan {
   const trackingStatus = scan.status.toUpperCase();
@@ -46,14 +50,17 @@ export function planTrackingUpdate(order: TrackedOrder, scan: TrackingScan, now:
   if (locationStr) patch.trackingLocation = locationStr;
   if (scan.carrier && !order.carrier) patch.carrier = scan.carrier;
 
+  const fulfillmentStatus = fulfillmentAfterScan(order, trackingStatus, order.manualStatusOverride);
+  if (fulfillmentStatus) Object.assign(patch, statusPatch(order, { fulfillmentStatus }));
+
   if (trackingStatus === "DELIVERED") {
-    if (!order.manualStatusOverride && order.status === "dispatched") {
-      patch.status = "delivered";
+    if (fulfillmentStatus === "delivered") {
       patch.trackingDeliveredAt = now;
       return {
         trackingStatus,
         locationStr,
         patch,
+        fulfillmentStatus,
         delivered: true,
         event: {
           type: "carrier_delivered",
@@ -72,6 +79,7 @@ export function planTrackingUpdate(order: TrackedOrder, scan: TrackingScan, now:
       trackingStatus,
       locationStr,
       patch,
+      fulfillmentStatus,
       delivered: false,
       event: {
         type: trackingStatus === "RETURNED" ? "delivery_returned" : "delivery_failed",
@@ -80,5 +88,5 @@ export function planTrackingUpdate(order: TrackedOrder, scan: TrackingScan, now:
     };
   }
 
-  return { trackingStatus, locationStr, patch, delivered: false };
+  return { trackingStatus, locationStr, patch, fulfillmentStatus, delivered: false };
 }

@@ -2,50 +2,74 @@ import { describe, expect, it } from "vitest";
 import { planTrackingUpdate } from "./tracking";
 
 const NOW = 1_800_000_000_000;
-const dispatched = { status: "dispatched" as const, carrier: "USPS", adminNotes: undefined, manualStatusOverride: undefined };
+const shipped = {
+  paymentStatus: "paid" as const,
+  fulfillmentStatus: "in_transit" as const,
+  carrier: "USPS",
+  adminNotes: undefined,
+  manualStatusOverride: undefined,
+};
 
 describe("planTrackingUpdate", () => {
-  it("records transit scans without changing status", () => {
-    const plan = planTrackingUpdate(dispatched, { trackingNumber: "1Z", status: "transit", location: { city: "Newark", state: "NJ" } }, NOW);
+  it("records transit scans; an order already in transit stays put", () => {
+    const plan = planTrackingUpdate(shipped, { trackingNumber: "1Z", status: "transit", location: { city: "Newark", state: "NJ" } }, NOW);
     expect(plan.patch).toEqual({ trackingStatus: "TRANSIT", updatedAt: NOW, trackingLocation: "Newark, NJ" });
+    expect(plan.fulfillmentStatus).toBeUndefined();
     expect(plan.event).toBeUndefined();
     expect(plan.delivered).toBe(false);
   });
 
-  it("delivers a dispatched order and audits the scan", () => {
-    const plan = planTrackingUpdate(dispatched, { trackingNumber: "1Z", status: "DELIVERED", statusDetails: "Front door" }, NOW);
-    expect(plan.patch).toMatchObject({ status: "delivered", trackingDeliveredAt: NOW, trackingStatusDetails: "Front door" });
+  it("the first transit scan moves a label-purchased order in transit", () => {
+    const plan = planTrackingUpdate({ ...shipped, fulfillmentStatus: "label_purchased" }, { trackingNumber: "1Z", status: "TRANSIT" }, NOW);
+    expect(plan.patch).toMatchObject({ fulfillmentStatus: "in_transit", paymentStatus: "paid" });
+  });
+
+  it("delivers a shipped order and audits the scan", () => {
+    const plan = planTrackingUpdate(shipped, { trackingNumber: "1Z", status: "DELIVERED", statusDetails: "Front door" }, NOW);
+    expect(plan.patch).toMatchObject({ fulfillmentStatus: "delivered", trackingDeliveredAt: NOW, trackingStatusDetails: "Front door" });
     expect(plan.delivered).toBe(true);
     expect(plan.event).toEqual({ type: "carrier_delivered", details: "USPS scan: Front door (Destination)" });
   });
 
+  it("delivers a refunded order without touching its Payment Status", () => {
+    const plan = planTrackingUpdate({ ...shipped, paymentStatus: "refunded" }, { trackingNumber: "1Z", status: "DELIVERED" }, NOW);
+    expect(plan.patch).toMatchObject({ fulfillmentStatus: "delivered", paymentStatus: "refunded" });
+    expect(plan.delivered).toBe(true);
+  });
+
   it("respects an Administrator's manual override on DELIVERED", () => {
-    const plan = planTrackingUpdate({ ...dispatched, manualStatusOverride: true }, { trackingNumber: "1Z", status: "DELIVERED" }, NOW);
-    expect(plan.patch.status).toBeUndefined();
+    const plan = planTrackingUpdate({ ...shipped, manualStatusOverride: true }, { trackingNumber: "1Z", status: "DELIVERED" }, NOW);
+    expect(plan.patch.fulfillmentStatus).toBeUndefined();
     expect(plan.delivered).toBe(false);
     expect(plan.event).toBeUndefined();
   });
 
-  it("ignores DELIVERED for orders that are not dispatched", () => {
-    const plan = planTrackingUpdate({ ...dispatched, status: "paid" }, { trackingNumber: "1Z", status: "DELIVERED" }, NOW);
-    expect(plan.patch.status).toBeUndefined();
+  it("ignores DELIVERED for orders with nothing shipped", () => {
+    const plan = planTrackingUpdate({ ...shipped, fulfillmentStatus: "unfulfilled" }, { trackingNumber: "1Z", status: "DELIVERED" }, NOW);
+    expect(plan.patch.fulfillmentStatus).toBeUndefined();
+    expect(plan.delivered).toBe(false);
   });
 
-  it("flags failures and returns in admin notes", () => {
+  it("flags returns in admin notes and marks the order returned", () => {
     const plan = planTrackingUpdate(
-      { ...dispatched, adminNotes: "earlier" },
+      { ...shipped, adminNotes: "earlier" },
       { trackingNumber: "1Z", status: "RETURNED", statusDetails: "Refused", statusDate: "2026-10-01" },
       NOW
     );
     expect(plan.patch.trackingFailedAt).toBe(NOW);
+    expect(plan.patch.fulfillmentStatus).toBe("returned");
     expect(plan.patch.adminNotes).toBe("earlier\n⚠️ [Carrier RETURNED] Refused () at 2026-10-01");
     expect(plan.event).toEqual({ type: "delivery_returned", details: "USPS exception: Refused" });
   });
 
-  it("takes the scan's carrier only when the order has none", () => {
-    const plan = planTrackingUpdate({ ...dispatched, carrier: undefined }, { trackingNumber: "1Z", status: "FAILURE", carrier: "UPS" }, NOW);
+  it("a carrier failure is a Delivery Exception", () => {
+    const plan = planTrackingUpdate({ ...shipped, carrier: undefined }, { trackingNumber: "1Z", status: "FAILURE", carrier: "UPS" }, NOW);
+    expect(plan.patch.fulfillmentStatus).toBe("delivery_exception");
     expect(plan.patch.carrier).toBe("UPS");
     expect(plan.event).toEqual({ type: "delivery_failed", details: "UPS exception: FAILURE" });
-    expect(planTrackingUpdate(dispatched, { trackingNumber: "1Z", status: "TRANSIT", carrier: "UPS" }, NOW).patch.carrier).toBeUndefined();
+  });
+
+  it("takes the scan's carrier only when the order has none", () => {
+    expect(planTrackingUpdate(shipped, { trackingNumber: "1Z", status: "TRANSIT", carrier: "UPS" }, NOW).patch.carrier).toBeUndefined();
   });
 });

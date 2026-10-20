@@ -106,7 +106,7 @@ describe("Stripe webhook: Fulfillment Territory flag (plan 0008 PR 4)", () => {
     await deliver(tt, completedEvent("evt_pr1", "cs_pr1", "GL-PR-1", { state: "PR", postal_code: "00901", country: "US" }));
 
     const { order, events, scheduled } = await state(tt, orderId);
-    expect(order.status).toBe("paid");
+    expect(order.paymentStatus).toBe("paid");
     expect(order.refundedAmount).toBeUndefined();
     expect(order.adminNotes).toContain("⚠️ OUT OF TERRITORY: US territories (PR)");
     expect(order.adminNotes).toContain("Refund before packing");
@@ -127,7 +127,7 @@ describe("Stripe webhook: Fulfillment Territory flag (plan 0008 PR 4)", () => {
     const orderId = await seedHeldOrder(tt, "GL-AE-1", "cs_ae1");
     await deliver(tt, completedEvent("evt_ae1", "cs_ae1", "GL-AE-1", { state: "AE", postal_code: "09001", country: "US" }));
     const { order, events } = await state(tt, orderId);
-    expect(order.status).toBe("paid");
+    expect(order.paymentStatus).toBe("paid");
     expect(events.map((e) => e.type)).toContain("out_of_territory");
   });
 
@@ -136,7 +136,7 @@ describe("Stripe webhook: Fulfillment Territory flag (plan 0008 PR 4)", () => {
     const orderId = await seedHeldOrder(tt, "GL-DC-1", "cs_dc1");
     await deliver(tt, completedEvent("evt_dc1", "cs_dc1", "GL-DC-1", { state: "DC", postal_code: "20001", country: "US" }));
     const { order, events, scheduled } = await state(tt, orderId);
-    expect(order.status).toBe("paid");
+    expect(order.paymentStatus).toBe("paid");
     expect(order.adminNotes).toBeUndefined();
     expect(events.map((e) => e.type)).not.toContain("out_of_territory");
     expect(scheduled.some((n) => n.includes("sendAdminTerritoryAlert"))).toBe(false);

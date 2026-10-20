@@ -11,7 +11,6 @@ import {
   isCheckoutHoldActive,
   isUnpaidCheckout,
   orderHoldsStock,
-  planAdminStatusChange,
   planCheckoutHold,
   settlementStockAction,
   stockKey,
@@ -19,9 +18,12 @@ import {
   toCheckoutSessionState,
   type HoldLine,
 } from "./model";
+import { planCancellation } from "./status";
 
 const PAY_AT = 1_700_000_000_000;
-const hold = { status: "pending" as const, checkoutHoldExpiresAt: checkoutHoldExpiresAt(PAY_AT) };
+const awaiting = { paymentStatus: "awaiting_payment" as const, fulfillmentStatus: "unfulfilled" as const };
+const paid = { paymentStatus: "paid" as const, fulfillmentStatus: "unfulfilled" as const };
+const hold = { ...awaiting, checkoutHoldExpiresAt: checkoutHoldExpiresAt(PAY_AT) };
 
 describe("Checkout Hold timing", () => {
   it("lasts the 30-minute session plus Stripe's creation margin", () => {
@@ -42,45 +44,46 @@ describe("Checkout Hold timing", () => {
 
   it("the backstop ignores orders without a live hold", () => {
     const later = PAY_AT + 10 * BACKSTOP_AFTER_MS;
-    expect(isBackstopDue({ status: "pending" }, later)).toBe(false);
-    expect(isBackstopDue({ ...hold, status: "paid" }, later)).toBe(false);
-    expect(isBackstopDue({ ...hold, status: "cancelled" }, later)).toBe(false);
+    expect(isBackstopDue(awaiting, later)).toBe(false);
+    expect(isBackstopDue({ ...hold, paymentStatus: "paid" as const }, later)).toBe(false);
+    expect(isBackstopDue({ ...hold, cancelledAt: PAY_AT }, later)).toBe(false);
   });
 });
 
 describe("Checkout Hold state", () => {
-  it("is active only on a pending order that took its units at Pay", () => {
+  it("is active only on an order awaiting payment that took its units at Pay", () => {
     expect(isCheckoutHoldActive(hold)).toBe(true);
-    expect(isCheckoutHoldActive({ status: "pending" })).toBe(false);
-    expect(isCheckoutHoldActive({ ...hold, status: "cancelled" })).toBe(false);
+    expect(isCheckoutHoldActive(awaiting)).toBe(false);
+    expect(isCheckoutHoldActive({ ...hold, cancelledAt: PAY_AT })).toBe(false);
   });
 
   it("a live hold keeps units out of Available Inventory; a bare pending order does not", () => {
     expect(orderHoldsStock(hold)).toBe(true);
-    expect(orderHoldsStock({ status: "pending" })).toBe(false);
-    expect(orderHoldsStock({ status: "paid" })).toBe(true);
-    expect(orderHoldsStock({ ...hold, status: "cancelled" })).toBe(false);
+    expect(orderHoldsStock(awaiting)).toBe(false);
+    expect(orderHoldsStock(paid)).toBe(true);
+    expect(orderHoldsStock({ ...hold, cancelledAt: PAY_AT })).toBe(false);
   });
 
   it("settling a held order never deducts again; settling a bare pending order does", () => {
     expect(settlementStockAction(hold)).toBe("none");
-    expect(settlementStockAction({ status: "pending" })).toBe("deduct");
+    expect(settlementStockAction(awaiting)).toBe("deduct");
   });
 
   it("a release must name the hold's own session", () => {
     const withSession = { ...hold, stripeSessionId: "cs_a" };
     expect(canReleaseCheckoutHold(withSession, "cs_a")).toBe(true);
     expect(canReleaseCheckoutHold(withSession, "cs_other")).toBe(false);
-    expect(canReleaseCheckoutHold({ ...withSession, status: "paid" }, "cs_a")).toBe(false);
+    expect(canReleaseCheckoutHold({ ...withSession, paymentStatus: "paid" as const }, "cs_a")).toBe(false);
     // Session creation failed before a session was recorded.
     expect(canReleaseCheckoutHold(hold, undefined)).toBe(true);
   });
 
   it("customers never see unpaid checkouts in their history", () => {
-    expect(isUnpaidCheckout({ status: "pending" })).toBe(true);
-    expect(isUnpaidCheckout({ status: "cancelled", checkoutHoldReleasedAt: PAY_AT })).toBe(true);
-    expect(isUnpaidCheckout({ status: "cancelled" })).toBe(false);
-    expect(isUnpaidCheckout({ status: "paid" })).toBe(false);
+    expect(isUnpaidCheckout(awaiting)).toBe(true);
+    expect(isUnpaidCheckout({ ...awaiting, cancelledAt: PAY_AT, checkoutHoldReleasedAt: PAY_AT })).toBe(true);
+    expect(isUnpaidCheckout({ ...paid, cancelledAt: PAY_AT })).toBe(false);
+    expect(isUnpaidCheckout({ paymentStatus: "refunded", fulfillmentStatus: "unfulfilled" })).toBe(false);
+    expect(isUnpaidCheckout(paid)).toBe(false);
   });
 });
 
@@ -143,12 +146,14 @@ describe("planCheckoutHold", () => {
   });
 });
 
-describe("planAdminStatusChange with a Checkout Hold", () => {
-  it("marking a held order paid does not deduct again", () => {
-    expect(planAdminStatusChange("pending", "paid", true)).toMatchObject({ ok: true, stock: "none" });
+describe("cancelling a Checkout Hold", () => {
+  it("releases its units", () => {
+    expect(planCancellation(hold, "administrator", orderHoldsStock(hold))).toEqual({ ok: true, releaseStock: true });
   });
 
-  it("cancelling a held order releases its units", () => {
-    expect(planAdminStatusChange("pending", "cancelled", true)).toMatchObject({ ok: true, stock: "release" });
+  it("a released hold has nothing left to give back", () => {
+    const released = { ...hold, cancelledAt: PAY_AT, checkoutHoldReleasedAt: PAY_AT };
+    expect(orderHoldsStock(released)).toBe(false);
+    expect(planCancellation(released, "administrator", orderHoldsStock(released)).ok).toBe(false);
   });
 });

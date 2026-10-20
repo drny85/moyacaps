@@ -13,7 +13,8 @@ const order = (overrides: Partial<Doc<"orders">>): Doc<"orders"> =>
     items: [{ variantId: "cap", name: "Cap", quantity: 1, price: 100, image: "/c.png" }],
     currency: "USD",
     total: 108,
-    status: "paid",
+    paymentStatus: "paid",
+    fulfillmentStatus: "unfulfilled",
     paymentMethod: "stripe",
     createdAt: NOW,
     ...overrides,
@@ -38,29 +39,49 @@ const variant = (variantId: string, stock: number): Doc<"variants"> =>
 describe("computeAnalytics", () => {
   const orders = [
     order({ total: 108 }),
-    order({ total: 200, paymentMethod: "whatsapp", status: "delivered", items: [{ variantId: "tee", name: "Tee", quantity: 2, price: 80, image: "/t.png" }] }),
-    order({ total: 50, status: "whatsapp_initiated", paymentMethod: "whatsapp" }),
-    order({ total: 999, status: "cancelled" }),
+    order({ total: 200, paymentMethod: "whatsapp", fulfillmentStatus: "delivered", items: [{ variantId: "tee", name: "Tee", quantity: 2, price: 80, image: "/t.png" }] }),
+    order({ total: 50, paymentStatus: "awaiting_payment", paymentMethod: "whatsapp" }),
+    order({ total: 999, cancelledAt: NOW }),
     order({ total: 300, createdAt: NOW - 10 * DAY }),
+    order({ total: 70, paymentStatus: "partially_refunded", fulfillmentStatus: "delivered", refundedAmount: 10 }),
+    // Not yet backfilled: read through the legacy status.
+    order({ total: 40, paymentStatus: undefined, fulfillmentStatus: undefined, status: "dispatched", createdAt: NOW - 10 * DAY, items: [{ variantId: "old", name: "Old", quantity: 1, price: 40, image: "/o.png" }] }),
   ];
   const result = computeAnalytics(orders, [variant("cap", 0), variant("tee", 4), variant("big", 30)], NOW);
 
-  it("counts revenue only from paid-like orders, split by payment method", () => {
-    expect(result.totalRevenue).toBe(608);
-    expect(result.completedOrdersCount).toBe(3);
-    expect(result.totalOrdersCount).toBe(5);
-    expect(result.aov).toBe(203);
-    expect(result.paymentBreakdown).toEqual({ stripe: { revenue: 408, orders: 2 }, whatsapp: { revenue: 200, orders: 1 } });
+  it("counts revenue only from paid, uncancelled orders, split by payment method", () => {
+    expect(result.totalRevenue).toBe(648);
+    expect(result.completedOrdersCount).toBe(4);
+    expect(result.totalOrdersCount).toBe(7);
+    expect(result.aov).toBe(162);
+    expect(result.paymentBreakdown).toEqual({ stripe: { revenue: 448, orders: 3 }, whatsapp: { revenue: 200, orders: 1 } });
   });
 
-  it("counts every status, including legacy WhatsApp reservations", () => {
-    expect(result.statusCounts).toMatchObject({ paid: 2, delivered: 1, whatsapp_initiated: 1, cancelled: 1, pending: 0 });
+  it("counts each axis apart, cancelled orders once", () => {
+    expect(result.paymentStatusCounts).toEqual({
+      awaiting_payment: 1,
+      paid: 4,
+      partially_refunded: 1,
+      refunded: 0,
+      disputed: 0,
+    });
+    // Only settled orders count toward fulfillment.
+    expect(result.fulfillmentStatusCounts).toEqual({
+      unfulfilled: 2,
+      label_purchased: 0,
+      in_transit: 1,
+      delivered: 2,
+      delivery_exception: 0,
+      returned: 0,
+    });
+    expect(result.cancelledCount).toBe(1);
   });
 
   it("ranks top variants by units sold; ties keep first-sold order", () => {
     expect(result.topVariants.map((v) => [v.variantId, v.units, v.revenue])).toEqual([
       ["cap", 2, 200],
       ["tee", 2, 160],
+      ["old", 1, 40],
     ]);
   });
 

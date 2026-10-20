@@ -95,7 +95,8 @@ async function seeded() {
       subtotal: 120,
       shippingFee: 8,
       total: 128,
-      status: "paid",
+      paymentStatus: "paid",
+      fulfillmentStatus: "unfulfilled",
       paymentMethod: "stripe",
       stripeSessionId: "cs_test_rc",
       trackingNumber: "GL-TRK-000001",
@@ -107,6 +108,7 @@ async function seeded() {
       items: [{ variantId: "negro-rojo", name: "Black / Red", quantity: 1, price: 120, image: "/caps/negro-rojo.png" }],
       currency: "USD",
       total: 128,
+      // Not yet backfilled: every read must resolve its axes from the legacy status.
       status: "whatsapp_initiated",
       paymentMethod: "whatsapp",
       paymentUrl: "https://checkout.stripe.com/pay/cs_test_wa",
@@ -206,7 +208,7 @@ describe("order reads match their return validators", () => {
 
   it("internal lookups", async () => {
     const t = await seeded();
-    expect(await t.query(internal.orders.functions.getOrderByNumberInternal, { orderNumber: "GL-RC-1" })).toMatchObject({ status: "paid" });
+    expect(await t.query(internal.orders.functions.getOrderByNumberInternal, { orderNumber: "GL-RC-1" })).toMatchObject({ paymentStatus: "paid" });
     expect(await t.query(internal.orders.functions.getOrderByStripeSessionIdInternal, { stripeSessionId: "nope" })).toBeNull();
     expect(await t.mutation(internal.users.functions.softDeleteUser, { clerkId: "nobody" })).toEqual({ success: false, reason: "User not found" });
   });

@@ -4,7 +4,15 @@
  */
 import { v } from "convex/values";
 import type { Doc } from "../_generated/dataModel";
-import { isPaidLike } from "../orders/model";
+import {
+  countsAsSale,
+  FULFILLMENT_STATUSES,
+  hasSettled,
+  PAYMENT_STATUSES,
+  statusAxes,
+  type FulfillmentStatus,
+  type PaymentStatus,
+} from "../orders/status";
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -23,13 +31,14 @@ export function computeAnalytics(orders: Doc<"orders">[], allVariants: Doc<"vari
   let whatsappRevenue = 0;
   let whatsappPaidCount = 0;
 
-  const statusCounts: Record<string, number> = {
-    pending: 0,
-    paid: 0,
-    dispatched: 0,
-    delivered: 0,
-    cancelled: 0,
-  };
+  // Orders on each axis (ADR 0024). Cancelled Orders are counted once, apart; fulfillment
+  // counts only settled Orders, so abandoned checkouts do not swell "unfulfilled".
+  const paymentStatusCounts = Object.fromEntries(PAYMENT_STATUSES.map((s) => [s, 0])) as Record<PaymentStatus, number>;
+  const fulfillmentStatusCounts = Object.fromEntries(FULFILLMENT_STATUSES.map((s) => [s, 0])) as Record<
+    FulfillmentStatus,
+    number
+  >;
+  let cancelledCount = 0;
 
   const variantSalesMap: Record<string, { name: string; units: number; revenue: number; image: string }> = {};
 
@@ -41,9 +50,14 @@ export function computeAnalytics(orders: Doc<"orders">[], allVariants: Doc<"vari
   }
 
   for (const o of orders) {
-    statusCounts[o.status] = (statusCounts[o.status] || 0) + 1;
+    const axes = statusAxes(o);
+    if (axes.cancelledAt !== undefined) cancelledCount += 1;
+    else {
+      paymentStatusCounts[axes.paymentStatus] += 1;
+      if (hasSettled(o)) fulfillmentStatusCounts[axes.fulfillmentStatus] += 1;
+    }
 
-    if (isPaidLike(o.status)) {
+    if (countsAsSale(o)) {
       totalRevenue += o.total;
       completedOrdersCount += 1;
 
@@ -103,7 +117,9 @@ export function computeAnalytics(orders: Doc<"orders">[], allVariants: Doc<"vari
       // Historical WhatsApp/Zelle sales (ADR 0023): no new ones are created.
       whatsapp: { revenue: whatsappRevenue, orders: whatsappPaidCount },
     },
-    statusCounts,
+    paymentStatusCounts,
+    fulfillmentStatusCounts,
+    cancelledCount,
     topVariants,
     lowStockVariants,
     inventorySummary: {
@@ -115,7 +131,7 @@ export function computeAnalytics(orders: Doc<"orders">[], allVariants: Doc<"vari
   };
 }
 
-/** Order-desk attention counters over the bounded paid queue. */
+/** Order-desk attention counters over the bounded packing queue (orders/status `awaitsFulfillment`). */
 export function computeAttentionStats(
   paidOrders: Array<{ createdAt?: number }>,
   latestOrderTimestamp: number,
@@ -156,7 +172,9 @@ export const analyticsValidator = v.object({
   totalOrdersCount: v.number(),
   aov: v.number(),
   paymentBreakdown: v.object({ stripe: revenueCount, whatsapp: revenueCount }),
-  statusCounts: v.record(v.string(), v.number()),
+  paymentStatusCounts: v.record(v.string(), v.number()),
+  fulfillmentStatusCounts: v.record(v.string(), v.number()),
+  cancelledCount: v.number(),
   topVariants: v.array(
     v.object({ variantId: v.string(), name: v.string(), units: v.number(), revenue: v.number(), image: v.string() })
   ),

@@ -18,6 +18,7 @@ import {
   refundFromCharge,
   settlementFromSession,
 } from "./settlementModel";
+import { hasSettled, isCancelled } from "../orders/status";
 
 /** Hydrate a paid session's line items, using live variants for compact metadata. */
 async function sessionItems(ctx: ActionCtx, metadata: Record<string, string> | null | undefined) {
@@ -290,9 +291,9 @@ export const fulfillStripeWebhook = internalAction({
       return { received: true };
     }
 
-    // Checkout Hold (ADR 0024): Stripe says the session expired unpaid, so the pending Order
+    // Checkout Hold (ADR 0024): Stripe says the session expired unpaid, so the Order awaiting payment
     // is cancelled and its units go back. The mutation ignores a settled or replaced hold.
-    if (event.type === "checkout.session.expired" && order.status === "pending") {
+    if (event.type === "checkout.session.expired" && !hasSettled(order) && !isCancelled(order)) {
       await ctx.runMutation(internal.orders.checkoutHold.releaseCheckoutHold, {
         orderId: order._id,
         stripeSessionId: sessionId,

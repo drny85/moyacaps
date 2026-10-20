@@ -16,12 +16,11 @@ import {
   appendNote,
   decideStripeSettlement,
   hasProcessedWebhookEvent,
-  isPaidLike,
   newTrackingNumber,
-  planRefund,
   settlementStockAction,
   withWebhookEventId,
 } from "./model";
+import { hasSettled, paymentStatusValidator, planDispute, planRefund, statusAxes, statusPatch } from "./status";
 import {
   deductStock,
   getOrderByNumber,
@@ -100,8 +99,9 @@ export const recordWebhookEventIdInternal = internalMutation({
 });
 
 /**
- * INTERNAL: record a Stripe refund on the order. Sets status to "refunded" (if 100% refunded)
- * or "partially_refunded", updates refundedAmount, and audits the event.
+ * INTERNAL: record a Stripe refund on the order. Sets Payment Status to "refunded" (if 100%
+ * refunded) or "partially_refunded", updates refundedAmount, and audits the event. Fulfillment
+ * Status is never touched: a delivered order that gets refunded stays delivered.
  * NOTE: Does NOT restock physical inventory automatically (manual inspection required for physical apparel).
  */
 export const recordStripeRefundInternal = internalMutation({
@@ -116,7 +116,7 @@ export const recordStripeRefundInternal = internalMutation({
   returns: v.object({
     success: v.boolean(),
     replayed: v.optional(v.boolean()),
-    status: v.optional(v.union(v.literal("refunded"), v.literal("partially_refunded"))),
+    paymentStatus: v.optional(paymentStatusValidator),
   }),
   handler: async (ctx, args) => {
     const order = await ctx.db.get(args.orderId);
@@ -129,10 +129,10 @@ export const recordStripeRefundInternal = internalMutation({
       return { success: true, replayed: true };
     }
 
-    const refund = planRefund(order.refundedAmount, args.refundedAmount, args.isFullRefund);
+    const refund = planRefund(order, args.refundedAmount, args.isFullRefund);
 
     await ctx.db.patch(args.orderId, {
-      status: refund.status,
+      ...statusPatch(order, { paymentStatus: refund.paymentStatus }),
       refundedAmount: refund.refundedAmount,
       webhookEventIds: withWebhookEventId(order, args.webhookEventId),
       updatedAt: Date.now(),
@@ -151,13 +151,14 @@ export const recordStripeRefundInternal = internalMutation({
       actor: "stripe_webhook",
     });
 
-    return { success: true, status: refund.status };
+    return { success: true, paymentStatus: refund.paymentStatus };
   },
 });
 
 /**
- * INTERNAL: record a Stripe dispute / chargeback opened or closed on an order.
- * Flags the order, records audit trail, and prepares for admin response.
+ * INTERNAL: record a Stripe dispute / chargeback opened or closed on an order. Opening sets
+ * Payment Status to disputed; closing returns it to what the refunds say. Fulfillment Status
+ * is never touched. Records the audit trail for the admin response.
  */
 export const recordStripeDisputeInternal = internalMutation({
   args: {
@@ -191,6 +192,7 @@ export const recordStripeDisputeInternal = internalMutation({
       const disputeMsg = `⚠️ CHARGEBACK DISPUTE: $${args.amount.toFixed(2)} ${args.currency} (${args.reason || "general"}). Status: ${args.status}. Due by: ${dueStr}. Respond in Stripe Dashboard.`;
 
       await ctx.db.patch(args.orderId, {
+        ...statusPatch(order, planDispute(order, "opened")),
         disputed: true,
         disputeDetails: disputeMsg,
         adminNotes: appendNote(order.adminNotes, disputeMsg),
@@ -211,6 +213,7 @@ export const recordStripeDisputeInternal = internalMutation({
       const closeMsg = `ℹ️ DISPUTE CLOSED: ${isWon ? "WON by merchant" : "LOST by merchant"} (${args.status}).`;
 
       await ctx.db.patch(args.orderId, {
+        ...statusPatch(order, planDispute(order, "closed")),
         disputed: false,
         disputeDetails: closeMsg,
         adminNotes: appendNote(order.adminNotes, closeMsg),
@@ -288,12 +291,12 @@ export const createOrUpdateStripeOrder = internalMutation({
           type: "double_settlement_attempted",
           stripeEventId: args.webhookEventId,
           stripeSessionId: args.stripeSessionId,
-          details: `Order already ${existing.status} via session ${existing.stripeSessionId ?? "none"} but Stripe session ${args.stripeSessionId} also completed with amount ${args.total}. Manual refund review required.`,
+          details: `Order already ${statusAxes(existing).paymentStatus} via session ${existing.stripeSessionId ?? "none"} but Stripe session ${args.stripeSessionId} also completed with amount ${args.total}. Manual refund review required.`,
         });
         await ctx.db.patch(existing._id, {
           adminNotes: appendNote(
             existing.adminNotes,
-            `⚠️ DOUBLE SETTLEMENT: Stripe session ${args.stripeSessionId} paid $${args.total} after order was already ${existing.status}. Refund one side manually.`
+            `⚠️ DOUBLE SETTLEMENT: Stripe session ${args.stripeSessionId} paid $${args.total} after order was already ${statusAxes(existing).paymentStatus}. Refund one side manually.`
           ),
           updatedAt: Date.now(),
         });
@@ -321,7 +324,7 @@ export const createOrUpdateStripeOrder = internalMutation({
         return existing._id;
       }
 
-      const wasAwaitingPayment = !isPaidLike(existing.status);
+      const wasAwaitingPayment = !hasSettled(existing);
       // A pending Order with a Checkout Hold took its units at Pay (ADR 0024): never deduct twice.
       const stock = settlementStockAction(existing);
 
@@ -338,7 +341,7 @@ export const createOrUpdateStripeOrder = internalMutation({
         tax: args.tax ?? existing.tax,
         taxDetails: args.taxDetails ?? existing.taxDetails,
         total: args.total ?? existing.total,
-        status: "paid",
+        ...statusPatch(existing, { paymentStatus: "paid" }),
         paymentMethod: "stripe",
         stripeSessionId: args.stripeSessionId,
         stripeSessionIds: appendBoundedId(existing.stripeSessionIds, args.stripeSessionId),
@@ -424,7 +427,8 @@ export const createOrUpdateStripeOrder = internalMutation({
       tax: args.tax,
       taxDetails: args.taxDetails,
       total: args.total,
-      status: "paid",
+      paymentStatus: "paid",
+      fulfillmentStatus: "unfulfilled",
       paymentMethod: "stripe",
       stripeSessionId: args.stripeSessionId,
       stripeSessionIds: [args.stripeSessionId],

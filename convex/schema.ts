@@ -1,6 +1,7 @@
 import { defineSchema, defineTable } from "convex/server";
 import { capAngleValidator, imageRoleValidator } from "./catalog/images/validators";
 import { storedCategoryLaunchValidator } from "./settings/launch";
+import { cancellationReasonValidator, fulfillmentStatusValidator, paymentStatusValidator } from "./orders/status";
 import { v } from "convex/values";
 
 export default defineSchema({
@@ -114,16 +115,27 @@ export default defineSchema({
       })
     ),
     total: v.number(),
-    status: v.union(
-      v.literal("pending"),
-      v.literal("paid"),
-      v.literal("dispatched"),
-      v.literal("delivered"),
-      v.literal("cancelled"),
-      v.literal("whatsapp_initiated"),
-      v.literal("refunded"),
-      v.literal("partially_refunded")
+    // Legacy single status, superseded by paymentStatus + fulfillmentStatus (ADR 0024). No longer
+    // written or read (except the backfill and its read fallback); removed once the backfill ran.
+    status: v.optional(
+      v.union(
+        v.literal("pending"),
+        v.literal("paid"),
+        v.literal("dispatched"),
+        v.literal("delivered"),
+        v.literal("cancelled"),
+        v.literal("whatsapp_initiated"),
+        v.literal("refunded"),
+        v.literal("partially_refunded")
+      )
     ),
+    // ADR 0024: where the money stands and where the package stands, independently. Optional
+    // only until orders/migrations:backfillOrderStatusAxes has run; every write sets both.
+    paymentStatus: v.optional(paymentStatusValidator),
+    fulfillmentStatus: v.optional(fulfillmentStatusValidator),
+    // Cancelled marker: set once, never cleared. Payment Status keeps recording refunds after it.
+    cancelledAt: v.optional(v.number()),
+    cancellationReason: v.optional(cancellationReasonValidator),
     paymentMethod: v.union(v.literal("stripe"), v.literal("whatsapp")),
     stripeSessionId: v.optional(v.string()),
     // History of every Stripe Checkout session ever issued for this order (link refreshes).
@@ -187,6 +199,14 @@ export default defineSchema({
     .index("by_customerEmail", ["customerEmail"])
     .index("by_reservationExpiresAt", ["reservationExpiresAt"])
     .index("by_status_and_checkoutHoldExpiresAt", ["status", "checkoutHoldExpiresAt"])
+    .index("by_paymentStatus_and_fulfillmentStatus_and_cancelledAt", ["paymentStatus", "fulfillmentStatus", "cancelledAt"])
+    .index("by_fulfillmentStatus", ["fulfillmentStatus"])
+    .index("by_cancelledAt", ["cancelledAt"])
+    .index("by_paymentStatus_and_cancelledAt_and_checkoutHoldExpiresAt", [
+      "paymentStatus",
+      "cancelledAt",
+      "checkoutHoldExpiresAt",
+    ])
     .index("by_createdAt", ["createdAt"]),
   users: defineTable({
     clerkId: v.string(),

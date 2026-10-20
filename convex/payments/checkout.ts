@@ -37,6 +37,7 @@ import {
   orderSessionIds,
   stripeSessionExpiresAt,
 } from "../orders/model";
+import { hasSettled, isCancelled } from "../orders/status";
 import { expireCheckoutSession, expireSessionsForIds, getStripe, upsertStripeCustomer } from "./stripeClient";
 import { requireAdminInAction } from "../lib/auth";
 import type { ActionCtx } from "../_generated/server";
@@ -87,7 +88,7 @@ async function endOpenCheckout(
   const order: Doc<"orders"> | null = await ctx.runQuery(internal.orders.functions.getOrderByStripeSessionIdInternal, {
     stripeSessionId: sessionId,
   });
-  if (!order || order.status !== "pending") return false;
+  if (!order || hasSettled(order) || isCancelled(order)) return false;
   const { state } = await expireCheckoutSession(stripe, sessionId);
   if (decideHoldRelease([state]) !== "release") return false;
   const { released } = await ctx.runMutation(internal.orders.checkoutHold.releaseCheckoutHold, {

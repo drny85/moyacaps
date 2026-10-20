@@ -10,9 +10,10 @@ import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { getCarrierTrackingUrl } from "@/lib/tracking";
 import { getWhatsAppConciergeUrl } from "@/lib/whatsapp";
+import { isCancellableOrder, isShippedOrder } from "@/lib/orderStatus";
+import { OrderStatusBadges } from "@/components/orders/OrderStatusBadges";
 import {
   Package,
-  CheckCircle2,
   Truck,
   ArrowRight,
   Shield,
@@ -22,7 +23,6 @@ import {
   Check,
   X,
   AlertTriangle,
-  RotateCcw,
   Loader2,
   ExternalLink,
 } from "lucide-react";
@@ -283,9 +283,8 @@ export default function AccountOrdersPage() {
       <div className="space-y-6">
         {ordersToDisplay.length > 0 ? (
           ordersToDisplay.map((ord: any) => {
-            const isCancellable = ord.status === "paid" || ord.status === "pending";
-            const isShipped = ord.status === "shipped" || ord.status === "dispatched";
-            const isCancelled = ord.status === "cancelled";
+            const isCancellable = isCancellableOrder(ord);
+            const isShipped = isShippedOrder(ord);
 
             return (
               <div
@@ -321,38 +320,23 @@ export default function AccountOrdersPage() {
                   </div>
 
                   <div className="flex items-center gap-3">
-                    {/* Status Pill */}
-                    {isCancelled ? (
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-display font-semibold bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30">
-                        <XCircle className="w-3.5 h-3.5" />
-                        <span>{t("statusCancelled")}</span>
-                      </span>
-                    ) : ord.status === "refunded" ? (
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-display font-semibold bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30">
-                        <RotateCcw className="w-3.5 h-3.5" />
-                        <span>Refunded</span>
-                      </span>
-                    ) : ord.status === "partially_refunded" ? (
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-display font-semibold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
-                        <RotateCcw className="w-3.5 h-3.5" />
-                        <span>Partially Refunded</span>
-                      </span>
-                    ) : ord.status === "delivered" ? (
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-display font-semibold bg-purple-500/15 text-purple-600 dark:text-purple-400 border border-purple-500/30">
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        <span>Delivered</span>
-                      </span>
-                    ) : isShipped ? (
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-display font-semibold bg-sky-500/15 text-sky-600 dark:text-sky-400 border border-sky-500/30">
-                        <Truck className="w-3.5 h-3.5" />
-                        <span>{t("statusDispatched")}</span>
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-display font-semibold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        <span>{t("statusPaid")}</span>
-                      </span>
-                    )}
+                    {/* Status Pills: money first, then the package (ADR 0024) */}
+                    <OrderStatusBadges
+                      order={ord}
+                      className="px-3 py-1 text-xs font-display font-semibold"
+                      labels={{
+                        cancelled: t("statusCancelledOnly"),
+                        refunded: t("statusRefunded"),
+                        partially_refunded: t("statusPartiallyRefunded"),
+                        placed: t("statusPlaced"),
+                        paid: t("statusPaid"),
+                        label_purchased: t("statusLabelPurchased"),
+                        in_transit: t("statusDispatched"),
+                        delivered: t("statusDelivered"),
+                        delivery_exception: t("statusDeliveryException"),
+                        returned: t("statusReturned"),
+                      }}
+                    />
 
                     <div className="text-right">
                       <span className="font-mono font-bold text-base text-zinc-900 dark:text-white block">

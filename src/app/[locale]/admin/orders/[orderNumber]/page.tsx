@@ -11,6 +11,16 @@ import {
 } from "@/lib/whatsapp";
 import { Link, useRouter } from "@/i18n/routing";
 import { ShippingLabelModal } from "@/components/admin/ShippingLabelModal";
+import { OrderStatusPills } from "@/components/admin/OrderStatusPills";
+import {
+  adminStatusSummary,
+  awaitsPacking,
+  isAddressEditable,
+  isCancelledOrder,
+  isPaidOrder,
+  isShippedOrder,
+  PAYMENT_LABELS,
+} from "@/lib/orderStatus";
 import {
   ArrowLeft,
   Printer,
@@ -53,7 +63,7 @@ export default function DedicatedOrderDetailPage({
     orderNumber: decodeURIComponent(orderNumber),
   });
 
-  const updateOrderStatus = useMutation(api.orders.desk.updateOrderStatusAdmin);
+  const updateFulfillmentStatus = useMutation(api.orders.desk.updateFulfillmentStatusAdmin);
   const updateOrderFulfillment = useMutation(api.orders.desk.updateOrderFulfillmentAdmin);
   const updateShippingAddressAdmin = useMutation(api.orders.desk.updateShippingAddressAdmin);
   const cancelAndRefundAdmin = useAction(api.payments.refunds.cancelAndRefundOrderAdmin);
@@ -170,9 +180,8 @@ export default function DedicatedOrderDetailPage({
     if (!order) return;
     try {
       setIsProcessing(true);
-      await updateOrderStatus({
+      await updateOrderFulfillment({
         orderId: order._id,
-        newStatus: order.status,
         adminNotes: notesDraft.trim(),
       });
       setIsEditingNotes(false);
@@ -189,8 +198,9 @@ export default function DedicatedOrderDetailPage({
     if (!order) return;
     try {
       setIsProcessing(true);
-      await updateOrderFulfillment({
+      await updateFulfillmentStatus({
         orderId: order._id,
+        fulfillmentStatus: "in_transit",
         carrier: carrierInput,
         trackingNumber: trackingInput.trim() || undefined,
         adminNotes: adminNotesInput.trim() || undefined,
@@ -208,9 +218,9 @@ export default function DedicatedOrderDetailPage({
     if (!order) return;
     try {
       setIsProcessing(true);
-      await updateOrderStatus({
+      await updateFulfillmentStatus({
         orderId: order._id,
-        newStatus: "delivered",
+        fulfillmentStatus: "delivered",
       });
       setIsDeliverModalOpen(false);
       triggerSuccess("Order marked as Delivered.");
@@ -225,12 +235,12 @@ export default function DedicatedOrderDetailPage({
     if (!order) return;
     try {
       setIsProcessing(true);
-      await updateOrderStatus({
+      await updateFulfillmentStatus({
         orderId: order._id,
-        newStatus: "dispatched",
+        fulfillmentStatus: "in_transit",
       });
       setIsRevertModalOpen(false);
-      triggerSuccess("Delivery state reverted back to Dispatched.");
+      triggerSuccess("Delivery state reverted back to In Transit.");
     } catch (err: any) {
       setActionError(err?.message || "Failed to revert status.");
     } finally {
@@ -250,9 +260,10 @@ export default function DedicatedOrderDetailPage({
         });
         triggerSuccess("Order cancelled and Stripe refund executed.");
       } else {
-        await updateOrderStatus({
+        await cancelAndRefundAdmin({
           orderId: order._id,
-          newStatus: "cancelled",
+          reason: cancelReasonInput.trim() || undefined,
+          refundStripe: false,
           adminNotes: cancelReasonInput.trim() || undefined,
         });
         triggerSuccess("Order cancelled and inventory returned to stock.");
@@ -262,59 +273,6 @@ export default function DedicatedOrderDetailPage({
       setActionError(err?.message || "Failed to cancel order.");
     } finally {
       setIsProcessing(false);
-    }
-  };
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "paid":
-        return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-            <CheckCircle2 className="w-3.5 h-3.5" /> Paid & Ready
-          </span>
-        );
-      case "dispatched":
-        return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
-            <Truck className="w-3.5 h-3.5" /> In Transit
-          </span>
-        );
-      case "delivered":
-        return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
-            <ShieldCheck className="w-3.5 h-3.5" /> Delivered
-          </span>
-        );
-      case "whatsapp_initiated":
-        return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-            <MessageCircle className="w-3.5 h-3.5" /> WhatsApp (legacy)
-          </span>
-        );
-      case "cancelled":
-        return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
-            <X className="w-3.5 h-3.5" /> Cancelled
-          </span>
-        );
-      case "refunded":
-        return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30">
-            <RotateCcw className="w-3.5 h-3.5" /> Refunded
-          </span>
-        );
-      case "partially_refunded":
-        return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
-            <RotateCcw className="w-3.5 h-3.5" /> Partially Refunded
-          </span>
-        );
-      default:
-        return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-zinc-500/10 text-zinc-600 dark:text-zinc-400">
-            {status}
-          </span>
-        );
     }
   };
 
@@ -350,7 +308,7 @@ export default function DedicatedOrderDetailPage({
   }
 
   const isOverdue =
-    order.status === "paid" &&
+    awaitsPacking(order) &&
     order.createdAt &&
     Date.now() - order.createdAt > 24 * 60 * 60 * 1000;
 
@@ -381,7 +339,7 @@ export default function DedicatedOrderDetailPage({
               </div>
               <h1 className="font-display font-bold text-2xl text-zinc-950 dark:text-white flex items-center gap-3">
                 <span>{order.orderNumber}</span>
-                {getStatusBadge(order.status)}
+                <OrderStatusPills order={order} />
               </h1>
             </div>
           </div>
@@ -397,7 +355,7 @@ export default function DedicatedOrderDetailPage({
               <span>Print Packing Slip</span>
             </button>
 
-            {order.status === "paid" && (
+            {awaitsPacking(order) && (
               <>
                 <button
                   onClick={() => setIsShippingLabelModalOpen(true)}
@@ -422,7 +380,7 @@ export default function DedicatedOrderDetailPage({
               </>
             )}
 
-            {order.status === "dispatched" && (
+            {isShippedOrder(order) && (
               <>
                 {order.shippingLabelUrl && (
                   <button
@@ -489,18 +447,18 @@ export default function DedicatedOrderDetailPage({
             <div className="flex items-center gap-2.5">
               <div
                 className={`w-7 h-7 rounded-full flex items-center justify-center font-bold ${
-                  ["paid", "dispatched", "delivered"].includes(order.status)
+                  isPaidOrder(order)
                     ? "bg-emerald-500/20 text-emerald-500"
                     : "bg-zinc-100 dark:bg-white/[0.04] text-zinc-400"
                 }`}
               >
-                {["paid", "dispatched", "delivered"].includes(order.status) ? "✓" : "2"}
+                {isPaidOrder(order) ? "✓" : "2"}
               </div>
               <div>
                 <p className="font-semibold text-zinc-900 dark:text-white">Payment</p>
                 <p className="text-[11px] text-zinc-500">
-                  {["paid", "dispatched", "delivered"].includes(order.status)
-                    ? `Paid (${order.paymentMethod})`
+                  {isPaidOrder(order)
+                    ? `${PAYMENT_LABELS[order.paymentStatus ?? "awaiting_payment"]} (${order.paymentMethod})`
                     : order.paymentMethod}
                 </p>
               </div>
@@ -509,12 +467,12 @@ export default function DedicatedOrderDetailPage({
             <div className="flex items-center gap-2.5">
               <div
                 className={`w-7 h-7 rounded-full flex items-center justify-center font-bold ${
-                  ["dispatched", "delivered"].includes(order.status)
+                  isShippedOrder(order) || order.fulfillmentStatus === "delivered"
                     ? "bg-blue-500/20 text-blue-500"
                     : "bg-zinc-100 dark:bg-white/[0.04] text-zinc-400"
                 }`}
               >
-                {["dispatched", "delivered"].includes(order.status) ? "✓" : "3"}
+                {isShippedOrder(order) || order.fulfillmentStatus === "delivered" ? "✓" : "3"}
               </div>
               <div>
                 <p className="font-semibold text-zinc-900 dark:text-white">Dispatched</p>
@@ -527,17 +485,17 @@ export default function DedicatedOrderDetailPage({
             <div className="flex items-center gap-2.5">
               <div
                 className={`w-7 h-7 rounded-full flex items-center justify-center font-bold ${
-                  order.status === "delivered"
+                  order.fulfillmentStatus === "delivered"
                     ? "bg-purple-500/20 text-purple-500"
                     : "bg-zinc-100 dark:bg-white/[0.04] text-zinc-400"
                 }`}
               >
-                {order.status === "delivered" ? "✓" : "4"}
+                {order.fulfillmentStatus === "delivered" ? "✓" : "4"}
               </div>
               <div>
                 <p className="font-semibold text-zinc-900 dark:text-white">Delivered</p>
                 <p className="text-[11px] text-zinc-500">
-                  {order.status === "delivered" ? "Confirmed" : "In transit"}
+                  {order.fulfillmentStatus === "delivered" ? "Confirmed" : "In transit"}
                 </p>
               </div>
             </div>
@@ -649,8 +607,8 @@ export default function DedicatedOrderDetailPage({
                 </div>
               )}
               <div className="pt-2 border-t border-zinc-100 dark:border-white/[0.06] flex justify-between font-bold text-sm text-zinc-900 dark:text-white">
-                <span>{["paid", "dispatched", "delivered"].includes(order.status) ? "Total Paid" : "Total Due"}</span>
-                <span className={`font-mono ${["paid", "dispatched", "delivered"].includes(order.status) ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}`}>
+                <span>{isPaidOrder(order) ? "Total Paid" : "Total Due"}</span>
+                <span className={`font-mono ${isPaidOrder(order) ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}`}>
                   ${order.total.toFixed(2)} {order.currency || "USD"}
                 </span>
               </div>
@@ -756,7 +714,7 @@ export default function DedicatedOrderDetailPage({
               <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 font-semibold block">
                 Destination Address
               </span>
-              {["pending", "paid"].includes(order.status) && (
+              {isAddressEditable(order) && (
                 <button
                   onClick={handleOpenEditAddress}
                   className="text-xs text-moya-red hover:underline flex items-center gap-1"
@@ -857,7 +815,7 @@ export default function DedicatedOrderDetailPage({
                   Awaiting fulfillment dispatch. Tracking not yet assigned.
                 </p>
 
-                {order.status === "paid" && (
+                {awaitsPacking(order) && (
                   <button
                     type="button"
                     onClick={() => setIsShippingLabelModalOpen(true)}
@@ -870,7 +828,7 @@ export default function DedicatedOrderDetailPage({
               </div>
             )}
 
-            {order.status === "dispatched" && (
+            {order.fulfillmentStatus === "delivered" && (
               <button
                 onClick={() => setIsRevertModalOpen(true)}
                 className="w-full mt-2 py-1.5 rounded-lg border border-amber-500/30 text-amber-600 dark:text-amber-400 text-[11px] font-medium hover:bg-amber-500/10 flex items-center justify-center gap-1"
@@ -881,7 +839,7 @@ export default function DedicatedOrderDetailPage({
           </div>
 
           {/* Danger Safeguard Zone */}
-          {order.status !== "cancelled" && (
+          {!isCancelledOrder(order) && (
             <div className="bg-white dark:bg-[#0c0c14] border border-rose-500/20 rounded-2xl p-5 shadow-xs space-y-2">
               <span className="text-[10px] font-mono uppercase tracking-wider text-rose-500 font-semibold block">
                 Danger Zone
@@ -949,7 +907,7 @@ export default function DedicatedOrderDetailPage({
               <strong>Tracking:</strong> {order.trackingNumber || "Awaiting scan"}
             </p>
             <p>
-              <strong>Status:</strong> {order.status.toUpperCase()}
+              <strong>Status:</strong> {adminStatusSummary(order).toUpperCase()}
             </p>
             {order.adminNotes && (
               <div className="mt-2 p-2 bg-gray-100 rounded text-[11px] font-mono">
@@ -1015,7 +973,7 @@ export default function DedicatedOrderDetailPage({
               </div>
             )}
             <div className="flex justify-between font-bold text-sm border-t border-black pt-1">
-              <span>{["paid", "dispatched", "delivered"].includes(order.status) ? "Total Paid:" : "Total Due:"}</span>
+              <span>{isPaidOrder(order) ? "Total Paid:" : "Total Due:"}</span>
               <span className="font-mono">
                 ${order.total.toFixed(2)} {order.currency || "USD"}
               </span>

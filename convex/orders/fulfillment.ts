@@ -3,15 +3,16 @@
  * apply carrier tracking webhook scans. Called by shipping/functions.ts and http.ts.
  */
 import { internalMutation } from "../_generated/server";
-import { v } from "convex/values";
+import { v, ConvexError } from "convex/values";
 import { internal } from "../_generated/api";
-import { orderHoldsStock } from "./model";
-import { deductStock, hasEmail } from "./shared";
+import { hasEmail } from "./shared";
+import { fulfillmentStatusValidator, planLabelPurchase, statusAxes, statusPatch } from "./status";
 import { planTrackingUpdate } from "./tracking";
 
 /**
- * INTERNAL: Commits shipping label purchase to an order, transitions status to dispatched,
- * logs fulfillment audit trail, and schedules dispatch email notification.
+ * INTERNAL: Commits shipping label purchase to an order, moves Fulfillment Status to label
+ * purchased (Payment Status untouched), logs fulfillment audit trail, and schedules dispatch
+ * email notification. Buying a label never moves stock: a paid order already took its units.
  */
 export const attachShippingLabelInternal = internalMutation({
   args: {
@@ -42,7 +43,7 @@ export const attachShippingLabelInternal = internalMutation({
     orderId: v.id("orders"),
     trackingNumber: v.string(),
     labelUrl: v.string(),
-    status: v.union(v.literal("dispatched"), v.literal("delivered")),
+    fulfillmentStatus: fulfillmentStatusValidator,
   }),
   handler: async (ctx, args) => {
     const order = await ctx.db.get(args.orderId);
@@ -50,18 +51,14 @@ export const attachShippingLabelInternal = internalMutation({
       throw new Error(`Order ${args.orderId} not found`);
     }
 
-    const previousStatus = order.status;
+    const plan = planLabelPurchase(order);
+    if (!plan.ok) {
+      throw new ConvexError(plan.error);
+    }
     const now = Date.now();
 
-    // Dispatching an order that never held stock (e.g. "pending" with no Checkout Hold) deducts it now.
-    if (!orderHoldsStock(order)) {
-      await deductStock(ctx, order.items);
-    }
-
-    const nextStatus = previousStatus === "delivered" ? ("delivered" as const) : ("dispatched" as const);
-
     await ctx.db.patch(args.orderId, {
-      status: nextStatus,
+      ...statusPatch(order, { fulfillmentStatus: plan.fulfillmentStatus }),
       carrier: args.carrier,
       trackingNumber: args.trackingNumber,
       shippingCarrier: args.carrier,
@@ -104,14 +101,14 @@ export const attachShippingLabelInternal = internalMutation({
       orderId: args.orderId,
       trackingNumber: args.trackingNumber,
       labelUrl: args.shippingLabelUrl,
-      status: nextStatus,
+      fulfillmentStatus: plan.fulfillmentStatus,
     };
   },
 });
 
 /**
  * INTERNAL: Processes automated carrier tracking webhooks (e.g. from Shippo track_updated).
- * Updates transit status, delivers orders upon DELIVERED scan, triggers delivery emails,
+ * Moves Fulfillment Status from carrier scans (never Payment Status), triggers delivery emails,
  * and alerts admins on transit failure or return exceptions while respecting manual overrides.
  */
 export const handleTrackingWebhookInternal = internalMutation({
@@ -137,7 +134,7 @@ export const handleTrackingWebhookInternal = internalMutation({
       orderNumber: v.string(),
       orderId: v.id("orders"),
       trackingStatus: v.string(),
-      status: v.string(),
+      fulfillmentStatus: fulfillmentStatusValidator,
     })
   ),
   handler: async (ctx, args) => {
@@ -185,7 +182,7 @@ export const handleTrackingWebhookInternal = internalMutation({
       orderNumber: order.orderNumber,
       orderId: order._id,
       trackingStatus: plan.trackingStatus,
-      status: (plan.patch.status as string | undefined) || order.status,
+      fulfillmentStatus: plan.fulfillmentStatus ?? statusAxes(order).fulfillmentStatus,
     };
   },
 });

@@ -18,13 +18,11 @@ import {
   Truck,
   Package,
   MessageCircle,
-  XCircle,
   Clock,
   ExternalLink,
   ChevronRight,
   ShieldCheck,
   AlertTriangle,
-  RotateCcw,
   Copy,
   Check,
   MapPin,
@@ -42,6 +40,15 @@ import {
 import { Link } from "@/i18n/routing";
 import { useSearchParams } from "next/navigation";
 import { ShippingLabelModal } from "@/components/admin/ShippingLabelModal";
+import { OrderStatusPills } from "@/components/admin/OrderStatusPills";
+import {
+  ADMIN_DESK_TABS,
+  awaitsPacking,
+  isAddressEditable,
+  isCancelledOrder,
+  isPaidOrder,
+  isShippedOrder,
+} from "@/lib/orderStatus";
 
 export default function AdminOrdersPage() {
   const t = useTranslations("admin.orders");
@@ -141,12 +148,17 @@ export default function AdminOrdersPage() {
   React.useEffect(() => {
     if (!selectedOrder || !orders) return;
     const live = orders.find((o: any) => o._id === selectedOrder._id);
-    if (live && live.status !== selectedOrder.status) {
+    if (
+      live &&
+      (live.paymentStatus !== selectedOrder.paymentStatus ||
+        live.fulfillmentStatus !== selectedOrder.fulfillmentStatus ||
+        live.cancelledAt !== selectedOrder.cancelledAt)
+    ) {
       setSelectedOrder(live);
     }
   }, [orders, selectedOrder]);
 
-  const updateOrderStatus = useMutation(api.orders.desk.updateOrderStatusAdmin);
+  const updateFulfillmentStatus = useMutation(api.orders.desk.updateFulfillmentStatusAdmin);
   const updateOrderFulfillment = useMutation(api.orders.desk.updateOrderFulfillmentAdmin);
   const updateShippingAddressAdmin = useMutation(api.orders.desk.updateShippingAddressAdmin);
   const cancelAndRefundAdmin = useAction(api.payments.refunds.cancelAndRefundOrderAdmin);
@@ -184,9 +196,9 @@ export default function AdminOrdersPage() {
       const carrier = carrierInput.trim() || "USPS";
       const tracking = trackingInput.trim() || undefined;
 
-      await updateOrderStatus({
+      await updateFulfillmentStatus({
         orderId: dispatchModalOrder._id,
-        newStatus: "dispatched",
+        fulfillmentStatus: "in_transit",
         carrier,
         trackingNumber: tracking,
         adminNotes: adminNotesInput.trim() || undefined,
@@ -195,7 +207,7 @@ export default function AdminOrdersPage() {
       if (selectedOrder?._id === dispatchModalOrder._id) {
         setSelectedOrder({
           ...selectedOrder,
-          status: "dispatched",
+          fulfillmentStatus: "in_transit",
           carrier,
           trackingNumber: tracking,
           adminNotes: adminNotesInput,
@@ -225,12 +237,12 @@ export default function AdminOrdersPage() {
     try {
       setIsProcessing(true);
       setActionError(null);
-      await updateOrderStatus({
+      await updateFulfillmentStatus({
         orderId: deliverModalOrder._id,
-        newStatus: "delivered",
+        fulfillmentStatus: "delivered",
       });
       if (selectedOrder?._id === deliverModalOrder._id) {
-        setSelectedOrder({ ...selectedOrder, status: "delivered" });
+        setSelectedOrder({ ...selectedOrder, fulfillmentStatus: "delivered" });
       }
       setDeliverModalOrder(null);
       triggerSuccess("Shipment delivery successfully confirmed.");
@@ -247,15 +259,15 @@ export default function AdminOrdersPage() {
     try {
       setIsProcessing(true);
       setActionError(null);
-      await updateOrderStatus({
+      await updateFulfillmentStatus({
         orderId: revertModalOrder._id,
-        newStatus: "dispatched",
+        fulfillmentStatus: "in_transit",
       });
       if (selectedOrder?._id === revertModalOrder._id) {
-        setSelectedOrder({ ...selectedOrder, status: "dispatched" });
+        setSelectedOrder({ ...selectedOrder, fulfillmentStatus: "in_transit" });
       }
       setRevertModalOrder(null);
-      triggerSuccess("Order status reverted back to Dispatched.");
+      triggerSuccess("Order reverted back to In Transit.");
     } catch (err: any) {
       console.error("Failed to revert order", err);
       setActionError(err?.message || "Failed to revert order status.");
@@ -284,7 +296,7 @@ export default function AdminOrdersPage() {
 
       setCancelModalOrder(null);
       if (selectedOrder?._id === cancelModalOrder._id) {
-        setSelectedOrder({ ...selectedOrder, status: "cancelled" });
+        setSelectedOrder({ ...selectedOrder, cancelledAt: Date.now() });
       }
       triggerSuccess(res.message);
     } catch (err: any) {
@@ -370,59 +382,6 @@ export default function AdminOrdersPage() {
       locale,
     });
     window.open(url, "_blank");
-  };
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "paid":
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-mono font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-            <CheckCircle2 className="w-3.5 h-3.5" /> Paid & Ready
-          </span>
-        );
-      case "dispatched":
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-mono font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
-            <Truck className="w-3.5 h-3.5" /> Dispatched
-          </span>
-        );
-      case "delivered":
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-mono font-bold bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
-            <ShieldCheck className="w-3.5 h-3.5" /> Delivered
-          </span>
-        );
-      case "whatsapp_initiated":
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-mono font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
-            <MessageCircle className="w-3.5 h-3.5" /> WhatsApp (legacy)
-          </span>
-        );
-      case "cancelled":
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-mono font-bold bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-white/10">
-            <XCircle className="w-3.5 h-3.5" /> Cancelled & Restocked
-          </span>
-        );
-      case "refunded":
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-mono font-bold bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30">
-            <RotateCcw className="w-3.5 h-3.5" /> Refunded
-          </span>
-        );
-      case "partially_refunded":
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-mono font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
-            <RotateCcw className="w-3.5 h-3.5" /> Partially Refunded
-          </span>
-        );
-      default:
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-mono font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-            <Clock className="w-3.5 h-3.5" /> Pending
-          </span>
-        );
-    }
   };
 
   return (
@@ -565,7 +524,7 @@ export default function AdminOrdersPage() {
 
         {/* Status Pills */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs font-medium">
-          {[
+          {([
             {
               id: "needs_attention",
               label: "⚠️ Action Required",
@@ -579,12 +538,8 @@ export default function AdminOrdersPage() {
               danger: true,
             },
             { id: "all", label: t("allStatuses") },
-            { id: "paid", label: "Paid" },
-            { id: "dispatched", label: "Dispatched" },
-            { id: "delivered", label: "Delivered" },
-            { id: "refunded", label: "Refunded" },
-            { id: "cancelled", label: "Cancelled" },
-          ]
+            ...ADMIN_DESK_TABS.filter((tab) => !["all", "needs_attention", "overdue"].includes(tab.id)),
+          ] as Array<{ id: string; label: string; count?: number; highlight?: boolean; danger?: boolean }>)
             .filter((pill) => {
               if (pill.id === "overdue") return (attentionStats?.overduePaid || 0) > 0;
               return true;
@@ -602,9 +557,9 @@ export default function AdminOrdersPage() {
                         : pill.danger
                           ? "bg-rose-500 text-white font-bold shadow-xs"
                           : "bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-semibold shadow-xs"
-                      : pill.highlight && pill.count > 0
+                      : pill.highlight && (pill.count ?? 0) > 0
                         ? "bg-amber-500/15 text-amber-700 dark:text-amber-400 hover:bg-amber-500/25 font-semibold"
-                        : pill.danger && pill.count > 0
+                        : pill.danger && (pill.count ?? 0) > 0
                           ? "bg-rose-500/15 text-rose-700 dark:text-rose-400 hover:bg-rose-500/25 font-semibold"
                           : "bg-zinc-100 dark:bg-white/[0.04] text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
                   }`}
@@ -762,8 +717,8 @@ export default function AdminOrdersPage() {
                       {/* Status Badge */}
                       <td className="py-3.5 px-4">
                         <div className="flex flex-col items-start gap-1">
-                          {getStatusBadge(order.status)}
-                          {order.status === "paid" &&
+                          <OrderStatusPills order={order} />
+                          {awaitsPacking(order) &&
                             order.createdAt &&
                             Date.now() - order.createdAt > 24 * 60 * 60 * 1000 && (
                               <span className="inline-flex items-center gap-1 text-[9px] font-mono font-bold uppercase tracking-wider text-rose-500 bg-rose-500/10 px-1.5 py-0.5 rounded">
@@ -780,7 +735,7 @@ export default function AdminOrdersPage() {
                       >
                         <div className="flex items-center justify-end gap-1.5">
                           {/* 2. Dispatch / Shipping Label Buttons */}
-                          {order.status === "paid" && (
+                          {awaitsPacking(order) && (
                             <div className="flex items-center gap-1.5">
                               <button
                                 onClick={() => setShippingLabelModalOrder(order)}
@@ -814,7 +769,7 @@ export default function AdminOrdersPage() {
                           )}
 
                           {/* 3. Dispatched state in table (Label & Courier Tracking) */}
-                          {order.status === "dispatched" && (
+                          {isShippedOrder(order) && (
                             <div className="flex items-center gap-1.5">
                               {order.shippingLabelUrl && (
                                 <button
@@ -880,7 +835,7 @@ export default function AdminOrdersPage() {
                 </span>
                 <h3 className="font-display font-bold text-lg text-zinc-900 dark:text-white flex items-center gap-2">
                   <span>{selectedOrder.orderNumber}</span>
-                  {getStatusBadge(selectedOrder.status)}
+                  <OrderStatusPills order={selectedOrder} />
                 </h3>
               </div>
 
@@ -955,7 +910,7 @@ export default function AdminOrdersPage() {
                         <span className="text-[10px] font-mono uppercase tracking-wider font-semibold">
                           {t("shippingTo")}
                         </span>
-                        {selectedOrder.status !== "dispatched" && selectedOrder.status !== "delivered" && selectedOrder.status !== "cancelled" && (
+                        {isAddressEditable(selectedOrder) && (
                           <button
                             onClick={() => handleOpenEditAddress(selectedOrder)}
                             className="text-[11px] font-semibold text-moya-red hover:underline flex items-center gap-1"
@@ -1080,7 +1035,7 @@ export default function AdminOrdersPage() {
                       : "Buy & Print Shipping Label (Shippo)"}
                   </button>
 
-                  {selectedOrder.status === "paid" && (
+                  {awaitsPacking(selectedOrder) && (
                     <button
                       onClick={() => {
                         setDispatchModalOrder(selectedOrder);
@@ -1094,7 +1049,7 @@ export default function AdminOrdersPage() {
                     </button>
                   )}
 
-                  {selectedOrder.status === "dispatched" && (
+                  {isShippedOrder(selectedOrder) && (
                     <button
                       onClick={() => setDeliverModalOrder(selectedOrder)}
                       disabled={isProcessing}
@@ -1142,7 +1097,7 @@ export default function AdminOrdersPage() {
                   </div>
                 )}
                 <div className="flex justify-between text-sm font-bold text-zinc-950 dark:text-white pt-2 border-t border-zinc-200 dark:border-white/[0.06]">
-                  <span>{["paid", "dispatched", "delivered"].includes(selectedOrder.status) ? "Total Paid" : "Total Due"}</span>
+                  <span>{isPaidOrder(selectedOrder) ? "Total Paid" : "Total Due"}</span>
                   <span className="font-mono">${Number(selectedOrder.total).toFixed(2)} USD</span>
                 </div>
               </div>
@@ -1150,7 +1105,7 @@ export default function AdminOrdersPage() {
 
             {/* Drawer Footer Actions */}
             <div className="p-4 border-t border-zinc-200 dark:border-white/[0.06] bg-zinc-50/50 dark:bg-white/[0.01] flex items-center justify-between gap-3">
-              {selectedOrder.status !== "cancelled" ? (
+              {!isCancelledOrder(selectedOrder) ? (
                 <button
                   onClick={() => handleOpenCancelModal(selectedOrder)}
                   className="py-2 px-3 rounded-xl border border-red-500/30 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 text-xs font-semibold transition-colors"
@@ -1164,7 +1119,7 @@ export default function AdminOrdersPage() {
               )}
 
               <div className="flex items-center gap-2">
-                {selectedOrder.status === "paid" && (
+                {awaitsPacking(selectedOrder) && (
                   <button
                     onClick={() => {
                       setDispatchModalOrder(selectedOrder);
@@ -1178,7 +1133,7 @@ export default function AdminOrdersPage() {
                   </button>
                 )}
 
-                {selectedOrder.status === "dispatched" && (
+                {isShippedOrder(selectedOrder) && (
                   <button
                     onClick={() => setDeliverModalOrder(selectedOrder)}
                     className="py-2 px-4 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold transition-colors flex items-center gap-1.5 shadow-md shadow-purple-600/20"
@@ -1187,7 +1142,7 @@ export default function AdminOrdersPage() {
                   </button>
                 )}
 
-                {selectedOrder.status === "delivered" && (
+                {selectedOrder.fulfillmentStatus === "delivered" && (
                   <button
                     onClick={() => setRevertModalOrder(selectedOrder)}
                     className="py-2 px-3 rounded-xl border border-zinc-300 dark:border-white/10 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/5 text-xs font-semibold transition-colors flex items-center gap-1"

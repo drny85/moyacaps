@@ -1,5 +1,5 @@
 /**
- * Checkout Hold writes (ADR 0024): Pay creates a `pending` Order and takes its units in one
+ * Checkout Hold writes (ADR 0024): Pay creates an Order awaiting payment and takes its units in one
  * transaction; the hold ends in settlement (orders/settlement.ts) or, once Stripe reports
  * the Checkout Session expired, in release. Called only by the Stripe actions.
  */
@@ -13,6 +13,7 @@ import {
   backstopHoldExpiryCutoff,
   BACKSTOP_BATCH_SIZE,
   canReleaseCheckoutHold,
+  checkoutHoldReleasePatch,
   holdDemand,
   planCheckoutHold,
   withWebhookEventId,
@@ -21,7 +22,7 @@ import { deductStock, releaseStock } from "./shared";
 import { orderDoc, orderItemValidator } from "./validators";
 
 /**
- * INTERNAL: create the `pending` Order for a Pay click and take its units atomically. Every
+ * INTERNAL: create the Order (awaiting payment) for a Pay click and take its units atomically. Every
  * stock pool is re-read inside this transaction, so two Customers can never hold the same
  * last unit. Throws a customer-facing ConvexError when any line is short; never clamps.
  */
@@ -64,7 +65,8 @@ export const placeCheckoutHold = internalMutation({
       subtotal: args.subtotal,
       shippingFee: args.shippingFee,
       total: args.total,
-      status: "pending",
+      paymentStatus: "awaiting_payment",
+      fulfillmentStatus: "unfulfilled",
       paymentMethod: "stripe",
       checkoutHoldExpiresAt: args.checkoutHoldExpiresAt,
       createdAt: now,
@@ -139,8 +141,7 @@ export const releaseCheckoutHold = internalMutation({
     const now = Date.now();
     await releaseStock(ctx, order.items);
     await ctx.db.patch(args.orderId, {
-      status: "cancelled",
-      checkoutHoldReleasedAt: now,
+      ...checkoutHoldReleasePatch(order, now),
       webhookEventIds: withWebhookEventId(order, args.webhookEventId),
       updatedAt: now,
     });
@@ -164,9 +165,10 @@ export const listOverdueCheckoutHolds = internalQuery({
   handler: async (ctx, args) => {
     return await ctx.db
       .query("orders")
-      .withIndex("by_status_and_checkoutHoldExpiresAt", (q) =>
+      .withIndex("by_paymentStatus_and_cancelledAt_and_checkoutHoldExpiresAt", (q) =>
         q
-          .eq("status", "pending")
+          .eq("paymentStatus", "awaiting_payment")
+          .eq("cancelledAt", undefined)
           .gte("checkoutHoldExpiresAt", 0)
           .lte("checkoutHoldExpiresAt", backstopHoldExpiryCutoff(args.now))
       )
