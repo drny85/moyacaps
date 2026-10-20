@@ -78,8 +78,8 @@ describe("Shipping & Packaging Presets", () => {
     expect(isPoBoxAddress("500 Boxwood Lane")).toBe(false);
   });
 
-  it("strictly validates domestic US 50-state territory and flags Puerto Rico / territories / international", async () => {
-    const { isExcludedTerritory } = await import("../../convex/shipping/functions");
+  it("strictly validates the 50-state + DC territory and flags Puerto Rico / territories / international", async () => {
+    const { isExcludedTerritory } = await import("../../convex/shipping/territory");
 
     // Valid 50-state domestic US
     expect(isExcludedTerritory("NY", "10004", "US").isExcluded).toBe(false);

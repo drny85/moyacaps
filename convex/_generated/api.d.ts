@@ -42,6 +42,7 @@ import type * as notifications_launchAlerts from "../notifications/launchAlerts.
 import type * as notifications_launchEmails from "../notifications/launchEmails.js";
 import type * as notifications_templates_AdminDisputeAlert from "../notifications/templates/AdminDisputeAlert.js";
 import type * as notifications_templates_AdminOrderAlert from "../notifications/templates/AdminOrderAlert.js";
+import type * as notifications_templates_AdminTerritoryAlert from "../notifications/templates/AdminTerritoryAlert.js";
 import type * as notifications_templates_CategoryLaunchEmail from "../notifications/templates/CategoryLaunchEmail.js";
 import type * as notifications_templates_CustomerReceipt from "../notifications/templates/CustomerReceipt.js";
 import type * as notifications_templates_OrderDeliveredEmail from "../notifications/templates/OrderDeliveredEmail.js";
@@ -68,6 +69,7 @@ import type * as settings_launch from "../settings/launch.js";
 import type * as settings_model from "../settings/model.js";
 import type * as settings_revalidate from "../settings/revalidate.js";
 import type * as shipping_functions from "../shipping/functions.js";
+import type * as shipping_territory from "../shipping/territory.js";
 import type * as users_clerk from "../users/clerk.js";
 import type * as users_clerkWebhook from "../users/clerkWebhook.js";
 import type * as users_functions from "../users/functions.js";
@@ -113,6 +115,7 @@ declare const fullApi: ApiFromModules<{
   "notifications/launchEmails": typeof notifications_launchEmails;
   "notifications/templates/AdminDisputeAlert": typeof notifications_templates_AdminDisputeAlert;
   "notifications/templates/AdminOrderAlert": typeof notifications_templates_AdminOrderAlert;
+  "notifications/templates/AdminTerritoryAlert": typeof notifications_templates_AdminTerritoryAlert;
   "notifications/templates/CategoryLaunchEmail": typeof notifications_templates_CategoryLaunchEmail;
   "notifications/templates/CustomerReceipt": typeof notifications_templates_CustomerReceipt;
   "notifications/templates/OrderDeliveredEmail": typeof notifications_templates_OrderDeliveredEmail;
@@ -139,6 +142,7 @@ declare const fullApi: ApiFromModules<{
   "settings/model": typeof settings_model;
   "settings/revalidate": typeof settings_revalidate;
   "shipping/functions": typeof shipping_functions;
+  "shipping/territory": typeof shipping_territory;
   "users/clerk": typeof users_clerk;
   "users/clerkWebhook": typeof users_clerkWebhook;
   "users/functions": typeof users_functions;
