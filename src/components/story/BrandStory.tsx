@@ -11,7 +11,7 @@ import {
   type MotionValue,
 } from "framer-motion";
 import { useReducedMotionSafe } from "@/hooks/useMotionPrefs";
-import { useRef, useEffect, useState } from "react";
+import { Fragment, useRef, useEffect, useState } from "react";
 import { Reveal } from "@/components/motion/Reveal";
 import { DURATION, EASE } from "@/lib/motion";
 
@@ -35,7 +35,8 @@ function AnimatedStat({ value, label, description, delay = 0 }: {
   const isInView = useInView(ref, { once: true, margin: "-80px" });
   const reduceMotion = useReducedMotionSafe();
   const parsed = parseStat(value);
-  const [count, setCount] = useState(0);
+  // Server HTML carries the real figure for crawlers and AI tools; the count-up replays from 0 once in view
+  const [count, setCount] = useState(parsed?.number ?? 0);
 
   useEffect(() => {
     if (!isInView || !parsed) return;
@@ -76,7 +77,7 @@ function AnimatedStat({ value, label, description, delay = 0 }: {
 function ScrollWord({ word, progress, range }: { word: string; progress: MotionValue<number>; range: [number, number] }) {
   const opacity = useTransform(progress, range, [0.15, 1]);
   return (
-    <m.span style={{ opacity }} className="inline-block mr-[0.25em]">
+    <m.span style={{ opacity }} className="inline-block">
       {word}
     </m.span>
   );
@@ -97,12 +98,11 @@ function ScrollHeadline({ text }: { text: string }) {
       {reduceMotion
         ? text
         : words.map((word, i) => (
-            <ScrollWord
-              key={`${word}-${i}`}
-              word={word}
-              progress={scrollYProgress}
-              range={[i / words.length, (i + 1) / words.length]}
-            />
+            // A real space between words, so the HTML reads as words, not "GoodLuckMeets..."
+            <Fragment key={`${word}-${i}`}>
+              {i > 0 && " "}
+              <ScrollWord word={word} progress={scrollYProgress} range={[i / words.length, (i + 1) / words.length]} />
+            </Fragment>
           ))}
     </h2>
   );

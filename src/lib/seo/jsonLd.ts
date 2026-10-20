@@ -2,7 +2,9 @@
  * Schema.org structured data builders (Google rich results). Pure: callers pass the
  * site origin and clock so output is deterministic in tests.
  */
+import type { ShippingSettings } from "../../../convex/settings/model";
 import type { CapVariant } from "../../data/caps";
+import { SUPPORT_EMAIL } from "../legal";
 import { customDescription } from "../productCopy";
 import { isTee } from "../shop";
 import { absoluteUrl, localizedUrl, SITE_NAME, siteUrl } from "./site";
@@ -18,10 +20,12 @@ export function organizationJsonLd(base: string): JsonLd {
     alternateName: "Good Luck Co.",
     url: base,
     logo: `${base}/brand/logo-512.png`,
-    description: "Signature streetwear headwear crafted with high-density 3D puff embroidery and 0880 mythology.",
+    description: "New York streetwear brand selling signature 0880 caps with high-density 3D puff embroidery and heavyweight graphic tees.",
+    areaServed: "US",
     contactPoint: {
       "@type": "ContactPoint",
       contactType: "customer service",
+      email: SUPPORT_EMAIL,
       availableLanguage: ["English", "Spanish"],
     },
   };
@@ -61,7 +65,26 @@ export function productImageUrl(product: CapVariant, base: string = siteUrl()): 
   return absoluteUrl(product.catalogShot ?? product.image, base);
 }
 
-export function productJsonLd(product: CapVariant, locale: string, base: string, now: Date): JsonLd {
+/**
+ * One flat US rate, as the Terms and product page state it: ships within 24 hours, Standard
+ * arrives in 2–5 business days. The free-on-N-items rule has no schema.org form, so the page
+ * text carries it.
+ */
+function shippingDetailsJsonLd(shipping: ShippingSettings): JsonLd {
+  return {
+    "@type": "OfferShippingDetails",
+    shippingRate: { "@type": "MonetaryAmount", value: shipping.flatShippingFeeUsd.toFixed(2), currency: "USD" },
+    shippingDestination: { "@type": "DefinedRegion", addressCountry: "US" },
+    deliveryTime: {
+      "@type": "ShippingDeliveryTime",
+      handlingTime: { "@type": "QuantitativeValue", minValue: 0, maxValue: 1, unitCode: "DAY" },
+      transitTime: { "@type": "QuantitativeValue", minValue: 2, maxValue: 5, unitCode: "DAY" },
+    },
+  };
+}
+
+/** `shipping` comes from store settings; without it the offer carries no shipping details. */
+export function productJsonLd(product: CapVariant, locale: string, base: string, now: Date, shipping?: ShippingSettings): JsonLd {
   const name = locale === "es" ? product.nameEs : product.nameEn;
   const url = localizedUrl(locale, `/products/${product.id}`, base);
   const images = [product.catalogShot ?? product.image, ...(product.images ?? [])]
@@ -90,6 +113,7 @@ export function productJsonLd(product: CapVariant, locale: string, base: string,
       itemCondition: "https://schema.org/NewCondition",
       availability: product.stock > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
       seller: { "@id": `${base}/#organization` },
+      ...(shipping ? { shippingDetails: shippingDetailsJsonLd(shipping) } : {}),
     },
   };
 }

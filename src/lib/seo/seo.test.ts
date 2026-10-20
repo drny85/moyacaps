@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { CAP_VARIANTS, type CapVariant } from "../../data/caps";
 import { absoluteUrl, languageAlternates, pageAlternates, siteUrl } from "./site";
-import { breadcrumbJsonLd, productDescription, productJsonLd, serializeJsonLd, websiteJsonLd } from "./jsonLd";
+import { breadcrumbJsonLd, organizationJsonLd, productDescription, productJsonLd, serializeJsonLd, websiteJsonLd } from "./jsonLd";
+import { SUPPORT_EMAIL } from "../legal";
 import { buildSitemap, STATIC_PAGES } from "./sitemap";
 
 const BASE = "https://example.com";
@@ -55,6 +56,23 @@ describe("structured data", () => {
       { name: "Shop", url: `${BASE}/en/products` },
     ]) as any;
     expect(ld.itemListElement.map((i: any) => i.position)).toEqual([1, 2]);
+  });
+
+  it("adds US shipping details from store settings, and none without them", () => {
+    const ld = productJsonLd(tee, "en", BASE, NOW, { flatShippingFeeUsd: 8, freeShippingThresholdUnits: 2 }) as any;
+    const shipping = ld.offers.shippingDetails;
+    expect(shipping.shippingRate).toEqual({ "@type": "MonetaryAmount", value: "8.00", currency: "USD" });
+    expect(shipping.shippingDestination.addressCountry).toBe("US");
+    expect(shipping.deliveryTime.transitTime).toMatchObject({ minValue: 2, maxValue: 5, unitCode: "DAY" });
+    expect((productJsonLd(tee, "en", BASE, NOW) as any).offers).not.toHaveProperty("shippingDetails");
+  });
+
+  it("gives the organization a contact email and names both caps and tees", () => {
+    const ld = organizationJsonLd(BASE) as any;
+    expect(ld.contactPoint.email).toBe(SUPPORT_EMAIL);
+    expect(ld.description).toMatch(/caps/i);
+    expect(ld.description).toMatch(/tees/i);
+    expect(ld.areaServed).toBe("US");
   });
 
   it("has no sitelinks SearchAction pointing at a product slug", () => {
