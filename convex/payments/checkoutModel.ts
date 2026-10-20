@@ -250,7 +250,8 @@ export function buildLineItems(
 }
 
 /**
- * Single shipping option with free/paid presentation. Shared across checkout paths.
+ * The one shipping option: standard shipping, 2–5 business days, free at or above the
+ * unit threshold and the flat fee otherwise. Shared across checkout paths.
  */
 export function buildShippingOptions(
   shippingFee: number,
@@ -263,14 +264,14 @@ export function buildShippingOptions(
       amount: Math.round(shippingFee * 100),
       currency: "usd",
     },
-    display_name: freeShipping ? "Free US Express Delivery" : "US Tracked Express Courier",
+    display_name: freeShipping ? "Free standard shipping" : "Standard shipping",
     tax_code: "txcd_92010001", // Shipping / delivery fee
     tax_behavior: "exclusive",
   };
   if (withDeliveryEstimate) {
     shippingRate.delivery_estimate = {
       minimum: { unit: "business_day", value: 2 },
-      maximum: { unit: "business_day", value: 4 },
+      maximum: { unit: "business_day", value: 5 },
     };
   }
   return [{ shipping_rate_data: shippingRate }];
@@ -295,8 +296,11 @@ export function itemSummary(items: Array<{ quantity: number; name: string }>): s
   return items.map((i) => `${i.quantity}x ${i.name}`).slice(0, 3).join(", ").slice(0, 450);
 }
 
-export const INVOICE_FOOTER =
-  "Good Luck 0880 | Bespoke NYC Headwear | Support: goodluckcaps.com | All limited drop items are serialized and final sale.";
+/** The Returns policy in one line, for Stripe-hosted pages and invoices. */
+export const RETURN_POLICY_SUMMARY =
+  "Returns within 30 days of delivery, unworn with tags, for a refund. Return shipping is paid by the customer unless the item is defective or wrong.";
+
+export const INVOICE_FOOTER = `Good Luck 0880 | NYC Headwear | Support: goodluckcaps.com | ${RETURN_POLICY_SUMMARY}`;
 
 /** "(1 item)" / "(3 caps)" style suffix used in invoice and payment descriptions. */
 export const countLabel = (count: number, noun: "item" | "cap") => `(${count} ${noun}${count > 1 ? "s" : ""})`;

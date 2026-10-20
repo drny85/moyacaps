@@ -341,7 +341,7 @@ export const sendOrderDispatchedEmail = internalAction({
           trackingNumber: args.trackingNumber,
           carrierTrackingUrl: args.carrierTrackingUrl,
           storeTrackingUrl,
-          estimatedDelivery: args.estimatedDelivery || "2-4 Business Days",
+          estimatedDelivery: args.estimatedDelivery || "2–5 Business Days",
           shippingAddress: args.shippingAddress,
           items: args.items,
           supportEmail: "orders@goodluckcaps.com",

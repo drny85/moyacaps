@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { CapVariant } from "@/data/caps";
 import { migratePersisted } from "@/lib/cartMigration";
+import { clampCart, type CartStockVariant } from "@/lib/cartStock";
 import type { OpenCheckout } from "@/lib/openCheckout";
 
 export interface CartItem {
@@ -39,15 +40,8 @@ interface StoreState {
   ) => void;
   removeFromCart: (id: string) => void;
   updateQuantity: (id: string, delta: number, maxStock?: number) => void;
-  clampCartToStock: (variants: {
-    variantId: string;
-    stock: number;
-    nameEn?: string;
-    isAvailable?: boolean;
-    isDrop?: boolean;
-    dropDate?: number;
-    dropStatus?: string;
-  }[]) => {
+  /** Fit each line to live stock: tees to their SKU, caps to the variant (see `clampCart`). */
+  clampCartToStock: (variants: CartStockVariant[]) => {
     adjusted: boolean;
     adjustedNames: string[];
   };
@@ -197,47 +191,8 @@ export const useStore = create<StoreState>()(
         })),
 
       clampCartToStock: (variants) => {
-        const { cart } = get();
-        if (!variants || variants.length === 0 || cart.length === 0) {
-          return { adjusted: false, adjustedNames: [] };
-        }
-
-        let adjusted = false;
-        const adjustedNames: string[] = [];
-
-        const updatedCart = cart
-          .map((item) => {
-            const variant = variants.find((v) => v.variantId === (item.variantId || item.id));
-            if (!variant) return item;
-
-            const isAvailable = variant.isAvailable !== false;
-            const stock = typeof variant.stock === "number" ? variant.stock : 0;
-            const isUpcomingDrop = Boolean(
-              variant.isDrop &&
-              variant.dropStatus !== "live" &&
-              ((typeof variant.dropDate === "number" && Date.now() < variant.dropDate) || variant.dropStatus === "scheduled")
-            );
-
-            if (!isAvailable || stock <= 0 || isUpcomingDrop) {
-              adjusted = true;
-              adjustedNames.push(item.name);
-              return null; // Remove depleted, unavailable, or unreleased drop items
-            }
-
-            if (item.quantity > stock) {
-              adjusted = true;
-              adjustedNames.push(item.name);
-              return { ...item, quantity: stock, maxStock: stock };
-            }
-
-            return { ...item, maxStock: stock };
-          })
-          .filter(Boolean) as CartItem[];
-
-        if (adjusted) {
-          set({ cart: updatedCart });
-        }
-
+        const { cart: updatedCart, adjusted, adjustedNames } = clampCart(get().cart, variants, Date.now());
+        if (adjusted) set({ cart: updatedCart });
         return { adjusted, adjustedNames };
       },
 

@@ -186,7 +186,7 @@ export default function CheckoutSuccessPage() {
               <p className="font-display font-semibold text-xs text-zinc-700 dark:text-zinc-300">
                 {t("timelineDispatch")}
               </p>
-              <p className="text-[11px] text-zinc-500">2–4 Day Air Courier</p>
+              <p className="text-[11px] text-zinc-500">{locale === "es" ? "Envío estándar, 2–5 días hábiles" : "Standard shipping, 2–5 business days"}</p>
             </div>
           </div>
         </div>
@@ -286,7 +286,7 @@ export default function CheckoutSuccessPage() {
               </div>
             ) : (
               <div className="text-xs text-zinc-500 space-y-1">
-                <p>Standard Express Delivery Address</p>
+                <p>{locale === "es" ? "Dirección de envío" : "Shipping address"}</p>
                 <p className="text-[11px] text-zinc-400">Captured securely via Stripe Checkout</p>
               </div>
             )}

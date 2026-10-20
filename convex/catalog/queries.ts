@@ -5,7 +5,7 @@
 import { query, internalQuery } from "../_generated/server";
 import { v } from "convex/values";
 import { isAdmin } from "../lib/auth";
-import { lineStockResult, productPage, resolvedVariant } from "./validators";
+import { cartVariant, lineStockResult, productPage, resolvedVariant } from "./validators";
 import { checkStock, getVariant, hasSkus, listSkus } from "./inventory";
 import { filterCatalogVariants, isCustomerVisible } from "./model";
 import { getCategoryLaunches } from "../settings/launch";
@@ -36,11 +36,12 @@ export const MAX_CART_VARIANT_IDS = 50;
 
 /**
  * The cart's products by id, hidden-but-not-archived ones included so the cart and checkout
- * can mark a line unavailable. Only the first `MAX_CART_VARIANT_IDS` distinct ids are read.
+ * can mark a line unavailable. Tees carry their SKU stock so each line clamps to its own SKU.
+ * Only the first `MAX_CART_VARIANT_IDS` distinct ids are read.
  */
 export const getCartVariants = query({
   args: { variantIds: v.array(v.string()) },
-  returns: v.array(resolvedVariant),
+  returns: v.array(cartVariant),
   handler: async (ctx, args) => {
     const wanted = [...new Set(args.variantIds)].slice(0, MAX_CART_VARIANT_IDS);
     const launches = await getCategoryLaunches(ctx);
@@ -48,8 +49,11 @@ export const getCartVariants = query({
     for (const variantId of wanted) {
       const variant = await getVariant(ctx, variantId);
       if (!variant || variant.archivedAt !== undefined) continue;
+      const skus = hasSkus(variant)
+        ? (await listSkus(ctx, variant.variantId)).map((s) => ({ colorway: s.colorway, size: s.size, stock: s.stock }))
+        : null;
       // `isAvailable` here is "can a Customer buy it now", so a gated category reads as unavailable.
-      out.push({ ...(await resolveProduct(ctx, variant)), isAvailable: isCustomerVisible(variant, launches) });
+      out.push({ ...(await resolveProduct(ctx, variant)), isAvailable: isCustomerVisible(variant, launches), skus });
     }
     return out;
   },

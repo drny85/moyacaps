@@ -16,6 +16,8 @@ import {
   validateCartLines,
   type CheckoutVariant,
   type LineStock,
+  INVOICE_FOOTER,
+  RETURN_POLICY_SUMMARY,
 } from "./checkoutModel";
 
 const NOW = 1_800_000_000_000;
@@ -182,12 +184,27 @@ describe("Stripe fragments", () => {
 
   it("buildShippingOptions labels free vs paid and adds the estimate on request", () => {
     const [free] = buildShippingOptions(0, true, true);
-    expect(free.shipping_rate_data?.display_name).toBe("Free US Express Delivery");
-    expect(free.shipping_rate_data?.delivery_estimate).toBeDefined();
+    expect(free.shipping_rate_data?.display_name).toBe("Free standard shipping");
+    expect(free.shipping_rate_data?.delivery_estimate).toEqual({
+      minimum: { unit: "business_day", value: 2 },
+      maximum: { unit: "business_day", value: 5 },
+    });
     const [paid] = buildShippingOptions(8, false, false);
     expect(paid.shipping_rate_data?.fixed_amount?.amount).toBe(800);
-    expect(paid.shipping_rate_data?.display_name).toBe("US Tracked Express Courier");
+    expect(paid.shipping_rate_data?.display_name).toBe("Standard shipping");
     expect(paid.shipping_rate_data?.delivery_estimate).toBeUndefined();
+  });
+
+  it("no shipping option promises express delivery", () => {
+    for (const [option] of [buildShippingOptions(0, true, true), buildShippingOptions(8, false, true)]) {
+      expect(option.shipping_rate_data?.display_name).not.toMatch(/express/i);
+    }
+  });
+
+  it("INVOICE_FOOTER states the 30-day Returns policy, not final sale", () => {
+    expect(INVOICE_FOOTER).toContain(RETURN_POLICY_SUMMARY);
+    expect(INVOICE_FOOTER).toMatch(/30 days of delivery/);
+    expect(INVOICE_FOOTER).not.toMatch(/final sale/i);
   });
 
   it("toStripeAddress requires a street and forces US", () => {
