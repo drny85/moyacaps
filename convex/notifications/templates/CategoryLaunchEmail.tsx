@@ -8,7 +8,7 @@ export interface CategoryLaunchEmailProps {
   category: "headwear" | "apparel";
   name?: string;
   shopUrl: string;
-  /** One-click unsubscribe link, once that flow exists; the layout shows it in the signature. */
+  /** The reader's unsubscribe page (notifications/unsubscribe.ts); the layout shows it in the signature. */
   unsubscribeUrl?: string;
 }
 

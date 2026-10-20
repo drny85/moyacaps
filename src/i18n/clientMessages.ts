@@ -26,7 +26,10 @@ export const STOREFRONT_NAMESPACES = [
   "search",
 ] as const;
 
-/** Namespaces only used under checkout, account, track and admin */
+/**
+ * Namespaces only used under checkout, account, track and admin, plus `unsubscribe`, which its
+ * page reads on the server and hands to its client component as props.
+ */
 export const ROUTE_SCOPED_NAMESPACES = [
   "checkout",
   "checkoutSuccess",
@@ -34,6 +37,7 @@ export const ROUTE_SCOPED_NAMESPACES = [
   "track",
   "validation",
   "admin",
+  "unsubscribe",
 ] as const;
 
 export type Messages = Record<string, unknown>;

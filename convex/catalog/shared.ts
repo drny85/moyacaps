@@ -99,12 +99,13 @@ export async function hasCatalogImageRow(
   return rows.some((row) => isPrimaryCatalogRow(row, defaultColorway) && kept(row));
 }
 
+/** A variant's drop-alert subscribers, leaving out those who unsubscribed. */
 export async function countDropAlerts(ctx: QueryCtx, variantId: string): Promise<number> {
   const alerts = await ctx.db
     .query("drop_alerts")
     .withIndex("by_variantId", (q) => q.eq("variantId", variantId))
     .take(MAX_DROP_ALERTS_COUNTED);
-  return alerts.length;
+  return alerts.filter((a) => a.unsubscribedAt === undefined).length;
 }
 
 /** Delete a stored file, ignoring one that is already gone. */
