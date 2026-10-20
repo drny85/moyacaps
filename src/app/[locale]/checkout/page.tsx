@@ -9,7 +9,9 @@ import { useStoreSettings } from "@/hooks/useStoreSettings";
 import { cartVariantIds } from "@/lib/cartVariantIds";
 import { formatUsd } from "@/lib/whatsapp";
 import { useSafeUser } from "@/lib/useSafeUser";
-import { useAction, useQuery } from "convex/react";
+import { useQuery } from "convex/react";
+import { useCardCheckout } from "@/hooks/useCardCheckout";
+import { isCanceledCheckoutReturn } from "@/lib/openCheckout";
 import { api } from "../../../../convex/_generated/api";
 import {
   ShieldCheck,
@@ -26,12 +28,14 @@ import { m } from "framer-motion";
 export default function CheckoutPage() {
   const t = useTranslations("checkout");
   const locale = useLocale();
-  const { user, isLoaded } = useSafeUser();
+  const { isLoaded } = useSafeUser();
   const { cart, currency } = useStore();
-  const createCheckoutSession = useAction(api.payments.checkout.createCheckoutSession);
+  const { startCheckout, abandonOpenCheckout } = useCardCheckout();
   const convexVariants = useQuery(api.catalog.queries.getCartVariants, { variantIds: cartVariantIds(cart) });
 
-  const [status, setStatus] = useState<"idle" | "connecting" | "redirecting" | "error">("idle");
+  const [status, setStatus] = useState<"idle" | "connecting" | "redirecting" | "error" | "canceled">("idle");
+  // null until the URL is read: Stripe's back link lands here with `canceled=1`.
+  const [canceledReturn, setCanceledReturn] = useState<boolean | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [stripeUrl, setStripeUrl] = useState<string | null>(null);
   const hasInitiatedRef = useRef(false);
@@ -79,19 +83,7 @@ export default function CheckoutPage() {
       setStatus("connecting");
       setErrorMessage(null);
 
-      const result = await createCheckoutSession({
-        items: cart.map((item) => ({
-          variantId: item.variantId ?? item.id,
-          quantity: item.quantity,
-          ...(item.size ? { size: item.size } : {}),
-          ...(item.colorway ? { colorway: item.colorway } : {}),
-        })),
-        currency,
-        locale,
-        origin: window.location.origin,
-        clerkUserId: user?.id,
-        customerEmail: user?.primaryEmailAddress?.emailAddress,
-      });
+      const result = await startCheckout();
 
       if (result.url) {
         setStripeUrl(result.url);
@@ -108,8 +100,20 @@ export default function CheckoutPage() {
     }
   };
 
+  // Back from Stripe without paying: expire that session now (ADR 0024) and wait for a new Pay click.
+  useEffect(() => {
+    const canceled = isCanceledCheckoutReturn(new URLSearchParams(window.location.search));
+    setCanceledReturn(canceled);
+    if (canceled) {
+      setStatus("canceled");
+      void abandonOpenCheckout();
+    }
+    // Runs once per visit; abandonOpenCheckout reads the open checkout saved before the redirect.
+  }, []);
+
   // Automatically initiate checkout as soon as the session state and cart are ready (guests included)
   useEffect(() => {
+    if (canceledReturn !== false) return;
     if (isLoaded && cart.length > 0 && convexVariants !== undefined && !hasInitiatedRef.current) {
       if (hasUnreleasedDrop) {
         setStatus("error");
@@ -123,7 +127,7 @@ export default function CheckoutPage() {
       hasInitiatedRef.current = true;
       handleCheckout();
     }
-  }, [isLoaded, cart.length, convexVariants, hasUnreleasedDrop, locale]);
+  }, [isLoaded, cart.length, convexVariants, hasUnreleasedDrop, locale, canceledReturn]);
 
   return (
     <div className="min-h-[70vh] flex items-center justify-center px-4 sm:px-6 lg:px-8 py-12 sm:py-20">
@@ -261,7 +265,22 @@ export default function CheckoutPage() {
             </div>
 
             {/* Status Messages & Manual Trigger */}
-            {status === "error" ? (
+            {status === "canceled" ? (
+              <div className="p-4 rounded-2xl bg-black/[0.03] dark:bg-white/[0.03] border border-black/[0.06] dark:border-white/[0.06] text-center space-y-3">
+                <p className="font-display font-bold text-xs text-zinc-900 dark:text-white">{t("canceledTitle")}</p>
+                <p className="text-xs text-zinc-600 dark:text-zinc-400">{t("canceledDesc")}</p>
+                <button
+                  onClick={() => {
+                    isSubmittingRef.current = false;
+                    handleCheckout();
+                  }}
+                  className="w-full py-3.5 rounded-2xl bg-moya-red hover:bg-rose-500 text-white font-display font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-xl shadow-moya-red-deep/40"
+                >
+                  <span>{t("payNow")}</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+            ) : status === "error" ? (
               <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-center space-y-3">
                 <div className="flex items-center justify-center gap-2 text-rose-500 text-xs font-display font-bold">
                   <AlertCircle className="w-4 h-4" />

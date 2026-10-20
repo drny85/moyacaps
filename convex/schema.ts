@@ -168,6 +168,11 @@ export default defineSchema({
     paymentUrl: v.optional(v.string()),
     paymentLinkSentAt: v.optional(v.number()),
     reservationExpiresAt: v.optional(v.number()),
+    // Checkout Hold (ADR 0024): when the hold placed at Pay ends (its Checkout Session's
+    // expires_at, ms). Set only on card-checkout Orders created at Pay.
+    checkoutHoldExpiresAt: v.optional(v.number()),
+    // Set when the hold was released unpaid (Stripe reported the session expired).
+    checkoutHoldReleasedAt: v.optional(v.number()),
     updatedAt: v.optional(v.number()),
     createdAt: v.number(),
   })
@@ -181,6 +186,7 @@ export default defineSchema({
     .index("by_status_and_customerPhone", ["status", "customerPhone"])
     .index("by_customerEmail", ["customerEmail"])
     .index("by_reservationExpiresAt", ["reservationExpiresAt"])
+    .index("by_status_and_checkoutHoldExpiresAt", ["status", "checkoutHoldExpiresAt"])
     .index("by_createdAt", ["createdAt"]),
   users: defineTable({
     clerkId: v.string(),

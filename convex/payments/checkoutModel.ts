@@ -73,6 +73,18 @@ export function lineStockError(reason: LineStockReason, variantName: string, es:
   return es ? `"${variantName}" se encuentra agotado.` : `"${variantName}" is sold out.`;
 }
 
+/**
+ * Bilingual message when a Checkout Hold cannot take a line's units (ADR 0024): another
+ * Customer's hold or purchase got there between pricing and Pay.
+ */
+export function holdShortageError(lineName: string, available: number, locale: string): string {
+  const es = locale === "es";
+  if (available <= 0) {
+    return es ? `"${lineName}" se acaba de agotar.` : `"${lineName}" just sold out.`;
+  }
+  return cartMessages.checkout.insufficient(es, lineName, available);
+}
+
 export function emptyCartError(flow: CheckoutFlow, locale: string): string {
   const es = locale === "es";
   if (flow === "checkout") {

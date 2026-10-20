@@ -34,6 +34,11 @@ export function holdsStock(status: string): boolean {
   return isPaidLike(status) || status === "whatsapp_initiated";
 }
 
+/** Whether this order's units are out of Available Inventory: settled, a legacy reservation, or a live Checkout Hold. */
+export function orderHoldsStock(order: Pick<Order, "status" | "checkoutHoldExpiresAt">): boolean {
+  return holdsStock(order.status) || isCheckoutHoldActive(order);
+}
+
 export type AdminStatusChange =
   | { ok: false; error: string }
   | { ok: true; stock: "deduct" | "release" | "none"; lockCarrierUpdates: boolean };
@@ -42,8 +47,13 @@ export type AdminStatusChange =
  * Administrator status change (`orders/desk:updateOrderStatusAdmin`). Settled orders never
  * regress into lead/pending states (stranded stock, double-settlement windows), and a legacy
  * WhatsApp reservation (ADR 0023) can only be cancelled, never settled here.
+ * `previousHoldsStock` is true for a `pending` Order with a live Checkout Hold (ADR 0024).
  */
-export function planAdminStatusChange(previous: OrderStatus, next: OrderStatus): AdminStatusChange {
+export function planAdminStatusChange(
+  previous: OrderStatus,
+  next: OrderStatus,
+  previousHoldsStock: boolean = holdsStock(previous)
+): AdminStatusChange {
   const wasPaidLike = isPaidLike(previous);
   if (wasPaidLike && (next === "pending" || next === "whatsapp_initiated")) {
     return { ok: false, error: `Invalid transition: cannot move a ${previous} order back to ${next}.` };
@@ -55,10 +65,10 @@ export function planAdminStatusChange(previous: OrderStatus, next: OrderStatus):
     };
   }
   let stock: "deduct" | "release" | "none" = "none";
-  // Paid from an unpaid state where stock was NOT already reserved (e.g. "pending").
-  if (!wasPaidLike && isPaidLike(next) && previous !== "whatsapp_initiated") stock = "deduct";
+  // Paid from an unpaid state whose units are NOT already held (e.g. a "pending" order with no Checkout Hold).
+  if (!wasPaidLike && isPaidLike(next) && !previousHoldsStock) stock = "deduct";
   // Cancelling an order that held stock gives it back.
-  if (holdsStock(previous) && next === "cancelled") stock = "release";
+  if (previousHoldsStock && next === "cancelled") stock = "release";
   // A manual change away from delivered locks out automated carrier webhook overwrites.
   const lockCarrierUpdates = previous === "delivered" && next !== "delivered";
   return { ok: true, stock, lockCarrierUpdates };
@@ -93,6 +103,132 @@ export function planRefund(currentRefunded: number | undefined, refundedAmount: 
     status: isFullRefund ? ("refunded" as const) : ("partially_refunded" as const),
     refundedAmount: Math.max(currentRefunded || 0, refundedAmount),
   };
+}
+
+/**
+ * Stock movement when a completed Stripe session settles an existing order. A pending Order
+ * with a Checkout Hold already took its units at Pay, so settling never deducts again; an
+ * order that held nothing (a legacy admin-created `pending`) deducts now.
+ */
+export function settlementStockAction(existing: Pick<Order, "status" | "checkoutHoldExpiresAt">): "deduct" | "none" {
+  return orderHoldsStock(existing) ? "none" : "deduct";
+}
+
+// ── Checkout Hold (ADR 0024) ─────────────────────────────────────────────────
+
+/** A Checkout Session lasts 30 minutes. */
+export const CHECKOUT_SESSION_MS = 30 * 60 * 1000;
+
+/**
+ * Stripe rejects an `expires_at` less than 30 minutes after it creates the session, and it
+ * creates the session after we compute the time, so the deadline carries a one-minute margin.
+ */
+export const STRIPE_EXPIRY_MARGIN_MS = 60 * 1000;
+
+/** The hourly backstop expires the session of any Order still awaiting payment 45 minutes after Pay. */
+export const BACKSTOP_AFTER_MS = 45 * 60 * 1000;
+
+/** Most overdue holds one backstop run handles; the next hourly run takes the rest. */
+export const BACKSTOP_BATCH_SIZE = 50;
+
+/** When a Checkout Hold placed at `nowMs` ends (its session's `expires_at`), in milliseconds. */
+export function checkoutHoldExpiresAt(nowMs: number): number {
+  return nowMs + CHECKOUT_SESSION_MS + STRIPE_EXPIRY_MARGIN_MS;
+}
+
+/** Stripe's `expires_at` (Unix seconds) for the hold's Checkout Session. */
+export function stripeSessionExpiresAt(holdExpiresAtMs: number): number {
+  return Math.floor(holdExpiresAtMs / 1000);
+}
+
+/** A `pending` Order that took its units at Pay and has not settled or been released. */
+export function isCheckoutHoldActive(order: Pick<Order, "status" | "checkoutHoldExpiresAt">): boolean {
+  return order.status === "pending" && typeof order.checkoutHoldExpiresAt === "number";
+}
+
+/**
+ * Holds whose hold-expiry is at or before this instant are 45+ minutes past Pay (the hold
+ * itself ends 30 minutes and a margin after Pay), so the backstop picks them up.
+ */
+export function backstopHoldExpiryCutoff(nowMs: number): number {
+  return nowMs - (BACKSTOP_AFTER_MS - CHECKOUT_SESSION_MS - STRIPE_EXPIRY_MARGIN_MS);
+}
+
+/** True when the backstop should expire this order's session: a live hold placed 45+ minutes ago. */
+export function isBackstopDue(order: Pick<Order, "status" | "checkoutHoldExpiresAt">, nowMs: number): boolean {
+  return isCheckoutHoldActive(order) && order.checkoutHoldExpiresAt! <= backstopHoldExpiryCutoff(nowMs);
+}
+
+/** A Checkout Session's state as Stripe reports it; "unknown" when Stripe could not be reached. */
+export type CheckoutSessionState = "open" | "complete" | "expired" | "unknown";
+
+/** Narrow Stripe's session `status` (an open string union) to the states the hold rules know. */
+export function toCheckoutSessionState(status: string | null | undefined): CheckoutSessionState {
+  return status === "open" || status === "complete" || status === "expired" ? status : "unknown";
+}
+
+export type HoldReleaseDecision = "release" | "paid" | "retry";
+
+/**
+ * Whether a hold may be released given what Stripe says about its sessions. Only a session
+ * Stripe reports expired lets the units go; a completed one means payment is settling, and
+ * anything else waits for the next attempt. An order whose session was never created (the
+ * action failed before recording it) has nothing to wait for.
+ */
+export function decideHoldRelease(sessionStates: CheckoutSessionState[]): HoldReleaseDecision {
+  if (sessionStates.includes("complete")) return "paid";
+  if (sessionStates.every((s) => s === "expired")) return "release";
+  return "retry";
+}
+
+/** Whether a release request targets this order's live hold: the order must still hold it, through this session. */
+export function canReleaseCheckoutHold(
+  order: Pick<Order, "status" | "checkoutHoldExpiresAt" | "stripeSessionId">,
+  stripeSessionId: string | undefined
+): boolean {
+  if (!isCheckoutHoldActive(order)) return false;
+  return (order.stripeSessionId ?? undefined) === stripeSessionId;
+}
+
+/**
+ * An Order the Customer never paid for: still awaiting payment, or its Checkout Hold was
+ * released unpaid. Hidden from the Customer's order history.
+ */
+export function isUnpaidCheckout(order: Pick<Order, "status" | "checkoutHoldReleasedAt">): boolean {
+  return order.status === "pending" || (order.status === "cancelled" && typeof order.checkoutHoldReleasedAt === "number");
+}
+
+export type HoldLine = { variantId: string; name: string; quantity: number; colorway?: string; size?: string };
+
+/** One stock pool: a cap's variant, or a tee's SKU (ADR 0015). */
+export function stockKey(line: { variantId: string; colorway?: string; size?: string }): string {
+  return [line.variantId, line.colorway ?? "", line.size ?? ""].join("|");
+}
+
+/** Units the hold asks of each stock pool, so two lines drawing on one SKU are checked together. */
+export function holdDemand(lines: HoldLine[]): Array<{ key: string; line: HoldLine; quantity: number }> {
+  const byKey = new Map<string, { key: string; line: HoldLine; quantity: number }>();
+  for (const line of lines) {
+    const key = stockKey(line);
+    const entry = byKey.get(key);
+    if (entry) entry.quantity += line.quantity;
+    else byKey.set(key, { key, line, quantity: line.quantity });
+  }
+  return [...byKey.values()];
+}
+
+export type HoldPlan = { ok: true } | { ok: false; line: HoldLine; available: number };
+
+/**
+ * Whether every stock pool can cover its demand. Never clamps: the first short pool fails
+ * the whole hold so the Customer is told, instead of paying for fewer units than they chose.
+ */
+export function planCheckoutHold(lines: HoldLine[], availableByKey: Map<string, number>): HoldPlan {
+  for (const demand of holdDemand(lines)) {
+    const available = availableByKey.get(demand.key) ?? 0;
+    if (demand.quantity > available) return { ok: false, line: demand.line, available };
+  }
+  return { ok: true };
 }
 
 // ── Bounded id histories and notes ───────────────────────────────────────────

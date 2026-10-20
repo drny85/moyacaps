@@ -8,6 +8,7 @@ import {
   emptyCartError,
   itemSummary,
   lineItemName,
+  holdShortageError,
   lineStockError,
   reservationSessionExpiresAt,
   resolveProductTaxCode,
@@ -223,5 +224,13 @@ describe("Stripe fragments", () => {
 
   it("reservation sessions expire two minutes before 24 hours", () => {
     expect(reservationSessionExpiresAt(NOW)).toBe(NOW / 1000 + 24 * 3600 - 120);
+  });
+});
+
+describe("holdShortageError", () => {
+  it("says the line just sold out, or how many are left, in the cart's language", () => {
+    expect(holdShortageError("Cap", 0, "en")).toBe('"Cap" just sold out.');
+    expect(holdShortageError("Gorra", 0, "es")).toBe('"Gorra" se acaba de agotar.');
+    expect(holdShortageError("Cap", 2, "en")).toBe('Insufficient stock for "Cap". Only 2 unit(s) available.');
   });
 });

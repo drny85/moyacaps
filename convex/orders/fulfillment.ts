@@ -5,7 +5,7 @@
 import { internalMutation } from "../_generated/server";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
-import { holdsStock } from "./model";
+import { orderHoldsStock } from "./model";
 import { deductStock, hasEmail } from "./shared";
 import { planTrackingUpdate } from "./tracking";
 
@@ -53,8 +53,8 @@ export const attachShippingLabelInternal = internalMutation({
     const previousStatus = order.status;
     const now = Date.now();
 
-    // Dispatching an order that never held stock (e.g. "pending") deducts it now.
-    if (!holdsStock(previousStatus)) {
+    // Dispatching an order that never held stock (e.g. "pending" with no Checkout Hold) deducts it now.
+    if (!orderHoldsStock(order)) {
       await deductStock(ctx, order.items);
     }
 
