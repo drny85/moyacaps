@@ -11,6 +11,10 @@ import {
 } from "@/lib/whatsapp";
 import { Link, useRouter } from "@/i18n/routing";
 import { ShippingLabelModal } from "@/components/admin/ShippingLabelModal";
+import { OrderRefundsPanel } from "@/components/admin/OrderRefundsPanel";
+import { LabelHistoryCard } from "@/components/admin/LabelHistoryCard";
+import { labelAction } from "@convex/orders/status";
+import { carrierTrackingNumber } from "@convex/orders/trackingNumber";
 import { OrderStatusPills } from "@/components/admin/OrderStatusPills";
 import {
   adminStatusSummary,
@@ -76,6 +80,7 @@ export default function DedicatedOrderDetailPage({
 
   // Modals state
   const [isShippingLabelModalOpen, setIsShippingLabelModalOpen] = useState(false);
+  const [isReshipModalOpen, setIsReshipModalOpen] = useState(false);
   const [isDispatchModalOpen, setIsDispatchModalOpen] = useState(false);
   const [carrierInput, setCarrierInput] = useState("USPS");
   const [trackingInput, setTrackingInput] = useState("");
@@ -125,7 +130,7 @@ export default function DedicatedOrderDetailPage({
       customerPhone: ord.customerPhone,
       customerName: ord.customerName,
       orderNumber: ord.orderNumber,
-      trackingNumber: ord.trackingNumber,
+      trackingNumber: carrierTrackingNumber(ord),
       carrier: ord.carrier,
       locale,
     });
@@ -252,22 +257,15 @@ export default function DedicatedOrderDetailPage({
     if (!order) return;
     try {
       setIsProcessing(true);
-      if (order.paymentMethod === "stripe" && refundStripeToggle && order.stripeSessionId) {
-        await cancelAndRefundAdmin({
-          orderId: order._id,
-          reason: cancelReasonInput.trim() || undefined,
-          refundStripe: refundStripeToggle,
-        });
-        triggerSuccess("Order cancelled and Stripe refund executed.");
-      } else {
-        await cancelAndRefundAdmin({
-          orderId: order._id,
-          reason: cancelReasonInput.trim() || undefined,
-          refundStripe: false,
-          adminNotes: cancelReasonInput.trim() || undefined,
-        });
-        triggerSuccess("Order cancelled and inventory returned to stock.");
-      }
+      const refundStripe = order.paymentMethod === "stripe" && refundStripeToggle && Boolean(order.stripeSessionId);
+      const result = await cancelAndRefundAdmin({
+        orderId: order._id,
+        reason: cancelReasonInput.trim() || undefined,
+        refundStripe,
+        ...(!refundStripe && { adminNotes: cancelReasonInput.trim() || undefined }),
+      });
+      if (result.refundError && refundStripe) setActionError(result.message);
+      else triggerSuccess(result.message);
       setIsCancelModalOpen(false);
     } catch (err: any) {
       setActionError(err?.message || "Failed to cancel order.");
@@ -307,6 +305,8 @@ export default function DedicatedOrderDetailPage({
     );
   }
 
+  const label = labelAction(order);
+  const trackingNumber = carrierTrackingNumber(order);
   const isOverdue =
     awaitsPacking(order) &&
     order.createdAt &&
@@ -355,7 +355,25 @@ export default function DedicatedOrderDetailPage({
               <span>Print Packing Slip</span>
             </button>
 
-            {awaitsPacking(order) && (
+            {label.action === "reship" && (
+              <button
+                onClick={() => setIsReshipModalOpen(true)}
+                className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-xs transition-all flex items-center gap-2 shadow-md shadow-amber-500/20 active:scale-[0.98]"
+                title="Buy a new label for this order (delivery exception or returned to sender)"
+              >
+                <RotateCcw className="w-4 h-4" />
+                <span>Reship</span>
+              </button>
+            )}
+
+            {/* A paid, unshipped Order that still cannot get a label (disputed or refunded): say why. */}
+            {label.action === null && order.fulfillmentStatus === "unfulfilled" && !isCancelledOrder(order) && isPaidOrder(order) && (
+              <span className="px-3 py-1.5 rounded-xl text-[11px] font-semibold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 flex items-center gap-1.5">
+                <AlertTriangle className="w-3.5 h-3.5" /> {label.reason}
+              </span>
+            )}
+
+            {label.action === "buy" && (
               <>
                 <button
                   onClick={() => setIsShippingLabelModalOpen(true)}
@@ -368,7 +386,7 @@ export default function DedicatedOrderDetailPage({
                 <button
                   onClick={() => {
                     setCarrierInput(order.carrier || "USPS");
-                    setTrackingInput(order.trackingNumber || "");
+                    setTrackingInput(trackingNumber || "");
                     setAdminNotesInput(order.adminNotes || "");
                     setIsDispatchModalOpen(true);
                   }}
@@ -615,6 +633,11 @@ export default function DedicatedOrderDetailPage({
             </div>
           </div>
 
+          {/* Refunds, Returns and Goodwill (plan 0008 "Money back") */}
+          <OrderRefundsPanel order={order} onMessage={triggerSuccess} onError={setActionError} />
+
+          <LabelHistoryCard order={order} />
+
           {/* Admin Internal Notes Card */}
           <div className="bg-white dark:bg-[#0c0c14] border border-zinc-200 dark:border-white/[0.06] rounded-2xl p-6 shadow-xs space-y-3">
             <div className="flex items-center justify-between">
@@ -761,14 +784,14 @@ export default function DedicatedOrderDetailPage({
               Logistics & Courier
             </span>
 
-            {order.trackingNumber ? (
+            {trackingNumber ? (
               <div className="space-y-2.5 text-xs">
                 <div className="flex items-center justify-between">
                   <span className="font-semibold text-zinc-900 dark:text-white">
                     {order.carrier || "USPS"} {order.shippingServiceLevel ? `• ${order.shippingServiceLevel}` : ""}
                   </span>
                   <button
-                    onClick={() => handleCopy(order.trackingNumber || "")}
+                    onClick={() => handleCopy(trackingNumber)}
                     className="text-[11px] text-moya-red hover:underline flex items-center gap-1"
                   >
                     {copiedTracking ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
@@ -776,7 +799,7 @@ export default function DedicatedOrderDetailPage({
                   </button>
                 </div>
                 <p className="font-mono text-zinc-600 dark:text-zinc-400 text-xs">
-                  {order.trackingNumber}
+                  {trackingNumber}
                 </p>
 
                 {order.shippingLabelUrl && (
@@ -791,7 +814,7 @@ export default function DedicatedOrderDetailPage({
                 )}
 
                 <a
-                  href={getCarrierTrackingUrl(order.carrier, order.trackingNumber) || "#"}
+                  href={getCarrierTrackingUrl(order.carrier, trackingNumber) || "#"}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-full py-2 px-3 rounded-xl border border-zinc-200 dark:border-white/10 hover:bg-zinc-50 dark:hover:bg-white/[0.04] text-xs font-semibold text-zinc-700 dark:text-zinc-300 flex items-center justify-center gap-1.5 transition-colors"
@@ -812,10 +835,15 @@ export default function DedicatedOrderDetailPage({
             ) : (
               <div className="space-y-3">
                 <p className="text-xs text-zinc-500 italic">
-                  Awaiting fulfillment dispatch. Tracking not yet assigned.
+                  No carrier label yet: a Tracking Number exists only once a label is bought.
                 </p>
+                {order.trackingNumber && (
+                  <p className="text-[11px] text-zinc-400 font-mono">
+                    Legacy placeholder {order.trackingNumber} (not carrier tracking)
+                  </p>
+                )}
 
-                {awaitsPacking(order) && (
+                {label.action === "buy" && (
                   <button
                     type="button"
                     onClick={() => setIsShippingLabelModalOpen(true)}
@@ -845,13 +873,13 @@ export default function DedicatedOrderDetailPage({
                 Danger Zone
               </span>
               <p className="text-[11px] text-zinc-500 leading-relaxed">
-                Cancelling will atomically replenish inventory stock and trigger an integrated Stripe refund if applicable.
+                Cancelling returns the units to stock only if nothing has shipped, and can refund whatever is left of the payment through Stripe. To take back shipped units, record a Return with Restock instead.
               </p>
               <button
                 onClick={() => setIsCancelModalOpen(true)}
                 className="w-full py-2 px-3 rounded-xl border border-rose-500/30 hover:bg-rose-500/10 text-rose-600 dark:text-rose-400 text-xs font-semibold transition-colors flex items-center justify-center gap-1.5"
               >
-                <X className="w-3.5 h-3.5" /> Cancel & Restock Order
+                <X className="w-3.5 h-3.5" /> Cancel Order
               </button>
             </div>
           )}
@@ -904,7 +932,7 @@ export default function DedicatedOrderDetailPage({
               <strong>Carrier:</strong> {order.carrier || "USPS Worldwide"}
             </p>
             <p className="font-mono">
-              <strong>Tracking:</strong> {order.trackingNumber || "Awaiting scan"}
+              <strong>Tracking:</strong> {trackingNumber || "No label yet"}
             </p>
             <p>
               <strong>Status:</strong> {adminStatusSummary(order).toUpperCase()}
@@ -1141,7 +1169,9 @@ export default function DedicatedOrderDetailPage({
             </h3>
 
             <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
-              Are you sure you want to cancel this order? The deducted caps will be restored to live inventory.
+              {order.fulfillmentStatus === "unfulfilled"
+                ? "Are you sure you want to cancel this order? Its units will be restored to live inventory."
+                : "This order has shipped: cancelling will not restock it. Record a Return to restock returned units."}
             </p>
 
             {order.paymentMethod === "stripe" && order.stripeSessionId && (
@@ -1152,7 +1182,7 @@ export default function DedicatedOrderDetailPage({
                   onChange={(e) => setRefundStripeToggle(e.target.checked)}
                   className="rounded"
                 />
-                <span>Issue full automatic Stripe refund (${order.total} USD)</span>
+                <span>Refund whatever is left of the payment through Stripe (up to ${order.total.toFixed(2)} USD)</span>
               </label>
             )}
 
@@ -1325,6 +1355,13 @@ export default function DedicatedOrderDetailPage({
         order={order}
         isOpen={isShippingLabelModalOpen}
         onClose={() => setIsShippingLabelModalOpen(false)}
+        onSuccess={(msg) => triggerSuccess(msg)}
+      />
+      <ShippingLabelModal
+        order={order}
+        reship
+        isOpen={isReshipModalOpen}
+        onClose={() => setIsReshipModalOpen(false)}
         onSuccess={(msg) => triggerSuccess(msg)}
       />
     </div>

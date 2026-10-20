@@ -190,7 +190,10 @@ describe("order reads match their return validators", () => {
     expect(
       await t.withIdentity({ subject: "user_cust" }).query(api.orders.functions.getOrderByOrderNumberAndEmail, { orderNumber: "GL-RC-1", email: "ana@example.com" })
     ).toMatchObject({ isGuestView: false, customerEmail: "ana@example.com" });
-    expect(await t.withIdentity({ subject: "user_cust" }).query(api.orders.functions.getOrdersByClerkId, { clerkUserId: "user_cust" })).toHaveLength(1);
+    const mine = await t.withIdentity({ subject: "user_cust" }).query(api.orders.functions.getOrdersByClerkId, { clerkUserId: "user_cust" });
+    expect(mine).toHaveLength(1);
+    // The seeded legacy GL-TRK placeholder is never shown as carrier tracking.
+    expect(mine[0].trackingNumber).toBeUndefined();
   });
 
   it("admin order desk and analytics use the caller's clock", async () => {

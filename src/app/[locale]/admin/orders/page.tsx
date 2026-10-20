@@ -40,6 +40,8 @@ import {
 import { Link } from "@/i18n/routing";
 import { useSearchParams } from "next/navigation";
 import { ShippingLabelModal } from "@/components/admin/ShippingLabelModal";
+import { labelAction } from "@convex/orders/status";
+import { carrierTrackingNumber } from "@convex/orders/trackingNumber";
 import { OrderStatusPills } from "@/components/admin/OrderStatusPills";
 import {
   ADMIN_DESK_TABS,
@@ -82,6 +84,7 @@ export default function AdminOrdersPage() {
 
   // Modals state
   const [shippingLabelModalOrder, setShippingLabelModalOrder] = useState<any | null>(null);
+  const [reshipModalOrder, setReshipModalOrder] = useState<any | null>(null);
   const [dispatchModalOrder, setDispatchModalOrder] = useState<any | null>(null);
   const [carrierInput, setCarrierInput] = useState("USPS");
   const [trackingInput, setTrackingInput] = useState("");
@@ -377,7 +380,7 @@ export default function AdminOrdersPage() {
       customerPhone: order.customerPhone,
       customerName: order.customerName,
       orderNumber: order.orderNumber,
-      trackingNumber: order.trackingNumber,
+      trackingNumber: carrierTrackingNumber(order),
       carrier: order.carrier,
       locale,
     });
@@ -646,9 +649,9 @@ export default function AdminOrdersPage() {
                         <span className="text-[10px] text-zinc-600 dark:text-zinc-400 font-mono block">
                           {dateStr}
                         </span>
-                        {order.trackingNumber && (
+                        {carrierTrackingNumber(order) && (
                           <a
-                            href={getCarrierTrackingUrl(order.carrier, order.trackingNumber) || "#"}
+                            href={getCarrierTrackingUrl(order.carrier, carrierTrackingNumber(order)) || "#"}
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={(e) => e.stopPropagation()}
@@ -656,7 +659,7 @@ export default function AdminOrdersPage() {
                             title="Open live carrier tracking"
                           >
                             <Truck className="w-2.5 h-2.5" />
-                            <span>{order.carrier ? order.carrier.split(" ")[0] : "Track"}: {order.trackingNumber}</span>
+                            <span>{order.carrier ? order.carrier.split(" ")[0] : "Track"}: {carrierTrackingNumber(order)}</span>
                             <ExternalLink className="w-2.5 h-2.5" />
                           </a>
                         )}
@@ -734,8 +737,17 @@ export default function AdminOrdersPage() {
                         onClick={(e) => e.stopPropagation()}
                       >
                         <div className="flex items-center justify-end gap-1.5">
-                          {/* 2. Dispatch / Shipping Label Buttons */}
-                          {awaitsPacking(order) && (
+                          {/* 2. Dispatch / Shipping Label Buttons (label rules: convex/orders/status.ts) */}
+                          {labelAction(order).action === "reship" && (
+                            <button
+                              onClick={() => setReshipModalOrder(order)}
+                              className="px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-500 hover:bg-amber-400 text-zinc-950 transition-colors flex items-center gap-1 shadow-xs"
+                              title="Buy a new label (delivery exception or returned to sender)"
+                            >
+                              <Printer className="w-3.5 h-3.5" /> Reship
+                            </button>
+                          )}
+                          {labelAction(order).action === "buy" && (
                             <div className="flex items-center gap-1.5">
                               <button
                                 onClick={() => setShippingLabelModalOrder(order)}
@@ -757,7 +769,7 @@ export default function AdminOrdersPage() {
                                 onClick={() => {
                                   setDispatchModalOrder(order);
                                   setCarrierInput(order.carrier || "USPS");
-                                  setTrackingInput(order.trackingNumber || "");
+                                  setTrackingInput(carrierTrackingNumber(order) || "");
                                   setAdminNotesInput(order.adminNotes || "");
                                 }}
                                 className="px-2 py-1 rounded-lg text-xs font-medium bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 transition-colors flex items-center gap-1"
@@ -780,9 +792,9 @@ export default function AdminOrdersPage() {
                                   <Printer className="w-3.5 h-3.5" /> Label
                                 </button>
                               )}
-                              {order.trackingNumber && (
+                              {carrierTrackingNumber(order) && (
                                 <a
-                                  href={getCarrierTrackingUrl(order.carrier, order.trackingNumber) || "#"}
+                                  href={getCarrierTrackingUrl(order.carrier, carrierTrackingNumber(order)) || "#"}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="px-2 py-1 rounded-lg text-[11px] font-medium bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 transition-colors flex items-center gap-1"
@@ -982,7 +994,7 @@ export default function AdminOrdersPage() {
                   Carrier & Courier Dispatch
                 </span>
 
-                {selectedOrder.trackingNumber ? (
+                {carrierTrackingNumber(selectedOrder) ? (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between text-xs">
                       <span className="text-zinc-600 dark:text-zinc-400">Courier:</span>
@@ -994,9 +1006,9 @@ export default function AdminOrdersPage() {
                     <div className="flex items-center justify-between text-xs">
                       <span className="text-zinc-600 dark:text-zinc-400">Tracking Code:</span>
                       <div className="flex items-center gap-1.5 font-mono font-bold text-zinc-900 dark:text-white">
-                        <span>{selectedOrder.trackingNumber}</span>
+                        <span>{carrierTrackingNumber(selectedOrder)}</span>
                         <button
-                          onClick={() => handleCopy(selectedOrder.trackingNumber)}
+                          onClick={() => handleCopy(carrierTrackingNumber(selectedOrder) || "")}
                           className="p-1 rounded hover:bg-zinc-200 dark:hover:bg-white/10 text-zinc-600 dark:text-zinc-400"
                           title="Copy tracking"
                         >
@@ -1006,7 +1018,7 @@ export default function AdminOrdersPage() {
                     </div>
 
                     <a
-                      href={getCarrierTrackingUrl(selectedOrder.carrier, selectedOrder.trackingNumber) || "#"}
+                      href={getCarrierTrackingUrl(selectedOrder.carrier, carrierTrackingNumber(selectedOrder)) || "#"}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center justify-center gap-1.5 w-full py-2 px-3 rounded-xl text-xs font-semibold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 hover:bg-blue-500/15 transition-colors mt-2"
@@ -1017,30 +1029,48 @@ export default function AdminOrdersPage() {
                   </div>
                 ) : (
                   <div className="text-xs text-zinc-600 dark:text-zinc-400">
-                    No tracking assigned yet.
+                    No carrier label yet.
                   </div>
                 )}
 
                 {/* Shipping Label & Dispatch Actions */}
                 <div className="space-y-2 mt-2">
-                  <button
-                    onClick={() => setShippingLabelModalOrder(selectedOrder)}
-                    className="w-full py-2.5 px-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-zinc-950 text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-md shadow-amber-500/10 active:scale-[0.99]"
-                  >
-                    <Printer className="w-3.5 h-3.5" />
-                    {selectedOrder.shippingLabelUrl
-                      ? "Print Shipping Label (PDF)"
-                      : !selectedOrder.shippingAddress?.line1
-                      ? "Enter Address & Buy Label (Shippo)"
-                      : "Buy & Print Shipping Label (Shippo)"}
-                  </button>
+                  {(labelAction(selectedOrder).action === "buy" || selectedOrder.shippingLabelUrl) && (
+                    <button
+                      onClick={() => setShippingLabelModalOrder(selectedOrder)}
+                      className="w-full py-2.5 px-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-zinc-950 text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-md shadow-amber-500/10 active:scale-[0.99]"
+                    >
+                      <Printer className="w-3.5 h-3.5" />
+                      {selectedOrder.shippingLabelUrl
+                        ? "Print Shipping Label (PDF)"
+                        : !selectedOrder.shippingAddress?.line1
+                        ? "Enter Address & Buy Label (Shippo)"
+                        : "Buy & Print Shipping Label (Shippo)"}
+                    </button>
+                  )}
 
-                  {awaitsPacking(selectedOrder) && (
+                  {labelAction(selectedOrder).action === "reship" && (
+                    <button
+                      onClick={() => setReshipModalOrder(selectedOrder)}
+                      className="w-full py-2.5 px-3 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-600 dark:text-amber-400 border border-amber-500/30 text-xs font-bold flex items-center justify-center gap-2 transition-colors"
+                    >
+                      <Printer className="w-3.5 h-3.5" /> Reship: Buy a New Label
+                    </button>
+                  )}
+
+                  {(() => {
+                    const label = labelAction(selectedOrder);
+                    return label.action === null && selectedOrder.fulfillmentStatus === "unfulfilled" && !isCancelledOrder(selectedOrder) ? (
+                      <p className="text-[11px] text-rose-500">{label.reason}</p>
+                    ) : null;
+                  })()}
+
+                  {labelAction(selectedOrder).action === "buy" && (
                     <button
                       onClick={() => {
                         setDispatchModalOrder(selectedOrder);
                         setCarrierInput(selectedOrder.carrier || "USPS");
-                        setTrackingInput(selectedOrder.trackingNumber || "");
+                        setTrackingInput(carrierTrackingNumber(selectedOrder) || "");
                         setAdminNotesInput(selectedOrder.adminNotes || "");
                       }}
                       className="w-full py-2 px-3 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-white/5 dark:hover:bg-white/10 text-zinc-700 dark:text-zinc-300 text-xs font-semibold flex items-center justify-center gap-2 transition-colors"
@@ -1114,17 +1144,17 @@ export default function AdminOrdersPage() {
                 </button>
               ) : (
                 <span className="text-[11px] font-mono text-zinc-600 dark:text-zinc-400">
-                  Order Cancelled & Restocked
+                  Order Cancelled
                 </span>
               )}
 
               <div className="flex items-center gap-2">
-                {awaitsPacking(selectedOrder) && (
+                {labelAction(selectedOrder).action === "buy" && (
                   <button
                     onClick={() => {
                       setDispatchModalOrder(selectedOrder);
                       setCarrierInput(selectedOrder.carrier || "USPS");
-                      setTrackingInput(selectedOrder.trackingNumber || "");
+                      setTrackingInput(carrierTrackingNumber(selectedOrder) || "");
                       setAdminNotesInput(selectedOrder.adminNotes || "");
                     }}
                     className="py-2 px-4 rounded-xl bg-moya-red hover:bg-moya-red-light text-white text-xs font-semibold transition-colors flex items-center gap-1.5 shadow-md shadow-moya-red/20"
@@ -1224,7 +1254,7 @@ export default function AdminOrdersPage() {
                     type="text"
                     value={trackingInput}
                     onChange={(e) => setTrackingInput(e.target.value)}
-                    placeholder="e.g. GL-TRK-749204 or 1234567890"
+                    placeholder="Carrier tracking number, e.g. 9400111899223344556677"
                     className="w-full py-2.5 px-3 rounded-xl bg-zinc-50 dark:bg-white/[0.03] border border-zinc-200 dark:border-white/10 text-zinc-900 dark:text-white font-mono placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-moya-red"
                   />
                 </div>
@@ -1398,8 +1428,8 @@ export default function AdminOrdersPage() {
                 <div>Order: <span className="font-bold">{deliverModalOrder.orderNumber}</span></div>
                 <div>Recipient: <span className="font-semibold">{deliverModalOrder.customerName || "Customer"}</span></div>
                 <div>Courier: <span className="font-semibold">{deliverModalOrder.carrier || "Express"}</span></div>
-                {deliverModalOrder.trackingNumber && (
-                  <div>Tracking: <span className="font-bold text-blue-600 dark:text-blue-400">{deliverModalOrder.trackingNumber}</span></div>
+                {carrierTrackingNumber(deliverModalOrder) && (
+                  <div>Tracking: <span className="font-bold text-blue-600 dark:text-blue-400">{carrierTrackingNumber(deliverModalOrder)}</span></div>
                 )}
               </div>
             </div>
@@ -1616,6 +1646,13 @@ export default function AdminOrdersPage() {
         order={shippingLabelModalOrder}
         isOpen={Boolean(shippingLabelModalOrder)}
         onClose={() => setShippingLabelModalOrder(null)}
+        onSuccess={(msg) => triggerSuccess(msg)}
+      />
+      <ShippingLabelModal
+        order={reshipModalOrder}
+        reship
+        isOpen={Boolean(reshipModalOrder)}
+        onClose={() => setReshipModalOrder(null)}
         onSuccess={(msg) => triggerSuccess(msg)}
       />
     </div>

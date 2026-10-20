@@ -442,8 +442,12 @@ export const getShippingRates = action({
 });
 
 /**
- * Purchases postage label for an order, downloads the official 4x6 / 8.5x11 PDF,
- * marks order as dispatched, updates tracking, and dispatches the customer email.
+ * Purchases a postage label for an order (or a Reship: a new label after a Delivery Exception
+ * or a return to sender), records it in the order's label history, moves Fulfillment Status to
+ * label purchased and dispatches the customer email. Refused unless the order is paid (or
+ * partially refunded), not cancelled, not disputed and unfulfilled (orders/status.ts
+ * planLabelPurchase). Never moves stock. If the order changed while the label was being bought
+ * and the label cannot be attached, the label is voided with Shippo.
  */
 export const buyShippingLabel = action({
   args: {
@@ -455,6 +459,7 @@ export const buyShippingLabel = action({
     amount: v.optional(v.number()),
     estimatedDays: v.optional(v.number()),
     parcel: parcelValidator,
+    reship: v.optional(v.boolean()),
   },
   returns: v.object({
     success: v.boolean(),
@@ -483,7 +488,7 @@ export const buyShippingLabel = action({
     }
 
     // Refuse before paying the carrier: the label could not be attached (ADR 0024).
-    const labelPlan = planLabelPurchase(order);
+    const labelPlan = planLabelPurchase(order, { reship: args.reship });
     if (!labelPlan.ok) {
       throw new ConvexError(labelPlan.error);
     }
@@ -555,22 +560,36 @@ export const buyShippingLabel = action({
 
     const carrierTrackingUrl = buildCarrierTrackingUrl(chosenCarrier, trackingNumber) || undefined;
 
-    // Attach to order in database & trigger fulfillment notifications
-    await ctx.runMutation(internal.orders.fulfillment.attachShippingLabelInternal, {
-      orderId: args.orderId,
-      carrier: chosenCarrier,
-      trackingNumber,
-      shippingLabelUrl: labelUrl,
-      shippingRateId: args.rateObjectId,
-      shippingTransactionId: transactionId,
-      shippingServiceLevel: args.serviceLevel,
-      shippingCost: args.amount,
-      shippingEstimatedDays: args.estimatedDays,
-      shippingLabelFileType: args.labelFileType || "PDF_4x6",
-      carrierTrackingUrl,
-      parcelDimensions: args.parcel,
-      actor: adminIdentity.subject,
-    });
+    // Attach to order in database & trigger fulfillment notifications. The mutation re-checks
+    // the label rules: an order cancelled or disputed meanwhile refuses the label.
+    try {
+      await ctx.runMutation(internal.orders.fulfillment.attachShippingLabelInternal, {
+        orderId: args.orderId,
+        carrier: chosenCarrier,
+        trackingNumber,
+        shippingLabelUrl: labelUrl,
+        shippingRateId: args.rateObjectId,
+        shippingTransactionId: transactionId,
+        shippingServiceLevel: args.serviceLevel,
+        shippingCost: args.amount,
+        shippingEstimatedDays: args.estimatedDays,
+        shippingLabelFileType: args.labelFileType || "PDF_4x6",
+        carrierTrackingUrl,
+        parcelDimensions: args.parcel,
+        actor: adminIdentity.subject,
+        reship: args.reship,
+      });
+    } catch (err) {
+      if (shippo && !isSandbox && transactionId) {
+        try {
+          await shippo.refunds.create({ transaction: transactionId, async: false });
+          console.warn(`[Shippo] Voided label ${transactionId}: it could not be attached to order ${args.orderId}.`);
+        } catch (voidErr: any) {
+          console.error(`[Shippo] Could not void unattached label ${transactionId}; void it in Shippo:`, voidErr?.message || voidErr);
+        }
+      }
+      throw err;
+    }
 
     return {
       success: true,

@@ -5,7 +5,6 @@
  * access; covered by model.test.ts.
  */
 import type { Doc } from "../_generated/dataModel";
-import { randomDigitString } from "../lib/ids";
 import type { ShippingSettings } from "../settings/model";
 import {
   hasSettled,
@@ -15,6 +14,7 @@ import {
   statusPatch,
   type StatusSource,
 } from "./status";
+import { carrierTrackingNumber } from "./trackingNumber";
 
 type Order = Doc<"orders">;
 
@@ -215,10 +215,6 @@ export function appendNote(notes: string | undefined, line: string): string {
   return `${notes ? notes + "\n" : ""}${line}`;
 }
 
-export function newTrackingNumber(): string {
-  return `GL-TRK-${randomDigitString(6)}`;
-}
-
 /** Every Stripe Checkout session ever issued for the order, current one last, no duplicates. */
 export function orderSessionIds(order: { stripeSessionIds?: string[]; stripeSessionId?: string }): string[] {
   return Array.from(
@@ -297,7 +293,7 @@ function orderStatusView(order: Order) {
     orderNumber: order.orderNumber,
     ...lifecycleView(order),
     carrier: order.carrier,
-    trackingNumber: order.trackingNumber,
+    trackingNumber: carrierTrackingNumber(order),
     trackingStatus: order.trackingStatus,
     trackingStatusDetails: order.trackingStatusDetails,
     trackingStatusDate: order.trackingStatusDate,
@@ -352,7 +348,7 @@ export function guestTrackingView(order: Order) {
     orderNumber: order.orderNumber,
     ...lifecycleView(order),
     carrier: order.carrier,
-    trackingNumber: order.trackingNumber,
+    trackingNumber: carrierTrackingNumber(order),
     trackingStatus: order.trackingStatus,
     trackingStatusDetails: order.trackingStatusDetails,
     trackingStatusDate: order.trackingStatusDate,
@@ -408,7 +404,7 @@ export function ownerTrackingView(order: Order) {
     ...lifecycleView(order),
     paymentMethod: order.paymentMethod,
     carrier: order.carrier,
-    trackingNumber: order.trackingNumber,
+    trackingNumber: carrierTrackingNumber(order),
     trackingStatus: order.trackingStatus,
     trackingStatusDetails: order.trackingStatusDetails,
     trackingStatusDate: order.trackingStatusDate,

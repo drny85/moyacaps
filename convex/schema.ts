@@ -2,6 +2,13 @@ import { defineSchema, defineTable } from "convex/server";
 import { capAngleValidator, imageRoleValidator } from "./catalog/images/validators";
 import { storedCategoryLaunchValidator } from "./settings/launch";
 import { cancellationReasonValidator, fulfillmentStatusValidator, paymentStatusValidator } from "./orders/status";
+import { shippingLabelValidator } from "./orders/labels";
+import {
+  refundKindValidator,
+  refundLineValidator,
+  refundStatusValidator,
+  returnReasonValidator,
+} from "./payments/refundModel";
 import { v } from "convex/values";
 
 export default defineSchema({
@@ -160,6 +167,9 @@ export default defineSchema({
     shippingCost: v.optional(v.number()),
     shippingEstimatedDays: v.optional(v.number()),
     shippingLabelFileType: v.optional(v.string()),
+    // Every label bought for the Order, oldest first (a Reship adds one). The flat shipping
+    // fields above mirror the latest. Absent on Orders labelled before the history existed.
+    labels: v.optional(v.array(shippingLabelValidator)),
     parcelDimensions: v.optional(
       v.object({
         length: v.number(),
@@ -208,6 +218,31 @@ export default defineSchema({
       "checkoutHoldExpiresAt",
     ])
     .index("by_createdAt", ["createdAt"]),
+  // Refund ledger (plan 0008 "Money back"): one row per refund an Administrator or a Customer
+  // Cancellation asked Stripe for. Reserved as pending before the Stripe call so a line is never
+  // refunded beyond its quantity; Payment Status itself still comes from the charge.refunded webhook.
+  order_refunds: defineTable({
+    orderId: v.id("orders"),
+    orderNumber: v.string(),
+    kind: refundKindValidator,
+    status: refundStatusValidator,
+    lines: v.array(refundLineValidator),
+    // Shipping fee plus its tax share, when this refund included shipping.
+    shippingCents: v.number(),
+    amountCents: v.number(),
+    reason: v.optional(v.string()),
+    returnReason: v.optional(returnReasonValidator),
+    // Caller-chosen id: a double-submitted request resolves to the same row (and Stripe key).
+    requestId: v.string(),
+    idempotencyKey: v.string(),
+    stripeRefundId: v.optional(v.string()),
+    error: v.optional(v.string()),
+    actor: v.string(),
+    createdAt: v.number(),
+    settledAt: v.optional(v.number()),
+  })
+    .index("by_orderId", ["orderId"])
+    .index("by_requestId", ["requestId"]),
   users: defineTable({
     clerkId: v.string(),
     email: v.string(),

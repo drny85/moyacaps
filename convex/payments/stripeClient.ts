@@ -120,20 +120,24 @@ export async function expireSessionsForIds(
 }
 
 /**
- * Full refund of a Checkout session's payment. Returns false when the session has no
- * payment intent (nothing was charged); Stripe errors propagate to the caller.
+ * Refund part or all of a Checkout session's payment through the Stripe Refunds API. The
+ * idempotency key makes a retried call return the refund Stripe already made instead of a
+ * second one. Throws when the session has no payment; Stripe errors propagate to the caller.
  */
 export async function refundCheckoutSession(
   stripe: Stripe,
-  sessionId: string,
-  metadata: Record<string, string>
-): Promise<boolean> {
-  const session = await stripe.checkout.sessions.retrieve(sessionId);
-  if (!session.payment_intent) return false;
-  await stripe.refunds.create({
-    payment_intent: session.payment_intent as string,
-    reason: "requested_by_customer",
-    metadata,
-  });
-  return true;
+  params: { sessionId: string; amountCents: number; idempotencyKey: string; metadata: Record<string, string> }
+): Promise<Stripe.Refund> {
+  const session = await stripe.checkout.sessions.retrieve(params.sessionId);
+  if (!session.payment_intent) throw new ConvexError("This Checkout Session has no payment to refund.");
+  const paymentIntent = typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent.id;
+  return await stripe.refunds.create(
+    {
+      payment_intent: paymentIntent,
+      amount: params.amountCents,
+      reason: "requested_by_customer",
+      metadata: params.metadata,
+    },
+    { idempotencyKey: params.idempotencyKey }
+  );
 }

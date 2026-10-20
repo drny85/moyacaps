@@ -1,18 +1,22 @@
 /**
- * Fulfillment writes (ADR 0012): commit a purchased shipping label to its order and
- * apply carrier tracking webhook scans. Called by shipping/functions.ts and http.ts.
+ * Fulfillment writes (ADR 0012, plan 0008 "Fulfillment"): commit a purchased shipping label
+ * (first label or Reship) to its order and apply carrier tracking webhook scans. Called by
+ * shipping/functions.ts and http.ts.
  */
 import { internalMutation } from "../_generated/server";
 import { v, ConvexError } from "convex/values";
 import { internal } from "../_generated/api";
 import { hasEmail } from "./shared";
 import { fulfillmentStatusValidator, planLabelPurchase, statusAxes, statusPatch } from "./status";
+import { appendLabel } from "./labels";
 import { planTrackingUpdate } from "./tracking";
 
 /**
- * INTERNAL: Commits shipping label purchase to an order, moves Fulfillment Status to label
- * purchased (Payment Status untouched), logs fulfillment audit trail, and schedules dispatch
- * email notification. Buying a label never moves stock: a paid order already took its units.
+ * INTERNAL: Commits a purchased shipping label to an order: adds it to the label history,
+ * mirrors it on the flat shipping fields, moves Fulfillment Status to label purchased (Payment
+ * Status untouched), logs the audit trail and schedules the dispatch email. Re-checks the label
+ * rules (status.ts planLabelPurchase), so a label bought while the order was cancelled or
+ * disputed is refused here too. Buying a label never moves stock: a paid order already took its units.
  */
 export const attachShippingLabelInternal = internalMutation({
   args: {
@@ -37,6 +41,8 @@ export const attachShippingLabelInternal = internalMutation({
       })
     ),
     actor: v.optional(v.string()),
+    // A new label after a Delivery Exception or a return to sender (CONTEXT.md "Reship").
+    reship: v.optional(v.boolean()),
   },
   returns: v.object({
     success: v.boolean(),
@@ -51,7 +57,7 @@ export const attachShippingLabelInternal = internalMutation({
       throw new Error(`Order ${args.orderId} not found`);
     }
 
-    const plan = planLabelPurchase(order);
+    const plan = planLabelPurchase(order, { reship: args.reship });
     if (!plan.ok) {
       throw new ConvexError(plan.error);
     }
@@ -59,6 +65,24 @@ export const attachShippingLabelInternal = internalMutation({
 
     await ctx.db.patch(args.orderId, {
       ...statusPatch(order, { fulfillmentStatus: plan.fulfillmentStatus }),
+      labels: appendLabel(order, {
+        carrier: args.carrier,
+        trackingNumber: args.trackingNumber,
+        labelUrl: args.shippingLabelUrl,
+        ...(args.shippingTransactionId !== undefined && { transactionId: args.shippingTransactionId }),
+        ...(args.shippingRateId !== undefined && { rateId: args.shippingRateId }),
+        ...(args.shippingServiceLevel !== undefined && { serviceLevel: args.shippingServiceLevel }),
+        ...(args.shippingCost !== undefined && { cost: args.shippingCost }),
+        purchasedAt: now,
+        reship: plan.reship,
+      }),
+      // A Reship starts a new package: the old one's scan results no longer describe it.
+      ...(plan.reship && {
+        trackingStatus: undefined,
+        trackingStatusDetails: undefined,
+        trackingStatusDate: undefined,
+        trackingLocation: undefined,
+      }),
       carrier: args.carrier,
       trackingNumber: args.trackingNumber,
       shippingCarrier: args.carrier,
@@ -76,9 +100,9 @@ export const attachShippingLabelInternal = internalMutation({
     await ctx.runMutation(internal.orders.functions.recordPaymentEvent, {
       orderId: args.orderId,
       orderNumber: order.orderNumber,
-      type: "shipping_label_created",
+      type: plan.reship ? "shipping_label_reshipped" : "shipping_label_created",
       actor: args.actor || "admin",
-      details: `${args.carrier} (${args.shippingServiceLevel || "Standard"}) - Tracking: ${args.trackingNumber} - Cost: $${args.shippingCost?.toFixed(2) ?? "0.00"}`,
+      details: `${plan.reship ? "Reship: " : ""}${args.carrier} (${args.shippingServiceLevel || "Standard"}) - Tracking: ${args.trackingNumber} - Cost: $${args.shippingCost?.toFixed(2) ?? "0.00"}`,
     });
 
     // Send dispatch confirmation email to customer
@@ -172,6 +196,21 @@ export const handleTrackingWebhookInternal = internalMutation({
         deliveredLocation: plan.locationStr || "Delivery Destination",
         deliveredDetails: args.statusDetails,
         items: order.items,
+      });
+    }
+
+    // Delivery Exception or returned to sender: tell the Administrator and the Customer, who
+    // then hear whether it is reshipped or refunded.
+    if (plan.fulfillmentStatus === "delivery_exception" || plan.fulfillmentStatus === "returned") {
+      await ctx.scheduler.runAfter(0, internal.notifications.emails.sendDeliveryExceptionEmails, {
+        orderNumber: order.orderNumber,
+        kind: plan.fulfillmentStatus,
+        customerName: order.customerName,
+        ...(hasEmail(order.customerEmail) && { customerEmail: order.customerEmail }),
+        carrier: order.carrier || args.carrier || "Carrier",
+        trackingNumber: order.trackingNumber || cleanTrk,
+        details: args.statusDetails,
+        location: plan.locationStr,
       });
     }
 

@@ -11,10 +11,18 @@ import { requireAdmin } from "../lib/auth";
 import { attentionStatsValidator, computeAttentionStats } from "../analytics/model";
 import { listCatalogVariants } from "../catalog/shared";
 import { matchesDeskFilter, parseDeskFilter, type DeskFilter } from "./deskFilters";
-import { matchesOrderSearch, newTrackingNumber, orderHoldsStock } from "./model";
+import { matchesOrderSearch, orderHoldsStock } from "./model";
+import {
+  cancellationReleaseLines,
+  cancellationRequestId,
+  planFullRefund,
+  reservationValidator,
+} from "../payments/refundModel";
+import { readLedger, reserveRefund } from "../payments/refundLedger";
 import { findOrderByTypedNumber, releaseStock, scheduleSessionExpiry } from "./shared";
 import {
   fulfillmentStatusValidator,
+  hasSettled,
   planCancellation,
   planManualFulfillmentChange,
   statusAxes,
@@ -210,20 +218,24 @@ export const updateShippingAddressAdmin = mutation({
   },
 });
 
-/** Administrative cancellation; called by stripeRefunds:cancelAndRefundOrderAdmin. */
+/**
+ * Administrative cancellation; called by payments/refunds:cancelAndRefundOrderAdmin. Units go
+ * back only if nothing shipped (status.ts planCancellation). With `refundStripe`, a full refund
+ * of whatever is left is reserved in the ledger for the action to send to Stripe; when nothing
+ * can be refunded the cancellation still goes ahead and says why.
+ */
 export const cancelOrderAdmin = internalMutation({
   args: {
     orderId: v.id("orders"),
+    refundStripe: v.boolean(),
     reason: v.optional(v.string()),
     adminNotes: v.optional(v.string()),
   },
   returns: v.object({
-    success: v.boolean(),
-    stripeSessionId: v.optional(v.string()),
     orderNumber: v.string(),
-    total: v.number(),
-    currency: v.string(),
-    paymentMethod: v.union(v.literal("stripe"), v.literal("whatsapp")),
+    stockReleased: v.boolean(),
+    refund: v.union(reservationValidator, v.null()),
+    refundSkipped: v.optional(v.string()),
   }),
   handler: async (ctx, args) => {
     const admin = await requireAdmin(ctx);
@@ -234,12 +246,13 @@ export const cancelOrderAdmin = internalMutation({
 
     const plan = planCancellation(order, "administrator", orderHoldsStock(order));
     if (!plan.ok) {
-      throw new Error(plan.error);
+      throw new ConvexError(plan.error);
     }
+    const ledger = await readLedger(ctx, order._id);
+    const refundPlan = args.refundStripe ? planFullRefund(order, ledger) : undefined;
 
-    // Restore stock if it was previously deducted or held at checkout
     if (plan.releaseStock) {
-      await releaseStock(ctx, order.items);
+      await releaseStock(ctx, cancellationReleaseLines(order, ledger));
     }
 
     const updatedNotes = args.adminNotes
@@ -255,7 +268,7 @@ export const cancelOrderAdmin = internalMutation({
       updatedAt: now,
     });
 
-    if (order.stripeSessionId) {
+    if (order.stripeSessionId && !hasSettled(order)) {
       await scheduleSessionExpiry(ctx, args.orderId);
     }
 
@@ -267,14 +280,16 @@ export const cancelOrderAdmin = internalMutation({
       details: args.reason,
     });
 
-    return {
-      success: true,
-      stripeSessionId: order.stripeSessionId,
-      orderNumber: order.orderNumber,
-      total: order.total,
-      currency: order.currency,
-      paymentMethod: order.paymentMethod,
-    };
+    if (!refundPlan) return { orderNumber: order.orderNumber, stockReleased: plan.releaseStock, refund: null };
+    if (!refundPlan.ok) {
+      return { orderNumber: order.orderNumber, stockReleased: plan.releaseStock, refund: null, refundSkipped: refundPlan.error };
+    }
+    const refund = await reserveRefund(ctx, order, refundPlan.plan, {
+      requestId: cancellationRequestId(order._id),
+      actor: admin.subject,
+      reason: args.reason || "Administrative cancellation",
+    });
+    return { orderNumber: order.orderNumber, stockReleased: plan.releaseStock, refund };
   },
 });
 
@@ -316,11 +331,6 @@ export const updateFulfillmentStatusAdmin = mutation({
 
     if (plan.lockCarrierUpdates) {
       updatePayload.manualStatusOverride = true;
-    }
-
-    // Auto-generate tracking number if marked in transit without one
-    if (args.fulfillmentStatus === "in_transit" && !order.trackingNumber && !args.trackingNumber) {
-      updatePayload.trackingNumber = newTrackingNumber();
     }
 
     await ctx.db.patch(args.orderId, updatePayload);

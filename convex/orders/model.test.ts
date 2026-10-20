@@ -11,7 +11,6 @@ import {
   hasProcessedWebhookEvent,
   matchesOrderSearch,
   MAX_TRACKED_IDS,
-  newTrackingNumber,
   orderNumberCandidates,
   orderSessionIds,
   ownerTrackingView,
@@ -102,15 +101,11 @@ describe("bounded id histories", () => {
   });
 });
 
-describe("appendNote and tracking numbers", () => {
+describe("appendNote", () => {
   it("appends on a new line, or starts the notes", () => {
     expect(appendNote(undefined, "first")).toBe("first");
     expect(appendNote("", "first")).toBe("first");
     expect(appendNote("old", "new")).toBe("old\nnew");
-  });
-
-  it("tracking numbers are GL-TRK- plus six digits", () => {
-    expect(newTrackingNumber()).toMatch(/^GL-TRK-\d{6}$/);
   });
 });
 
