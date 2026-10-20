@@ -19,11 +19,28 @@ describe("toUserUpsert", () => {
     expect(upsert).toEqual({
       clerkId: "user_1",
       email: "jane@example.com",
+      emailVerified: false,
       name: "Jane Doe",
       role: "customer",
       imageUrl: "https://img.clerk.com/jane",
       phone: undefined,
     });
+  });
+
+  it("reports the primary email verified only when Clerk says so", () => {
+    const user = (status?: string) =>
+      toUserUpsert({
+        id: "user_3",
+        primary_email_address_id: "e2",
+        email_addresses: [
+          { id: "e1", email_address: "other@example.com", verification: { status: "verified" } },
+          { id: "e2", email_address: "jane@example.com", verification: status ? { status } : null },
+        ],
+      });
+
+    expect(user("verified").emailVerified).toBe(true);
+    expect(user("unverified").emailVerified).toBe(false);
+    expect(user().emailVerified).toBe(false);
   });
 
   it("falls back to the first email and primary phone", () => {

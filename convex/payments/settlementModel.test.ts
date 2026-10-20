@@ -97,6 +97,15 @@ describe("hydrateOrderItems", () => {
 describe("settlementFromSession", () => {
   const items = [{ variantId: "negro-rojo", name: "Black / Red", price: 100, quantity: 2, image: "/a.png" }];
 
+  it("stores the Stripe email normalized, so guest claims match it (ADR 0026)", () => {
+    const args = settlementFromSession(
+      session({ customer_details: { email: " Ana@Example.COM ", name: null, phone: null, address: null } }),
+      items,
+      { useClientReference: true }
+    );
+    expect(args.customerEmail).toBe("ana@example.com");
+  });
+
   it("maps a paid session to settlement arguments", () => {
     expect(settlementFromSession(session(), items, { webhookEventId: "evt_1", useClientReference: true })).toEqual({
       stripeSessionId: "cs_test_abcdefgh12345678",

@@ -4,6 +4,8 @@ import type { UserUpsert } from "./clerk";
 import { getAdminIdentity, isAdminRow, isAllowlistedAdmin, requireAdmin } from "../lib/auth";
 import { roleFor } from "./clerk";
 import schema from "../schema";
+import { claimGuestOrders } from "../orders/guestClaim";
+import { claimableEmail } from "../orders/guestClaimModel";
 
 /**
  * Just-In-Time (JIT) sync called by client upon authentication.
@@ -33,6 +35,12 @@ export const syncCurrentUser = mutation({
 
     const finalRole =
       existing?.role === "admin" ? "admin" : roleFor(email, clerkId);
+
+    // Guest Orders placed with this email join the account once Clerk has verified it (ADR 0026).
+    const verifiedEmail = claimableEmail(identity.email, identity.emailVerified);
+    if (verifiedEmail) {
+      await claimGuestOrders(ctx, clerkId, verifiedEmail);
+    }
 
     const now = Date.now();
 
@@ -67,6 +75,7 @@ export const syncCurrentUser = mutation({
 const userUpsertArgs = {
   clerkId: v.string(),
   email: v.string(),
+  emailVerified: v.optional(v.boolean()),
   name: v.optional(v.string()),
   role: v.union(v.literal("admin"), v.literal("customer")),
   imageUrl: v.optional(v.string()),
@@ -91,6 +100,12 @@ async function upsertUserRow(ctx: MutationCtx, args: UserUpsert) {
   // deliberate admin-management action, not a side effect of user.updated events.
   const role =
     args.role === "customer" && existing?.role === "admin" ? "admin" : args.role;
+
+  // Clerk's signed payload says whether the address is verified (ADR 0026).
+  const verifiedEmail = claimableEmail(email, args.emailVerified);
+  if (verifiedEmail) {
+    await claimGuestOrders(ctx, args.clerkId, verifiedEmail);
+  }
 
   if (existing) {
     await ctx.db.patch(existing._id, {

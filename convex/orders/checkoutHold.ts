@@ -19,6 +19,7 @@ import {
   withWebhookEventId,
 } from "./model";
 import { deductStock, releaseStock } from "./shared";
+import { normalizeEmail } from "./guestClaimModel";
 import { orderDoc, orderItemValidator } from "./validators";
 
 /**
@@ -58,7 +59,7 @@ export const placeCheckoutHold = internalMutation({
     const now = Date.now();
     const orderId = await ctx.db.insert("orders", {
       orderNumber: args.orderNumber,
-      customerEmail: args.customerEmail,
+      customerEmail: normalizeEmail(args.customerEmail),
       clerkUserId: args.clerkUserId,
       items: args.items,
       currency: args.currency,

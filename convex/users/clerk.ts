@@ -7,7 +7,7 @@ import { isAllowlistedAdmin } from "../lib/auth";
 export type ClerkUserJSON = {
   id: string;
   primary_email_address_id?: string | null;
-  email_addresses?: { id: string; email_address: string }[];
+  email_addresses?: { id: string; email_address: string; verification?: { status?: string } | null }[];
   primary_phone_number_id?: string | null;
   phone_numbers?: { id: string; phone_number: string }[];
   first_name?: string | null;
@@ -18,6 +18,8 @@ export type ClerkUserJSON = {
 export type UserUpsert = {
   clerkId: string;
   email: string;
+  /** Clerk has verified `email` (its primary address); gates guest Order claims (ADR 0026). */
+  emailVerified?: boolean;
   name?: string;
   role: "admin" | "customer";
   imageUrl?: string;
@@ -35,15 +37,15 @@ function primaryOf<T extends { id: string }>(items: T[] | undefined, primaryId?:
 }
 
 export function toUserUpsert(user: ClerkUserJSON): UserUpsert {
-  const email = primaryOf(user.email_addresses, user.primary_email_address_id)
-    ?.email_address.trim()
-    .toLowerCase() ?? "";
+  const primaryEmail = primaryOf(user.email_addresses, user.primary_email_address_id);
+  const email = primaryEmail?.email_address.trim().toLowerCase() ?? "";
   const name = [user.first_name, user.last_name].filter(Boolean).join(" ") || undefined;
   const phone = primaryOf(user.phone_numbers, user.primary_phone_number_id)?.phone_number || undefined;
 
   return {
     clerkId: user.id,
     email,
+    emailVerified: primaryEmail?.verification?.status === "verified",
     name,
     role: roleFor(email, user.id),
     imageUrl: user.image_url || undefined,
