@@ -3,7 +3,8 @@ import { CAP_VARIANTS, type CapVariant } from "../../data/caps";
 import { absoluteUrl, languageAlternates, pageAlternates, siteUrl } from "./site";
 import { breadcrumbJsonLd, organizationJsonLd, productDescription, productJsonLd, serializeJsonLd, websiteJsonLd } from "./jsonLd";
 import { SUPPORT_EMAIL } from "../legal";
-import { buildSitemap, STATIC_PAGES } from "./sitemap";
+import { buildSitemap, NONE_LIVE, STATIC_PAGES } from "./sitemap";
+import { ALL_LIVE } from "../launch";
 
 const BASE = "https://example.com";
 const NOW = new Date("2026-10-19T00:00:00Z");
@@ -88,7 +89,7 @@ describe("structured data", () => {
 
 describe("sitemap", () => {
   const products = [cap, tee, { ...cap, id: "hidden-one", isAvailable: false }];
-  const entries = buildSitemap(products, BASE, NOW);
+  const entries = buildSitemap(products, BASE, NOW, ALL_LIVE);
   const urls = entries.map((e) => e.url);
 
   it("lists every static page and visible product once per locale", () => {
@@ -110,6 +111,19 @@ describe("sitemap", () => {
     expect(gated).toContain(`${BASE}/en/products?category=caps`);
     expect(gated.some((u) => u.includes("category=tees"))).toBe(false);
     expect(gated).toContain(`${BASE}/en/products`);
+  });
+
+  it("omits products of a non-live category", () => {
+    const capsSoon = { headwear: { status: "coming_soon" as const }, apparel: { status: "live" as const } };
+    const urls = buildSitemap([cap, tee], BASE, NOW, capsSoon).map((e) => e.url);
+    expect(urls.some((u) => u.includes(`/products/${cap.id}`))).toBe(false);
+    expect(urls).toContain(`${BASE}/en/products/${tee.id}`);
+  });
+
+  it("lists only ungated pages when Category Status is unknown", () => {
+    const urls = buildSitemap([], BASE, NOW, NONE_LIVE).map((e) => e.url);
+    expect(urls).toContain(`${BASE}/en/products`);
+    expect(urls.some((u) => /category=|\/try-on/.test(u))).toBe(false);
   });
 
   it("omits Try-On unless Caps are live", () => {
