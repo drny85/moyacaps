@@ -15,6 +15,8 @@ export const colors = {
   muted: "#A1A1AA",
   subtle: "#71717A",
   gold: "#D4AF37",
+  /** Brand red (storefront moya-red): primary buttons. */
+  red: "#E11D48",
   goldSoft: "rgba(212, 175, 55, 0.12)",
   goldBorder: "rgba(212, 175, 55, 0.3)",
   success: "#10B981",
@@ -67,8 +69,8 @@ export const styles = {
   divider: { borderColor: colors.border, borderTopWidth: "1px", margin: "16px 0" },
   button: {
     display: "inline-block",
-    backgroundColor: colors.gold,
-    color: "#09090B",
+    backgroundColor: colors.red,
+    color: "#FFFFFF",
     fontSize: "13px",
     fontWeight: "700",
     padding: "14px 28px",
