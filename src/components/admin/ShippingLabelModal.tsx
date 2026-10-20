@@ -287,10 +287,13 @@ export function ShippingLabelModal({
         setSelectedRateId(cheapest?.objectId || null);
       } else {
         setRates([]);
+        setIsSandboxMode(false);
         setRateError(res.error || "No carrier rates available for this destination.");
       }
     } catch (err: any) {
       console.error("Failed to fetch shipping rates:", err);
+      setRates([]);
+      setIsSandboxMode(false);
       setRateError(err?.message || "Could not retrieve shipping rates.");
     } finally {
       setIsLoadingRates(false);
@@ -766,6 +769,19 @@ export function ShippingLabelModal({
                   Refresh Rates
                 </button>
               </div>
+
+              {isSandboxMode && !rateError && (
+                <div
+                  role="alert"
+                  className="p-3 mb-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-xs flex items-start gap-2"
+                >
+                  <AlertCircle className="w-4 h-4 shrink-0 text-red-400 mt-0.5" />
+                  <span>
+                    <strong>Sandbox rates — not real postage.</strong> A label bought here has a made-up tracking
+                    number and a sample PDF. Never use it for a real order.
+                  </span>
+                </div>
+              )}
 
               {isPoBox && (
                 <div className="p-3 mb-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-center gap-2">
