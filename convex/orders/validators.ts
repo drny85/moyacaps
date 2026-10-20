@@ -1,7 +1,6 @@
 /** Argument and return validators shared by the order modules. */
 import { v } from "convex/values";
 import schema from "../schema";
-import { fulfillmentStatusValidator, paymentStatusValidator } from "./status";
 
 export const shippingAddressValidator = v.object({
   line1: v.string(),
@@ -41,6 +40,8 @@ const publicItem = v.object({
 const viewFields = orderDoc.pick(
   "_id",
   "orderNumber",
+  "paymentStatus",
+  "fulfillmentStatus",
   "cancelledAt",
   "carrier",
   "trackingNumber",
@@ -60,11 +61,7 @@ const viewFields = orderDoc.pick(
   "paymentMethod",
   "invoicePdfUrl",
   "hostedInvoiceUrl"
-).extend({
-  // Always resolved in views, even for an Order the backfill has not reached yet.
-  paymentStatus: paymentStatusValidator,
-  fulfillmentStatus: fulfillmentStatusValidator,
-});
+);
 
 /** orderModel.confirmationView */
 export const confirmationViewValidator = viewFields.extend({

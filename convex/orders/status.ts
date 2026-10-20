@@ -9,7 +9,6 @@
  */
 import { v } from "convex/values";
 import type { Doc } from "../_generated/dataModel";
-import { isCarrierTrackingNumber } from "./trackingNumber";
 
 // ── The two axes and the cancelled marker ────────────────────────────────────
 
@@ -71,48 +70,38 @@ export type StatusAxes = {
 
 type Order = Doc<"orders">;
 
-/** The order fields the lifecycle rules read; every field optional so callers pass what they have. */
-export type StatusSource = Partial<
-  Pick<
-    Order,
-    | "paymentStatus"
-    | "fulfillmentStatus"
-    | "cancelledAt"
-    | "cancellationReason"
-    // Legacy single status and the evidence the backfill infers the axes from.
-    | "status"
-    | "disputed"
-    | "refundedAmount"
-    | "total"
-    | "shippingLabelUrl"
-    | "trackingNumber"
-    | "trackingDeliveredAt"
-    | "stripeInvoiceId"
-    | "checkoutHoldReleasedAt"
-    | "updatedAt"
-    | "createdAt"
-  >
->;
+/** The order fields the lifecycle rules read: both axes, plus whatever else the caller has. */
+export type StatusSource = Pick<Order, "paymentStatus" | "fulfillmentStatus"> &
+  Partial<
+    Pick<
+      Order,
+      | "cancelledAt"
+      | "cancellationReason"
+      | "disputed"
+      | "refundedAmount"
+      | "total"
+      | "shippingLabelUrl"
+      | "trackingNumber"
+      | "trackingDeliveredAt"
+      | "stripeInvoiceId"
+      | "checkoutHoldReleasedAt"
+      | "updatedAt"
+      | "createdAt"
+    >
+  >;
 
 export type Transition<T> = { ok: true } & T | { ok: false; error: string };
 
 // ── Reading an order's axes ──────────────────────────────────────────────────
 
-/**
- * An Order's lifecycle state. Backfilled and new Orders carry both fields; an Order written
- * before the split and not yet backfilled is read through the backfill's own mapping, so the
- * deploy works before `orders/migrations:backfillOrderStatusAxes` finishes.
- */
+/** An Order's lifecycle state: both axes and, once cancelled, the marker. */
 export function statusAxes(order: StatusSource): StatusAxes {
-  if (order.paymentStatus && order.fulfillmentStatus) {
-    return {
-      paymentStatus: order.paymentStatus,
-      fulfillmentStatus: order.fulfillmentStatus,
-      ...(order.cancelledAt !== undefined && { cancelledAt: order.cancelledAt }),
-      ...(order.cancellationReason !== undefined && { cancellationReason: order.cancellationReason }),
-    };
-  }
-  return legacyStatusAxes(order);
+  return {
+    paymentStatus: order.paymentStatus,
+    fulfillmentStatus: order.fulfillmentStatus,
+    ...(order.cancelledAt !== undefined && { cancelledAt: order.cancelledAt }),
+    ...(order.cancellationReason !== undefined && { cancellationReason: order.cancellationReason }),
+  };
 }
 
 export function isCancelled(order: StatusSource): boolean {
@@ -120,8 +109,8 @@ export function isCancelled(order: StatusSource): boolean {
 }
 
 /**
- * The fields to write when one axis changes. Always writes both axes (and the cancelled marker
- * of a not-yet-backfilled Order), so a stored Order never carries one axis without the other.
+ * The fields to write when one axis changes. Always writes both axes (and the cancelled marker),
+ * so a stored Order never carries one axis without the other.
  */
 export function statusPatch(order: StatusSource, change: Partial<StatusAxes>): StatusAxes {
   const next = { ...statusAxes(order), ...change };
@@ -131,11 +120,6 @@ export function statusPatch(order: StatusSource, change: Partial<StatusAxes>): S
     ...(next.cancelledAt !== undefined && { cancelledAt: next.cancelledAt }),
     ...(next.cancellationReason !== undefined && { cancellationReason: next.cancellationReason }),
   };
-}
-
-/** The Order with both axes filled in, for reads that hand whole documents to the admin UI. */
-export function withStatusAxes<T extends StatusSource>(order: T): T & StatusAxes {
-  return { ...order, ...statusPatch(order, {}) };
 }
 
 // ── Derived questions ────────────────────────────────────────────────────────
@@ -379,86 +363,4 @@ export function planManualFulfillmentChange(
   if (current === next) return { ok: false, error: `Order is already ${next.replace(/_/g, " ")}.` };
   const lockCarrierUpdates = current === "delivered" || next === "delivered";
   return { ok: true, fulfillmentStatus: next, lockCarrierUpdates };
-}
-
-// ── Legacy single status (backfill mapping) ──────────────────────────────────
-
-/** Evidence the backfill reads from `payment_events`; the read fallback goes without it. */
-export type LegacyEvidence = {
-  /** A settlement event exists for the Order (stripe_settled / zelle_settled). */
-  settled?: boolean;
-  /** When a `cancelled` payment event was recorded, if any. */
-  cancelledAt?: number;
-};
-
-/** Fulfillment of a refunded or cancelled Order, read from what the carrier and label left behind. */
-function inferredFulfillment(order: StatusSource): FulfillmentStatus {
-  if (order.trackingDeliveredAt) return "delivered";
-  if (order.shippingLabelUrl || isCarrierTrackingNumber(order.trackingNumber)) return "in_transit";
-  return "unfulfilled";
-}
-
-/** Payment Status of an Order whose legacy status was `cancelled`. */
-function cancelledPaymentStatus(order: StatusSource, evidence: LegacyEvidence): PaymentStatus {
-  if ((order.refundedAmount ?? 0) > 0) return paymentStatusFromRefunds(order.refundedAmount, order.total);
-  if (order.checkoutHoldReleasedAt !== undefined) return "awaiting_payment";
-  // Every card settlement since ADR 0010 attaches a Stripe invoice.
-  return evidence.settled ?? Boolean(order.stripeInvoiceId) ? "paid" : "awaiting_payment";
-}
-
-/**
- * Map the legacy single `status` to the two axes (the backfill rule, ADR 0024):
- * pending → awaiting payment; paid → paid (label purchased when a label exists); dispatched →
- * in transit; delivered → delivered; refunded / partially refunded keep that Payment Status
- * with fulfillment inferred from delivery, label or carrier tracking; cancelled sets the
- * marker and keeps its payment state; whatsapp_initiated is cancelled. `disputed` wins the
- * Payment Status of a settled Order.
- */
-export function legacyStatusAxes(order: StatusSource, evidence: LegacyEvidence = {}): StatusAxes {
-  const changedAt = order.updatedAt ?? order.createdAt ?? 0;
-  let axes: StatusAxes;
-  switch (order.status) {
-    case "paid":
-      axes = { paymentStatus: "paid", fulfillmentStatus: order.shippingLabelUrl ? "label_purchased" : "unfulfilled" };
-      break;
-    case "dispatched":
-      axes = { paymentStatus: "paid", fulfillmentStatus: "in_transit" };
-      break;
-    case "delivered":
-      axes = { paymentStatus: "paid", fulfillmentStatus: "delivered" };
-      break;
-    case "refunded":
-    case "partially_refunded":
-      axes = { paymentStatus: order.status, fulfillmentStatus: inferredFulfillment(order) };
-      break;
-    case "cancelled": {
-      const paymentStatus = cancelledPaymentStatus(order, evidence);
-      axes = {
-        paymentStatus,
-        fulfillmentStatus: paymentStatus === "awaiting_payment" ? "unfulfilled" : inferredFulfillment(order),
-        cancelledAt: evidence.cancelledAt ?? changedAt,
-        cancellationReason: order.checkoutHoldReleasedAt !== undefined ? "checkout_expired" : "legacy",
-      };
-      break;
-    }
-    case "whatsapp_initiated":
-      axes = {
-        paymentStatus: "awaiting_payment",
-        fulfillmentStatus: "unfulfilled",
-        cancelledAt: changedAt,
-        cancellationReason: "whatsapp_retired",
-      };
-      break;
-    default:
-      axes = { paymentStatus: "awaiting_payment", fulfillmentStatus: "unfulfilled" };
-  }
-
-  // A refund used to overwrite `cancelled`; the audit log still remembers the cancellation.
-  if (axes.cancelledAt === undefined && evidence.cancelledAt !== undefined) {
-    axes = { ...axes, cancelledAt: evidence.cancelledAt, cancellationReason: "legacy" };
-  }
-  if (order.disputed && axes.paymentStatus !== "awaiting_payment") {
-    axes = { ...axes, paymentStatus: "disputed" };
-  }
-  return axes;
 }

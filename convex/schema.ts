@@ -122,8 +122,8 @@ export default defineSchema({
       })
     ),
     total: v.number(),
-    // Legacy single status, superseded by paymentStatus + fulfillmentStatus (ADR 0024). No longer
-    // written or read (except the backfill and its read fallback); removed once the backfill ran.
+    // Legacy single status, superseded by paymentStatus + fulfillmentStatus (ADR 0024). Neither
+    // read nor written; orders/migrations:unsetLegacyOrderStatus clears it, then the field goes.
     status: v.optional(
       v.union(
         v.literal("pending"),
@@ -136,10 +136,9 @@ export default defineSchema({
         v.literal("partially_refunded")
       )
     ),
-    // ADR 0024: where the money stands and where the package stands, independently. Optional
-    // only until orders/migrations:backfillOrderStatusAxes has run; every write sets both.
-    paymentStatus: v.optional(paymentStatusValidator),
-    fulfillmentStatus: v.optional(fulfillmentStatusValidator),
+    // ADR 0024: where the money stands and where the package stands, independently.
+    paymentStatus: paymentStatusValidator,
+    fulfillmentStatus: fulfillmentStatusValidator,
     // Cancelled marker: set once, never cleared. Payment Status keeps recording refunds after it.
     cancelledAt: v.optional(v.number()),
     cancellationReason: v.optional(cancellationReasonValidator),
@@ -203,12 +202,8 @@ export default defineSchema({
     .index("by_clerkUserId", ["clerkUserId"])
     .index("by_stripeSessionId", ["stripeSessionId"])
     .index("by_stripeInvoiceId", ["stripeInvoiceId"])
-    .index("by_status", ["status"])
-    .index("by_status_and_customerEmail", ["status", "customerEmail"])
-    .index("by_status_and_customerPhone", ["status", "customerPhone"])
     .index("by_customerEmail", ["customerEmail"])
     .index("by_reservationExpiresAt", ["reservationExpiresAt"])
-    .index("by_status_and_checkoutHoldExpiresAt", ["status", "checkoutHoldExpiresAt"])
     .index("by_paymentStatus_and_fulfillmentStatus_and_cancelledAt", ["paymentStatus", "fulfillmentStatus", "cancelledAt"])
     .index("by_fulfillmentStatus", ["fulfillmentStatus"])
     .index("by_cancelledAt", ["cancelledAt"])

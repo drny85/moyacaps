@@ -5,7 +5,6 @@ import {
   countsAsSale,
   FULFILLMENT_STATUSES,
   fulfillmentAfterScan,
-  legacyStatusAxes,
   PAYMENT_STATUSES,
   paymentStatusFromRefunds,
   customerCancellationAllowed,
@@ -19,13 +18,12 @@ import {
   planSettlement,
   statusAxes,
   statusPatch,
-  withStatusAxes,
   type FulfillmentStatus,
   type PaymentStatus,
   type StatusSource,
 } from "./status";
 
-const axes = (paymentStatus: PaymentStatus, fulfillmentStatus: FulfillmentStatus, extra: StatusSource = {}): StatusSource => ({
+const axes = (paymentStatus: PaymentStatus, fulfillmentStatus: FulfillmentStatus, extra: Partial<StatusSource> = {}): StatusSource => ({
   paymentStatus,
   fulfillmentStatus,
   ...extra,
@@ -41,13 +39,8 @@ describe("statusAxes", () => {
     });
   });
 
-  it("falls back to the backfill mapping for an Order not yet backfilled", () => {
-    expect(statusAxes({ status: "dispatched" })).toEqual({ paymentStatus: "paid", fulfillmentStatus: "in_transit" });
-    // One axis alone is not trusted: the legacy status decides both.
-    expect(statusAxes({ paymentStatus: "paid", status: "pending" })).toEqual({
-      paymentStatus: "awaiting_payment",
-      fulfillmentStatus: "unfulfilled",
-    });
+  it("leaves the cancelled marker out of an uncancelled Order", () => {
+    expect(statusAxes(axes("paid", "delivered", { total: 10 }))).toEqual({ paymentStatus: "paid", fulfillmentStatus: "delivered" });
   });
 });
 
@@ -55,24 +48,6 @@ describe("statusPatch", () => {
   it("changing one axis writes the other unchanged", () => {
     expect(statusPatch(axes("paid", "delivered"), { paymentStatus: "partially_refunded" })).toEqual({
       paymentStatus: "partially_refunded",
-      fulfillmentStatus: "delivered",
-    });
-  });
-
-  it("carries a not-yet-backfilled Order's cancelled marker into its first write", () => {
-    const legacy = { status: "cancelled" as const, refundedAmount: 0, stripeInvoiceId: "in_1", updatedAt: 42 };
-    expect(statusPatch(legacy, { paymentStatus: "refunded" })).toEqual({
-      paymentStatus: "refunded",
-      fulfillmentStatus: "unfulfilled",
-      cancelledAt: 42,
-      cancellationReason: "legacy",
-    });
-  });
-
-  it("withStatusAxes fills the axes onto the whole document", () => {
-    expect(withStatusAxes({ status: "delivered" as const, total: 10 })).toMatchObject({
-      total: 10,
-      paymentStatus: "paid",
       fulfillmentStatus: "delivered",
     });
   });
@@ -158,7 +133,7 @@ describe("cancelled marker", () => {
 });
 
 describe("Customer Cancellation", () => {
-  const owned = (paymentStatus: PaymentStatus, fulfillmentStatus: FulfillmentStatus, extra: StatusSource = {}) => ({
+  const owned = (paymentStatus: PaymentStatus, fulfillmentStatus: FulfillmentStatus, extra: Partial<StatusSource> = {}) => ({
     ...axes(paymentStatus, fulfillmentStatus, extra),
     clerkUserId: "user_owner",
   });
@@ -295,72 +270,5 @@ describe("the axes stay independent", () => {
       paymentStatus: "partially_refunded",
       fulfillmentStatus: "delivered",
     });
-  });
-});
-
-describe("legacyStatusAxes (backfill mapping)", () => {
-  it("maps each legacy status", () => {
-    expect(legacyStatusAxes({ status: "pending" })).toEqual({ paymentStatus: "awaiting_payment", fulfillmentStatus: "unfulfilled" });
-    expect(legacyStatusAxes({ status: "paid" })).toEqual({ paymentStatus: "paid", fulfillmentStatus: "unfulfilled" });
-    expect(legacyStatusAxes({ status: "paid", shippingLabelUrl: "https://l" })).toEqual({
-      paymentStatus: "paid",
-      fulfillmentStatus: "label_purchased",
-    });
-    expect(legacyStatusAxes({ status: "dispatched" })).toEqual({ paymentStatus: "paid", fulfillmentStatus: "in_transit" });
-    expect(legacyStatusAxes({ status: "delivered" })).toEqual({ paymentStatus: "paid", fulfillmentStatus: "delivered" });
-  });
-
-  it("refunded orders keep their Payment Status and infer fulfillment from delivery, label or carrier tracking", () => {
-    expect(legacyStatusAxes({ status: "refunded", trackingDeliveredAt: 5, shippingLabelUrl: "x" })).toEqual({
-      paymentStatus: "refunded",
-      fulfillmentStatus: "delivered",
-    });
-    expect(legacyStatusAxes({ status: "partially_refunded", shippingLabelUrl: "x" }).fulfillmentStatus).toBe("in_transit");
-    expect(legacyStatusAxes({ status: "refunded", trackingNumber: "9400111899" }).fulfillmentStatus).toBe("in_transit");
-    // The placeholder number settlement used to mint is not a shipment.
-    expect(legacyStatusAxes({ status: "refunded", trackingNumber: "GL-TRK-123456" }).fulfillmentStatus).toBe("unfulfilled");
-  });
-
-  it("cancelled orders get the marker (at updatedAt) and keep their payment state", () => {
-    expect(legacyStatusAxes({ status: "cancelled", updatedAt: 9, createdAt: 1 })).toEqual({
-      paymentStatus: "awaiting_payment",
-      fulfillmentStatus: "unfulfilled",
-      cancelledAt: 9,
-      cancellationReason: "legacy",
-    });
-    expect(legacyStatusAxes({ status: "cancelled", createdAt: 1, checkoutHoldReleasedAt: 3 })).toMatchObject({
-      paymentStatus: "awaiting_payment",
-      cancelledAt: 1,
-      cancellationReason: "checkout_expired",
-    });
-    expect(legacyStatusAxes({ status: "cancelled", updatedAt: 9 }, { settled: true }).paymentStatus).toBe("paid");
-    expect(legacyStatusAxes({ status: "cancelled", updatedAt: 9, stripeInvoiceId: "in_1" }).paymentStatus).toBe("paid");
-    expect(legacyStatusAxes({ status: "cancelled", updatedAt: 9, stripeInvoiceId: "in_1" }, { settled: false }).paymentStatus).toBe(
-      "awaiting_payment"
-    );
-    expect(legacyStatusAxes({ status: "cancelled", updatedAt: 9, refundedAmount: 50, total: 50 }).paymentStatus).toBe("refunded");
-  });
-
-  it("a refund that overwrote a cancellation gets its marker back from the audit log", () => {
-    expect(legacyStatusAxes({ status: "refunded" }, { cancelledAt: 4 })).toEqual({
-      paymentStatus: "refunded",
-      fulfillmentStatus: "unfulfilled",
-      cancelledAt: 4,
-      cancellationReason: "legacy",
-    });
-  });
-
-  it("a WhatsApp reservation is cancelled", () => {
-    expect(legacyStatusAxes({ status: "whatsapp_initiated", updatedAt: 6 })).toEqual({
-      paymentStatus: "awaiting_payment",
-      fulfillmentStatus: "unfulfilled",
-      cancelledAt: 6,
-      cancellationReason: "whatsapp_retired",
-    });
-  });
-
-  it("an open dispute wins the Payment Status of a settled order", () => {
-    expect(legacyStatusAxes({ status: "delivered", disputed: true })).toEqual({ paymentStatus: "disputed", fulfillmentStatus: "delivered" });
-    expect(legacyStatusAxes({ status: "pending", disputed: true }).paymentStatus).toBe("awaiting_payment");
   });
 });

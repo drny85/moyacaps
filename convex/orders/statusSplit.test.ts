@@ -1,8 +1,8 @@
 /// <reference types="vite/client" />
 /**
- * ADR 0024 split status, end to end: the backfill from the legacy single `status`, each axis
- * staying independent through real settlement / refund / dispute / label / carrier writes,
- * the read fallback for Orders the backfill has not reached, and the admin desk filters.
+ * ADR 0024 split status, end to end: clearing the legacy single `status`, each axis staying
+ * independent through real settlement / refund / dispute / label / carrier writes, and the
+ * admin desk filters.
  */
 import { convexTest } from "convex-test";
 import { describe, expect, it } from "vitest";
@@ -66,10 +66,10 @@ function lifecycle(order: Doc<"orders"> | null | undefined) {
   };
 }
 
-type LegacyOrder = Partial<Doc<"orders">> & { orderNumber: string; status: NonNullable<Doc<"orders">["status"]> };
+type SeededOrder = Partial<Doc<"orders">> & Pick<Doc<"orders">, "orderNumber" | "paymentStatus" | "fulfillmentStatus">;
 
-/** Insert an Order the way the single-status code stored it: no axes. */
-async function seedLegacy(tt: T, fields: LegacyOrder): Promise<Id<"orders">> {
+/** Insert an Order directly, bypassing checkout. */
+async function seedOrder(tt: T, fields: SeededOrder): Promise<Id<"orders">> {
   return await tt.run(async (ctx) =>
     ctx.db.insert("orders", {
       items: [{ variantId: "V1", name: "Cap V1", quantity: 1, price: 100, image: "/img.png" }],
@@ -81,12 +81,6 @@ async function seedLegacy(tt: T, fields: LegacyOrder): Promise<Id<"orders">> {
       ...fields,
     })
   );
-}
-
-async function auditEvent(tt: T, orderId: Id<"orders">, orderNumber: string, type: string, createdAt: number) {
-  await tt.run(async (ctx) => {
-    await ctx.db.insert("payment_events", { orderId, orderNumber, type, createdAt });
-  });
 }
 
 async function settle(tt: T, orderNumber: string, total = 100) {
@@ -139,122 +133,37 @@ async function dispute(tt: T, orderId: Id<"orders">, orderNumber: string, action
   });
 }
 
-describe("backfillOrderStatusAxes", () => {
-  it("maps every legacy status, batching and re-scheduling itself", async () => {
+describe("unsetLegacyOrderStatus", () => {
+  it("clears the legacy status from every Order, batching and re-scheduling itself", async () => {
     const tt = t();
-    await seedVariant(tt, "V1", 10);
-    await seedLegacy(tt, { orderNumber: "L-PENDING", status: "pending" });
-    await seedLegacy(tt, { orderNumber: "L-PAID", status: "paid", trackingNumber: "GL-TRK-111111" });
-    await seedLegacy(tt, { orderNumber: "L-PAID-LABEL", status: "paid", shippingLabelUrl: "https://l" });
-    await seedLegacy(tt, { orderNumber: "L-DISPATCHED", status: "dispatched" });
-    await seedLegacy(tt, { orderNumber: "L-DELIVERED", status: "delivered", trackingDeliveredAt: 1_500 });
-    await seedLegacy(tt, { orderNumber: "L-REFUNDED-DELIV", status: "refunded", refundedAmount: 100, trackingDeliveredAt: 1_500 });
-    await seedLegacy(tt, { orderNumber: "L-PARTIAL-TRK", status: "partially_refunded", refundedAmount: 10, trackingNumber: "9400111" });
-    await seedLegacy(tt, { orderNumber: "L-DISPUTED", status: "paid", disputed: true });
-    await seedLegacy(tt, { orderNumber: "L-CANCEL-UNPAID", status: "cancelled" });
-    await seedLegacy(tt, { orderNumber: "L-HOLD-RELEASED", status: "cancelled", checkoutHoldReleasedAt: 1_800 });
-    const zelle = await seedLegacy(tt, { orderNumber: "L-CANCEL-ZELLE", status: "cancelled", paymentMethod: "whatsapp" });
-    await auditEvent(tt, zelle, "L-CANCEL-ZELLE", "zelle_settled", 1_100);
-    const overwritten = await seedLegacy(tt, { orderNumber: "L-CANCEL-REFUND", status: "refunded", refundedAmount: 100 });
-    await auditEvent(tt, overwritten, "L-CANCEL-REFUND", "cancelled", 1_700);
-    await seedLegacy(tt, { orderNumber: "L-WHATSAPP", status: "whatsapp_initiated", paymentMethod: "whatsapp" });
-    // Already split (e.g. created after the deploy): left alone.
-    await tt.run(async (ctx) => {
-      await ctx.db.insert("orders", {
-        orderNumber: "NEW-1",
-        items: [],
-        currency: "USD",
-        total: 1,
-        paymentStatus: "refunded",
-        fulfillmentStatus: "returned",
-        paymentMethod: "stripe",
-        createdAt: 3_000,
-      });
-    });
-    expect(await tt.query(internal.orders.migrations.countOrdersMissingStatusAxes, {})).toEqual({ missing: 13, scanned: 14 });
+    const legacy = ["pending", "paid", "dispatched", "delivered", "cancelled", "refunded"] as const;
+    for (const [i, status] of legacy.entries()) {
+      await seedOrder(tt, { orderNumber: `L-${i}`, status, paymentStatus: "paid", fulfillmentStatus: "delivered" });
+    }
+    // Created after the split: never had the field.
+    await seedOrder(tt, { orderNumber: "NEW-1", paymentStatus: "refunded", fulfillmentStatus: "returned" });
+    expect(await tt.query(internal.orders.migrations.countOrdersWithLegacyStatus, {})).toEqual({ remaining: 6, scanned: 7 });
 
-    const first = await tt.mutation(internal.orders.migrations.backfillOrderStatusAxes, { batchSize: 4 });
+    const first = await tt.mutation(internal.orders.migrations.unsetLegacyOrderStatus, { batchSize: 4 });
     expect(first).toEqual({ scanned: 4, updated: 4, done: false });
     await drain(tt);
-    expect(await tt.query(internal.orders.migrations.countOrdersMissingStatusAxes, {})).toEqual({ missing: 0, scanned: 14 });
+    expect(await tt.query(internal.orders.migrations.countOrdersWithLegacyStatus, {})).toEqual({ remaining: 0, scanned: 7 });
 
-    const expected: Record<string, ReturnType<typeof lifecycle>> = {
-      "L-PENDING": { payment: "awaiting_payment", fulfillment: "unfulfilled", cancelled: false },
-      "L-PAID": { payment: "paid", fulfillment: "unfulfilled", cancelled: false },
-      "L-PAID-LABEL": { payment: "paid", fulfillment: "label_purchased", cancelled: false },
-      "L-DISPATCHED": { payment: "paid", fulfillment: "in_transit", cancelled: false },
-      "L-DELIVERED": { payment: "paid", fulfillment: "delivered", cancelled: false },
-      "L-REFUNDED-DELIV": { payment: "refunded", fulfillment: "delivered", cancelled: false },
-      "L-PARTIAL-TRK": { payment: "partially_refunded", fulfillment: "in_transit", cancelled: false },
-      "L-DISPUTED": { payment: "disputed", fulfillment: "unfulfilled", cancelled: false },
-      "L-CANCEL-UNPAID": { payment: "awaiting_payment", fulfillment: "unfulfilled", cancelled: true },
-      "L-HOLD-RELEASED": { payment: "awaiting_payment", fulfillment: "unfulfilled", cancelled: true },
-      "L-CANCEL-ZELLE": { payment: "paid", fulfillment: "unfulfilled", cancelled: true },
-      "L-CANCEL-REFUND": { payment: "refunded", fulfillment: "unfulfilled", cancelled: true },
-      "L-WHATSAPP": { payment: "awaiting_payment", fulfillment: "unfulfilled", cancelled: true },
-      "NEW-1": { payment: "refunded", fulfillment: "returned", cancelled: false },
-    };
-    for (const [orderNumber, axes] of Object.entries(expected)) {
-      expect([orderNumber, lifecycle(await getOrder(tt, orderNumber))]).toEqual([orderNumber, axes]);
-    }
-
-    // The cancelled marker keeps when it happened, and the legacy field stays for the narrow PR.
-    const cancelled = await getOrder(tt, "L-CANCEL-UNPAID");
-    expect(cancelled).toMatchObject({ cancelledAt: 2_000, cancellationReason: "legacy", status: "cancelled" });
-    expect((await getOrder(tt, "L-HOLD-RELEASED"))?.cancellationReason).toBe("checkout_expired");
-    expect((await getOrder(tt, "L-CANCEL-REFUND"))?.cancelledAt).toBe(1_700);
-    // A leftover WhatsApp reservation is retired as ADR 0023 does: its unit comes back.
-    expect((await getOrder(tt, "L-WHATSAPP"))?.cancellationReason).toBe("whatsapp_retired");
-    expect(await getStock(tt, "V1")).toBe(11);
+    // Only the legacy field goes; both axes and everything else stay as they were.
+    const order = await getOrder(tt, "L-1");
+    expect(order).not.toHaveProperty("status");
+    expect(order).toMatchObject({ paymentStatus: "paid", fulfillmentStatus: "delivered", updatedAt: 2_000 });
+    expect(lifecycle(await getOrder(tt, "NEW-1"))).toEqual({ payment: "refunded", fulfillment: "returned", cancelled: false });
   });
 
   it("is safe to run twice", async () => {
     const tt = t();
-    await seedVariant(tt, "V1", 10);
-    await seedLegacy(tt, { orderNumber: "L-1", status: "dispatched" });
-    await seedLegacy(tt, { orderNumber: "L-2", status: "whatsapp_initiated", paymentMethod: "whatsapp" });
+    await seedOrder(tt, { orderNumber: "L-1", status: "dispatched", paymentStatus: "paid", fulfillmentStatus: "in_transit" });
 
-    expect(await tt.mutation(internal.orders.migrations.backfillOrderStatusAxes, {})).toEqual({ scanned: 2, updated: 2, done: true });
+    expect(await tt.mutation(internal.orders.migrations.unsetLegacyOrderStatus, {})).toEqual({ scanned: 1, updated: 1, done: true });
     const once = await getOrder(tt, "L-1");
-    expect(await tt.mutation(internal.orders.migrations.backfillOrderStatusAxes, {})).toEqual({ scanned: 2, updated: 0, done: true });
+    expect(await tt.mutation(internal.orders.migrations.unsetLegacyOrderStatus, {})).toEqual({ scanned: 1, updated: 0, done: true });
     expect(await getOrder(tt, "L-1")).toEqual(once);
-    expect(await getStock(tt, "V1")).toBe(11);
-    await drain(tt);
-  });
-});
-
-describe("Orders the backfill has not reached yet", () => {
-  it("settle, ship and show through the legacy status", async () => {
-    const tt = t();
-    await seedVariant(tt, "V1", 5);
-    const orderId = await seedLegacy(tt, { orderNumber: "GL-OLD-1", status: "pending" });
-
-    await settle(tt, "GL-OLD-1");
-    expect(lifecycle(await getOrder(tt, "GL-OLD-1"))).toEqual({ payment: "paid", fulfillment: "unfulfilled", cancelled: false });
-    // A legacy order awaiting payment held no units, so settling deducts them.
-    expect(await getStock(tt, "V1")).toBe(4);
-
-    const shipped = await seedLegacy(tt, { orderNumber: "GL-OLD-2", status: "dispatched", trackingNumber: "9400OLD" });
-    const detail = await admin(tt).query(api.orders.desk.getOrderDetailAdmin, { orderNumber: "GL-OLD-2" });
-    expect(detail).toMatchObject({ paymentStatus: "paid", fulfillmentStatus: "in_transit" });
-    await scan(tt, "9400OLD", "DELIVERED");
-    expect(lifecycle(await getOrder(tt, "GL-OLD-2"))).toEqual({ payment: "paid", fulfillment: "delivered", cancelled: false });
-
-    const view = await tt.query(api.orders.functions.getOrderByOrderNumberAndEmail, { orderNumber: "GL-OLD-2" });
-    expect(view).toMatchObject({ paymentStatus: "paid", fulfillmentStatus: "delivered" });
-    expect(view).not.toHaveProperty("status");
-    expect(orderId).toBeDefined();
-    expect(shipped).toBeDefined();
-    await drain(tt);
-  });
-
-  it("a refund on a cancelled legacy order keeps the cancelled marker", async () => {
-    const tt = t();
-    const orderId = await seedLegacy(tt, { orderNumber: "GL-OLD-C", status: "cancelled", stripeInvoiceId: "in_1" });
-    await refund(tt, orderId, "GL-OLD-C", 100, true, "evt_r");
-    const order = await getOrder(tt, "GL-OLD-C");
-    expect(lifecycle(order)).toEqual({ payment: "refunded", fulfillment: "unfulfilled", cancelled: true });
-    expect(order?.cancelledAt).toBe(2_000);
     await drain(tt);
   });
 });
@@ -329,7 +238,7 @@ describe("each axis stays independent", () => {
     });
     expect(await getStock(tt, "V1")).toBe(4);
 
-    const unpaid = await seedLegacy(tt, { orderNumber: "GL-IND-UNPAID", status: "pending" });
+    const unpaid = await seedOrder(tt, { orderNumber: "GL-IND-UNPAID", paymentStatus: "awaiting_payment", fulfillmentStatus: "unfulfilled" });
     await expect(buyLabel(tt, unpaid, "9400UNPAID")).rejects.toThrow(/only change once the order is paid/);
     await drain(tt);
   });

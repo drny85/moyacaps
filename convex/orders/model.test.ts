@@ -69,11 +69,6 @@ describe("decideStripeSettlement", () => {
   it("settles an order still awaiting payment", () => {
     expect(decideStripeSettlement(order({ paymentStatus: "awaiting_payment" }), { stripeSessionId: "cs_1" })).toBe("settle");
   });
-
-  it("reads an Order the backfill has not reached through its legacy status", () => {
-    const legacy = order({ paymentStatus: undefined, fulfillmentStatus: undefined, status: "pending" });
-    expect(decideStripeSettlement(legacy, { stripeSessionId: "cs_1" })).toBe("settle");
-  });
 });
 
 describe("bounded id histories", () => {
