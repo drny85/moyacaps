@@ -24,8 +24,8 @@ export async function generateMetadata({
 
   const description =
     locale === "es"
-      ? "Tienda oficial Good Luck. Gorras snapback con bordado 3D de alta densidad y playeras heavyweight 280-300 GSM en 11 diseños con probador virtual en modelo."
-      : "Official store for Good Luck. Signature 3D puff embroidery caps and heavyweight 280-300 GSM graphic tees across 11 designs with interactive model lookbook studio.";
+      ? "Tienda oficial de Good Luck, marca de streetwear de Nueva York. Gorras snapback 0880 con bordado 3D de alta densidad y playeras heavyweight con estampado de alta densidad. Envíos en EE. UU."
+      : "Official store of Good Luck, a New York streetwear brand. Signature 0880 snapback caps with high-density 3D puff embroidery and heavyweight graphic tees. Ships across the US.";
 
   const imageUrl = absoluteUrl(DEFAULT_OG_IMAGE);
 
@@ -54,7 +54,8 @@ export async function generateMetadata({
       title,
       description,
       images: [imageUrl],
-      creator: process.env.NEXT_PUBLIC_TWITTER_HANDLE || "@goodluckcaps",
+      // Only a real X account: x.com/goodluckcaps does not exist
+      ...(process.env.NEXT_PUBLIC_TWITTER_HANDLE ? { creator: process.env.NEXT_PUBLIC_TWITTER_HANDLE } : {}),
     },
   };
 }

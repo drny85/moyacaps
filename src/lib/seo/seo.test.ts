@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { CAP_VARIANTS, type CapVariant } from "../../data/caps";
 import { absoluteUrl, languageAlternates, pageAlternates, siteUrl } from "./site";
-import { breadcrumbJsonLd, productDescription, productJsonLd, serializeJsonLd, websiteJsonLd } from "./jsonLd";
+import { breadcrumbJsonLd, organizationJsonLd, productDescription, productJsonLd, serializeJsonLd, websiteJsonLd } from "./jsonLd";
+import { SUPPORT_EMAIL } from "../legal";
 import { buildSitemap, NONE_LIVE, STATIC_PAGES } from "./sitemap";
 import { ALL_LIVE } from "../launch";
 
@@ -58,6 +59,25 @@ describe("structured data", () => {
     expect(ld.itemListElement.map((i: any) => i.position)).toEqual([1, 2]);
   });
 
+  it("adds US shipping details from store settings, and none without them", () => {
+    const ld = productJsonLd(tee, "en", BASE, NOW, { flatShippingFeeUsd: 8, freeShippingThresholdUnits: 2 }) as any;
+    const shipping = ld.offers.shippingDetails;
+    expect(shipping.shippingRate).toEqual({ "@type": "MonetaryAmount", value: "8.00", currency: "USD" });
+    expect(shipping.shippingDestination.addressCountry).toBe("US");
+    expect(shipping.deliveryTime.transitTime).toMatchObject({ minValue: 2, maxValue: 5, unitCode: "DAY" });
+    expect((productJsonLd(tee, "en", BASE, NOW) as any).offers).not.toHaveProperty("shippingDetails");
+  });
+
+  it("gives the organization a contact email and names both caps and tees", () => {
+    const ld = organizationJsonLd(BASE) as any;
+    expect(ld.contactPoint.email).toBe(SUPPORT_EMAIL);
+    expect(ld.description).toMatch(/caps/i);
+    expect(ld.description).toMatch(/tees/i);
+    expect(ld.areaServed).toBe("US");
+    expect(ld.sameAs).toEqual(["https://www.instagram.com/goodluckcaps/"]);
+    expect(ld.description).toContain("nobody saw anything");
+  });
+
   it("has no sitelinks SearchAction pointing at a product slug", () => {
     expect(websiteJsonLd(BASE)).not.toHaveProperty("potentialAction");
   });
@@ -75,6 +95,7 @@ describe("sitemap", () => {
   it("lists every static page and visible product once per locale", () => {
     expect(entries).toHaveLength((STATIC_PAGES.length + 2) * 2);
     expect(urls).toContain(`${BASE}/es/products/${tee.id}`);
+    expect(urls).toContain(`${BASE}/es/about`);
     expect(new Set(urls).size).toBe(urls.length);
   });
 
@@ -124,6 +145,13 @@ describe("productDescription admin override", () => {
 
   it("uses the Administrator description when set, falling back across locales", () => {
     expect(productDescription({ ...base, descriptionEn: "Custom" }, "es")).toBe("Custom");
+  });
+
+  it("states a tee's own fabric instead of a fixed GSM range", () => {
+    const shirt = { ...base, silhouette: "tee", fabricEn: "Heavyweight 300 GSM Combed Cotton", fabricEs: "Algodón 300 GSM" } as const;
+    expect(productDescription(shirt, "en")).toContain("Heavyweight 300 GSM Combed Cotton");
+    expect(productDescription(shirt, "es")).toContain("Algodón 300 GSM");
+    expect(productDescription({ ...base, silhouette: "tee" }, "en")).not.toMatch(/GSM/);
   });
 
   it("keeps the generated copy when the description is blank", () => {

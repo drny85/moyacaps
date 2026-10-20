@@ -6,6 +6,7 @@ import { useStore } from "@/store/useStore";
 import { BrandMark } from "./BrandMark";
 import { Link, usePathname } from "@/i18n/routing";
 import { getWhatsAppConciergeUrl } from "@/lib/whatsapp";
+import { INSTAGRAM_URL } from "@/lib/seo/site";
 
 export function Footer() {
   const t = useTranslations("footer");
@@ -62,6 +63,10 @@ export function Footer() {
         <div className="text-xs text-zinc-500 dark:text-zinc-600 text-center md:text-right">
           <p>© {new Date().getFullYear()} Good Luck. {t("rights")}</p>
           <nav aria-label={t("legalNav")} className="mt-2 flex items-center justify-center md:justify-end gap-3">
+            <Link href="/about" className="hover:text-zinc-900 dark:hover:text-white underline-offset-2 hover:underline transition-colors">
+              {t("about")}
+            </Link>
+            <span className="text-zinc-300 dark:text-zinc-700">•</span>
             <Link href="/terms" className="hover:text-zinc-900 dark:hover:text-white underline-offset-2 hover:underline transition-colors">
               {t("terms")}
             </Link>
@@ -69,6 +74,16 @@ export function Footer() {
             <Link href="/privacy" className="hover:text-zinc-900 dark:hover:text-white underline-offset-2 hover:underline transition-colors">
               {t("privacy")}
             </Link>
+            <span className="text-zinc-300 dark:text-zinc-700">•</span>
+            {/* rel="me" ties the profile to this site for search engines and AI tools */}
+            <a
+              href={INSTAGRAM_URL}
+              target="_blank"
+              rel="me noopener noreferrer"
+              className="hover:text-zinc-900 dark:hover:text-white underline-offset-2 hover:underline transition-colors"
+            >
+              Instagram
+            </a>
           </nav>
           <p className="text-[10px] text-zinc-400 dark:text-zinc-700 mt-1 font-display">
             Crafted for streetwear connoisseurs

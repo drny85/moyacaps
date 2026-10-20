@@ -1,3 +1,4 @@
+import type { ShippingSettings } from "@convex/settings/model";
 import type { CapVariant } from "@/data/caps";
 import { isTee } from "@/lib/shop";
 import { breadcrumbJsonLd, productJsonLd } from "@/lib/seo/jsonLd";
@@ -5,7 +6,7 @@ import { localizedUrl, siteUrl } from "@/lib/seo/site";
 import { JsonLd } from "./JsonLd";
 
 /** Product + BreadcrumbList rich results for one product page. */
-export function ProductJsonLd({ cap, locale }: { cap: CapVariant; locale: string }) {
+export function ProductJsonLd({ cap, locale, shipping }: { cap: CapVariant; locale: string; shipping?: ShippingSettings }) {
   const base = siteUrl();
   const es = locale === "es";
   const category = isTee(cap) ? "tees" : "caps";
@@ -19,5 +20,5 @@ export function ProductJsonLd({ cap, locale }: { cap: CapVariant; locale: string
     { name: es ? cap.nameEs : cap.nameEn, url: localizedUrl(locale, `/products/${cap.id}`, base) },
   ]);
 
-  return <JsonLd data={[productJsonLd(cap, locale, base, new Date()), breadcrumbs]} />;
+  return <JsonLd data={[productJsonLd(cap, locale, base, new Date(), shipping), breadcrumbs]} />;
 }

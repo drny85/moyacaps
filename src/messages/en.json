@@ -91,7 +91,7 @@
   "story": {
     "eyebrow": "THE 0880 MYTHOS",
     "title": "Good Luck Meets Fearless Grit",
-    "part1": "Good Luck was forged at the intersection of superstition and streetwear culture. The horseshoe turned upright catches blessings; the four-leaf clover defies the odds; the devil with his pitchfork ensures you never back down from a challenge.",
+    "part1": "0880 is Dominican street slang for “nobody saw anything,” the unwritten code of silence. Good Luck was forged at the intersection of superstition and streetwear culture. The horseshoe turned upright catches blessings; the four-leaf clover defies the odds; the devil with his pitchfork ensures you never back down from a challenge.",
     "part2": "Every cap is crafted from custom-dyed premium heavyweight cotton twill, built with structured crown reinforcement to maintain its aggressive shape year after year.",
     "stat1Label": "Tactile Stitches",
     "stat1Value": "38,000+",
@@ -151,7 +151,8 @@
     "currencyNote": "Prices shown in {currency}. Dual currency supported.",
     "terms": "Terms & Conditions",
     "privacy": "Privacy Policy",
-    "legalNav": "Legal"
+    "legalNav": "Legal",
+    "about": "About"
   },
   "pdp": {
     "breadcrumbHome": "Home",
@@ -1265,6 +1266,35 @@
             "Questions or requests about your privacy? Email us at <email>{address}</email>."
           ]
         }
+      }
+    }
+  },
+  "about": {
+    "metaTitle": "What 0880 Means | About Good Luck",
+    "metaDescription": "In Dominican street slang, 0880 means “nobody saw anything”: the unwritten code of silence. Good Luck 0880 is a New York streetwear brand making 3D puff embroidery caps and heavyweight tees.",
+    "eyebrow": "About Good Luck",
+    "title": "What 0880 Means",
+    "lead": "In Dominican street slang, 0880 means “nobody saw anything.” It refers to an unwritten code of silence: a strict wall of witnesses who stay quiet about an incident.",
+    "sections": {
+      "brand": {
+        "heading": "The brand",
+        "body": "Good Luck 0880 is a New York streetwear brand built on that code. We sell caps and heavyweight tees online, in English and Spanish."
+      },
+      "symbols": {
+        "heading": "The symbols",
+        "body": "The horseshoe turned upright catches blessings. The four-leaf clover defies the odds. The devil with his pitchfork means you never back down from a challenge."
+      },
+      "make": {
+        "heading": "What we make",
+        "body": "Caps with high-density 3D puff embroidery and a reinforced, structured crown, and heavyweight graphic tees with a boxy cut and high-density prints."
+      },
+      "shipping": {
+        "heading": "Where we ship",
+        "body": "We ship to the 50 US states and Washington, DC."
+      },
+      "contact": {
+        "heading": "Contact",
+        "body": "Email <email>{address}</email> or find us on <ig>Instagram</ig>."
       }
     }
   }

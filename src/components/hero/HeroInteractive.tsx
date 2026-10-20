@@ -193,7 +193,7 @@ export function HeroInteractive() {
               <span className="intro-rise block" style={delay(0.12)}>
                 {t("titlePrefix")}
               </span>
-            </m.span>
+            </m.span>{" "}
             {/* Room for the cap: it overlaps both lines */}
             <span aria-hidden className="block" style={{ height: "calc(var(--cap) * 0.68 - var(--l1) * 0.42 - var(--l2) * 0.3)" }} />
             {/* Line 2 rides in front of the brim */}
@@ -443,7 +443,7 @@ function HeroPoster() {
                 {t("titlePrefix")}
               </span>
             </m.span>
-          </m.span>
+          </m.span>{" "}
           <m.span style={{ y: line2Y, x: line2X }} className="block">
             <m.span
               style={{ x: line2Lean.x, y: line2Lean.y }}

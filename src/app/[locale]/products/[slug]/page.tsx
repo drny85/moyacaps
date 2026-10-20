@@ -1,5 +1,5 @@
 import { Suspense, cache } from "react";
-import { notFound } from "next/navigation";
+import { notFound, unstable_rethrow } from "next/navigation";
 import type { Metadata } from "next";
 import { setRequestLocale } from "next-intl/server";
 import { api } from "@convex/_generated/api";
@@ -33,6 +33,16 @@ const getProduct = cache(async (slug: string) => {
   return doc ?? null;
 });
 
+/** Shipping rate for the Offer's structured data; without it the Offer just omits shipping details. */
+async function getShipping() {
+  try {
+    return await queryForStaticRender(api.settings.functions.getStoreSettings, {});
+  } catch (error) {
+    unstable_rethrow(error);
+    return undefined;
+  }
+}
+
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { locale, slug } = await params;
   const doc = await getProduct(slug);
@@ -64,7 +74,8 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
       title,
       description,
       images: [imageUrl],
-      creator: process.env.NEXT_PUBLIC_TWITTER_HANDLE || "@goodluckcaps",
+      // Only a real X account: x.com/goodluckcaps does not exist
+      ...(process.env.NEXT_PUBLIC_TWITTER_HANDLE ? { creator: process.env.NEXT_PUBLIC_TWITTER_HANDLE } : {}),
     },
   };
 }
@@ -72,12 +83,12 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
 export default async function ProductPage({ params }: { params: Params }) {
   const { locale, slug } = await params;
   setRequestLocale(locale);
-  const doc = await getProduct(slug);
+  const [doc, shipping] = await Promise.all([getProduct(slug), getShipping()]);
   if (!doc) notFound();
 
   return (
     <main className="min-h-screen">
-      <ProductJsonLd cap={toCapVariant(doc)} locale={locale} />
+      <ProductJsonLd cap={toCapVariant(doc)} locale={locale} shipping={shipping} />
       <Suspense>
         <ProductView initial={doc} />
       </Suspense>
