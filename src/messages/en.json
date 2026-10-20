@@ -42,7 +42,10 @@
     "secureNotice": "Encrypted 256-bit SSL transaction via Stripe Payments",
     "outOfStockTitle": "Stock Unavailable",
     "outOfStockDesc": "One or more items in your bag have sold out or requested quantity exceeds available inventory. Please adjust your bag before proceeding.",
-    "connectingGateway": "Verifying stock & establishing gateway session..."
+    "connectingGateway": "Verifying stock & establishing gateway session...",
+    "canceledTitle": "Checkout canceled",
+    "canceledDesc": "Nothing was charged and your bag is saved. Pay when you're ready.",
+    "payNow": "Pay Now"
   },
   "hero": {
     "badge": "SIGNATURE 2026 DROP",

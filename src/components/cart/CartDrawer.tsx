@@ -6,21 +6,20 @@ import { X, Trash2, Plus, Minus, ShoppingBag, ArrowRight, ShieldCheck, AlertCirc
 import Image from "next/image";
 import { m, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
-import { useSafeUser } from "@/lib/useSafeUser";
 import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
-import { useAction, useQuery } from "convex/react";
+import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { formatUsd } from "@/lib/whatsapp";
 import { useStoreSettings } from "@/hooks/useStoreSettings";
 import { cartVariantIds } from "@/lib/cartVariantIds";
+import { useCardCheckout } from "@/hooks/useCardCheckout";
 
 export function CartDrawer() {
-  const { cart, isCartOpen, closeCart, updateQuantity, removeFromCart, currency, clampCartToStock } = useStore();
+  const { cart, isCartOpen, closeCart, updateQuantity, removeFromCart, clampCartToStock } = useStore();
   useLockBodyScroll(isCartOpen);
   const t = useTranslations("cart");
   const locale = useLocale();
-  const { user } = useSafeUser();
-  const createCheckoutSession = useAction(api.payments.checkout.createCheckoutSession);
+  const { startCheckout } = useCardCheckout();
   // Only the cart's own products, hidden ones included so a line can show as unavailable.
   const convexVariants = useQuery(api.catalog.queries.getCartVariants, { variantIds: cartVariantIds(cart) });
 
@@ -79,19 +78,7 @@ export function CartDrawer() {
     try {
       setCheckoutStep("processing");
       setCheckoutError(null);
-      const result = await createCheckoutSession({
-        items: cart.map((i) => ({
-          variantId: i.variantId || i.id,
-          quantity: i.quantity,
-          size: i.size,
-          colorway: i.colorway,
-        })),
-        currency,
-        locale,
-        origin: window.location.origin,
-        clerkUserId: user?.id,
-        customerEmail: user?.primaryEmailAddress?.emailAddress,
-      });
+      const result = await startCheckout();
 
       if (result.url) {
         window.location.href = result.url;
@@ -100,7 +87,8 @@ export function CartDrawer() {
       }
     } catch (err: any) {
       console.error("Checkout error:", err);
-      setCheckoutError(err.message || "Failed to proceed to checkout");
+      // A ConvexError (e.g. a Checkout Hold that lost the last unit) carries the customer-facing text in `data`.
+      setCheckoutError((typeof err?.data === "string" && err.data) || err.message || "Failed to proceed to checkout");
       setCheckoutStep("idle");
     }
   };

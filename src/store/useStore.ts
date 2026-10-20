@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { CapVariant } from "@/data/caps";
 import { migratePersisted } from "@/lib/cartMigration";
+import type { OpenCheckout } from "@/lib/openCheckout";
 
 export interface CartItem {
   id: string;
@@ -18,7 +19,7 @@ export interface CartItem {
 }
 
 /** The slice of the store saved to localStorage (see `partialize`). */
-type PersistedState = Pick<StoreState, "cart" | "currency" | "theme" | "soundEnabled">;
+type PersistedState = Pick<StoreState, "cart" | "openCheckout" | "currency" | "theme" | "soundEnabled">;
 
 interface StoreState {
   // Cart
@@ -51,6 +52,10 @@ interface StoreState {
     adjustedNames: string[];
   };
   clearCart: () => void;
+
+  // The Order and Checkout Session from the last Pay click (ADR 0024)
+  openCheckout: OpenCheckout | null;
+  setOpenCheckout: (openCheckout: OpenCheckout | null) => void;
 
   // Currency (USD only)
   currency: "USD";
@@ -236,7 +241,11 @@ export const useStore = create<StoreState>()(
         return { adjusted, adjustedNames };
       },
 
-      clearCart: () => set({ cart: [] }),
+      // A cleared cart (after payment) has no open checkout left to expire.
+      clearCart: () => set({ cart: [], openCheckout: null }),
+
+      openCheckout: null,
+      setOpenCheckout: (openCheckout) => set({ openCheckout }),
 
       currency: "USD",
       setCurrency: (currency) => set({ currency }),
@@ -302,6 +311,7 @@ export const useStore = create<StoreState>()(
       migrate: (persisted, version) => migratePersisted(persisted, version) as PersistedState,
       partialize: (state) => ({
         cart: state.cart,
+        openCheckout: state.openCheckout,
         currency: state.currency,
         theme: state.theme,
         soundEnabled: state.soundEnabled,

@@ -1,8 +1,8 @@
 "use node";
 
 /**
- * Stripe settlement actions (ADR 0006): the signature-verified webhook (settlement,
- * invoices, refunds, disputes, expired/failed sessions) and the success-page repair
+ * Stripe settlement actions (ADR 0006, ADR 0024): the signature-verified webhook (settlement,
+ * invoices, refunds, disputes, expired/failed sessions releasing their Checkout Hold) and the success-page repair
  * path that settles a paid session the webhook has not delivered yet.
  */
 import { action, internalAction } from "../_generated/server";
@@ -289,6 +289,18 @@ export const fulfillStripeWebhook = internalAction({
     if (order.webhookEventIds?.includes(event.id)) {
       return { received: true };
     }
+
+    // Checkout Hold (ADR 0024): Stripe says the session expired unpaid, so the pending Order
+    // is cancelled and its units go back. The mutation ignores a settled or replaced hold.
+    if (event.type === "checkout.session.expired" && order.status === "pending") {
+      await ctx.runMutation(internal.orders.checkoutHold.releaseCheckoutHold, {
+        orderId: order._id,
+        stripeSessionId: sessionId,
+        reason: "session_expired",
+        webhookEventId: event.id,
+      });
+    }
+
     await ctx.runMutation(internal.orders.settlement.recordWebhookEventIdInternal, {
       orderId: order._id,
       webhookEventId: event.id,

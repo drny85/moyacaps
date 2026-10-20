@@ -42,7 +42,10 @@
     "secureNotice": "Transacción encriptada SSL de 256 bits procesada por Stripe Payments",
     "outOfStockTitle": "Inventario No Disponible",
     "outOfStockDesc": "Uno o más artículos en tu bolsa se han agotado o superan el inventario disponible. Por favor ajusta tu bolsa antes de continuar.",
-    "connectingGateway": "Verificando inventario y asegurando sesión de pago..."
+    "connectingGateway": "Verificando inventario y asegurando sesión de pago...",
+    "canceledTitle": "Pago cancelado",
+    "canceledDesc": "No se hizo ningún cargo y tu bolsa sigue guardada. Paga cuando estés listo.",
+    "payNow": "Pagar Ahora"
   },
   "hero": {
     "badge": "LANZAMIENTO OFICIAL 2026",

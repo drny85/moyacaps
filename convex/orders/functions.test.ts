@@ -148,6 +148,12 @@ describe("API surface lockdown (security regression locks)", () => {
       void api.payments.webhook.fulfillStripeWebhook;
       // @ts-expect-error expireOpenCheckoutSessionsInternal must remain internal
       void api.payments.checkout.expireOpenCheckoutSessionsInternal;
+      // @ts-expect-error sweepOverdueCheckoutHolds must remain internal
+      void api.payments.checkout.sweepOverdueCheckoutHolds;
+      // @ts-expect-error placeCheckoutHold must remain internal
+      void api.orders.checkoutHold.placeCheckoutHold;
+      // @ts-expect-error releaseCheckoutHold must remain internal
+      void api.orders.checkoutHold.releaseCheckoutHold;
     });
     expect(true).toBe(true);
   });
@@ -238,6 +244,214 @@ describe("Stripe settlement", () => {
     expect(await getStock(tt, "V1")).toBe(3); // direct orders deduct at settlement
     const order = await getOrder(tt, "GL-DIRECT-1");
     expect(order?.status).toBe("paid");
+    await drain(tt);
+  });
+});
+
+async function placeHold(
+  t: T,
+  orderNumber: string,
+  items: Array<{ variantId: string; quantity: number; colorway?: string; size?: string }>,
+  opts: { holdExpiresAt?: number; locale?: string } = {}
+) {
+  return await t.mutation(internal.orders.checkoutHold.placeCheckoutHold, {
+    orderNumber,
+    items: items.map((i) => ({ ...i, name: `Cap ${i.variantId}`, price: 100, image: "/img.png" })),
+    currency: "USD",
+    subtotal: 100,
+    shippingFee: 0,
+    total: 100,
+    clerkUserId: "user_cust",
+    customerEmail: "buyer@test.com",
+    checkoutHoldExpiresAt: opts.holdExpiresAt ?? Date.now() + 31 * 60 * 1000,
+    locale: opts.locale ?? "en",
+  });
+}
+
+async function placeHoldWithSession(t: T, orderNumber: string, sessionId: string, qty = 1) {
+  const orderId = await placeHold(t, orderNumber, [{ variantId: "V1", quantity: qty }]);
+  await t.mutation(internal.orders.checkoutHold.attachCheckoutSession, { orderId, stripeSessionId: sessionId });
+  return orderId;
+}
+
+describe("Checkout Hold (ADR 0024)", () => {
+  it("Pay creates a pending order and takes its units in one step", async () => {
+    const tt = t();
+    await seedVariant(tt, "V1", 5);
+    const orderId = await placeHoldWithSession(tt, "GL-HOLD-1", "cs_hold1", 2);
+
+    const order = await getOrder(tt, "GL-HOLD-1");
+    expect(order?._id).toBe(orderId);
+    expect(order?.status).toBe("pending");
+    expect(order?.stripeSessionId).toBe("cs_hold1");
+    expect(order?.checkoutHoldExpiresAt).toBeGreaterThan(Date.now());
+    expect(await getStock(tt, "V1")).toBe(3);
+    const events = await getEvents(tt, orderId);
+    expect(events.map((e) => e.type)).toEqual(["checkout_hold_placed", "link_generated"]);
+  });
+
+  it("two buyers can never hold the last unit", async () => {
+    const tt = t();
+    await seedVariant(tt, "V1", 1);
+    await placeHold(tt, "GL-FIRST", [{ variantId: "V1", quantity: 1 }]);
+
+    await expect(placeHold(tt, "GL-SECOND", [{ variantId: "V1", quantity: 1 }])).rejects.toThrow(
+      '"Cap V1" just sold out.'
+    );
+    expect(await getOrder(tt, "GL-SECOND")).toBeNull();
+    expect(await getStock(tt, "V1")).toBe(0);
+  });
+
+  it("refuses a short line in the cart's language instead of clamping", async () => {
+    const tt = t();
+    await seedVariant(tt, "V1", 3);
+    await seedVariant(tt, "V2", 5);
+
+    await expect(
+      placeHold(tt, "GL-SHORT", [
+        { variantId: "V2", quantity: 1 },
+        { variantId: "V1", quantity: 4 },
+      ], { locale: "es" })
+    ).rejects.toThrow('Inventario insuficiente para "Cap V1". Solo hay 3 pieza(s) disponible(s).');
+    expect(await getOrder(tt, "GL-SHORT")).toBeNull();
+    expect(await getStock(tt, "V1")).toBe(3);
+    expect(await getStock(tt, "V2")).toBe(5);
+  });
+
+  it("counts two lines on one stock pool together", async () => {
+    const tt = t();
+    await seedVariant(tt, "V1", 3);
+    await expect(
+      placeHold(tt, "GL-SPLIT", [
+        { variantId: "V1", quantity: 2 },
+        { variantId: "V1", quantity: 2 },
+      ])
+    ).rejects.toThrow(/Only 3 unit\(s\) available/);
+    expect(await getStock(tt, "V1")).toBe(3);
+  });
+
+  it("settling a held order marks it paid without deducting again, and alerts the admin", async () => {
+    const tt = t();
+    await seedVariant(tt, "V1", 5);
+    const orderId = await placeHoldWithSession(tt, "GL-HOLD-PAY", "cs_holdpay");
+
+    await settleStripe(tt, "GL-HOLD-PAY", "cs_holdpay", { eventId: "evt_holdpay" });
+
+    const order = await getOrder(tt, "GL-HOLD-PAY");
+    expect(order?.status).toBe("paid");
+    expect(await getStock(tt, "V1")).toBe(4);
+    const scheduled = await tt.run(async (ctx) => await ctx.db.system.query("_scheduled_functions").collect());
+    expect(scheduled.map((f) => f.name)).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("sendAdminOrderAlert"),
+        expect.stringContaining("sendCustomerReceipt"),
+      ])
+    );
+    const events = await getEvents(tt, orderId);
+    expect(events.filter((e) => e.type === "stripe_settled")).toHaveLength(1);
+    await drain(tt);
+  });
+
+  it("an expired session cancels the order and releases its units exactly once", async () => {
+    const tt = t();
+    await seedVariant(tt, "V1", 5);
+    const orderId = await placeHoldWithSession(tt, "GL-HOLD-EXP", "cs_holdexp", 2);
+    expect(await getStock(tt, "V1")).toBe(3);
+
+    const release = () =>
+      tt.mutation(internal.orders.checkoutHold.releaseCheckoutHold, {
+        orderId,
+        stripeSessionId: "cs_holdexp",
+        reason: "session_expired",
+        webhookEventId: "evt_exp",
+      });
+    expect(await release()).toEqual({ released: true });
+    expect(await release()).toEqual({ released: false });
+
+    const order = await getOrder(tt, "GL-HOLD-EXP");
+    expect(order?.status).toBe("cancelled");
+    expect(order?.checkoutHoldReleasedAt).toBeTypeOf("number");
+    expect(order?.webhookEventIds).toContain("evt_exp");
+    expect(await getStock(tt, "V1")).toBe(5);
+    const events = await getEvents(tt, orderId);
+    expect(events.filter((e) => e.type === "inventory_released")).toHaveLength(1);
+  });
+
+  it("ignores a release for another session or a settled order", async () => {
+    const tt = t();
+    await seedVariant(tt, "V1", 5);
+    const orderId = await placeHoldWithSession(tt, "GL-HOLD-X", "cs_holdx");
+
+    expect(
+      await tt.mutation(internal.orders.checkoutHold.releaseCheckoutHold, {
+        orderId,
+        stripeSessionId: "cs_someone_else",
+        reason: "session_expired",
+      })
+    ).toEqual({ released: false });
+
+    await settleStripe(tt, "GL-HOLD-X", "cs_holdx", { eventId: "evt_holdx" });
+    expect(
+      await tt.mutation(internal.orders.checkoutHold.releaseCheckoutHold, {
+        orderId,
+        stripeSessionId: "cs_holdx",
+        reason: "backstop",
+      })
+    ).toEqual({ released: false });
+    expect((await getOrder(tt, "GL-HOLD-X"))?.status).toBe("paid");
+    expect(await getStock(tt, "V1")).toBe(4);
+    await drain(tt);
+  });
+
+  it("a failed session creation releases the hold it never recorded", async () => {
+    const tt = t();
+    await seedVariant(tt, "V1", 5);
+    const orderId = await placeHold(tt, "GL-HOLD-FAIL", [{ variantId: "V1", quantity: 1 }]);
+    expect(
+      await tt.mutation(internal.orders.checkoutHold.releaseCheckoutHold, {
+        orderId,
+        reason: "session_creation_failed",
+      })
+    ).toEqual({ released: true });
+    expect(await getStock(tt, "V1")).toBe(5);
+  });
+
+  it("the backstop finds only holds 45+ minutes past Pay", async () => {
+    const tt = t();
+    await seedVariant(tt, "V1", 10);
+    const now = Date.now();
+    const minute = 60 * 1000;
+    // Hold expiry = Pay + 31 min, so Pay 50 min ago is overdue and Pay 40 min ago is not.
+    await placeHold(tt, "GL-OLD", [{ variantId: "V1", quantity: 1 }], { holdExpiresAt: now - 19 * minute });
+    await placeHold(tt, "GL-NEW", [{ variantId: "V1", quantity: 1 }], { holdExpiresAt: now - 9 * minute });
+    await seedOrder(tt, "V1", { status: "pending", orderNumber: "GL-BARE" });
+
+    const overdue = await tt.query(internal.orders.checkoutHold.listOverdueCheckoutHolds, { now });
+    expect(overdue.map((o) => o.orderNumber)).toEqual(["GL-OLD"]);
+  });
+
+  it("customers never see unpaid or released checkouts in their history", async () => {
+    const tt = t();
+    await seedVariant(tt, "V1", 5);
+    const released = await placeHoldWithSession(tt, "GL-GONE", "cs_gone");
+    await tt.mutation(internal.orders.checkoutHold.releaseCheckoutHold, {
+      orderId: released,
+      stripeSessionId: "cs_gone",
+      reason: "abandoned",
+    });
+    await placeHoldWithSession(tt, "GL-OPEN", "cs_open");
+    const paid = await seedOrder(tt, "V1", { orderNumber: "GL-PAID" });
+
+    const orders = await customer(tt).query(api.orders.functions.getOrdersByClerkId, { clerkUserId: "user_cust" });
+    expect(orders.map((o) => o.orderNumber)).toEqual([paid.orderNumber]);
+  });
+
+  it("an Administrator cancelling a held order releases its units", async () => {
+    const tt = t();
+    await seedVariant(tt, "V1", 5);
+    const orderId = await placeHold(tt, "GL-HOLD-ADM", [{ variantId: "V1", quantity: 2 }]);
+    await admin(tt).mutation(api.orders.desk.updateOrderStatusAdmin, { orderId, newStatus: "cancelled" });
+    expect(await getStock(tt, "V1")).toBe(5);
     await drain(tt);
   });
 });

@@ -14,6 +14,7 @@ import {
   isPaidLike,
   newTrackingNumber,
   planRefund,
+  settlementStockAction,
   withWebhookEventId,
 } from "./model";
 import {
@@ -266,6 +267,8 @@ export const createOrUpdateStripeOrder = internalMutation({
       }
 
       const wasAwaitingPayment = !isPaidLike(existing.status);
+      // A pending Order with a Checkout Hold took its units at Pay (ADR 0024): never deduct twice.
+      const stock = settlementStockAction(existing);
 
       // Update with latest details and ensure paid
       await ctx.db.patch(existing._id, {
@@ -288,6 +291,7 @@ export const createOrUpdateStripeOrder = internalMutation({
         trackingNumber: existing.trackingNumber ?? newTrackingNumber(),
         updatedAt: Date.now(),
       });
+      if (stock === "deduct") await deductStock(ctx, existing.items);
 
       await mirrorStripeCustomerToUser(
         ctx,
@@ -304,8 +308,25 @@ export const createOrUpdateStripeOrder = internalMutation({
         details: JSON.stringify({ total: args.total, tax: args.tax }),
       });
 
-      // M4: an order created before payment never hits the insert branch below, so the
-      // customer receipt must be queued here or the payer gets no confirmation email.
+      // M4: an order created before payment (every card checkout since ADR 0024) never hits
+      // the insert branch below, so the admin alert and customer receipt are queued here.
+      if (wasAwaitingPayment) {
+        await ctx.scheduler.runAfter(0, internal.notifications.emails.sendAdminOrderAlert, {
+          orderNumber: existing.orderNumber,
+          total: args.total,
+          currency: args.currency,
+          paymentMethod: "stripe",
+          customerName: args.customerName ?? existing.customerName,
+          customerEmail: args.customerEmail ?? existing.customerEmail,
+          customerPhone: args.customerPhone ?? existing.customerPhone,
+          shippingAddress: args.shippingAddress ?? existing.shippingAddress,
+          items: existing.items,
+          subtotal: args.subtotal ?? existing.subtotal,
+          shippingFee: args.shippingFee ?? existing.shippingFee,
+          tax: args.tax,
+          createdAt: existing.createdAt,
+        });
+      }
       if (wasAwaitingPayment && hasEmail(args.customerEmail)) {
         await ctx.scheduler.runAfter(0, internal.notifications.emails.sendCustomerReceipt, {
           orderNumber: existing.orderNumber,
@@ -324,7 +345,8 @@ export const createOrUpdateStripeOrder = internalMutation({
       return existing._id;
     }
 
-    // Insert new paid order
+    // Insert new paid order. Legacy only: sessions opened before the Checkout Hold
+    // (ADR 0024) have no Order yet; every newer session settles the existing branch above.
     const orderId = await ctx.db.insert("orders", {
       orderNumber: args.orderNumber,
       customerEmail: args.customerEmail,

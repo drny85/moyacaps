@@ -7,7 +7,7 @@ import { mutation, query, internalMutation, internalQuery } from "../_generated/
 import { v, ConvexError } from "convex/values";
 import { internal } from "../_generated/api";
 import { isAdminRow, isAllowlistedAdmin, requireAdmin } from "../lib/auth";
-import { confirmationView, guestTrackingView, holdsStock, ownerTrackingView } from "./model";
+import { confirmationView, guestTrackingView, isUnpaidCheckout, orderHoldsStock, ownerTrackingView } from "./model";
 import {
   deductStock,
   findOrderByTypedNumber,
@@ -188,8 +188,8 @@ export const getOrdersByClerkId = query({
       .order("desc")
       .take(MAX_ACCOUNT_ORDERS);
 
-    // Customers only see confirmed purchases (never abandoned checkout drafts)
-    return orders.filter((o) => o.status !== "pending");
+    // Customers only see confirmed purchases (never unpaid or abandoned checkouts)
+    return orders.filter((o) => !isUnpaidCheckout(o));
   },
 });
 
@@ -269,8 +269,8 @@ export const cancelOrder = internalMutation({
       throw new ConvexError("Order is already cancelled");
     }
 
-    // Restore stock only if it was actually reserved or deducted
-    if (holdsStock(order.status)) {
+    // Restore stock only if it was actually reserved, deducted or held at checkout
+    if (orderHoldsStock(order)) {
       await releaseStock(ctx, order.items);
     }
 

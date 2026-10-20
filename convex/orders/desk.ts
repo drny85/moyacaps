@@ -8,7 +8,7 @@ import { internal } from "../_generated/api";
 import { requireAdmin } from "../lib/auth";
 import { attentionStatsValidator, computeAttentionStats } from "../analytics/model";
 import { listCatalogVariants } from "../catalog/shared";
-import { holdsStock, matchesOrderSearch, newTrackingNumber, planAdminStatusChange } from "./model";
+import { matchesOrderSearch, newTrackingNumber, orderHoldsStock, planAdminStatusChange } from "./model";
 import { deductStock, findOrderByTypedNumber, releaseStock, scheduleSessionExpiry } from "./shared";
 import { orderDoc, orderStatusValidator, shippingAddressValidator, successResult } from "./validators";
 
@@ -184,8 +184,8 @@ export const cancelOrderAdmin = internalMutation({
       throw new Error("Order is already cancelled");
     }
 
-    // Restore stock if it was previously deducted or reserved
-    if (holdsStock(order.status)) {
+    // Restore stock if it was previously deducted, reserved or held at checkout
+    if (orderHoldsStock(order)) {
       await releaseStock(ctx, order.items);
     }
 
@@ -241,7 +241,7 @@ export const updateOrderStatusAdmin = mutation({
     }
 
     const previousStatus = order.status;
-    const plan = planAdminStatusChange(previousStatus, args.newStatus);
+    const plan = planAdminStatusChange(previousStatus, args.newStatus, orderHoldsStock(order));
     if (!plan.ok) {
       throw new ConvexError(plan.error);
     }

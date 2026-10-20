@@ -48,6 +48,7 @@ import type * as notifications_templates_CategoryLaunchEmail from "../notificati
 import type * as notifications_templates_CustomerReceipt from "../notifications/templates/CustomerReceipt.js";
 import type * as notifications_templates_OrderDeliveredEmail from "../notifications/templates/OrderDeliveredEmail.js";
 import type * as notifications_templates_OrderDispatchedEmail from "../notifications/templates/OrderDispatchedEmail.js";
+import type * as orders_checkoutHold from "../orders/checkoutHold.js";
 import type * as orders_desk from "../orders/desk.js";
 import type * as orders_fulfillment from "../orders/fulfillment.js";
 import type * as orders_functions from "../orders/functions.js";
@@ -121,6 +122,7 @@ declare const fullApi: ApiFromModules<{
   "notifications/templates/CustomerReceipt": typeof notifications_templates_CustomerReceipt;
   "notifications/templates/OrderDeliveredEmail": typeof notifications_templates_OrderDeliveredEmail;
   "notifications/templates/OrderDispatchedEmail": typeof notifications_templates_OrderDispatchedEmail;
+  "orders/checkoutHold": typeof orders_checkoutHold;
   "orders/desk": typeof orders_desk;
   "orders/fulfillment": typeof orders_fulfillment;
   "orders/functions": typeof orders_functions;

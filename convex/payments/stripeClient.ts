@@ -8,6 +8,7 @@ import Stripe from "stripe";
 import { ConvexError } from "convex/values";
 import type { ActionCtx } from "../_generated/server";
 import { api } from "../_generated/api";
+import { toCheckoutSessionState, type CheckoutSessionState } from "../orders/model";
 
 export function getStripe(): Stripe {
   const stripeKey = process.env.STRIPE_SECRET_KEY;
@@ -78,34 +79,44 @@ export async function upsertStripeCustomer(
 }
 
 /**
+ * Expire one Checkout Session if it is still open and report the state Stripe ends with:
+ * "expired" only when Stripe says so (the expire response, or a session already expired).
+ * Network or API errors report "unknown" so callers never release a hold on a guess.
+ */
+export async function expireCheckoutSession(
+  stripe: Stripe,
+  sessionId: string
+): Promise<{ state: CheckoutSessionState; expiredNow: boolean }> {
+  if (!sessionId.startsWith("cs_")) return { state: "unknown", expiredNow: false };
+  try {
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+    if (session.status !== "open") return { state: toCheckoutSessionState(session.status), expiredNow: false };
+    const after = await stripe.checkout.sessions.expire(sessionId);
+    return { state: toCheckoutSessionState(after.status), expiredNow: after.status === "expired" };
+  } catch (err: any) {
+    console.warn(`Could not expire Stripe session ${sessionId}:`, err?.message || err);
+    return { state: "unknown", expiredNow: false };
+  }
+}
+
+/**
  * Expire all still-open Stripe Checkout sessions recorded for an order. Best effort:
  * paid/open sessions and network errors are tolerated (idempotent across retries).
+ * `states` holds what Stripe reported for each session, in order.
  */
 export async function expireSessionsForIds(
   stripe: Stripe,
   sessionIds: string[]
-): Promise<{ expired: string[]; skipped: string[] }> {
+): Promise<{ expired: string[]; skipped: string[]; states: CheckoutSessionState[] }> {
   const expired: string[] = [];
   const skipped: string[] = [];
+  const states: CheckoutSessionState[] = [];
   for (const sessionId of sessionIds) {
-    if (!sessionId.startsWith("cs_")) {
-      skipped.push(sessionId);
-      continue;
-    }
-    try {
-      const session = await stripe.checkout.sessions.retrieve(sessionId);
-      if (session.status === "open") {
-        await stripe.checkout.sessions.expire(sessionId);
-        expired.push(sessionId);
-      } else {
-        skipped.push(sessionId);
-      }
-    } catch (err: any) {
-      console.warn(`Could not expire Stripe session ${sessionId}:`, err?.message || err);
-      skipped.push(sessionId);
-    }
+    const { state, expiredNow } = await expireCheckoutSession(stripe, sessionId);
+    (expiredNow ? expired : skipped).push(sessionId);
+    states.push(state);
   }
-  return { expired, skipped };
+  return { expired, skipped, states };
 }
 
 /**
