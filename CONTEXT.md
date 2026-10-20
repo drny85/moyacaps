@@ -93,8 +93,8 @@ Where the store delivers: the 50 US States and the District of Columbia. Exclude
 _Avoid_: Global shipping, domestic + territories, international orders, 50 states (when DC is meant too)
 
 **Domestic Hybrid Fulfillment Matrix**:
-The tiered carrier dispatch policy deploying USPS Ground Advantage for standard sub-1lb single/double cap shipments (free doorstep pickup, lowest commercial cost) and commercial couriers (UPS Ground, UPS 2nd Day Air) for multi-cap master cartons and expedited VIP drops.
-_Avoid_: Single-carrier setup, unmanaged multi-carrier
+How an Administrator picks the carrier for a label: USPS Ground Advantage for light single- and double-cap boxes (lowest cost, free pickup), UPS Ground for heavier master cartons. Customers see one Standard shipping option; the carrier choice is internal.
+_Avoid_: Single-carrier setup, unmanaged multi-carrier, expedited tier
 
 **PO Box Routing Safeguard**:
 The automated address inspection mechanism detecting Post Office Box destinations and strictly restricting carrier rate selection to USPS, preventing invalid commercial courier (UPS/FedEx) label purchases.
