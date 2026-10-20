@@ -23,7 +23,6 @@ import {
   customerSessionFields,
   emptyCartError,
   INVOICE_FOOTER,
-  RETURN_POLICY_SUMMARY,
   itemSummary,
   reservationSessionExpiresAt,
   STRIPE_COLLECTION_FIELDS,
@@ -217,7 +216,7 @@ export const createCheckoutSession = action({
               message: "Please verify your delivery address carefully. Physical signature may be required for limited drops.",
             },
             submit: {
-              message: `By confirming payment, you authorize Good Luck 0880 to process your order. ${RETURN_POLICY_SUMMARY}`,
+              message: "By confirming payment, you authorize Good Luck 0880 to process your order.",
             },
             after_submit: {
               message: "Thank you for securing your piece from Good Luck 0880. Your receipt is on its way, and tracking follows once your order ships.",

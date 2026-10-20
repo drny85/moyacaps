@@ -293,11 +293,8 @@ export function itemSummary(items: Array<{ quantity: number; name: string }>): s
   return items.map((i) => `${i.quantity}x ${i.name}`).slice(0, 3).join(", ").slice(0, 450);
 }
 
-/** The Returns policy in one line, for Stripe-hosted pages and invoices. */
-export const RETURN_POLICY_SUMMARY =
-  "Returns within 30 days of delivery, unworn with tags, for a refund. Return shipping is paid by the customer unless the item is defective or wrong.";
-
-export const INVOICE_FOOTER = `Good Luck 0880 | NYC Headwear | Support: goodluckcaps.com | ${RETURN_POLICY_SUMMARY}`;
+/** Invoice footer. States no returns window: the Returns policy is not decided yet. */
+export const INVOICE_FOOTER = "Good Luck | goodluckcaps.com | Support: orders@goodluckcaps.com";
 
 /** "(1 item)" / "(3 caps)" style suffix used in invoice and payment descriptions. */
 export const countLabel = (count: number, noun: "item" | "cap") => `(${count} ${noun}${count > 1 ? "s" : ""})`;
