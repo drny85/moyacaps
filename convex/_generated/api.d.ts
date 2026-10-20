@@ -54,6 +54,12 @@ import type * as notifications_templates_CustomerReceipt from "../notifications/
 import type * as notifications_templates_DeliveryExceptionEmail from "../notifications/templates/DeliveryExceptionEmail.js";
 import type * as notifications_templates_OrderDeliveredEmail from "../notifications/templates/OrderDeliveredEmail.js";
 import type * as notifications_templates_OrderDispatchedEmail from "../notifications/templates/OrderDispatchedEmail.js";
+import type * as notifications_templates_layout_BaseEmailLayout from "../notifications/templates/layout/BaseEmailLayout.js";
+import type * as notifications_templates_layout_OrderSummary from "../notifications/templates/layout/OrderSummary.js";
+import type * as notifications_templates_layout_brand from "../notifications/templates/layout/brand.js";
+import type * as notifications_templates_layout_renderEmail from "../notifications/templates/layout/renderEmail.js";
+import type * as notifications_templates_layout_strings from "../notifications/templates/layout/strings.js";
+import type * as notifications_templates_layout_tokens from "../notifications/templates/layout/tokens.js";
 import type * as orders_checkoutHold from "../orders/checkoutHold.js";
 import type * as orders_desk from "../orders/desk.js";
 import type * as orders_deskFilters from "../orders/deskFilters.js";
@@ -141,6 +147,12 @@ declare const fullApi: ApiFromModules<{
   "notifications/templates/DeliveryExceptionEmail": typeof notifications_templates_DeliveryExceptionEmail;
   "notifications/templates/OrderDeliveredEmail": typeof notifications_templates_OrderDeliveredEmail;
   "notifications/templates/OrderDispatchedEmail": typeof notifications_templates_OrderDispatchedEmail;
+  "notifications/templates/layout/BaseEmailLayout": typeof notifications_templates_layout_BaseEmailLayout;
+  "notifications/templates/layout/OrderSummary": typeof notifications_templates_layout_OrderSummary;
+  "notifications/templates/layout/brand": typeof notifications_templates_layout_brand;
+  "notifications/templates/layout/renderEmail": typeof notifications_templates_layout_renderEmail;
+  "notifications/templates/layout/strings": typeof notifications_templates_layout_strings;
+  "notifications/templates/layout/tokens": typeof notifications_templates_layout_tokens;
   "orders/checkoutHold": typeof orders_checkoutHold;
   "orders/desk": typeof orders_desk;
   "orders/deskFilters": typeof orders_deskFilters;
