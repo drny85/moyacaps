@@ -38,6 +38,11 @@ export const productPage = resolvedVariant.extend({
   skus: v.array(skuStock),
 });
 
+/** A cart line's product: `skus` holds per-SKU stock for tees and is null for caps, which use `stock`. */
+export const cartVariant = resolvedVariant.extend({
+  skus: v.union(v.array(skuStock), v.null()),
+});
+
 export const lineStockResult = v.union(
   v.object({ ok: v.literal(true), available: v.number() }),
   v.object({

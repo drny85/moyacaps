@@ -128,7 +128,7 @@ export function getWhatsAppAdminCustomerUrl({
   customerName,
   orderNumber,
   trackingNumber,
-  carrier = "USPS Express",
+  carrier = "USPS",
   locale = "en",
 }: {
   customerPhone?: string;
@@ -148,7 +148,7 @@ export function getWhatsAppAdminCustomerUrl({
   const trackingText = trackingNumber
     ? isEs
       ? ` Tu número de guía para envío dentro de EE.UU. es: ${trackingNumber} (${carrier}).`
-      : ` Your express US domestic tracking code is: ${trackingNumber} (${carrier}).`
+      : ` Your US tracking number is: ${trackingNumber} (${carrier}).`
     : "";
 
   return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(greeting + trackingText)}`;

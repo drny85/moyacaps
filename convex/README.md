@@ -20,9 +20,3 @@ Root keeps only what Convex requires there: `schema.ts`, `http.ts` (routes only)
 Conventions:
 - Business logic goes in `*model.ts` / `model.ts` pure modules with a sibling `*.test.ts`.
 - Integration tests use `convexTest(schema, import.meta.glob("/convex/**/*.ts"))`.
-
-## Legacy path shims
-
-`emails.ts`, `drops.ts` and `stripeCheckout.ts` at the root only
-re-export functions that may already be scheduled under their old paths. Delete them
-after the refactor has been live in prod longer than 24 hours.
