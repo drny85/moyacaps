@@ -1023,5 +1023,19 @@
     "minutes": "Min",
     "seconds": "Seg",
     "droppingNow": "Saliendo ahora…"
+  },
+  "unsubscribe": {
+    "metaTitle": "Darse de baja | Good Luck",
+    "working": "Dándote de baja…",
+    "doneTitle": "Te diste de baja",
+    "doneBody": "Ya no recibirás avisos de lanzamientos ni de drops de Good Luck. Los correos sobre tus pedidos, como recibos y avisos de envío, siguen llegando.",
+    "alreadyTitle": "Ya te habías dado de baja",
+    "alreadyBody": "No te enviaremos avisos de lanzamientos ni de drops. No tienes que hacer nada más.",
+    "invalidTitle": "Este enlace no funciona",
+    "invalidBody": "El enlace para darte de baja está incompleto o ya no es válido. Usa el enlace Darse de baja al final de tu correo más reciente de Good Luck.",
+    "errorTitle": "Algo salió mal",
+    "errorBody": "No pudimos darte de baja en este momento. Inténtalo de nuevo.",
+    "retry": "Intentar de nuevo",
+    "backToShop": "Volver a la tienda"
   }
 }

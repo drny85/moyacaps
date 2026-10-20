@@ -1023,5 +1023,19 @@
     "minutes": "Min",
     "seconds": "Sec",
     "droppingNow": "Dropping now…"
+  },
+  "unsubscribe": {
+    "metaTitle": "Unsubscribe | Good Luck",
+    "working": "Unsubscribing you…",
+    "doneTitle": "You're unsubscribed",
+    "doneBody": "You won't get any more launch or drop alerts from Good Luck. Emails about your orders, like receipts and shipping updates, still arrive.",
+    "alreadyTitle": "You're already unsubscribed",
+    "alreadyBody": "We won't send you launch or drop alerts. There's nothing else to do.",
+    "invalidTitle": "This link doesn't work",
+    "invalidBody": "The unsubscribe link is incomplete or no longer valid. Use the Unsubscribe link at the bottom of your most recent Good Luck email.",
+    "errorTitle": "Something went wrong",
+    "errorBody": "We couldn't unsubscribe you just now. Please try again.",
+    "retry": "Try again",
+    "backToShop": "Back to the shop"
   }
 }

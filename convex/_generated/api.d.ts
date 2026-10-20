@@ -60,6 +60,8 @@ import type * as notifications_templates_layout_brand from "../notifications/tem
 import type * as notifications_templates_layout_renderEmail from "../notifications/templates/layout/renderEmail.js";
 import type * as notifications_templates_layout_strings from "../notifications/templates/layout/strings.js";
 import type * as notifications_templates_layout_tokens from "../notifications/templates/layout/tokens.js";
+import type * as notifications_unsubscribe from "../notifications/unsubscribe.js";
+import type * as notifications_unsubscribeHttp from "../notifications/unsubscribeHttp.js";
 import type * as orders_checkoutHold from "../orders/checkoutHold.js";
 import type * as orders_desk from "../orders/desk.js";
 import type * as orders_deskFilters from "../orders/deskFilters.js";
@@ -153,6 +155,8 @@ declare const fullApi: ApiFromModules<{
   "notifications/templates/layout/renderEmail": typeof notifications_templates_layout_renderEmail;
   "notifications/templates/layout/strings": typeof notifications_templates_layout_strings;
   "notifications/templates/layout/tokens": typeof notifications_templates_layout_tokens;
+  "notifications/unsubscribe": typeof notifications_unsubscribe;
+  "notifications/unsubscribeHttp": typeof notifications_unsubscribeHttp;
   "orders/checkoutHold": typeof orders_checkoutHold;
   "orders/desk": typeof orders_desk;
   "orders/deskFilters": typeof orders_deskFilters;
