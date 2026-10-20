@@ -9,6 +9,8 @@ export type Locale = (typeof routing.locales)[number];
 export const SITE_NAME = "Good Luck";
 export const DEFAULT_SITE_URL = "https://goodluckcaps.com";
 export const DEFAULT_OG_IMAGE = "/og/home.jpg";
+/** The brand's official social profiles, confirmed by the owner. Only real accounts: they feed schema.org sameAs. */
+export const INSTAGRAM_URL = "https://www.instagram.com/goodluckcaps/";
 
 /** Origin without a trailing slash, from NEXT_PUBLIC_SITE_URL (inlined at build). */
 export function siteUrl(env: string | undefined = process.env.NEXT_PUBLIC_SITE_URL): string {

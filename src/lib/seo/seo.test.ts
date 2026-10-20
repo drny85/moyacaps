@@ -73,6 +73,7 @@ describe("structured data", () => {
     expect(ld.description).toMatch(/caps/i);
     expect(ld.description).toMatch(/tees/i);
     expect(ld.areaServed).toBe("US");
+    expect(ld.sameAs).toEqual(["https://www.instagram.com/goodluckcaps/"]);
   });
 
   it("has no sitelinks SearchAction pointing at a product slug", () => {

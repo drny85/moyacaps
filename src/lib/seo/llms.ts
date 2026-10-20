@@ -9,7 +9,7 @@ import type { CapVariant } from "../../data/caps";
 import { isTryOnAvailable, type CategoryLaunches } from "../launch";
 import { SUPPORT_EMAIL } from "../legal";
 import { isTee } from "../shop";
-import { localizedUrl, SITE_NAME } from "./site";
+import { INSTAGRAM_URL, localizedUrl, SITE_NAME } from "./site";
 
 export type LlmsInput = {
   products: CapVariant[];
@@ -66,6 +66,7 @@ export function buildLlmsTxt({ products, launches, shipping, base }: LlmsInput):
     "## Contact",
     "",
     `- Email: ${SUPPORT_EMAIL}`,
+    `- Instagram: ${INSTAGRAM_URL}`,
     "",
   ];
   return lines.join("\n");

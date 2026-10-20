@@ -7,7 +7,7 @@ import type { CapVariant } from "../../data/caps";
 import { SUPPORT_EMAIL } from "../legal";
 import { customDescription } from "../productCopy";
 import { isTee } from "../shop";
-import { absoluteUrl, localizedUrl, SITE_NAME, siteUrl } from "./site";
+import { absoluteUrl, INSTAGRAM_URL, localizedUrl, SITE_NAME, siteUrl } from "./site";
 
 type JsonLd = Record<string, unknown>;
 
@@ -22,6 +22,7 @@ export function organizationJsonLd(base: string): JsonLd {
     logo: `${base}/brand/logo-512.png`,
     description: "New York streetwear brand selling signature 0880 caps with high-density 3D puff embroidery and heavyweight graphic tees.",
     areaServed: "US",
+    sameAs: [INSTAGRAM_URL],
     contactPoint: {
       "@type": "ContactPoint",
       contactType: "customer service",

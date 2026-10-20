@@ -43,6 +43,7 @@ describe("llms.txt", () => {
     expect(txt).toContain(`${BASE}/en/terms`);
     expect(txt).toContain(`${BASE}/en/privacy`);
     expect(txt).toContain(SUPPORT_EMAIL);
+    expect(txt).toContain("https://www.instagram.com/goodluckcaps/");
   });
 
   it("still describes the store when the catalog is unavailable", () => {
