@@ -1,11 +1,15 @@
 import React from "react";
-import { Html, Head, Preview, Body, Container, Section, Heading, Text, Link } from "@react-email/components";
+import { Section, Heading, Text, Link } from "@react-email/components";
+import { BaseEmailLayout } from "./layout/BaseEmailLayout";
+import { colors, styles } from "./layout/tokens";
 
 export interface CategoryLaunchEmailProps {
   locale: "en" | "es";
   category: "headwear" | "apparel";
   name?: string;
   shopUrl: string;
+  /** One-click unsubscribe link, once that flow exists; the layout shows it in the signature. */
+  unsubscribeUrl?: string;
 }
 
 const COPY = {
@@ -34,52 +38,26 @@ export function categoryLaunchSubject(locale: "en" | "es", category: "headwear" 
     : `${COPY.en[category].thing} just dropped — Good Luck`;
 }
 
-export function CategoryLaunchEmail({ locale, category, name, shopUrl }: CategoryLaunchEmailProps) {
+export function CategoryLaunchEmail({ locale, category, name, shopUrl, unsubscribeUrl }: CategoryLaunchEmailProps) {
   const copy = COPY[locale];
   return (
-    <Html lang={locale}>
-      <Head />
-      <Preview>{copy[category].heading}</Preview>
-      <Body style={main}>
-        <Container style={container}>
-          <Section style={header}>
-            <Text style={brand}>
-              GOOD<span style={{ color: "#D4AF37" }}>LUCK</span>
-            </Text>
-          </Section>
-          <Section style={content}>
-            <Heading as="h1" style={heading}>
-              {copy[category].heading}
-            </Heading>
-            <Text style={text}>{copy.greeting(name)}</Text>
-            <Text style={text}>{copy.body}</Text>
-            <Link href={shopUrl} style={button}>
-              {copy.cta}
-            </Link>
-          </Section>
-          <Text style={footer}>{copy.footer}</Text>
-        </Container>
-      </Body>
-    </Html>
+    <BaseEmailLayout preview={copy[category].heading} audience="customer" locale={locale} unsubscribeUrl={unsubscribeUrl}>
+      <Section style={styles.heroSection}>
+        <Heading as="h1" style={heading}>
+          {copy[category].heading}
+        </Heading>
+        <Text style={styles.paragraph}>{copy.greeting(name)}</Text>
+        <Text style={styles.paragraph}>{copy.body}</Text>
+      </Section>
+      <Section style={styles.buttonRow}>
+        <Link href={shopUrl} style={styles.button}>
+          {copy.cta}
+        </Link>
+      </Section>
+      <Text style={reason}>{copy.footer}</Text>
+    </BaseEmailLayout>
   );
 }
 
-const main = { backgroundColor: "#0a0a0a", fontFamily: "Helvetica, Arial, sans-serif", margin: 0, padding: "24px 0" };
-const container = { backgroundColor: "#111111", maxWidth: "560px", margin: "0 auto", borderRadius: "12px", overflow: "hidden" as const };
-const header = { padding: "28px 32px 0" };
-const brand = { color: "#ffffff", fontSize: "22px", fontWeight: 800, letterSpacing: "4px", margin: 0 };
-const content = { padding: "16px 32px 32px" };
-const heading = { color: "#ffffff", fontSize: "28px", lineHeight: "34px", margin: "8px 0 16px" };
-const text = { color: "#d4d4d4", fontSize: "16px", lineHeight: "24px", margin: "0 0 12px" };
-const button = {
-  display: "inline-block",
-  backgroundColor: "#D4AF37",
-  color: "#0a0a0a",
-  fontWeight: 700,
-  fontSize: "15px",
-  padding: "12px 24px",
-  borderRadius: "999px",
-  textDecoration: "none",
-  marginTop: "12px",
-};
-const footer = { color: "#737373", fontSize: "12px", lineHeight: "18px", padding: "0 32px 28px", margin: 0 };
+const heading = { ...styles.heading, fontSize: "28px", lineHeight: "34px" };
+const reason = { fontSize: "12px", lineHeight: "18px", color: colors.subtle, textAlign: "center" as const, margin: "0 0 8px 0" };

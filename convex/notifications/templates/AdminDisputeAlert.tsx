@@ -1,19 +1,8 @@
 import React from "react";
-import {
-  Html,
-  Head,
-  Preview,
-  Body,
-  Container,
-  Section,
-  Heading,
-  Text,
-  Link,
-  Hr,
-  Row,
-  Column,
-} from "@react-email/components";
+import { Section, Heading, Text, Link, Hr, Row, Column } from "@react-email/components";
 import { formatStoreDateTime } from "../../lib/storeTime";
+import { BaseEmailLayout } from "./layout/BaseEmailLayout";
+import { badgeStyle, colors, styles } from "./layout/tokens";
 
 export interface AdminDisputeAlertProps {
   orderNumber: string;
@@ -53,265 +42,71 @@ export function AdminDisputeAlertEmail({
     : "Review in Stripe Dashboard";
 
   return (
-    <Html>
-      <Head />
-      <Preview>{previewText}</Preview>
-      <Body style={main}>
-        <Container style={container}>
-          {/* Header */}
-          <Section style={header}>
-            <Row>
-              <Column>
-                <Text style={brandLabel}>GOOD LUCK</Text>
-                <Text style={subHeader}>SECURITY & DISPUTE ALERT</Text>
-              </Column>
-              <Column align="right">
-                <Text style={alertBadge(isClosed)}>
-                  {isClosed ? "DISPUTE RESOLVED" : "ACTION REQUIRED"}
-                </Text>
-              </Column>
-            </Row>
-          </Section>
+    <BaseEmailLayout preview={previewText} audience="admin">
+      <Section style={styles.heroSection}>
+        <Text style={badgeStyle(isClosed ? "success" : "danger")}>
+          {isClosed ? "Dispute resolved" : "Action required"}
+        </Text>
+        <Heading as="h1" style={styles.heading}>
+          {isClosed ? `Dispute closed: Order #${orderNumber}` : `Payment dispute opened: Order #${orderNumber}`}
+        </Heading>
+        <Text style={styles.paragraph}>
+          {isClosed
+            ? `The dispute on order #${orderNumber} has been marked as closed by the cardholder's issuing bank.`
+            : `A customer has initiated a chargeback/dispute with their bank for order #${orderNumber}. You must submit evidence before the deadline to contest the claim.`}
+        </Text>
+      </Section>
 
-          <Hr style={divider} />
-
-          {/* Main Title & Urgency */}
-          <Section style={titleSection}>
-            <Heading style={heading}>
-              {isClosed
-                ? `Dispute Closed: Order #${orderNumber}`
-                : `Payment Dispute Opened: Order #${orderNumber}`}
-            </Heading>
-            <Text style={description}>
-              {isClosed
-                ? `The dispute on order #${orderNumber} has been marked as closed by the cardholder's issuing bank.`
-                : `A customer has initiated a chargeback/dispute with their bank for order #${orderNumber}. You must submit evidence before the deadline to contest the claim.`}
+      <Section style={styles.card}>
+        <Row>
+          <Column style={{ width: "50%", paddingRight: "10px" }}>
+            <Text style={styles.label}>Disputed amount</Text>
+            <Text style={amount}>
+              {currency.toUpperCase()} ${total.toFixed(2)}
             </Text>
-          </Section>
-
-          {/* Dispute Metrics Box */}
-          <Section style={metricBox(isClosed)}>
-            <Row>
-              <Column style={{ width: "50%", paddingRight: "10px" }}>
-                <Text style={metricLabel}>DISPUTED AMOUNT</Text>
-                <Text style={metricValue}>
-                  {currency.toUpperCase()} ${total.toFixed(2)}
-                </Text>
-              </Column>
-              <Column style={{ width: "50%", paddingLeft: "10px" }}>
-                <Text style={metricLabel}>CURRENT STATUS</Text>
-                <Text style={metricValueHighlight(isClosed)}>
-                  {outcome || status.replace(/_/g, " ").toUpperCase()}
-                </Text>
-              </Column>
-            </Row>
-
-            <Hr style={innerDivider} />
-
-            <Row>
-              <Column style={{ width: "50%", paddingRight: "10px" }}>
-                <Text style={metricLabel}>REASON CODE</Text>
-                <Text style={metricDetail}>{reason ? reason.replace(/_/g, " ").toUpperCase() : "GENERAL / FRAUD"}</Text>
-              </Column>
-              <Column style={{ width: "50%", paddingLeft: "10px" }}>
-                <Text style={metricLabel}>EVIDENCE DEADLINE</Text>
-                <Text style={metricDetail}>{dueByFormatted}</Text>
-              </Column>
-            </Row>
-          </Section>
-
-          {/* Action Buttons */}
-          <Section style={buttonContainer}>
-            <Link href={stripeDisputeUrl} style={primaryButton(isClosed)}>
-              Open Dispute in Stripe Dashboard →
-            </Link>
-            <Text style={{ height: "8px", margin: 0 }} />
-            <Link href={adminDashboardUrl} style={secondaryButton}>
-              View Order in Good Luck Admin
-            </Link>
-          </Section>
-
-          <Hr style={divider} />
-
-          {/* Metadata Footer */}
-          <Section style={footer}>
-            <Text style={footerText}>
-              Dispute ID: <code style={code}>{disputeId}</code>
+          </Column>
+          <Column style={{ width: "50%", paddingLeft: "10px" }}>
+            <Text style={styles.label}>Current status</Text>
+            <Text style={{ ...amount, color: isClosed ? colors.success : colors.danger }}>
+              {outcome || status.replace(/_/g, " ").toUpperCase()}
             </Text>
-            <Text style={footerText}>
-              Recorded at: {new Date(createdAt).toUTCString()}
-            </Text>
-            <Text style={footerDisclaimer}>
-              This automated alert was generated by Good Luck Caps Order Management & Stripe Webhooks.
-            </Text>
-          </Section>
-        </Container>
-      </Body>
-    </Html>
+          </Column>
+        </Row>
+        <Hr style={styles.divider} />
+        <Row>
+          <Column style={{ width: "50%", paddingRight: "10px" }}>
+            <Text style={styles.label}>Reason code</Text>
+            <Text style={styles.value}>{reason ? reason.replace(/_/g, " ").toUpperCase() : "GENERAL / FRAUD"}</Text>
+          </Column>
+          <Column style={{ width: "50%", paddingLeft: "10px" }}>
+            <Text style={styles.label}>Evidence deadline</Text>
+            <Text style={styles.value}>{dueByFormatted}</Text>
+          </Column>
+        </Row>
+      </Section>
+
+      <Section style={styles.buttonRow}>
+        <Link href={stripeDisputeUrl} style={styles.button}>
+          Open dispute in Stripe
+        </Link>
+        <Text style={{ margin: "12px 0 0 0" }}>
+          <Link href={adminDashboardUrl} style={styles.link}>
+            View order in admin
+          </Link>
+        </Text>
+      </Section>
+
+      <Section style={{ textAlign: "center" as const }}>
+        <Text style={meta}>
+          Dispute ID: <span style={styles.mono}>{disputeId}</span>
+        </Text>
+        <Text style={meta}>Recorded at: {formatStoreDateTime(createdAt)}</Text>
+      </Section>
+    </BaseEmailLayout>
   );
 }
 
-// ── Styles ─────────────────────────────────────────────────────────────
-const main = {
-  backgroundColor: "#09090b",
-  fontFamily:
-    "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
-  padding: "30px 10px",
-  color: "#f4f4f5",
-};
+export default AdminDisputeAlertEmail;
 
-const container = {
-  backgroundColor: "#18181b",
-  border: "1px solid #27272a",
-  borderRadius: "12px",
-  maxWidth: "580px",
-  margin: "0 auto",
-  padding: "32px",
-};
-
-const header = {
-  paddingBottom: "16px",
-};
-
-const brandLabel = {
-  fontSize: "14px",
-  fontWeight: "800",
-  letterSpacing: "0.15em",
-  color: "#e11d48",
-  margin: "0 0 4px 0",
-};
-
-const subHeader = {
-  fontSize: "10px",
-  letterSpacing: "0.2em",
-  color: "#a1a1aa",
-  margin: "0",
-};
-
-const alertBadge = (isClosed: boolean) => ({
-  display: "inline-block",
-  fontSize: "10px",
-  fontWeight: "700",
-  letterSpacing: "0.08em",
-  textTransform: "uppercase" as const,
-  padding: "4px 8px",
-  borderRadius: "6px",
-  backgroundColor: isClosed ? "#10b98120" : "#f43f5e25",
-  color: isClosed ? "#34d399" : "#fb7185",
-  border: `1px solid ${isClosed ? "#10b98140" : "#f43f5e50"}`,
-});
-
-const divider = {
-  borderColor: "#27272a",
-  margin: "20px 0",
-};
-
-const innerDivider = {
-  borderColor: "#27272a",
-  margin: "12px 0",
-};
-
-const titleSection = {
-  paddingBottom: "16px",
-};
-
-const heading = {
-  fontSize: "20px",
-  fontWeight: "700",
-  color: "#fafafa",
-  margin: "0 0 8px 0",
-};
-
-const description = {
-  fontSize: "14px",
-  lineHeight: "22px",
-  color: "#a1a1aa",
-  margin: "0",
-};
-
-const metricBox = (isClosed: boolean) => ({
-  backgroundColor: "#09090b",
-  border: `1px solid ${isClosed ? "#27272a" : "#f43f5e40"}`,
-  borderRadius: "8px",
-  padding: "16px 20px",
-  margin: "20px 0",
-});
-
-const metricLabel = {
-  fontSize: "10px",
-  fontWeight: "700",
-  letterSpacing: "0.1em",
-  color: "#71717a",
-  margin: "0 0 4px 0",
-};
-
-const metricValue = {
-  fontSize: "18px",
-  fontWeight: "700",
-  color: "#fafafa",
-  margin: "0",
-};
-
-const metricValueHighlight = (isClosed: boolean) => ({
-  fontSize: "16px",
-  fontWeight: "700",
-  color: isClosed ? "#34d399" : "#fb7185",
-  margin: "0",
-});
-
-const metricDetail = {
-  fontSize: "13px",
-  fontWeight: "600",
-  color: "#e4e4e7",
-  margin: "0",
-};
-
-const buttonContainer = {
-  textAlign: "center" as const,
-  padding: "12px 0 20px 0",
-};
-
-const primaryButton = (isClosed: boolean) => ({
-  display: "block",
-  backgroundColor: isClosed ? "#27272a" : "#e11d48",
-  color: "#ffffff",
-  fontWeight: "700",
-  fontSize: "14px",
-  padding: "14px 20px",
-  borderRadius: "8px",
-  textDecoration: "none",
-  textAlign: "center" as const,
-});
-
-const secondaryButton = {
-  display: "block",
-  backgroundColor: "transparent",
-  color: "#a1a1aa",
-  fontWeight: "600",
-  fontSize: "12px",
-  padding: "10px 20px",
-  borderRadius: "8px",
-  textDecoration: "underline",
-  textAlign: "center" as const,
-};
-
-const footer = {
-  paddingTop: "8px",
-};
-
-const footerText = {
-  fontSize: "11px",
-  color: "#71717a",
-  margin: "2px 0",
-};
-
-const code = {
-  color: "#d4d4d8",
-  fontFamily: "monospace",
-};
-
-const footerDisclaimer = {
-  fontSize: "10px",
-  color: "#52525b",
-  marginTop: "12px",
-};
+const amount = { ...styles.mono, fontSize: "18px", fontWeight: "700", margin: "0 0 4px 0" };
+const meta = { fontSize: "12px", lineHeight: "18px", color: colors.subtle, margin: "0 0 4px 0" };

@@ -11,7 +11,7 @@ import type { RefundKind } from "../payments/refundModel";
 
 export const BRAND = "Good Luck";
 export const SUPPORT_EMAIL = "orders@goodluckcaps.com";
-export const POLICY_LINE = "Standard shipping 2–5 business days, 30-day returns for unworn items.";
+export const POLICY_LINE = "Standard shipping 2–5 business days.";
 
 const money = (amount: number, currency = "USD") => `${currency.toUpperCase()} $${amount.toFixed(2)}`;
 const cents = (amountCents: number) => `$${(amountCents / 100).toFixed(2)}`;
@@ -105,7 +105,7 @@ export function receiptCopy(orderNumber: string, outOfTerritory: boolean): Recei
     return {
       subject: `We received your ${BRAND} order #${orderNumber}, but can't ship it`,
       heading: "We can't ship to this address",
-      body: `Thanks for order #${orderNumber}. We only ship to the 50 US states and DC, so we won't pack this order. We'll refund it in full and email you when the refund is sent. If the address is wrong, reply to this email.`,
+      body: `Thanks for order #${orderNumber}. We only ship to the 50 US states and DC, so we won't pack this order. We'll refund it in full and email you when the refund is sent. If the address is wrong, write to us at ${SUPPORT_EMAIL}.`,
     };
   }
   return {
@@ -149,7 +149,7 @@ export function cancellationNotice(args: {
     preview: `Order #${args.orderNumber} is cancelled.`,
     badge: "ORDER CANCELLED",
     heading: "Your order is cancelled",
-    paragraphs: [opening, refund, "Questions? Reply to this email."],
+    paragraphs: [opening, refund],
     idempotencyKey: `order-cancelled-${args.orderNumber}`,
   };
 }
@@ -180,7 +180,6 @@ export function refundIssuedNotice(args: {
     paragraphs: [
       opening,
       "It goes back to your original payment method. Banks usually post it within 5–10 business days.",
-      "Questions? Reply to this email.",
     ],
     idempotencyKey: `refund-${args.refundId}`,
   };

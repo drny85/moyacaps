@@ -3,7 +3,7 @@
 /** Sends the "now live" emails for a category's waitlist (ADR 0022). Rows were stamped by `claimLaunchEmails`. */
 import { v } from "convex/values";
 import React from "react";
-import { render } from "@react-email/render";
+import { renderEmail } from "./templates/layout/renderEmail";
 import { internalAction } from "../_generated/server";
 import { resend } from "./emails";
 import { categoryValidator } from "../settings/launch";
@@ -31,12 +31,13 @@ export const sendLaunchEmails = internalAction({
       if (!r.contact.includes("@")) continue;
       try {
         const shopUrl = `${baseUrl}/${r.locale}/products?category=${SHOP_CATEGORY[category]}`;
-        const html = await render(React.createElement(CategoryLaunchEmail, { locale: r.locale, category, name: r.name, shopUrl }));
+        const email = await renderEmail(React.createElement(CategoryLaunchEmail, { locale: r.locale, category, name: r.name, shopUrl }));
         await resend.sendEmail(ctx, {
           from: SENDER,
           to: r.contact,
           subject: categoryLaunchSubject(r.locale, category),
-          html,
+          html: email.html,
+          text: email.text,
           idempotencyKey: `category-launch-${r.id}`,
         });
       } catch (error) {

@@ -4,7 +4,7 @@ import { internalAction, action } from "../_generated/server";
 import { v, ConvexError } from "convex/values";
 import { api, components, internal } from "../_generated/api";
 import { Resend } from "@convex-dev/resend";
-import { render } from "@react-email/render";
+import { renderEmail } from "./templates/layout/renderEmail";
 import React from "react";
 import { AdminOrderAlertEmail } from "./templates/AdminOrderAlert";
 import { AdminDisputeAlertEmail } from "./templates/AdminDisputeAlert";
@@ -43,7 +43,7 @@ function adminEmail(): string {
   }
   return recipient.email;
 }
-// Customer emails say "reply to this email": replies go to the orders inbox, not the sender.
+// If a Customer replies anyway, the reply goes to the orders inbox, not the sending address.
 const CUSTOMER_REPLY_TO = [SUPPORT_EMAIL];
 
 const shippingAddressValidator = v.optional(
@@ -102,7 +102,7 @@ export const sendAdminOrderAlert = internalAction({
       const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://goodluckcaps.com";
       const adminDashboardUrl = `${baseUrl}/admin/orders/${args.orderNumber}`;
 
-      const html = await render(
+      const email = await renderEmail(
         React.createElement(AdminOrderAlertEmail, {
           orderNumber: args.orderNumber,
           total: args.total,
@@ -127,7 +127,8 @@ export const sendAdminOrderAlert = internalAction({
         from: DEFAULT_SENDER,
         to: recipient,
         subject,
-        html,
+        html: email.html,
+        text: email.text,
         idempotencyKey: `admin-alert-${args.orderNumber}-${args.paymentMethod}`,
       });
 
@@ -170,7 +171,7 @@ export const sendCustomerReceipt = internalAction({
       const trackingUrl = `${baseUrl}/track?order=${encodeURIComponent(args.orderNumber)}`;
 
       const copy = receiptCopy(args.orderNumber, args.outOfTerritory ?? false);
-      const html = await render(
+      const email = await renderEmail(
         React.createElement(CustomerReceiptEmail, {
           copy,
           orderNumber: args.orderNumber,
@@ -183,7 +184,6 @@ export const sendCustomerReceipt = internalAction({
           shippingFee: args.shippingFee,
           tax: args.tax,
           trackingUrl,
-          supportEmail: SUPPORT_EMAIL,
         })
       );
 
@@ -192,7 +192,8 @@ export const sendCustomerReceipt = internalAction({
         to: args.customerEmail,
         replyTo: CUSTOMER_REPLY_TO,
         subject: copy.subject,
-        html,
+        html: email.html,
+        text: email.text,
         idempotencyKey: `customer-receipt-${args.orderNumber}`,
       });
 
@@ -221,7 +222,7 @@ export const sendTestAdminOrderAlert = action({
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://goodluckcaps.com";
     const adminDashboardUrl = `${baseUrl}/admin/orders/${testOrderNum}`;
 
-    const html = await render(
+    const email = await renderEmail(
       React.createElement(AdminOrderAlertEmail, {
         orderNumber: testOrderNum,
         total: 95.0,
@@ -262,7 +263,8 @@ export const sendTestAdminOrderAlert = action({
         from: DEFAULT_SENDER,
         to: recipient,
         subject: `⚡ [Test Alert] New Order #${testOrderNum} Received (USD $102.84)`,
-        html,
+        html: email.html,
+        text: email.text,
         idempotencyKey: `test-alert-${testOrderNum}`,
       });
 
@@ -296,7 +298,7 @@ export const sendAdminDisputeAlert = internalAction({
       const adminDashboardUrl = `${baseUrl}/admin/orders/${args.orderNumber}`;
       const stripeDisputeUrl = `https://dashboard.stripe.com/disputes/${args.disputeId}`;
 
-      const html = await render(
+      const email = await renderEmail(
         React.createElement(AdminDisputeAlertEmail, {
           orderNumber: args.orderNumber,
           total: args.amount,
@@ -321,7 +323,8 @@ export const sendAdminDisputeAlert = internalAction({
         from: DEFAULT_SENDER,
         to: recipient,
         subject,
-        html,
+        html: email.html,
+        text: email.text,
         idempotencyKey: `dispute-${args.disputeId}-${args.status}`,
       });
 
@@ -357,7 +360,7 @@ export const sendAdminTerritoryAlert = internalAction({
   handler: async (ctx, args) => {
     try {
       const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://goodluckcaps.com";
-      const html = await render(
+      const email = await renderEmail(
         React.createElement(AdminTerritoryAlertEmail, {
           ...args,
           adminDashboardUrl: `${baseUrl}/admin/orders/${args.orderNumber}`,
@@ -368,7 +371,8 @@ export const sendAdminTerritoryAlert = internalAction({
         from: DEFAULT_SENDER,
         to: adminEmail(),
         subject: `⚠️ [Refund Before Packing] Order #${args.orderNumber} ships outside the Fulfillment Territory`,
-        html,
+        html: email.html,
+        text: email.text,
         idempotencyKey: `territory-${args.orderNumber}`,
       });
 
@@ -415,7 +419,7 @@ export const sendOrderDispatchedEmail = internalAction({
 
       const stage = args.stage ?? "label_purchased";
       const copy = dispatchedCopy(stage, args.orderNumber, args.carrier);
-      const html = await render(
+      const email = await renderEmail(
         React.createElement(OrderDispatchedEmail, {
           orderNumber: args.orderNumber,
           customerName: args.customerName || "Valued Customer",
@@ -427,7 +431,6 @@ export const sendOrderDispatchedEmail = internalAction({
           estimatedDelivery: args.estimatedDelivery || "2–5 Business Days",
           shippingAddress: args.shippingAddress,
           items: args.items,
-          supportEmail: SUPPORT_EMAIL,
         })
       );
 
@@ -436,7 +439,8 @@ export const sendOrderDispatchedEmail = internalAction({
         to: args.customerEmail,
         replyTo: CUSTOMER_REPLY_TO,
         subject: copy.subject,
-        html,
+        html: email.html,
+        text: email.text,
         idempotencyKey: dispatchedIdempotencyKey(stage, args.orderNumber, args.trackingNumber),
       });
 
@@ -475,7 +479,7 @@ export const sendOrderDeliveredEmail = internalAction({
       const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://goodluckcaps.com";
       const storeTrackingUrl = `${baseUrl}/track?order=${encodeURIComponent(args.orderNumber)}`;
 
-      const html = await render(
+      const email = await renderEmail(
         React.createElement(OrderDeliveredEmail, {
           orderNumber: args.orderNumber,
           customerName: args.customerName || "Valued Customer",
@@ -485,7 +489,6 @@ export const sendOrderDeliveredEmail = internalAction({
           deliveredDetails: args.deliveredDetails || "Courier scan confirmed successful drop-off",
           storeTrackingUrl,
           items: args.items,
-          supportEmail: SUPPORT_EMAIL,
         })
       );
 
@@ -494,7 +497,8 @@ export const sendOrderDeliveredEmail = internalAction({
         to: args.customerEmail,
         replyTo: CUSTOMER_REPLY_TO,
         subject: deliveredCopy(args.orderNumber).subject,
-        html,
+        html: email.html,
+        text: email.text,
         idempotencyKey: deliveredIdempotencyKey(args.orderNumber, args.trackingNumber),
       });
 
@@ -529,8 +533,9 @@ export const sendDeliveryExceptionEmails = internalAction({
       try {
         const copy = deliveryExceptionCopy(args.kind, audience, args.orderNumber);
         const isAdmin = audience === "administrator";
-        const html = await render(
+        const email = await renderEmail(
           React.createElement(DeliveryExceptionEmail, {
+            audience: isAdmin ? "admin" : "customer",
             orderNumber: args.orderNumber,
             greetingName: isAdmin ? undefined : args.customerName?.split(" ")[0],
             copy,
@@ -549,7 +554,8 @@ export const sendDeliveryExceptionEmails = internalAction({
           to,
           ...(!isAdmin && { replyTo: CUSTOMER_REPLY_TO }),
           subject: copy.subject,
-          html,
+          html: email.html,
+          text: email.text,
           idempotencyKey: `${args.kind}-${audience}-${args.orderNumber}-${args.trackingNumber}`,
         });
         return { success: true, emailId };
@@ -585,7 +591,7 @@ export const sendCustomerNotice = internalAction({
         return { success: false, reason: "invalid_email" };
       }
       const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://goodluckcaps.com";
-      const html = await render(
+      const email = await renderEmail(
         React.createElement(CustomerNoticeEmail, {
           notice: args.notice,
           greetingName: args.customerName?.split(" ")[0],
@@ -597,7 +603,8 @@ export const sendCustomerNotice = internalAction({
         to: args.customerEmail,
         replyTo: CUSTOMER_REPLY_TO,
         subject: args.notice.subject,
-        html,
+        html: email.html,
+        text: email.text,
         idempotencyKey: args.notice.idempotencyKey,
       });
       console.log(`[CustomerNotice] ${args.notice.idempotencyKey} queued, emailId: ${emailId}`);
@@ -620,7 +627,7 @@ export const sendAdminAlert = internalAction({
     try {
       const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://goodluckcaps.com";
       const { orderNumber } = args.alert;
-      const html = await render(
+      const email = await renderEmail(
         React.createElement(AdminAlertEmail, {
           alert: args.alert,
           actionUrl: orderNumber ? `${baseUrl}/admin/orders/${orderNumber}` : "https://dashboard.stripe.com/disputes",
@@ -631,7 +638,8 @@ export const sendAdminAlert = internalAction({
         from: DEFAULT_SENDER,
         to: adminEmail(),
         subject: args.alert.subject,
-        html,
+        html: email.html,
+        text: email.text,
         idempotencyKey: args.alert.idempotencyKey,
       });
       console.log(`[AdminAlert] ${args.alert.idempotencyKey} queued, emailId: ${emailId}`);
