@@ -12,18 +12,19 @@ import { cartCheckoutLines } from "@/lib/openCheckout";
  * Card checkout with a Checkout Hold (ADR 0024). `startCheckout` passes the cart's previous
  * open session so the server expires it before holding the new one, and remembers the new
  * Order. `abandonOpenCheckout` (Stripe's back link) expires the open session right away.
+ *
+ * Both read the store when called, not from render: the first render after SSR hydration
+ * sees the store's initial state (no cart, no open checkout), and a mount effect calling
+ * these would otherwise act on that empty snapshot.
  */
 export function useCardCheckout() {
   const locale = useLocale();
   const { user } = useSafeUser();
   const createCheckoutSession = useAction(api.payments.checkout.createCheckoutSession);
   const abandonCheckoutSession = useAction(api.payments.checkout.abandonCheckoutSession);
-  const cart = useStore((s) => s.cart);
-  const currency = useStore((s) => s.currency);
-  const openCheckout = useStore((s) => s.openCheckout);
-  const setOpenCheckout = useStore((s) => s.setOpenCheckout);
 
   const startCheckout = useCallback(async () => {
+    const { cart, currency, openCheckout, setOpenCheckout } = useStore.getState();
     const result = await createCheckoutSession({
       items: cartCheckoutLines(cart),
       currency,
@@ -35,9 +36,10 @@ export function useCardCheckout() {
     });
     setOpenCheckout({ orderNumber: result.orderNumber, sessionId: result.sessionId });
     return result;
-  }, [cart, currency, locale, user, openCheckout, createCheckoutSession, setOpenCheckout]);
+  }, [locale, user, createCheckoutSession]);
 
   const abandonOpenCheckout = useCallback(async () => {
+    const { openCheckout, setOpenCheckout } = useStore.getState();
     if (!openCheckout) return;
     setOpenCheckout(null);
     try {
@@ -46,7 +48,7 @@ export function useCardCheckout() {
       // The webhook and the hourly backstop still release the hold.
       console.warn("Could not expire the abandoned checkout session:", err);
     }
-  }, [openCheckout, abandonCheckoutSession, setOpenCheckout]);
+  }, [abandonCheckoutSession]);
 
   return { startCheckout, abandonOpenCheckout };
 }
