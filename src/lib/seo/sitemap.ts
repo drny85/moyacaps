@@ -4,6 +4,8 @@
  */
 import type { MetadataRoute } from "next";
 import type { CapVariant } from "../../data/caps";
+import { catalogCategory } from "../../../convex/catalog/model";
+import type { CategoryLaunches } from "../launch";
 import { routing } from "../../i18n/config";
 import { languageAlternates, localizedUrl } from "./site";
 import { productImageUrl } from "./jsonLd";
@@ -27,20 +29,22 @@ export const STATIC_PAGES: Page[] = [
   { path: "/privacy", changeFrequency: "yearly", priority: 0.2 },
 ];
 
-type Launches = Record<"headwear" | "apparel", { status: "live" | "coming_soon" | "hidden" }>;
-const ALL_LIVE: Launches = { headwear: { status: "live" }, apparel: { status: "live" } };
-const CATEGORY_PAGE: Record<string, keyof Launches> = {
+const CATEGORY_PAGE: Record<string, keyof CategoryLaunches> = {
   "/products?category=caps": "headwear",
   "/products?category=tees": "apparel",
   "/try-on": "headwear",
 };
 
-export function buildSitemap(products: CapVariant[], base: string, now: Date, launches: Launches = ALL_LIVE): MetadataRoute.Sitemap {
+/** No category Live: when Category Status is unknown, list nothing that might 404. */
+export const NONE_LIVE: CategoryLaunches = { headwear: { status: "hidden" }, apparel: { status: "hidden" } };
+
+export function buildSitemap(products: CapVariant[], base: string, now: Date, launches: CategoryLaunches): MetadataRoute.Sitemap {
+  const isLive = (category: keyof CategoryLaunches) => launches[category].status === "live";
   const pages: Page[] = [
-    // A category page (and Try-On, which is caps only) is listed only while its category is Live (ADR 0022)
-    ...STATIC_PAGES.filter((page) => !(page.path in CATEGORY_PAGE) || launches[CATEGORY_PAGE[page.path]].status === "live"),
+    // A category page, its products, and Try-On (caps only) are listed only while the category is Live (ADR 0022)
+    ...STATIC_PAGES.filter((page) => !(page.path in CATEGORY_PAGE) || isLive(CATEGORY_PAGE[page.path])),
     ...products
-      .filter((p) => p.isAvailable !== false)
+      .filter((p) => p.isAvailable !== false && isLive(catalogCategory(p)))
       .map((p) => ({
         path: `/products/${p.id}`,
         changeFrequency: "weekly" as const,
