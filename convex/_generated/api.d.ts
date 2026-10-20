@@ -66,6 +66,7 @@ import type * as orders_validators from "../orders/validators.js";
 import type * as payments_checkout from "../payments/checkout.js";
 import type * as payments_checkoutMetadata from "../payments/checkoutMetadata.js";
 import type * as payments_checkoutModel from "../payments/checkoutModel.js";
+import type * as payments_refundFailureModel from "../payments/refundFailureModel.js";
 import type * as payments_refundLedger from "../payments/refundLedger.js";
 import type * as payments_refundModel from "../payments/refundModel.js";
 import type * as payments_refunds from "../payments/refunds.js";
@@ -147,6 +148,7 @@ declare const fullApi: ApiFromModules<{
   "payments/checkout": typeof payments_checkout;
   "payments/checkoutMetadata": typeof payments_checkoutMetadata;
   "payments/checkoutModel": typeof payments_checkoutModel;
+  "payments/refundFailureModel": typeof payments_refundFailureModel;
   "payments/refundLedger": typeof payments_refundLedger;
   "payments/refundModel": typeof payments_refundModel;
   "payments/refunds": typeof payments_refunds;

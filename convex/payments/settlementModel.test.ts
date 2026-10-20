@@ -43,6 +43,9 @@ describe("isHandledStripeEvent", () => {
   it("acts on settlement, invoice, refund and dispute events only", () => {
     expect(isHandledStripeEvent("checkout.session.completed")).toBe(true);
     expect(isHandledStripeEvent("charge.dispute.closed")).toBe(true);
+    expect(isHandledStripeEvent("refund.failed")).toBe(true);
+    expect(isHandledStripeEvent("refund.updated")).toBe(true);
+    expect(isHandledStripeEvent("refund.created")).toBe(false);
     expect(isHandledStripeEvent("customer.created")).toBe(false);
   });
 });

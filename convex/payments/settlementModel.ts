@@ -15,6 +15,8 @@ export const HANDLED_STRIPE_EVENTS = [
   "checkout.session.async_payment_failed",
   "checkout.session.expired",
   "charge.refunded",
+  "refund.failed",
+  "refund.updated",
   "charge.dispute.created",
   "charge.dispute.closed",
   "invoice.paid",
