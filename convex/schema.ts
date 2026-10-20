@@ -122,20 +122,6 @@ export default defineSchema({
       })
     ),
     total: v.number(),
-    // Legacy single status, superseded by paymentStatus + fulfillmentStatus (ADR 0024). Neither
-    // read nor written; orders/migrations:unsetLegacyOrderStatus clears it, then the field goes.
-    status: v.optional(
-      v.union(
-        v.literal("pending"),
-        v.literal("paid"),
-        v.literal("dispatched"),
-        v.literal("delivered"),
-        v.literal("cancelled"),
-        v.literal("whatsapp_initiated"),
-        v.literal("refunded"),
-        v.literal("partially_refunded")
-      )
-    ),
     // ADR 0024: where the money stands and where the package stands, independently.
     paymentStatus: paymentStatusValidator,
     fulfillmentStatus: fulfillmentStatusValidator,

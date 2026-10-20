@@ -108,9 +108,7 @@ async function seeded() {
       items: [{ variantId: "negro-rojo", name: "Black / Red", quantity: 1, price: 120, image: "/caps/negro-rojo.png" }],
       currency: "USD",
       total: 128,
-      // A retired WhatsApp reservation as the backfill left it: still carrying the legacy status
-      // until orders/migrations:unsetLegacyOrderStatus runs. Reads must still pass their validators.
-      status: "whatsapp_initiated",
+      // A retired WhatsApp reservation (ADR 0023): cancelled, never paid.
       paymentStatus: "awaiting_payment",
       fulfillmentStatus: "unfulfilled",
       cancelledAt: NOW,

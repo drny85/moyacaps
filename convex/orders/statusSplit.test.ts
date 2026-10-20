@@ -1,8 +1,7 @@
 /// <reference types="vite/client" />
 /**
- * ADR 0024 split status, end to end: clearing the legacy single `status`, each axis staying
- * independent through real settlement / refund / dispute / label / carrier writes, and the
- * admin desk filters.
+ * ADR 0024 split status, end to end: each axis staying independent through real settlement /
+ * refund / dispute / label / carrier writes, and the admin desk filters.
  */
 import { convexTest } from "convex-test";
 import { describe, expect, it } from "vitest";
@@ -132,41 +131,6 @@ async function dispute(tt: T, orderId: Id<"orders">, orderNumber: string, action
     action,
   });
 }
-
-describe("unsetLegacyOrderStatus", () => {
-  it("clears the legacy status from every Order, batching and re-scheduling itself", async () => {
-    const tt = t();
-    const legacy = ["pending", "paid", "dispatched", "delivered", "cancelled", "refunded"] as const;
-    for (const [i, status] of legacy.entries()) {
-      await seedOrder(tt, { orderNumber: `L-${i}`, status, paymentStatus: "paid", fulfillmentStatus: "delivered" });
-    }
-    // Created after the split: never had the field.
-    await seedOrder(tt, { orderNumber: "NEW-1", paymentStatus: "refunded", fulfillmentStatus: "returned" });
-    expect(await tt.query(internal.orders.migrations.countOrdersWithLegacyStatus, {})).toEqual({ remaining: 6, scanned: 7 });
-
-    const first = await tt.mutation(internal.orders.migrations.unsetLegacyOrderStatus, { batchSize: 4 });
-    expect(first).toEqual({ scanned: 4, updated: 4, done: false });
-    await drain(tt);
-    expect(await tt.query(internal.orders.migrations.countOrdersWithLegacyStatus, {})).toEqual({ remaining: 0, scanned: 7 });
-
-    // Only the legacy field goes; both axes and everything else stay as they were.
-    const order = await getOrder(tt, "L-1");
-    expect(order).not.toHaveProperty("status");
-    expect(order).toMatchObject({ paymentStatus: "paid", fulfillmentStatus: "delivered", updatedAt: 2_000 });
-    expect(lifecycle(await getOrder(tt, "NEW-1"))).toEqual({ payment: "refunded", fulfillment: "returned", cancelled: false });
-  });
-
-  it("is safe to run twice", async () => {
-    const tt = t();
-    await seedOrder(tt, { orderNumber: "L-1", status: "dispatched", paymentStatus: "paid", fulfillmentStatus: "in_transit" });
-
-    expect(await tt.mutation(internal.orders.migrations.unsetLegacyOrderStatus, {})).toEqual({ scanned: 1, updated: 1, done: true });
-    const once = await getOrder(tt, "L-1");
-    expect(await tt.mutation(internal.orders.migrations.unsetLegacyOrderStatus, {})).toEqual({ scanned: 1, updated: 0, done: true });
-    expect(await getOrder(tt, "L-1")).toEqual(once);
-    await drain(tt);
-  });
-});
 
 describe("each axis stays independent", () => {
   it("a delivered order that gets partially refunded stays delivered", async () => {
