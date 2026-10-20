@@ -12,6 +12,7 @@ import { internal } from "../_generated/api";
 import { requireAdmin } from "../lib/auth";
 import { adjustStock } from "../catalog/inventory";
 import { isCancelled } from "../orders/status";
+import { appendNote } from "../orders/model";
 import schema from "../schema";
 import {
   describeRefund,
@@ -26,6 +27,7 @@ import {
   type Reservation,
   type ReturnReason,
 } from "./refundModel";
+import { decideRefundFailure } from "./refundFailureModel";
 
 type Order = Doc<"orders">;
 type RefundRow = Doc<"order_refunds">;
@@ -208,6 +210,80 @@ export const failRefund = internalMutation({
       });
     }
     return { failed: true };
+  },
+});
+
+/** The ledger row a Stripe refund belongs to: by its Stripe id, else the row id in its metadata. */
+async function rowForStripeRefund(ctx: QueryCtx, stripeRefundId: string, ledgerRefundId?: string): Promise<RefundRow | null> {
+  const byStripeId = await ctx.db
+    .query("order_refunds")
+    .withIndex("by_stripeRefundId", (q) => q.eq("stripeRefundId", stripeRefundId))
+    .first();
+  if (byStripeId) return byStripeId;
+  const id = ledgerRefundId ? ctx.db.normalizeId("order_refunds", ledgerRefundId) : null;
+  if (!id) return null;
+  const row = await ctx.db.get("order_refunds", id);
+  // Never fail a row that Stripe recorded under another refund id.
+  return row && (!row.stripeRefundId || row.stripeRefundId === stripeRefundId) ? row : null;
+}
+
+/**
+ * INTERNAL: Stripe failed or canceled a refund after accepting it (`refund.failed`,
+ * `refund.updated`). The row fails, which frees its lines; the Order gets a `refund_failed`
+ * payment event and an adminNotes line. Stock is not reversed: a Restock done on issue stays,
+ * and the note asks the Administrator to check stock. Replay-safe on the event id.
+ */
+export const failIssuedRefundFromStripe = internalMutation({
+  args: {
+    stripeRefundId: v.string(),
+    ledgerRefundId: v.optional(v.string()),
+    stripeStatus: v.union(v.literal("failed"), v.literal("canceled")),
+    failureReason: v.optional(v.string()),
+    webhookEventId: v.string(),
+  },
+  returns: v.object({
+    failed: v.boolean(),
+    reason: v.optional(v.union(v.literal("unknown_refund"), v.literal("replayed"), v.literal("already_failed"))),
+    restockedUnits: v.number(),
+  }),
+  handler: async (ctx, args) => {
+    const { webhookEventId, ...failure } = args;
+    const row = await rowForStripeRefund(ctx, args.stripeRefundId, args.ledgerRefundId);
+    const recorded = await ctx.db
+      .query("payment_events")
+      .withIndex("by_stripeEventId", (q) => q.eq("stripeEventId", webhookEventId))
+      .first();
+    const order = row ? await ctx.db.get("orders", row.orderId) : null;
+    const decision = decideRefundFailure({
+      row: order ? row : null,
+      failure,
+      eventAlreadyRecorded: recorded !== null,
+    });
+    if (decision.action === "ignore" || !row || !order) {
+      const reason = decision.action === "ignore" ? decision.reason : "unknown_refund";
+      if (reason === "unknown_refund") {
+        console.warn(`Stripe refund ${args.stripeRefundId} ${args.stripeStatus} is not in the refund ledger; ignoring.`);
+      }
+      return { failed: false, reason, restockedUnits: 0 };
+    }
+
+    const now = Date.now();
+    await ctx.db.patch("order_refunds", row._id, {
+      status: "failed",
+      error: decision.error,
+      stripeRefundId: args.stripeRefundId,
+      settledAt: now,
+    });
+    await ctx.db.patch("orders", order._id, { adminNotes: appendNote(order.adminNotes, decision.note), updatedAt: now });
+    await ctx.runMutation(internal.orders.functions.recordPaymentEvent, {
+      orderId: order._id,
+      orderNumber: order.orderNumber,
+      type: "refund_failed",
+      stripeEventId: webhookEventId,
+      actor: "stripe",
+      details: decision.details,
+    });
+    return { failed: true, restockedUnits: decision.restockedUnits };
   },
 });
 

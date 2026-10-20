@@ -242,7 +242,9 @@ export default defineSchema({
     settledAt: v.optional(v.number()),
   })
     .index("by_orderId", ["orderId"])
-    .index("by_requestId", ["requestId"]),
+    .index("by_requestId", ["requestId"])
+    // Stripe's refund.failed / refund.updated webhooks find the row by its Stripe refund id.
+    .index("by_stripeRefundId", ["stripeRefundId"]),
   users: defineTable({
     clerkId: v.string(),
     email: v.string(),

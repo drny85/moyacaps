@@ -142,3 +142,42 @@ describe("Stripe webhook: Fulfillment Territory flag (plan 0008 PR 4)", () => {
     expect(scheduled.some((n) => n.includes("sendAdminTerritoryAlert"))).toBe(false);
   });
 });
+
+function refundEvent(eventId: string, type: string, refund: Record<string, unknown>) {
+  return JSON.stringify({ id: eventId, type, data: { object: { object: "refund", ...refund } } });
+}
+
+describe("Stripe webhook: refund failed after it was issued (ADR 0025)", () => {
+  it("fails the ledger row on refund.failed, and ignores refund.updated for any other status", async () => {
+    const tt = t();
+    const orderId = await seedHeldOrder(tt, "GL-RF-1", "cs_rf1");
+    await deliver(tt, completedEvent("evt_rf_paid", "cs_rf1", "GL-RF-1", { state: "NY", postal_code: "10001", country: "US" }));
+    const reservation = await tt.mutation(internal.payments.refundLedger.reserveAdminRefund, {
+      orderId,
+      requestId: "req-rf-1",
+      actor: "user_admin",
+      request: { kind: "goodwill", amountCents: 1000, reason: "late" },
+    });
+    await tt.mutation(internal.payments.refundLedger.commitRefund, { refundId: reservation.refundId, stripeRefundId: "re_rf1" });
+
+    await deliver(tt, refundEvent("evt_rf_succeeded", "refund.updated", { id: "re_rf1", status: "succeeded", metadata: {} }));
+    expect((await state(tt, orderId)).events.map((e) => e.type)).not.toContain("refund_failed");
+
+    await deliver(
+      tt,
+      refundEvent("evt_rf_failed", "refund.failed", {
+        id: "re_rf1",
+        status: "failed",
+        failure_reason: "lost_or_stolen_card",
+        metadata: { refundId: reservation.refundId },
+      })
+    );
+    const { order, events } = await state(tt, orderId);
+    expect(events.filter((e) => e.type === "refund_failed")).toEqual([
+      expect.objectContaining({ stripeEventId: "evt_rf_failed", actor: "stripe" }),
+    ]);
+    expect(order.adminNotes).toContain("⚠️ REFUND FAILED");
+    const row = await tt.run(async (ctx) => ctx.db.get(reservation.refundId));
+    expect(row).toMatchObject({ status: "failed" });
+  });
+});

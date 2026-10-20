@@ -18,6 +18,7 @@ import {
   refundFromCharge,
   settlementFromSession,
 } from "./settlementModel";
+import { refundFailureFromEvent } from "./refundFailureModel";
 import { hasSettled, isCancelled } from "../orders/status";
 
 /** Hydrate a paid session's line items, using live variants for compact metadata. */
@@ -136,7 +137,8 @@ export const syncCheckoutSession = action({
 
 /**
  * INTERNAL Stripe webhook processor. Signature-verified, replay-deduped, with coverage for
- * the settlement lifecycle: completed / async_payment_failed / expired / refunded / disputes.
+ * the settlement lifecycle: completed / async_payment_failed / expired / refunded / disputes,
+ * and ledger refunds Stripe failed or canceled after accepting them.
  */
 export const fulfillStripeWebhook = internalAction({
   args: {
@@ -219,6 +221,20 @@ export const fulfillStripeWebhook = internalAction({
         internal.orders.settlement.createOrUpdateStripeOrder,
         settlementFromSession(session, items, { webhookEventId: event.id, useClientReference: true })
       );
+      return { received: true };
+    }
+
+    // ── Refund failed or canceled after Stripe accepted it (ADR 0025) ─────────────
+    // Linked through the refund ledger, not the Checkout session. A refund.updated for any
+    // other status is acknowledged without side effects.
+    if (event.type === "refund.failed" || event.type === "refund.updated") {
+      const failure = refundFailureFromEvent(event.type, event.data.object as Stripe.Refund);
+      if (failure) {
+        await ctx.runMutation(internal.payments.refundLedger.failIssuedRefundFromStripe, {
+          ...failure,
+          webhookEventId: event.id,
+        });
+      }
       return { received: true };
     }
 

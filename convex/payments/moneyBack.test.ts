@@ -425,6 +425,96 @@ describe("line refunds and Restock", () => {
     await drain(tt);
   });
 
+  it("a refund Stripe fails after issuing it: row failed, line freed, Restock kept, Administrator told, replay-safe", async () => {
+    const tt = t();
+    await seedVariant(tt, "V1", 10);
+    const orderId = await settle(tt, "GL-REF-FAIL");
+    const reservation = await reserve(tt, orderId, "req-fail", {
+      kind: "line",
+      lines: [{ lineIndex: 0, quantity: 2, restock: true }],
+      includeShipping: false,
+    });
+    await tt.mutation(internal.payments.refundLedger.commitRefund, { refundId: reservation.refundId, stripeRefundId: "re_fail" });
+    expect(await stockOf(tt, "V1")).toBe(10);
+
+    const failed = {
+      stripeRefundId: "re_fail",
+      stripeStatus: "failed" as const,
+      failureReason: "expired_or_canceled_card",
+      webhookEventId: "evt_refund_failed",
+    };
+    expect(await tt.mutation(internal.payments.refundLedger.failIssuedRefundFromStripe, failed)).toEqual({
+      failed: true,
+      restockedUnits: 2,
+    });
+
+    const [row] = await ledgerOf(tt, orderId);
+    expect(row).toMatchObject({ status: "failed", stripeRefundId: "re_fail" });
+    expect(row.error).toContain("expired_or_canceled_card");
+    // Stock is not reversed automatically: the note asks the Administrator to check it.
+    expect(await stockOf(tt, "V1")).toBe(10);
+    const order = await orderOf(tt, orderId);
+    expect(order.adminNotes).toContain("⚠️ REFUND FAILED");
+    expect(order.adminNotes).toContain("check stock");
+    expect(order.paymentStatus).toBe("paid");
+    expect((await eventTypes(tt, orderId)).filter((type) => type === "refund_failed")).toHaveLength(1);
+
+    // A replayed event, or Stripe's refund.updated for the same failure, changes nothing.
+    expect(await tt.mutation(internal.payments.refundLedger.failIssuedRefundFromStripe, failed)).toEqual({
+      failed: false,
+      reason: "replayed",
+      restockedUnits: 0,
+    });
+    expect(
+      await tt.mutation(internal.payments.refundLedger.failIssuedRefundFromStripe, { ...failed, webhookEventId: "evt_refund_updated" })
+    ).toEqual({ failed: false, reason: "already_failed", restockedUnits: 0 });
+    expect((await eventTypes(tt, orderId)).filter((type) => type === "refund_failed")).toHaveLength(1);
+    expect((await orderOf(tt, orderId)).adminNotes?.match(/REFUND FAILED/g)).toHaveLength(1);
+
+    // The failed refund no longer holds the line: it can be refunded again.
+    const again = await reserve(tt, orderId, "req-fail-again", {
+      kind: "line",
+      lines: [{ lineIndex: 0, quantity: 2, restock: false }],
+      includeShipping: false,
+    });
+    expect(again.status).toBe("pending");
+    await drain(tt);
+  });
+
+  it("finds a still-pending refund by the ledger id in its Stripe metadata; ignores refunds not in the ledger", async () => {
+    const tt = t();
+    await seedVariant(tt, "V1", 10);
+    const orderId = await settle(tt, "GL-REF-FAIL-2");
+    const reservation = await reserve(tt, orderId, "req-pending", { kind: "goodwill", amountCents: 500, reason: "late" });
+
+    expect(
+      await tt.mutation(internal.payments.refundLedger.failIssuedRefundFromStripe, {
+        stripeRefundId: "re_unknown",
+        stripeStatus: "canceled",
+        webhookEventId: "evt_unknown",
+      })
+    ).toEqual({ failed: false, reason: "unknown_refund", restockedUnits: 0 });
+
+    expect(
+      await tt.mutation(internal.payments.refundLedger.failIssuedRefundFromStripe, {
+        stripeRefundId: "re_pending",
+        ledgerRefundId: reservation.refundId,
+        stripeStatus: "canceled",
+        webhookEventId: "evt_canceled",
+      })
+    ).toEqual({ failed: true, restockedUnits: 0 });
+    const [row] = await ledgerOf(tt, orderId);
+    expect(row).toMatchObject({ status: "failed", stripeRefundId: "re_pending" });
+    expect((await orderOf(tt, orderId)).adminNotes).not.toContain("check stock");
+
+    // The issue arriving after the failure restocks nothing and leaves the row failed.
+    expect(await tt.mutation(internal.payments.refundLedger.commitRefund, { refundId: reservation.refundId, stripeRefundId: "re_pending" })).toEqual({
+      committed: false,
+      restockedUnits: 0,
+    });
+    await drain(tt);
+  });
+
   it("the refunds list is for Administrators only", async () => {
     const tt = t();
     await seedVariant(tt, "V1", 10);
