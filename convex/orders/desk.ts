@@ -1,16 +1,92 @@
 /**
- * Administrator order desk (ADR 0003): order lists, attention counters, order detail,
- * manual status changes, cancellation and contact/fulfillment edits.
+ * Administrator order desk (ADR 0003, ADR 0024): order lists, attention counters, order
+ * detail, manual Fulfillment Status changes, cancellation and contact/fulfillment edits.
  */
 import { mutation, query, internalMutation } from "../_generated/server";
+import type { QueryCtx } from "../_generated/server";
+import type { Doc } from "../_generated/dataModel";
 import { v, ConvexError } from "convex/values";
 import { internal } from "../_generated/api";
 import { requireAdmin } from "../lib/auth";
 import { attentionStatsValidator, computeAttentionStats } from "../analytics/model";
 import { listCatalogVariants } from "../catalog/shared";
-import { matchesOrderSearch, newTrackingNumber, orderHoldsStock, planAdminStatusChange } from "./model";
-import { deductStock, findOrderByTypedNumber, releaseStock, scheduleSessionExpiry } from "./shared";
-import { orderDoc, orderStatusValidator, shippingAddressValidator, successResult } from "./validators";
+import { matchesDeskFilter, parseDeskFilter, type DeskFilter } from "./deskFilters";
+import { matchesOrderSearch, newTrackingNumber, orderHoldsStock } from "./model";
+import { findOrderByTypedNumber, releaseStock, scheduleSessionExpiry } from "./shared";
+import {
+  fulfillmentStatusValidator,
+  planCancellation,
+  planManualFulfillmentChange,
+  statusAxes,
+  statusPatch,
+  withStatusAxes,
+} from "./status";
+import { orderDoc, shippingAddressValidator, successResult } from "./validators";
+
+type Order = Doc<"orders">;
+
+/** Newest first across several index reads, at most `limit`. */
+function newestFirst(lists: Order[][], limit: number): Order[] {
+  return lists
+    .flat()
+    .sort((a, b) => b._creationTime - a._creationTime)
+    .slice(0, limit);
+}
+
+/** The packing queue (paid or partially refunded, unfulfilled, not cancelled), newest first. */
+async function packingQueue(ctx: QueryCtx, limit: number): Promise<Order[]> {
+  const lists = await Promise.all(
+    (["paid", "partially_refunded"] as const).map((paymentStatus) =>
+      ctx.db
+        .query("orders")
+        .withIndex("by_paymentStatus_and_fulfillmentStatus_and_cancelledAt", (q) =>
+          q.eq("paymentStatus", paymentStatus).eq("fulfillmentStatus", "unfulfilled").eq("cancelledAt", undefined)
+        )
+        .order("desc")
+        .take(limit)
+    )
+  );
+  return newestFirst(lists, limit);
+}
+
+/** Index read that narrows to a desk tab; `matchesDeskFilter` decides membership. */
+async function readDeskFilter(ctx: QueryCtx, filter: DeskFilter, limit: number): Promise<Order[]> {
+  switch (filter) {
+    case "all":
+      return await ctx.db.query("orders").withIndex("by_createdAt").order("desc").take(limit);
+    case "needs_attention":
+    case "overdue":
+      return await packingQueue(ctx, limit);
+    case "awaiting_payment":
+      return await ctx.db
+        .query("orders")
+        .withIndex("by_paymentStatus_and_fulfillmentStatus_and_cancelledAt", (q) =>
+          q.eq("paymentStatus", "awaiting_payment").eq("fulfillmentStatus", "unfulfilled").eq("cancelledAt", undefined)
+        )
+        .order("desc")
+        .take(limit);
+    case "partially_refunded":
+    case "refunded":
+    case "disputed":
+      return await ctx.db
+        .query("orders")
+        .withIndex("by_paymentStatus_and_fulfillmentStatus_and_cancelledAt", (q) => q.eq("paymentStatus", filter))
+        .order("desc")
+        .take(limit);
+    case "cancelled":
+      return await ctx.db
+        .query("orders")
+        .withIndex("by_cancelledAt", (q) => q.gte("cancelledAt", 0))
+        .order("desc")
+        .take(limit);
+    default:
+      return await ctx.db
+        .query("orders")
+        .withIndex("by_fulfillmentStatus", (q) => q.eq("fulfillmentStatus", filter))
+        .order("desc")
+        .take(limit);
+  }
+}
 
 /**
  * Admin query to retrieve complete order details for dedicated fulfillment inspection.
@@ -26,11 +102,15 @@ export const getOrderDetailAdmin = query({
       return null;
     }
     await requireAdmin(ctx);
-    return await findOrderByTypedNumber(ctx, args.orderNumber);
+    const order = await findOrderByTypedNumber(ctx, args.orderNumber);
+    return order ? withStatusAxes(order) : null;
   },
 });
 
-/** Admin order list. `clientTime` (caller-supplied, minute granularity) drives the "overdue" view. */
+/**
+ * Admin order list. `status` is a desk filter (orders/deskFilters.ts); `clientTime`
+ * (caller-supplied, minute granularity) drives the "overdue" view.
+ */
 export const getAllOrdersAdmin = query({
   args: {
     clientTime: v.number(),
@@ -48,34 +128,10 @@ export const getAllOrdersAdmin = query({
     await requireAdmin(ctx);
     const maxItems = Math.min(args.limit ?? 250, 500);
 
-    let orders;
-    if (args.status === "needs_attention") {
-      orders = await ctx.db
-        .query("orders")
-        .withIndex("by_status", (q) => q.eq("status", "paid"))
-        .order("desc")
-        .take(maxItems);
-    } else if (args.status === "overdue") {
-      const twentyFourHoursAgo = args.clientTime - 24 * 60 * 60 * 1000;
-      const paid = await ctx.db
-        .query("orders")
-        .withIndex("by_status", (q) => q.eq("status", "paid"))
-        .order("desc")
-        .take(maxItems);
-      orders = paid.filter((o) => (o.createdAt || 0) < twentyFourHoursAgo);
-    } else if (args.status && args.status !== "all") {
-      orders = await ctx.db
-        .query("orders")
-        .withIndex("by_status", (q) => q.eq("status", args.status as any))
-        .order("desc")
-        .take(maxItems);
-    } else {
-      orders = await ctx.db
-        .query("orders")
-        .withIndex("by_createdAt")
-        .order("desc")
-        .take(maxItems);
-    }
+    const filter = parseDeskFilter(args.status);
+    let orders = (await readDeskFilter(ctx, filter, maxItems)).filter((o) =>
+      matchesDeskFilter(o, filter, args.clientTime)
+    );
 
     if (args.paymentMethod && args.paymentMethod !== "all") {
       orders = orders.filter((o) => o.paymentMethod === args.paymentMethod);
@@ -86,7 +142,7 @@ export const getAllOrdersAdmin = query({
       orders = orders.filter((o) => matchesOrderSearch(o, search));
     }
 
-    return orders;
+    return orders.map(withStatusAxes);
   },
 });
 
@@ -107,15 +163,11 @@ export const getOrdersAttentionStats = query({
     }
     await requireAdmin(ctx);
 
-    // Bounded reads via by_status indexes. Operational queues rarely exceed these caps;
+    // Bounded index reads. Operational queues rarely exceed these caps;
     // if they do, the number shown is clamped rather than scanning the whole table.
     const STATS_WINDOW = 1000;
     const [paidOrders, latestOrder, variants] = await Promise.all([
-      ctx.db
-        .query("orders")
-        .withIndex("by_status", (q) => q.eq("status", "paid"))
-        .order("desc")
-        .take(STATS_WINDOW),
+      packingQueue(ctx, STATS_WINDOW),
       ctx.db
         .query("orders")
         .withIndex("by_createdAt")
@@ -180,12 +232,13 @@ export const cancelOrderAdmin = internalMutation({
       throw new Error("Order not found");
     }
 
-    if (order.status === "cancelled") {
-      throw new Error("Order is already cancelled");
+    const plan = planCancellation(order, "administrator", orderHoldsStock(order));
+    if (!plan.ok) {
+      throw new Error(plan.error);
     }
 
-    // Restore stock if it was previously deducted, reserved or held at checkout
-    if (orderHoldsStock(order)) {
+    // Restore stock if it was previously deducted or held at checkout
+    if (plan.releaseStock) {
       await releaseStock(ctx, order.items);
     }
 
@@ -195,10 +248,11 @@ export const cancelOrderAdmin = internalMutation({
         : args.adminNotes
       : order.adminNotes;
 
+    const now = Date.now();
     await ctx.db.patch(args.orderId, {
-      status: "cancelled",
+      ...statusPatch(order, { cancelledAt: now, cancellationReason: "administrator" }),
       ...(updatedNotes && { adminNotes: updatedNotes }),
-      updatedAt: Date.now(),
+      updatedAt: now,
     });
 
     if (order.stripeSessionId) {
@@ -224,15 +278,20 @@ export const cancelOrderAdmin = internalMutation({
   },
 });
 
-export const updateOrderStatusAdmin = mutation({
+/**
+ * Administrator sets Fulfillment Status by hand (manual dispatch, confirm or revert delivery).
+ * Payment Status is never touched; a change into or out of delivered locks out carrier
+ * overwrites. Cancelling goes through payments/refunds:cancelAndRefundOrderAdmin.
+ */
+export const updateFulfillmentStatusAdmin = mutation({
   args: {
     orderId: v.id("orders"),
-    newStatus: orderStatusValidator,
+    fulfillmentStatus: fulfillmentStatusValidator,
     carrier: v.optional(v.string()),
     trackingNumber: v.optional(v.string()),
     adminNotes: v.optional(v.string()),
   },
-  returns: v.object({ success: v.boolean(), orderId: v.id("orders"), status: orderStatusValidator }),
+  returns: v.object({ success: v.boolean(), orderId: v.id("orders"), fulfillmentStatus: fulfillmentStatusValidator }),
   handler: async (ctx, args) => {
     const admin = await requireAdmin(ctx);
     const order = await ctx.db.get(args.orderId);
@@ -240,17 +299,14 @@ export const updateOrderStatusAdmin = mutation({
       throw new Error("Order not found");
     }
 
-    const previousStatus = order.status;
-    const plan = planAdminStatusChange(previousStatus, args.newStatus, orderHoldsStock(order));
+    const previous = statusAxes(order).fulfillmentStatus;
+    const plan = planManualFulfillmentChange(order, args.fulfillmentStatus);
     if (!plan.ok) {
       throw new ConvexError(plan.error);
     }
 
-    if (plan.stock === "deduct") await deductStock(ctx, order.items);
-    if (plan.stock === "release") await releaseStock(ctx, order.items);
-
-    const updatePayload: Record<string, any> = {
-      status: args.newStatus,
+    const updatePayload: Partial<Order> = {
+      ...statusPatch(order, { fulfillmentStatus: plan.fulfillmentStatus }),
       updatedAt: Date.now(),
     };
 
@@ -262,8 +318,8 @@ export const updateOrderStatusAdmin = mutation({
       updatePayload.manualStatusOverride = true;
     }
 
-    // Auto-generate tracking number if transitioning to dispatched without one
-    if (args.newStatus === "dispatched" && !order.trackingNumber && !args.trackingNumber) {
+    // Auto-generate tracking number if marked in transit without one
+    if (args.fulfillmentStatus === "in_transit" && !order.trackingNumber && !args.trackingNumber) {
       updatePayload.trackingNumber = newTrackingNumber();
     }
 
@@ -272,17 +328,12 @@ export const updateOrderStatusAdmin = mutation({
     await ctx.runMutation(internal.orders.functions.recordPaymentEvent, {
       orderId: args.orderId,
       orderNumber: order.orderNumber,
-      type: args.newStatus === "cancelled" ? "cancelled" : "status_changed",
+      type: "status_changed",
       actor: admin.subject,
-      details: `${previousStatus} → ${args.newStatus}`,
+      details: `fulfillment ${previous} → ${args.fulfillmentStatus}`,
     });
 
-    // Releasing a reservation through status change must also kill any open payment link.
-    if (args.newStatus === "cancelled" && order.stripeSessionId) {
-      await scheduleSessionExpiry(ctx, args.orderId);
-    }
-
-    return { success: true, orderId: args.orderId, status: args.newStatus };
+    return { success: true, orderId: args.orderId, fulfillmentStatus: plan.fulfillmentStatus };
   },
 });
 

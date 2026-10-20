@@ -4,6 +4,7 @@ import { action } from "../_generated/server";
 import { v, ConvexError } from "convex/values";
 import { api, internal } from "../_generated/api";
 import { requireAdminInAction } from "../lib/auth";
+import { planLabelPurchase } from "../orders/status";
 import { Shippo } from "shippo";
 
 /**
@@ -479,6 +480,12 @@ export const buyShippingLabel = action({
 
     if (!order) {
       throw new ConvexError(`Order not found: ${args.orderId}`);
+    }
+
+    // Refuse before paying the carrier: the label could not be attached (ADR 0024).
+    const labelPlan = planLabelPurchase(order);
+    if (!labelPlan.ok) {
+      throw new ConvexError(labelPlan.error);
     }
 
     if (order.shippingAddress) {

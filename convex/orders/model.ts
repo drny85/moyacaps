@@ -1,116 +1,58 @@
 /**
- * Pure order rules (ADR 0006, ADR 0007, ADR 0023): the status state machine, stock
- * holds, totals and shipping, replay guards, lookups and the customer-facing
- * projections. No database access; covered by orderModel.test.ts.
+ * Pure order rules (ADR 0006, ADR 0007, ADR 0023, ADR 0024): stock holds and settlement,
+ * the Checkout Hold, totals and shipping, replay guards, lookups and the customer-facing
+ * projections. The Payment / Fulfillment Status rules live in status.ts. No database
+ * access; covered by model.test.ts.
  */
 import type { Doc } from "../_generated/dataModel";
 import { randomDigitString } from "../lib/ids";
 import type { ShippingSettings } from "../settings/model";
+import {
+  hasSettled,
+  isCancelled,
+  settledHoldsStock,
+  statusAxes,
+  statusPatch,
+  type StatusSource,
+} from "./status";
 
 type Order = Doc<"orders">;
 
-// ── Status state machine ─────────────────────────────────────────────────────
+// ── Stock and settlement (axes and their transitions live in status.ts) ─────
 
-export const ORDER_STATUSES = [
-  "pending",
-  "paid",
-  "dispatched",
-  "delivered",
-  "cancelled",
-  "whatsapp_initiated",
-  "refunded",
-  "partially_refunded",
-] as const;
-
-export type OrderStatus = (typeof ORDER_STATUSES)[number];
-
-/** Settled orders: money received, stock deducted. */
-export function isPaidLike(status: string): boolean {
-  return status === "paid" || status === "dispatched" || status === "delivered";
-}
-
-/** Stock is held while the order is settled, or a legacy WhatsApp reservation (ADR 0023) not yet cancelled. */
-export function holdsStock(status: string): boolean {
-  return isPaidLike(status) || status === "whatsapp_initiated";
-}
-
-/** Whether this order's units are out of Available Inventory: settled, a legacy reservation, or a live Checkout Hold. */
-export function orderHoldsStock(order: Pick<Order, "status" | "checkoutHoldExpiresAt">): boolean {
-  return holdsStock(order.status) || isCheckoutHoldActive(order);
-}
-
-export type AdminStatusChange =
-  | { ok: false; error: string }
-  | { ok: true; stock: "deduct" | "release" | "none"; lockCarrierUpdates: boolean };
-
-/**
- * Administrator status change (`orders/desk:updateOrderStatusAdmin`). Settled orders never
- * regress into lead/pending states (stranded stock, double-settlement windows), and a legacy
- * WhatsApp reservation (ADR 0023) can only be cancelled, never settled here.
- * `previousHoldsStock` is true for a `pending` Order with a live Checkout Hold (ADR 0024).
- */
-export function planAdminStatusChange(
-  previous: OrderStatus,
-  next: OrderStatus,
-  previousHoldsStock: boolean = holdsStock(previous)
-): AdminStatusChange {
-  const wasPaidLike = isPaidLike(previous);
-  if (wasPaidLike && (next === "pending" || next === "whatsapp_initiated")) {
-    return { ok: false, error: `Invalid transition: cannot move a ${previous} order back to ${next}.` };
-  }
-  if (previous === "whatsapp_initiated" && isPaidLike(next)) {
-    return {
-      ok: false,
-      error: "WhatsApp reservations can no longer be settled (ADR 0023); cancel it instead.",
-    };
-  }
-  let stock: "deduct" | "release" | "none" = "none";
-  // Paid from an unpaid state whose units are NOT already held (e.g. a "pending" order with no Checkout Hold).
-  if (!wasPaidLike && isPaidLike(next) && !previousHoldsStock) stock = "deduct";
-  // Cancelling an order that held stock gives it back.
-  if (previousHoldsStock && next === "cancelled") stock = "release";
-  // A manual change away from delivered locks out automated carrier webhook overwrites.
-  const lockCarrierUpdates = previous === "delivered" && next !== "delivered";
-  return { ok: true, stock, lockCarrierUpdates };
+/** Whether this order's units are out of Available Inventory: settled and kept, or a live Checkout Hold. */
+export function orderHoldsStock(order: StatusSource & Pick<Partial<Order>, "checkoutHoldExpiresAt">): boolean {
+  return settledHoldsStock(order) || isCheckoutHoldActive(order);
 }
 
 export type StripeSettlementDecision = "replay" | "double_settlement" | "cancelled" | "settle";
 
 /**
  * What a completed Stripe session does to an order that already exists. A settled order
- * paid again by its own session is a replay (never re-applied, so a dispatched order cannot
+ * paid again by its own session is a replay (never re-applied, so a shipped order cannot
  * regress to paid); paid by a different session it is a double settlement, and a payment
  * on a cancelled order is flagged too. Both go to a human, never applied.
  */
 export function decideStripeSettlement(
-  existing: Pick<Order, "status" | "stripeSessionId" | "webhookEventIds">,
+  existing: StatusSource & Pick<Order, "stripeSessionId" | "webhookEventIds">,
   incoming: { webhookEventId?: string; stripeSessionId: string }
 ): StripeSettlementDecision {
   if (hasProcessedWebhookEvent(existing, incoming.webhookEventId)) return "replay";
-  if (isPaidLike(existing.status)) {
+  if (hasSettled(existing)) {
     return existing.stripeSessionId === incoming.stripeSessionId ? "replay" : "double_settlement";
   }
-  if (existing.status === "cancelled") return "cancelled";
+  if (isCancelled(existing)) return "cancelled";
   return "settle";
-}
-
-/**
- * Refund recorded from Stripe: status follows whether the charge is fully refunded, and the
- * refunded total never goes down (events can arrive out of order).
- */
-export function planRefund(currentRefunded: number | undefined, refundedAmount: number, isFullRefund: boolean) {
-  return {
-    status: isFullRefund ? ("refunded" as const) : ("partially_refunded" as const),
-    refundedAmount: Math.max(currentRefunded || 0, refundedAmount),
-  };
 }
 
 /**
  * Stock movement when a completed Stripe session settles an existing order. A pending Order
  * with a Checkout Hold already took its units at Pay, so settling never deducts again; an
- * order that held nothing (a legacy admin-created `pending`) deducts now.
+ * order that held nothing (a legacy admin-created order awaiting payment) deducts now.
  */
-export function settlementStockAction(existing: Pick<Order, "status" | "checkoutHoldExpiresAt">): "deduct" | "none" {
+export function settlementStockAction(
+  existing: StatusSource & Pick<Partial<Order>, "checkoutHoldExpiresAt">
+): "deduct" | "none" {
   return orderHoldsStock(existing) ? "none" : "deduct";
 }
 
@@ -141,9 +83,14 @@ export function stripeSessionExpiresAt(holdExpiresAtMs: number): number {
   return Math.floor(holdExpiresAtMs / 1000);
 }
 
-/** A `pending` Order that took its units at Pay and has not settled or been released. */
-export function isCheckoutHoldActive(order: Pick<Order, "status" | "checkoutHoldExpiresAt">): boolean {
-  return order.status === "pending" && typeof order.checkoutHoldExpiresAt === "number";
+/** An Order awaiting payment that took its units at Pay and has not settled or been released. */
+export function isCheckoutHoldActive(order: StatusSource & Pick<Partial<Order>, "checkoutHoldExpiresAt">): boolean {
+  const axes = statusAxes(order);
+  return (
+    axes.paymentStatus === "awaiting_payment" &&
+    axes.cancelledAt === undefined &&
+    typeof order.checkoutHoldExpiresAt === "number"
+  );
 }
 
 /**
@@ -155,7 +102,10 @@ export function backstopHoldExpiryCutoff(nowMs: number): number {
 }
 
 /** True when the backstop should expire this order's session: a live hold placed 45+ minutes ago. */
-export function isBackstopDue(order: Pick<Order, "status" | "checkoutHoldExpiresAt">, nowMs: number): boolean {
+export function isBackstopDue(
+  order: StatusSource & Pick<Partial<Order>, "checkoutHoldExpiresAt">,
+  nowMs: number
+): boolean {
   return isCheckoutHoldActive(order) && order.checkoutHoldExpiresAt! <= backstopHoldExpiryCutoff(nowMs);
 }
 
@@ -183,7 +133,7 @@ export function decideHoldRelease(sessionStates: CheckoutSessionState[]): HoldRe
 
 /** Whether a release request targets this order's live hold: the order must still hold it, through this session. */
 export function canReleaseCheckoutHold(
-  order: Pick<Order, "status" | "checkoutHoldExpiresAt" | "stripeSessionId">,
+  order: StatusSource & Pick<Partial<Order>, "checkoutHoldExpiresAt" | "stripeSessionId">,
   stripeSessionId: string | undefined
 ): boolean {
   if (!isCheckoutHoldActive(order)) return false;
@@ -191,11 +141,19 @@ export function canReleaseCheckoutHold(
 }
 
 /**
- * An Order the Customer never paid for: still awaiting payment, or its Checkout Hold was
- * released unpaid. Hidden from the Customer's order history.
+ * An Order the Customer never paid for: still awaiting payment, or cancelled before payment
+ * (e.g. its Checkout Hold was released). Hidden from the Customer's order history.
  */
-export function isUnpaidCheckout(order: Pick<Order, "status" | "checkoutHoldReleasedAt">): boolean {
-  return order.status === "pending" || (order.status === "cancelled" && typeof order.checkoutHoldReleasedAt === "number");
+export function isUnpaidCheckout(order: StatusSource): boolean {
+  return !hasSettled(order);
+}
+
+/** The fields that release a Checkout Hold unpaid: the Order is cancelled, awaiting payment forever. */
+export function checkoutHoldReleasePatch(order: StatusSource, nowMs: number) {
+  return {
+    ...statusPatch(order, { cancelledAt: nowMs, cancellationReason: "checkout_expired" }),
+    checkoutHoldReleasedAt: nowMs,
+  };
 }
 
 export type HoldLine = { variantId: string; name: string; quantity: number; colorway?: string; size?: string };
@@ -322,12 +280,22 @@ const publicItems = (order: Order) =>
     image: item.image,
   }));
 
+/** The lifecycle fields every view shows: both axes and the cancelled marker. */
+function lifecycleView(order: Order) {
+  const axes = statusAxes(order);
+  return {
+    paymentStatus: axes.paymentStatus,
+    fulfillmentStatus: axes.fulfillmentStatus,
+    cancelledAt: axes.cancelledAt,
+  };
+}
+
 /** Shared core projection: never exposes payment links, session ids, or admin notes. */
 function orderStatusView(order: Order) {
   return {
     _id: order._id,
     orderNumber: order.orderNumber,
-    status: order.status,
+    ...lifecycleView(order),
     carrier: order.carrier,
     trackingNumber: order.trackingNumber,
     trackingStatus: order.trackingStatus,
@@ -382,7 +350,7 @@ export function guestTrackingView(order: Order) {
   return {
     _id: order._id,
     orderNumber: order.orderNumber,
-    status: order.status,
+    ...lifecycleView(order),
     carrier: order.carrier,
     trackingNumber: order.trackingNumber,
     trackingStatus: order.trackingStatus,
@@ -437,7 +405,7 @@ export function ownerTrackingView(order: Order) {
     tax: order.tax,
     taxDetails: order.taxDetails,
     total: order.total,
-    status: order.status,
+    ...lifecycleView(order),
     paymentMethod: order.paymentMethod,
     carrier: order.carrier,
     trackingNumber: order.trackingNumber,

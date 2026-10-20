@@ -8,6 +8,7 @@ import { v, ConvexError } from "convex/values";
 import { internal } from "../_generated/api";
 import { isAdminRow, isAllowlistedAdmin, requireAdmin } from "../lib/auth";
 import { confirmationView, guestTrackingView, isUnpaidCheckout, orderHoldsStock, ownerTrackingView } from "./model";
+import { canEditShippingAddress, planCancellation, statusAxes, statusPatch, withStatusAxes } from "./status";
 import {
   deductStock,
   findOrderByTypedNumber,
@@ -21,7 +22,6 @@ import {
   guestTrackingViewValidator,
   orderDoc,
   orderItemValidator,
-  orderStatusValidator,
   ownerTrackingViewValidator,
   shippingAddressValidator,
   successResult,
@@ -69,7 +69,7 @@ export const createOrder = mutation({
     subtotal: v.optional(v.number()),
     shippingFee: v.optional(v.number()),
     total: v.number(),
-    status: orderStatusValidator,
+    paymentStatus: v.union(v.literal("awaiting_payment"), v.literal("paid")),
     paymentMethod: v.literal("stripe"),
     stripeSessionId: v.optional(v.string()),
     trackingNumber: v.optional(v.string()),
@@ -78,22 +78,20 @@ export const createOrder = mutation({
   handler: async (ctx, args) => {
     // Only administrators or verified system processes can create orders directly
     await requireAdmin(ctx);
-    if (args.status === "whatsapp_initiated") {
-      throw new ConvexError("WhatsApp reservations are no longer created (ADR 0023).");
-    }
 
     const orderId = await ctx.db.insert("orders", {
       ...args,
+      fulfillmentStatus: "unfulfilled",
       createdAt: Date.now(),
     });
 
     // Decrement stock if paid
-    if (args.status === "paid") {
+    if (args.paymentStatus === "paid") {
       await deductStock(ctx, args.items);
     }
 
     // Schedule admin order alert if paid
-    if (args.status === "paid") {
+    if (args.paymentStatus === "paid") {
       await ctx.scheduler.runAfter(0, internal.notifications.emails.sendAdminOrderAlert, {
         orderNumber: args.orderNumber,
         total: args.total,
@@ -189,7 +187,7 @@ export const getOrdersByClerkId = query({
       .take(MAX_ACCOUNT_ORDERS);
 
     // Customers only see confirmed purchases (never unpaid or abandoned checkouts)
-    return orders.filter((o) => !isUnpaidCheckout(o));
+    return orders.filter((o) => !isUnpaidCheckout(o)).map(withStatusAxes);
   },
 });
 
@@ -217,8 +215,10 @@ export const updateShippingAddress = mutation({
       await requireAdmin(ctx);
     }
 
-    if (order.status === "dispatched" || order.status === "delivered" || order.status === "cancelled") {
-      throw new ConvexError(`Cannot modify address when order status is ${order.status}`);
+    if (!canEditShippingAddress(order)) {
+      const axes = statusAxes(order);
+      const state = axes.cancelledAt !== undefined ? "cancelled" : axes.fulfillmentStatus.replace(/_/g, " ");
+      throw new ConvexError(`Cannot modify address when order is ${state}`);
     }
 
     await ctx.db.patch(args.orderId, {
@@ -261,22 +261,21 @@ export const cancelOrder = internalMutation({
       await requireAdmin(ctx);
     }
 
-    if (order.status === "dispatched" || order.status === "delivered") {
-      throw new ConvexError("Cannot cancel an order that has already been dispatched. Please request a return via concierge.");
+    // The self-service path keeps the Customer's rules even when an Administrator drives it.
+    const plan = planCancellation(order, "customer", orderHoldsStock(order));
+    if (!plan.ok) {
+      throw new ConvexError(plan.error);
     }
 
-    if (order.status === "cancelled") {
-      throw new ConvexError("Order is already cancelled");
-    }
-
-    // Restore stock only if it was actually reserved, deducted or held at checkout
-    if (orderHoldsStock(order)) {
+    // Restore stock only if it was actually deducted or held at checkout
+    if (plan.releaseStock) {
       await releaseStock(ctx, order.items);
     }
 
+    const now = Date.now();
     await ctx.db.patch(args.orderId, {
-      status: "cancelled",
-      updatedAt: Date.now(),
+      ...statusPatch(order, { cancelledAt: now, cancellationReason: isOwner ? "customer" : "administrator" }),
+      updatedAt: now,
     });
 
     if (order.stripeSessionId) {

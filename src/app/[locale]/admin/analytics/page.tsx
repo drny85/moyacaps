@@ -92,7 +92,6 @@ export default function AdminAnalyticsPage() {
     totalOrdersCount,
     aov,
     paymentBreakdown,
-    statusCounts,
     topVariants,
     lowStockVariants,
     inventorySummary,

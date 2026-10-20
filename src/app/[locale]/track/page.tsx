@@ -24,11 +24,12 @@ import { Input } from "@/components/ui/input";
 import { api } from "../../../../convex/_generated/api";
 import { getCarrierTrackingUrl } from "@/lib/tracking";
 import { getWhatsAppTrackingUrl } from "@/lib/whatsapp";
+import { isPaidOrder, trackingStep } from "@/lib/orderStatus";
+import { OrderStatusBadges } from "@/components/orders/OrderStatusBadges";
 import {
   Package,
   Truck,
   CheckCircle2,
-  Clock,
   ExternalLink,
   Search,
   MessageCircle,
@@ -37,8 +38,6 @@ import {
   Loader2,
   ArrowRight,
   ShieldCheck,
-  XCircle,
-  RotateCcw,
   Lock,
   FileText,
   Download,
@@ -118,27 +117,7 @@ export default function TrackOrderPage() {
     window.open(getWhatsAppTrackingUrl(orderNumber, locale), "_blank");
   };
 
-  const getStatusStep = (status: string) => {
-    switch (status) {
-      case "pending":
-        return 1;
-      case "paid":
-        return 2;
-      case "dispatched":
-        return 3;
-      case "delivered":
-        return 4;
-      case "cancelled":
-      case "refunded":
-        return -1;
-      case "partially_refunded":
-        return 2;
-      default:
-        return 2;
-    }
-  };
-
-  const currentStep = orderResult ? getStatusStep(orderResult.status) : 1;
+  const currentStep = orderResult ? trackingStep(orderResult) : 1;
 
   return (
     <div className="min-h-screen bg-[#fafafc] dark:bg-[#07070b] pt-28 pb-20 px-4 sm:px-6 transition-colors">
@@ -239,40 +218,26 @@ export default function TrackOrderPage() {
                     </div>
 
                     <div className="flex items-center gap-3">
-                      {orderResult.status === "cancelled" ? (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-mono font-bold bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30">
-                          <XCircle className="w-4 h-4" /> {t("statusCancelled")}
-                        </span>
-                      ) : orderResult.status === "refunded" ? (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-mono font-bold bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30">
-                          <RotateCcw className="w-4 h-4" /> Refunded
-                        </span>
-                      ) : orderResult.status === "partially_refunded" ? (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-mono font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
-                          <RotateCcw className="w-4 h-4" /> Partially Refunded
-                        </span>
-                      ) : orderResult.status === "delivered" ? (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-mono font-bold bg-purple-500/15 text-purple-600 dark:text-purple-400 border border-purple-500/30">
-                          <ShieldCheck className="w-4 h-4" /> {t("statusDelivered")}
-                        </span>
-                      ) : orderResult.status === "dispatched" ? (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-mono font-bold bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30">
-                          <Truck className="w-4 h-4" /> {t("statusDispatched")}
-                        </span>
-                      ) : orderResult.status === "pending" ? (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-mono font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
-                          <Clock className="w-4 h-4" /> {t("statusPlaced")}
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-mono font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
-                          <CheckCircle2 className="w-4 h-4" /> {t("statusPaid")}
-                        </span>
-                      )}
+                      <OrderStatusBadges
+                        order={orderResult}
+                        labels={{
+                          cancelled: t("statusCancelled"),
+                          refunded: t("statusRefunded"),
+                          partially_refunded: t("statusPartiallyRefunded"),
+                          placed: t("statusPlaced"),
+                          paid: t("statusPaid"),
+                          label_purchased: t("statusLabelPurchased"),
+                          in_transit: t("statusDispatched"),
+                          delivered: t("statusDelivered"),
+                          delivery_exception: t("statusDeliveryException"),
+                          returned: t("statusReturned"),
+                        }}
+                      />
                     </div>
                   </div>
 
                   {/* Fulfillment Timeline Steps */}
-                  {orderResult.status !== "cancelled" && orderResult.status !== "refunded" && (
+                  {currentStep !== null && (
                     <div className="py-2">
                       <div className="grid grid-cols-4 relative gap-2 text-center">
                         {/* Connecting Line */}
@@ -527,7 +492,7 @@ export default function TrackOrderPage() {
                           </p>
                         )}
                         <p className="text-base font-mono font-bold text-zinc-900 dark:text-white pt-1 border-t border-black/[0.04] dark:border-white/[0.06]">
-                          {["paid", "dispatched", "delivered"].includes(orderResult.status) ? t("totalPaid") : t("totalDue")}: ${Number(orderResult.total).toFixed(2)} {orderResult.currency}
+                          {isPaidOrder(orderResult) ? t("totalPaid") : t("totalDue")}: ${Number(orderResult.total).toFixed(2)} {orderResult.currency}
                         </p>
                       </div>
                     ) : (

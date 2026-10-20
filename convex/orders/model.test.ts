@@ -9,19 +9,13 @@ import {
   decideStripeSettlement,
   guestTrackingView,
   hasProcessedWebhookEvent,
-  holdsStock,
-  isPaidLike,
   matchesOrderSearch,
   MAX_TRACKED_IDS,
   newTrackingNumber,
-  ORDER_STATUSES,
   orderNumberCandidates,
   orderSessionIds,
   ownerTrackingView,
-  planAdminStatusChange,
-  planRefund,
   withWebhookEventId,
-  type OrderStatus,
 } from "./model";
 
 function order(overrides: Partial<Doc<"orders">> = {}): Doc<"orders"> {
@@ -36,7 +30,8 @@ function order(overrides: Partial<Doc<"orders">> = {}): Doc<"orders"> {
     items: [{ variantId: "negro-rojo", name: "Black / Red", quantity: 1, price: 120, image: "/a.png", colorway: "black" }],
     currency: "USD",
     total: 128,
-    status: "paid",
+    paymentStatus: "paid",
+    fulfillmentStatus: "unfulfilled",
     paymentMethod: "stripe",
     paymentUrl: "https://checkout.stripe.com/pay/cs_live",
     adminNotes: "internal",
@@ -45,93 +40,40 @@ function order(overrides: Partial<Doc<"orders">> = {}): Doc<"orders"> {
   } as Doc<"orders">;
 }
 
-describe("status groups", () => {
-  it("paid-like statuses are paid, dispatched and delivered", () => {
-    expect(ORDER_STATUSES.filter(isPaidLike)).toEqual(["paid", "dispatched", "delivered"]);
-  });
-
-  it("stock is held by paid-like orders and WhatsApp reservations only", () => {
-    expect(ORDER_STATUSES.filter(holdsStock)).toEqual(["paid", "dispatched", "delivered", "whatsapp_initiated"]);
-  });
-});
-
-describe("planAdminStatusChange", () => {
-  it("never regresses a settled order into pending or a reservation", () => {
-    for (const previous of ["paid", "dispatched", "delivered"] as OrderStatus[]) {
-      for (const next of ["pending", "whatsapp_initiated"] as OrderStatus[]) {
-        const plan = planAdminStatusChange(previous, next);
-        expect(plan).toEqual({ ok: false, error: `Invalid transition: cannot move a ${previous} order back to ${next}.` });
-      }
-    }
-  });
-
-  it("refuses to settle a WhatsApp reservation outside the payment flows", () => {
-    for (const next of ["paid", "dispatched", "delivered"] as OrderStatus[]) {
-      expect(planAdminStatusChange("whatsapp_initiated", next).ok).toBe(false);
-    }
-  });
-
-  it("deducts stock when an order that held none becomes paid-like", () => {
-    expect(planAdminStatusChange("pending", "paid")).toEqual({ ok: true, stock: "deduct", lockCarrierUpdates: false });
-    expect(planAdminStatusChange("cancelled", "dispatched")).toMatchObject({ ok: true, stock: "deduct" });
-  });
-
-  it("releases stock when cancelling an order that held it", () => {
-    for (const previous of ["paid", "dispatched", "delivered", "whatsapp_initiated"] as OrderStatus[]) {
-      expect(planAdminStatusChange(previous, "cancelled")).toMatchObject({ ok: true, stock: "release" });
-    }
-    expect(planAdminStatusChange("pending", "cancelled")).toMatchObject({ ok: true, stock: "none" });
-  });
-
-  it("moves between settled states without touching stock", () => {
-    expect(planAdminStatusChange("paid", "dispatched")).toEqual({ ok: true, stock: "none", lockCarrierUpdates: false });
-  });
-
-  it("locks carrier webhooks when an Administrator moves an order off delivered", () => {
-    expect(planAdminStatusChange("delivered", "dispatched")).toMatchObject({ ok: true, lockCarrierUpdates: true });
-    expect(planAdminStatusChange("delivered", "delivered")).toMatchObject({ ok: true, lockCarrierUpdates: false });
-  });
-});
-
 describe("decideStripeSettlement", () => {
   it("replays an already-applied event before anything else", () => {
-    const existing = order({ status: "cancelled", webhookEventIds: ["evt_1"] });
+    const existing = order({ cancelledAt: 5, webhookEventIds: ["evt_1"] });
     expect(decideStripeSettlement(existing, { webhookEventId: "evt_1", stripeSessionId: "cs_1" })).toBe("replay");
   });
 
   it("treats a settled order paid again by its own session as a replay", () => {
-    const existing = order({ status: "dispatched", stripeSessionId: "cs_1" });
+    const existing = order({ fulfillmentStatus: "in_transit", stripeSessionId: "cs_1" });
     expect(decideStripeSettlement(existing, { webhookEventId: "evt_3", stripeSessionId: "cs_1" })).toBe("replay");
   });
 
   it("flags a settled order paid by a different session as double settlement", () => {
-    expect(decideStripeSettlement(order({ status: "paid", stripeSessionId: "cs_1" }), { stripeSessionId: "cs_2" })).toBe(
+    expect(decideStripeSettlement(order({ stripeSessionId: "cs_1" }), { stripeSessionId: "cs_2" })).toBe(
       "double_settlement"
     );
-    expect(decideStripeSettlement(order({ status: "paid", paymentMethod: "whatsapp" }), { stripeSessionId: "cs_2" })).toBe(
+    expect(decideStripeSettlement(order({ paymentStatus: "refunded", paymentMethod: "whatsapp" }), { stripeSessionId: "cs_2" })).toBe(
       "double_settlement"
     );
   });
 
   it("flags a payment on a cancelled order", () => {
-    expect(decideStripeSettlement(order({ status: "cancelled" }), { webhookEventId: "evt_2", stripeSessionId: "cs_1" })).toBe(
+    const cancelledUnpaid = order({ paymentStatus: "awaiting_payment", cancelledAt: 5 });
+    expect(decideStripeSettlement(cancelledUnpaid, { webhookEventId: "evt_2", stripeSessionId: "cs_1" })).toBe(
       "cancelled"
     );
   });
 
   it("settles an order still awaiting payment", () => {
-    expect(decideStripeSettlement(order({ status: "pending" }), { stripeSessionId: "cs_1" })).toBe("settle");
-  });
-});
-
-describe("planRefund", () => {
-  it("full and partial refunds set their status", () => {
-    expect(planRefund(undefined, 128, true)).toEqual({ status: "refunded", refundedAmount: 128 });
-    expect(planRefund(undefined, 20, false)).toEqual({ status: "partially_refunded", refundedAmount: 20 });
+    expect(decideStripeSettlement(order({ paymentStatus: "awaiting_payment" }), { stripeSessionId: "cs_1" })).toBe("settle");
   });
 
-  it("the refunded total never goes down when events arrive out of order", () => {
-    expect(planRefund(50, 20, false).refundedAmount).toBe(50);
+  it("reads an Order the backfill has not reached through its legacy status", () => {
+    const legacy = order({ paymentStatus: undefined, fulfillmentStatus: undefined, status: "pending" });
+    expect(decideStripeSettlement(legacy, { stripeSessionId: "cs_1" })).toBe("settle");
   });
 });
 

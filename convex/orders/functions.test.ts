@@ -5,6 +5,8 @@ import { api, internal } from "../_generated/api";
 import schema from "../schema";
 import { PRIMARY_ADMIN_EMAIL } from "../lib/auth";
 import type { TestConvex } from "convex-test";
+import type { Doc } from "../_generated/dataModel";
+import { legacyStatusAxes } from "./status";
 
 const modules = import.meta.glob("/convex/**/*.ts");
 
@@ -66,6 +68,19 @@ async function getEvents(t: T, orderId: string) {
   });
 }
 
+/** An Order's lifecycle on both axes (ADR 0024), compact for assertions. */
+function lifecycle(order: Doc<"orders"> | null | undefined) {
+  return {
+    payment: order?.paymentStatus,
+    fulfillment: order?.fulfillmentStatus,
+    cancelled: order?.cancelledAt !== undefined,
+  };
+}
+
+/**
+ * Seed an Order. `status` is shorthand for the matching axes (orders/status.ts mapping); a
+ * `whatsapp_initiated` or `legacy` Order is stored the old way, with only the single status.
+ */
 async function seedOrder(
   t: T,
   variantId: string,
@@ -76,6 +91,7 @@ async function seedOrder(
     paymentMethod?: "stripe" | "whatsapp";
     stripeSessionId?: string | null;
     orderNumber?: string;
+    legacy?: boolean;
   } = {}
 ) {
   const qty = opts.qty ?? 1;
@@ -101,7 +117,7 @@ async function seedOrder(
       subtotal: qty * 100,
       shippingFee: 0,
       total: qty * 100,
-      status,
+      ...(opts.legacy || status === "whatsapp_initiated" ? { status } : legacyStatusAxes({ status })),
       paymentMethod: opts.paymentMethod ?? "stripe",
       stripeSessionId,
       paymentUrl: stripeSessionId ? "https://checkout.stripe.com/c/pay/cs_test_demo" : undefined,
@@ -168,7 +184,7 @@ describe("Settlement guards (double-payment prevention)", () => {
     await settleStripe(tt, order.orderNumber, "cs_test_late", { eventId: "evt_late" });
 
     const after = await getOrder(tt, order.orderNumber);
-    expect(after?.status).toBe("paid");
+    expect(lifecycle(after)).toEqual({ payment: "paid", fulfillment: "unfulfilled", cancelled: false });
     expect(after?.stripeSessionId).toBe("cs_first");
     expect(after?.adminNotes).toContain("DOUBLE SETTLEMENT");
     expect(await getStock(tt, "V1")).toBe(4);
@@ -186,7 +202,7 @@ describe("Settlement guards (double-payment prevention)", () => {
     await settleStripe(tt, order.orderNumber, "cs_own", { eventId: "evt_new_id" });
 
     const after = await getOrder(tt, order.orderNumber);
-    expect(after?.status).toBe("dispatched");
+    expect(lifecycle(after)).toEqual({ payment: "paid", fulfillment: "in_transit", cancelled: false });
     const events = await getEvents(tt, order.orderId);
     expect(events).toHaveLength(0);
     await drain(tt);
@@ -204,7 +220,8 @@ describe("Settlement guards (double-payment prevention)", () => {
     await settleStripe(tt, order.orderNumber, "cs_test_late", { eventId: "evt_late2" });
 
     const after = await getOrder(tt, order.orderNumber);
-    expect(after?.status).toBe("cancelled");
+    expect(lifecycle(after)).toEqual({ payment: "paid", fulfillment: "unfulfilled", cancelled: true });
+    expect(after?.cancellationReason).toBe("customer");
     const events = await getEvents(tt, order.orderId);
     expect(events.map((e) => e.type)).toContain("double_settlement_attempted");
     await drain(tt);
@@ -243,7 +260,7 @@ describe("Stripe settlement", () => {
     });
     expect(await getStock(tt, "V1")).toBe(3); // direct orders deduct at settlement
     const order = await getOrder(tt, "GL-DIRECT-1");
-    expect(order?.status).toBe("paid");
+    expect(lifecycle(order)).toEqual({ payment: "paid", fulfillment: "unfulfilled", cancelled: false });
     await drain(tt);
   });
 });
@@ -275,14 +292,15 @@ async function placeHoldWithSession(t: T, orderNumber: string, sessionId: string
 }
 
 describe("Checkout Hold (ADR 0024)", () => {
-  it("Pay creates a pending order and takes its units in one step", async () => {
+  it("Pay creates an order awaiting payment and takes its units in one step", async () => {
     const tt = t();
     await seedVariant(tt, "V1", 5);
     const orderId = await placeHoldWithSession(tt, "GL-HOLD-1", "cs_hold1", 2);
 
     const order = await getOrder(tt, "GL-HOLD-1");
     expect(order?._id).toBe(orderId);
-    expect(order?.status).toBe("pending");
+    expect(lifecycle(order)).toEqual({ payment: "awaiting_payment", fulfillment: "unfulfilled", cancelled: false });
+    expect(order?.status).toBeUndefined();
     expect(order?.stripeSessionId).toBe("cs_hold1");
     expect(order?.checkoutHoldExpiresAt).toBeGreaterThan(Date.now());
     expect(await getStock(tt, "V1")).toBe(3);
@@ -338,7 +356,7 @@ describe("Checkout Hold (ADR 0024)", () => {
     await settleStripe(tt, "GL-HOLD-PAY", "cs_holdpay", { eventId: "evt_holdpay" });
 
     const order = await getOrder(tt, "GL-HOLD-PAY");
-    expect(order?.status).toBe("paid");
+    expect(lifecycle(order)).toEqual({ payment: "paid", fulfillment: "unfulfilled", cancelled: false });
     expect(await getStock(tt, "V1")).toBe(4);
     const scheduled = await tt.run(async (ctx) => await ctx.db.system.query("_scheduled_functions").collect());
     expect(scheduled.map((f) => f.name)).toEqual(
@@ -369,7 +387,8 @@ describe("Checkout Hold (ADR 0024)", () => {
     expect(await release()).toEqual({ released: false });
 
     const order = await getOrder(tt, "GL-HOLD-EXP");
-    expect(order?.status).toBe("cancelled");
+    expect(lifecycle(order)).toEqual({ payment: "awaiting_payment", fulfillment: "unfulfilled", cancelled: true });
+    expect(order?.cancellationReason).toBe("checkout_expired");
     expect(order?.checkoutHoldReleasedAt).toBeTypeOf("number");
     expect(order?.webhookEventIds).toContain("evt_exp");
     expect(await getStock(tt, "V1")).toBe(5);
@@ -398,7 +417,7 @@ describe("Checkout Hold (ADR 0024)", () => {
         reason: "backstop",
       })
     ).toEqual({ released: false });
-    expect((await getOrder(tt, "GL-HOLD-X"))?.status).toBe("paid");
+    expect((await getOrder(tt, "GL-HOLD-X"))?.paymentStatus).toBe("paid");
     expect(await getStock(tt, "V1")).toBe(4);
     await drain(tt);
   });
@@ -425,6 +444,9 @@ describe("Checkout Hold (ADR 0024)", () => {
     await placeHold(tt, "GL-OLD", [{ variantId: "V1", quantity: 1 }], { holdExpiresAt: now - 19 * minute });
     await placeHold(tt, "GL-NEW", [{ variantId: "V1", quantity: 1 }], { holdExpiresAt: now - 9 * minute });
     await seedOrder(tt, "V1", { status: "pending", orderNumber: "GL-BARE" });
+    // A released hold stays awaiting payment forever; the backstop must not keep finding it.
+    const gone = await placeHold(tt, "GL-GONE", [{ variantId: "V1", quantity: 1 }], { holdExpiresAt: now - 29 * minute });
+    await tt.mutation(internal.orders.checkoutHold.releaseCheckoutHold, { orderId: gone, reason: "session_creation_failed" });
 
     const overdue = await tt.query(internal.orders.checkoutHold.listOverdueCheckoutHolds, { now });
     expect(overdue.map((o) => o.orderNumber)).toEqual(["GL-OLD"]);
@@ -450,31 +472,37 @@ describe("Checkout Hold (ADR 0024)", () => {
     const tt = t();
     await seedVariant(tt, "V1", 5);
     const orderId = await placeHold(tt, "GL-HOLD-ADM", [{ variantId: "V1", quantity: 2 }]);
-    await admin(tt).mutation(api.orders.desk.updateOrderStatusAdmin, { orderId, newStatus: "cancelled" });
+    await admin(tt).mutation(internal.orders.desk.cancelOrderAdmin, { orderId });
     expect(await getStock(tt, "V1")).toBe(5);
+    expect(lifecycle(await getOrder(tt, "GL-HOLD-ADM"))).toEqual({
+      payment: "awaiting_payment",
+      fulfillment: "unfulfilled",
+      cancelled: true,
+    });
     await drain(tt);
   });
 });
 
-describe("updateOrderStatusAdmin state machine", () => {
-  it("rejects regressing a settled order and allows paid→dispatched", async () => {
+describe("updateFulfillmentStatusAdmin", () => {
+  it("refuses an order awaiting payment and moves a paid one in transit", async () => {
     const tt = t();
     await seedVariant(tt, "V1", 5);
-    const order = await seedOrder(tt, "V1");
-
+    const pending = await seedOrder(tt, "V1", { status: "pending" });
     await expect(
-      admin(tt).mutation(api.orders.desk.updateOrderStatusAdmin, {
-        orderId: order.orderId,
-        newStatus: "pending",
+      admin(tt).mutation(api.orders.desk.updateFulfillmentStatusAdmin, {
+        orderId: pending.orderId,
+        fulfillmentStatus: "in_transit",
       })
-    ).rejects.toThrow(/Invalid transition/);
+    ).rejects.toThrow(/only change once the order is paid/);
 
-    await admin(tt).mutation(api.orders.desk.updateOrderStatusAdmin, {
+    const order = await seedOrder(tt, "V1");
+    await admin(tt).mutation(api.orders.desk.updateFulfillmentStatusAdmin, {
       orderId: order.orderId,
-      newStatus: "dispatched",
+      fulfillmentStatus: "in_transit",
     });
     const after = await getOrder(tt, order.orderNumber);
-    expect(after?.status).toBe("dispatched");
+    expect(lifecycle(after)).toEqual({ payment: "paid", fulfillment: "in_transit", cancelled: false });
+    expect(after?.manualStatusOverride).toBeUndefined();
     await drain(tt);
   });
 
@@ -483,9 +511,9 @@ describe("updateOrderStatusAdmin state machine", () => {
     await seedVariant(tt, "V1", 5);
     const order = await seedOrder(tt, "V1");
     await expect(
-      customer(tt).mutation(api.orders.desk.updateOrderStatusAdmin, {
+      customer(tt).mutation(api.orders.desk.updateFulfillmentStatusAdmin, {
         orderId: order.orderId,
-        newStatus: "dispatched",
+        fulfillmentStatus: "in_transit",
       })
     ).rejects.toThrow(/Unauthorized|Forbidden/);
     await drain(tt);
@@ -498,14 +526,18 @@ describe("WhatsApp cutover migration (ADR 0023)", () => {
     await seedVariant(tt, "V1", 5);
     const open1 = await seedOrder(tt, "V1", { status: "whatsapp_initiated", paymentMethod: "whatsapp", stripeSessionId: null });
     const open2 = await seedOrder(tt, "V1", { status: "whatsapp_initiated", paymentMethod: "whatsapp", stripeSessionId: null, qty: 2 });
-    const paid = await seedOrder(tt, "V1", { status: "paid", paymentMethod: "whatsapp", stripeSessionId: null });
+    const paid = await seedOrder(tt, "V1", { status: "paid", paymentMethod: "whatsapp", stripeSessionId: null, legacy: true });
     expect(await getStock(tt, "V1")).toBe(1);
 
     const res = await tt.mutation(internal.orders.migrations.cancelOpenWhatsAppReservations, {});
     expect(res).toEqual({ cancelled: 2, done: true });
 
-    expect((await getOrder(tt, open1.orderNumber))?.status).toBe("cancelled");
-    expect((await getOrder(tt, open2.orderNumber))?.status).toBe("cancelled");
+    expect(lifecycle(await getOrder(tt, open1.orderNumber))).toEqual({
+      payment: "awaiting_payment",
+      fulfillment: "unfulfilled",
+      cancelled: true,
+    });
+    expect((await getOrder(tt, open2.orderNumber))?.cancellationReason).toBe("whatsapp_retired");
     expect((await getOrder(tt, paid.orderNumber))?.status).toBe("paid");
     expect(await getStock(tt, "V1")).toBe(4);
     expect((await getEvents(tt, open1.orderId)).map((e) => e.type)).toContain("cancelled");
@@ -587,7 +619,7 @@ describe("Public query PII containment", () => {
 });
 
 describe("Stripe Refund and Dispute Webhook Lifecycle", () => {
-  it("handles full refund: marks status refunded, sets refundedAmount, and retains stock", async () => {
+  it("handles full refund: marks Payment Status refunded, sets refundedAmount, and retains stock", async () => {
     const tt = t();
     await seedVariant(tt, "V1", 5);
     await tt.mutation(internal.orders.settlement.createOrUpdateStripeOrder, {
@@ -605,7 +637,7 @@ describe("Stripe Refund and Dispute Webhook Lifecycle", () => {
 
     expect(await getStock(tt, "V1")).toBe(3); // 5 - 2 = 3
     const orderBefore = await getOrder(tt, "GL-REFUND-1");
-    expect(orderBefore?.status).toBe("paid");
+    expect(orderBefore?.paymentStatus).toBe("paid");
 
     // Full refund processed via webhook
     await tt.mutation(internal.orders.settlement.recordStripeRefundInternal, {
@@ -618,7 +650,7 @@ describe("Stripe Refund and Dispute Webhook Lifecycle", () => {
     });
 
     const orderAfter = await getOrder(tt, "GL-REFUND-1");
-    expect(orderAfter?.status).toBe("refunded");
+    expect(lifecycle(orderAfter)).toEqual({ payment: "refunded", fulfillment: "unfulfilled", cancelled: false });
     expect(orderAfter?.refundedAmount).toBe(100);
     // Stock remains unchanged (manual restock only, physical goods safety)
     expect(await getStock(tt, "V1")).toBe(3);
@@ -640,7 +672,7 @@ describe("Stripe Refund and Dispute Webhook Lifecycle", () => {
     await drain(tt);
   });
 
-  it("handles partial refund: marks status partially_refunded with cumulative amount", async () => {
+  it("handles partial refund: marks Payment Status partially_refunded with cumulative amount", async () => {
     const tt = t();
     await seedVariant(tt, "V1", 5);
     await tt.mutation(internal.orders.settlement.createOrUpdateStripeOrder, {
@@ -667,7 +699,7 @@ describe("Stripe Refund and Dispute Webhook Lifecycle", () => {
     });
 
     const orderAfter = await getOrder(tt, "GL-PARTIAL-1");
-    expect(orderAfter?.status).toBe("partially_refunded");
+    expect(orderAfter?.paymentStatus).toBe("partially_refunded");
     expect(orderAfter?.refundedAmount).toBe(30);
 
     const events = await getEvents(tt, order!._id);
@@ -711,6 +743,7 @@ describe("Stripe Refund and Dispute Webhook Lifecycle", () => {
 
     const orderDisputed = await getOrder(tt, "GL-DISPUTE-1");
     expect(orderDisputed?.disputed).toBe(true);
+    expect(orderDisputed?.paymentStatus).toBe("disputed");
     expect(orderDisputed?.disputeDetails).toContain("CHARGEBACK DISPUTE");
     expect(orderDisputed?.adminNotes).toContain("Respond in Stripe Dashboard");
 
@@ -731,6 +764,7 @@ describe("Stripe Refund and Dispute Webhook Lifecycle", () => {
 
     const orderResolved = await getOrder(tt, "GL-DISPUTE-1");
     expect(orderResolved?.disputed).toBe(false);
+    expect(orderResolved?.paymentStatus).toBe("paid");
     expect(orderResolved?.disputeDetails).toContain("WON by merchant");
 
     const eventsAfter = await getEvents(tt, order!._id);
@@ -777,7 +811,7 @@ describe("Stripe Customer Identity Attachment", () => {
 
     const order = await getOrder(tt, "GL-CUST-1");
     expect(order?.stripeCustomerId).toBe("cus_test_999");
-    expect(order?.status).toBe("paid");
+    expect(order?.paymentStatus).toBe("paid");
 
     const user = await tt.run(async (ctx) => {
       return await ctx.db.get(userId);
@@ -833,7 +867,7 @@ describe("Stripe Invoice Attachment", () => {
 });
 
 describe("Shipping & Multi-Carrier Label Printing Lifecycle", () => {
-  it("attaches shipping label, transitions order to dispatched, and logs audit event", async () => {
+  it("attaches shipping label, moves Fulfillment Status to label purchased, and logs audit event", async () => {
     const tt = t();
     await seedVariant(tt, "V_CAP1", 10, 150);
 
@@ -854,7 +888,7 @@ describe("Shipping & Multi-Carrier Label Printing Lifecycle", () => {
     });
 
     let order = await getOrder(tt, "GL-SHIP-01");
-    expect(order?.status).toBe("paid");
+    expect(order?.paymentStatus).toBe("paid");
     expect(order?.shippingLabelUrl).toBeUndefined();
 
     // 2. Attach shipping label purchased via Shippo
@@ -881,12 +915,12 @@ describe("Shipping & Multi-Carrier Label Printing Lifecycle", () => {
     });
 
     expect(res.success).toBe(true);
-    expect(res.status).toBe("dispatched");
+    expect(res.fulfillmentStatus).toBe("label_purchased");
     expect(res.trackingNumber).toBe("9400111899223344556677");
 
     // 3. Verify order document in Convex
     order = await getOrder(tt, "GL-SHIP-01");
-    expect(order?.status).toBe("dispatched");
+    expect(lifecycle(order)).toEqual({ payment: "paid", fulfillment: "label_purchased", cancelled: false });
     expect(order?.carrier).toBe("USPS");
     expect(order?.trackingNumber).toBe("9400111899223344556677");
     expect(order?.shippingLabelUrl).toBe("https://delivery.goshippo.com/label_123.pdf");
@@ -937,7 +971,7 @@ describe("Shipping & Multi-Carrier Label Printing Lifecycle", () => {
     });
 
     order = await getOrder(tt, "GL-DELIV-01");
-    expect(order?.status).toBe("dispatched");
+    expect(order?.fulfillmentStatus).toBe("label_purchased");
 
     // 2. Incoming carrier webhook: DELIVERED
     const webhookRes = await tt.mutation(internal.orders.fulfillment.handleTrackingWebhookInternal, {
@@ -955,10 +989,10 @@ describe("Shipping & Multi-Carrier Label Printing Lifecycle", () => {
     });
 
     expect(webhookRes.found).toBe(true);
-    expect(webhookRes.status).toBe("delivered");
+    expect(webhookRes.fulfillmentStatus).toBe("delivered");
 
     order = await getOrder(tt, "GL-DELIV-01");
-    expect(order?.status).toBe("delivered");
+    expect(lifecycle(order)).toEqual({ payment: "paid", fulfillment: "delivered", cancelled: false });
     expect(order?.trackingStatus).toBe("DELIVERED");
     expect(order?.trackingStatusDetails).toBe("Delivered in or at the mailbox");
     expect(order?.trackingLocation).toBe("Miami, FL");
@@ -1015,6 +1049,7 @@ describe("Shipping & Multi-Carrier Label Printing Lifecycle", () => {
     expect(res.found).toBe(true);
 
     order = await getOrder(tt, "GL-FAIL-01");
+    expect(order?.fulfillmentStatus).toBe("delivery_exception");
     expect(order?.trackingStatus).toBe("FAILURE");
     expect(order?.trackingFailedAt).toBeDefined();
     expect(order?.adminNotes).toContain("Carrier FAILURE");
@@ -1061,17 +1096,17 @@ describe("Shipping & Multi-Carrier Label Printing Lifecycle", () => {
     });
 
     order = await getOrder(tt, "GL-OVER-01");
-    expect(order?.status).toBe("delivered");
+    expect(order?.fulfillmentStatus).toBe("delivered");
 
-    // Human admin investigates missing parcel and manually reverts to dispatched
-    await admin(tt).mutation(api.orders.desk.updateOrderStatusAdmin, {
+    // Human admin investigates missing parcel and manually reverts to in transit
+    await admin(tt).mutation(api.orders.desk.updateFulfillmentStatusAdmin, {
       orderId: order!._id,
-      newStatus: "dispatched",
+      fulfillmentStatus: "in_transit",
       adminNotes: "Customer called concierge: package not at porch, checking with neighbor.",
     });
 
     order = await getOrder(tt, "GL-OVER-01");
-    expect(order?.status).toBe("dispatched");
+    expect(order?.fulfillmentStatus).toBe("in_transit");
     expect(order?.manualStatusOverride).toBe(true);
 
     // Another DELIVERED webhook arrives from carrier (e.g. carrier system sync)
@@ -1081,9 +1116,9 @@ describe("Shipping & Multi-Carrier Label Printing Lifecycle", () => {
       statusDetails: "Delivered scan re-transmitted",
     });
 
-    expect(subsequentRes.status).toBe("dispatched"); // Blocked from overwriting!
+    expect(subsequentRes.fulfillmentStatus).toBe("in_transit"); // Blocked from overwriting!
     order = await getOrder(tt, "GL-OVER-01");
-    expect(order?.status).toBe("dispatched"); // Still dispatched!
+    expect(order?.fulfillmentStatus).toBe("in_transit"); // Still in transit!
 
     await drain(tt);
   });
