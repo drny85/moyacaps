@@ -44,6 +44,7 @@ describe("llms.txt", () => {
     expect(txt).toMatch(/free on 2 or more items/);
     expect(txt).toContain(`${BASE}/en/terms`);
     expect(txt).toContain(`${BASE}/en/privacy`);
+    expect(txt).toContain(`${BASE}/en/returns`);
     expect(txt).toContain(SUPPORT_EMAIL);
     expect(txt).toContain("https://www.instagram.com/goodluckcaps/");
   });

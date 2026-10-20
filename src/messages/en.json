@@ -151,6 +151,7 @@
     "currencyNote": "Prices shown in {currency}. Dual currency supported.",
     "terms": "Terms & Conditions",
     "privacy": "Privacy Policy",
+    "returns": "Return Policy",
     "legalNav": "Legal",
     "about": "About"
   },
@@ -1100,8 +1101,7 @@
         "returns": {
           "heading": "Returns and problems with your order",
           "body": [
-            "Our returns policy is coming soon and will be posted on this page.",
-            "If your order arrives damaged or defective, or you received the wrong item, email us at <email>{address}</email> with your order number and we'll help."
+            "All sales are final. We refund or exchange an order only if it never arrives or an item arrives defective. Our <returnPolicy>Return Policy</returnPolicy> explains how it works."
           ]
         },
         "drops": {
@@ -1264,6 +1264,46 @@
           "heading": "Contact",
           "body": [
             "Questions or requests about your privacy? Email us at <email>{address}</email>."
+          ]
+        }
+      }
+    },
+    "returns": {
+      "metaTitle": "Return Policy | Good Luck",
+      "metaDescription": "When Good Luck refunds or exchanges an order: packages that never arrive and items that arrive defective.",
+      "title": "Return Policy",
+      "intro": "All sales are final. We refund or exchange an order only in the two cases below. We kept this short and in plain language.",
+      "sections": {
+        "finalSale": {
+          "heading": "All sales are final",
+          "body": [
+            "We don't accept returns or exchanges because you changed your mind or didn't like the fit, size or color. Please check your order before you pay.",
+            "You can still cancel an order before it ships, as described in our <terms>Terms & Conditions</terms>."
+          ]
+        },
+        "notDelivered": {
+          "heading": "If your package never arrives",
+          "body": [
+            "If your package is never delivered, we refund your order in full to your original payment method.",
+            "Email us at <email>{address}</email> with your order number. We check the tracking with the carrier, and once we confirm the package was not delivered, we send your refund."
+          ]
+        },
+        "defective": {
+          "heading": "If an item arrives defective",
+          "body": [
+            "If an item arrives with a defect, we refund it or exchange it. Here is how:"
+          ],
+          "list": [
+            "Email us at <email>{address}</email> with your order number and a short description of the defect. A photo helps.",
+            "We reply with the address where you send the item back. Please don't ship anything back before we send you that address.",
+            "Once we receive the item, we refund it to your original payment method or exchange it for the same item.",
+            "Exchanges depend on stock. If the item is sold out, we refund it instead."
+          ]
+        },
+        "contact": {
+          "heading": "Questions",
+          "body": [
+            "Questions about this policy or your order? Email us at <email>{address}</email>."
           ]
         }
       }

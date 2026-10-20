@@ -28,6 +28,7 @@ export const STATIC_PAGES: Page[] = [
   { path: "/track", changeFrequency: "yearly", priority: 0.3 },
   { path: "/terms", changeFrequency: "yearly", priority: 0.2 },
   { path: "/privacy", changeFrequency: "yearly", priority: 0.2 },
+  { path: "/returns", changeFrequency: "yearly", priority: 0.2 },
 ];
 
 const CATEGORY_PAGE: Record<string, keyof CategoryLaunches> = {
