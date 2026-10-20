@@ -30,7 +30,6 @@ export function useCardCheckout() {
       currency,
       locale,
       origin: window.location.origin,
-      clerkUserId: user?.id,
       customerEmail: user?.primaryEmailAddress?.emailAddress,
       ...(openCheckout ? { previousSessionId: openCheckout.sessionId } : {}),
     });
