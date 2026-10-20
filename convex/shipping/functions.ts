@@ -6,6 +6,7 @@ import { api, internal } from "../_generated/api";
 import { requireAdminInAction } from "../lib/auth";
 import { planLabelPurchase } from "../orders/status";
 import { Shippo } from "shippo";
+import { isExcludedTerritory } from "./territory";
 
 /**
  * Good Luck Atelier Studio - Official Dispatch Center
@@ -75,48 +76,6 @@ export function getDefaultBoxPreset(itemsCount: number) {
 export function isPoBoxAddress(line1?: string, line2?: string): boolean {
   const poBoxRegex = /\b(p\.?\s*o\.?\s*box|post\s*office\s*box|box\b\s*\d+)\b/i;
   return poBoxRegex.test(line1 || "") || poBoxRegex.test(line2 || "");
-}
-
-/**
- * Validates domestic fulfillment territory (50 US States, strictly excluding Puerto Rico and international territories).
- */
-export function isExcludedTerritory(state?: string, zip?: string, country?: string): {
-  isExcluded: boolean;
-  reason?: string;
-} {
-  const normCountry = (country || "US").toUpperCase().trim();
-  if (normCountry !== "US" && normCountry !== "USA" && normCountry !== "UNITED STATES") {
-    return {
-      isExcluded: true,
-      reason: `Good Luck ships exclusively within the 50 US States. International shipping to (${normCountry}) is not supported.`,
-    };
-  }
-
-  const normState = (state || "").toUpperCase().trim();
-  if (normState === "PR" || normState === "PUERTO RICO") {
-    return {
-      isExcluded: true,
-      reason: "Good Luck does not currently ship to Puerto Rico. Shipping is limited to the 50 US States.",
-    };
-  }
-
-  const cleanZip = (zip || "").trim().slice(0, 3);
-  if (["006", "007", "009"].includes(cleanZip)) {
-    return {
-      isExcluded: true,
-      reason: "Good Luck does not currently ship to Puerto Rico (ZIP 006xx/007xx/009xx). Shipping is limited to the 50 US States.",
-    };
-  }
-
-  // Other US Territories (Guam GU, US Virgin Islands VI, Northern Mariana MP, American Samoa AS)
-  if (["GU", "VI", "MP", "AS"].includes(normState)) {
-    return {
-      isExcluded: true,
-      reason: `Good Luck does not currently ship to US territories (${normState}). Shipping is limited to the 50 US States.`,
-    };
-  }
-
-  return { isExcluded: false };
 }
 
 export function buildCarrierTrackingUrl(carrier?: string, trackingNumber?: string): string | null {
@@ -258,7 +217,7 @@ export const getShippingRates = action({
       country: country || "US",
     };
 
-    // 1. Strict Fulfillment Territory Boundary Check (50 US States only, excluding PR & international)
+    // 1. Fulfillment Territory check (50 US States + DC; see ./territory)
     const territoryCheck = isExcludedTerritory(state, postalCode, country);
     if (territoryCheck.isExcluded) {
       return {

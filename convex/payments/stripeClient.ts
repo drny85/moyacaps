@@ -1,7 +1,7 @@
 "use node";
 
 /**
- * Stripe SDK access for the Node actions (stripeCheckout, stripeWebhook, stripeRefunds):
+ * Stripe SDK access for the Node actions (payments/checkout, payments/webhook, payments/refunds):
  * the client, customer upsert, session expiry and checkout refunds. No Convex functions.
  */
 import Stripe from "stripe";

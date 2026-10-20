@@ -17,6 +17,7 @@ import {
   versionOf,
   nextAvailability,
   renamedLifestyleShot,
+  taxCodeBackfill,
   teeFieldsPatch,
   variantCategory,
   type NewVariantInput,
@@ -65,6 +66,24 @@ describe("variantCategory", () => {
   it("derives apparel for tees and headwear for legacy caps", () => {
     expect(variantCategory({ silhouette: "tee" })).toBe("apparel");
     expect(variantCategory({ silhouette: "trucker" })).toBe("headwear");
+  });
+});
+
+describe("taxCodeBackfill", () => {
+  it("gives a legacy cap its category and that category's tax code", () => {
+    expect(taxCodeBackfill({ silhouette: "snapback" })).toEqual({ category: "headwear", taxCode: "txcd_30060006" });
+    expect(taxCodeBackfill({ silhouette: "tee" })).toEqual({ category: "apparel", taxCode: "txcd_30011000" });
+  });
+
+  it("keeps a stored category or tax code, and is empty when nothing is missing", () => {
+    expect(taxCodeBackfill({ category: "apparel", silhouette: "tee" })).toEqual({ taxCode: "txcd_30011000" });
+    expect(taxCodeBackfill({ silhouette: "snapback", taxCode: "txcd_99999999" })).toEqual({ category: "headwear" });
+    expect(taxCodeBackfill({ category: "headwear", silhouette: "snapback", taxCode: "txcd_30060006" })).toEqual({});
+  });
+
+  it("leaves an unknown category with no code for an Administrator", () => {
+    expect(taxCodeBackfill({ category: "hoodies", silhouette: "snapback" })).toBeNull();
+    expect(taxCodeBackfill({ category: "hoodies", silhouette: "snapback", taxCode: "txcd_30011000" })).toEqual({});
   });
 });
 

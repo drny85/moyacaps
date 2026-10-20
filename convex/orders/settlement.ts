@@ -1,11 +1,16 @@
 /**
- * Stripe settlement writes (ADR 0006, ADR 0010): paid sessions become paid orders,
- * refunds and disputes are recorded, and Stripe customer/invoice ids are attached.
- * Called only by the Stripe actions (stripeWebhook, stripeCheckout).
+ * Stripe settlement writes (ADR 0006, ADR 0010): paid sessions become paid orders (flagged
+ * for refund when they ship outside the Fulfillment Territory), refunds and disputes are
+ * recorded, and Stripe customer/invoice ids are attached.
+ * Called only by the Stripe actions (payments/webhook, payments/checkout).
  */
 import { internalMutation } from "../_generated/server";
+import type { MutationCtx } from "../_generated/server";
 import { v } from "convex/values";
+import type { Infer } from "convex/values";
 import { internal } from "../_generated/api";
+import type { Id } from "../_generated/dataModel";
+import { checkFulfillmentTerritory, outOfTerritoryNote } from "../shipping/territory";
 import {
   appendBoundedId,
   appendNote,
@@ -23,6 +28,56 @@ import {
   mirrorStripeCustomerToUser,
 } from "./shared";
 import { orderItemValidator, shippingAddressValidator, successResult } from "./validators";
+
+/**
+ * Plan 0008 PR 4: a paid Order whose shipping address is outside the Fulfillment Territory
+ * stays settled (the money was taken) but is flagged so an Administrator refunds it before
+ * packing: an adminNotes line, an `out_of_territory` payment event and an admin alert email.
+ * Never refunds by itself. Runs once per settlement (replays return before it).
+ */
+async function flagIfOutOfTerritory(
+  ctx: MutationCtx,
+  orderId: Id<"orders">,
+  settled: {
+    orderNumber: string;
+    shippingAddress?: Infer<typeof shippingAddressValidator>;
+    total: number;
+    currency: string;
+    customerName?: string;
+    customerEmail?: string;
+    webhookEventId?: string;
+    stripeSessionId: string;
+  }
+): Promise<void> {
+  if (!settled.shippingAddress) return;
+  const verdict = checkFulfillmentTerritory(settled.shippingAddress);
+  if (verdict.inTerritory) return;
+
+  const order = await ctx.db.get(orderId);
+  if (!order) return;
+  await ctx.db.patch(orderId, {
+    adminNotes: appendNote(order.adminNotes, outOfTerritoryNote(verdict, settled.total, settled.currency)),
+    updatedAt: Date.now(),
+  });
+  await ctx.runMutation(internal.orders.functions.recordPaymentEvent, {
+    orderId,
+    orderNumber: settled.orderNumber,
+    type: "out_of_territory",
+    stripeEventId: settled.webhookEventId,
+    stripeSessionId: settled.stripeSessionId,
+    actor: "system",
+    details: `${verdict.exclusion}: ${verdict.reason} Refund before packing.`,
+  });
+  await ctx.scheduler.runAfter(0, internal.notifications.emails.sendAdminTerritoryAlert, {
+    orderNumber: settled.orderNumber,
+    total: settled.total,
+    currency: settled.currency,
+    reason: verdict.reason,
+    customerName: settled.customerName,
+    customerEmail: settled.customerEmail,
+    shippingAddress: settled.shippingAddress,
+  });
+}
 
 /**
  * INTERNAL: record a processed Stripe event id on the order (bounded replay guard).
@@ -310,6 +365,14 @@ export const createOrUpdateStripeOrder = internalMutation({
         details: JSON.stringify({ total: args.total, tax: args.tax }),
       });
 
+      await flagIfOutOfTerritory(ctx, existing._id, {
+        ...args,
+        orderNumber: existing.orderNumber,
+        shippingAddress: args.shippingAddress ?? existing.shippingAddress,
+        customerName: args.customerName ?? existing.customerName,
+        customerEmail: args.customerEmail ?? existing.customerEmail,
+      });
+
       // M4: an order created before payment (every card checkout since ADR 0024) never hits
       // the insert branch below, so the admin alert and customer receipt are queued here.
       if (wasAwaitingPayment) {
@@ -388,6 +451,8 @@ export const createOrUpdateStripeOrder = internalMutation({
       stripeSessionId: args.stripeSessionId,
       details: JSON.stringify({ total: args.total, tax: args.tax }),
     });
+
+    await flagIfOutOfTerritory(ctx, orderId, args);
 
     // Schedule Admin Order Alert for new paid Stripe order
     await ctx.scheduler.runAfter(0, internal.notifications.emails.sendAdminOrderAlert, {

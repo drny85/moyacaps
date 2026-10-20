@@ -42,7 +42,7 @@ export function OrderDispatchedEmail({
   trackingNumber = "9400111899223344556677",
   carrierTrackingUrl = "https://tools.usps.com",
   storeTrackingUrl = "https://goodluckcaps.com/track",
-  estimatedDelivery = "2-4 Business Days",
+  estimatedDelivery = "2–5 Business Days",
   shippingAddress = {
     line1: "740 Park Ave",
     city: "New York",

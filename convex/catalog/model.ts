@@ -4,7 +4,7 @@
  * every rule is unit-tested in catalogModel.test.ts.
  */
 import type { Doc } from "../_generated/dataModel";
-import { resolveTaxCode, validateProductFields } from "./rules";
+import { CATEGORIES, resolveTaxCode, validateProductFields } from "./rules";
 import type { Category, FieldError, TeeColorwayInput } from "./rules";
 import type { CategoryLaunches } from "../settings/launch";
 
@@ -23,6 +23,25 @@ export function variantCategory(variant: Pick<Doc<"variants">, "category" | "sil
 /** The product's category as a Category Status key; rows without one count as Caps. */
 export function catalogCategory(variant: Pick<Doc<"variants">, "category" | "silhouette">): Category {
   return variantCategory(variant) === "apparel" ? "apparel" : "headwear";
+}
+
+/**
+ * Plan 0008 PR 4: checkout taxes a product by its own `taxCode`, else its category, and
+ * refuses a product with neither. Rows saved before that (seed caps) get the category the
+ * storefront already lists them under, then that category's code. An unknown category
+ * (e.g. "hoodies") returns null: an Administrator must fix it. `{}` when nothing is missing.
+ */
+export function taxCodeBackfill(
+  variant: Pick<Doc<"variants">, "category" | "silhouette" | "taxCode">
+): { category?: Category; taxCode?: string } | null {
+  const patch: { category?: Category; taxCode?: string } = {};
+  let category = variant.category;
+  if (category === undefined) category = patch.category = catalogCategory(variant);
+  if (!variant.taxCode?.trim()) {
+    if (!(CATEGORIES as readonly string[]).includes(category)) return null;
+    patch.taxCode = resolveTaxCode(category as Category);
+  }
+  return patch;
 }
 
 /**

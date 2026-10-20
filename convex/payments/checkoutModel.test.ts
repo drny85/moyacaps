@@ -10,12 +10,15 @@ import {
   lineItemName,
   holdShortageError,
   lineStockError,
+  productTaxCode,
   reservationSessionExpiresAt,
   resolveProductTaxCode,
   toStripeAddress,
   validateCartLines,
   type CheckoutVariant,
   type LineStock,
+  INVOICE_FOOTER,
+  RETURN_POLICY_SUMMARY,
 } from "./checkoutModel";
 
 const NOW = 1_800_000_000_000;
@@ -38,6 +41,7 @@ const cap: CheckoutVariant = {
   priceUsd: 120,
   image: "/caps/negro-rojo.png",
   silhouette: "snapback",
+  category: "headwear",
 };
 const inStock = (available: number): LineStock => ({ ok: true, available });
 
@@ -106,6 +110,7 @@ describe("validateCartLines", () => {
       size: "L",
     });
     expect(result.validatedItems[1]).not.toHaveProperty("colorway");
+    expect(result.validatedItems[1].taxCode).toBe("txcd_30060006");
   });
 
   it("floors quantities and treats missing ones as one", () => {
@@ -154,40 +159,93 @@ describe("validateCartLines", () => {
     const live = { ...drop, dropStatus: "live" as const };
     expect(validateCartLines([{ variantId: "negro-rojo", quantity: 1 }], [live], [inStock(5)], opts).totalItems).toBe(1);
   });
+
+  it("refuses a product with neither a tax code nor a category, in the cart's language", () => {
+    const untaxed: CheckoutVariant = { ...cap, category: undefined };
+    expect(errorOf(() => validateCartLines([{ variantId: "negro-rojo", quantity: 1 }], [untaxed], [inStock(5)], opts))).toBe(
+      `"Black / Red" can't be purchased right now. Please contact support.`
+    );
+    expect(
+      errorOf(() => validateCartLines([{ variantId: "negro-rojo", quantity: 1 }], [untaxed], [inStock(5)], { ...opts, locale: "es" }))
+    ).toBe(`"Negro / Rojo" no se puede comprar en este momento. Escríbenos a soporte.`);
+  });
+
+  it("a variant's own tax code wins over its category", () => {
+    const custom: CheckoutVariant = { ...cap, taxCode: "txcd_99999999" };
+    const { validatedItems } = validateCartLines([{ variantId: "negro-rojo", quantity: 1 }], [custom], [inStock(5)], opts);
+    expect(validatedItems[0].taxCode).toBe("txcd_99999999");
+  });
+});
+
+describe("productTaxCode", () => {
+  it("prefers the variant's own code, trimmed", () => {
+    expect(productTaxCode({ taxCode: " txcd_99999999 ", category: "headwear" })).toBe("txcd_99999999");
+  });
+
+  it("derives the code from the category", () => {
+    expect(productTaxCode({ category: "headwear" })).toBe("txcd_30060006");
+    expect(productTaxCode({ category: "apparel" })).toBe("txcd_30011000");
+    expect(productTaxCode({ taxCode: "  ", category: "apparel" })).toBe("txcd_30011000");
+  });
+
+  it("never guesses from names or unknown categories", () => {
+    expect(productTaxCode({})).toBeNull();
+    expect(productTaxCode({ category: "hoodies" })).toBeNull();
+    expect(productTaxCode({ category: "tee" })).toBeNull();
+  });
 });
 
 describe("resolveProductTaxCode", () => {
-  it("prefers the stored tax code", () => {
-    expect(resolveProductTaxCode({ taxCode: " txcd_custom ", name: "Tee" })).toBe("txcd_custom");
-  });
-
-  it("classifies apparel by descriptor and defaults to hats", () => {
-    expect(resolveProductTaxCode({ silhouette: "tee" })).toBe("txcd_30011000");
-    expect(resolveProductTaxCode({ name: "Bomber Jacket" })).toBe("txcd_30011000");
-    expect(resolveProductTaxCode({ silhouette: "snapback", name: "Black / Red" })).toBe("txcd_30060006");
+  it("returns the code or throws the bilingual error", () => {
+    expect(resolveProductTaxCode({ category: "apparel", name: "Tee" })).toBe("txcd_30011000");
+    expect(errorOf(() => resolveProductTaxCode({ name: "Bomber Jacket" }))).toBe(
+      `"Bomber Jacket" can't be purchased right now. Please contact support.`
+    );
+    expect(errorOf(() => resolveProductTaxCode({ name: "Gorra" }, "es"))).toBe(
+      `"Gorra" no se puede comprar en este momento. Escríbenos a soporte.`
+    );
   });
 });
 
 describe("Stripe fragments", () => {
   it("buildLineItems prices in cents and makes relative images absolute", () => {
-    const [line] = buildLineItems([{ variantId: "negro-rojo", name: "Black / Red", quantity: 2, price: 119.99, image: "/caps/a.png" }], "https://shop.test");
+    const [line] = buildLineItems([{ variantId: "negro-rojo", name: "Black / Red", quantity: 2, price: 119.99, image: "/caps/a.png", category: "headwear" }], "https://shop.test");
     expect(line.quantity).toBe(2);
     expect(line.price_data?.unit_amount).toBe(11999);
     expect(line.price_data?.product_data?.images).toEqual(["https://shop.test/caps/a.png"]);
     expect(line.price_data?.product_data?.name).toBe("Good Luck 0880 — Black / Red");
     expect(line.price_data?.product_data?.tax_code).toBe("txcd_30060006");
-    const [remote] = buildLineItems([{ variantId: "x", name: "X", quantity: 1, price: 1, image: "https://cdn.test/x.png" }], "https://shop.test");
+    const [remote] = buildLineItems([{ variantId: "x", name: "X", quantity: 1, price: 1, image: "https://cdn.test/x.png", taxCode: "txcd_30011000" }], "https://shop.test");
     expect(remote.price_data?.product_data?.images).toEqual(["https://cdn.test/x.png"]);
+    expect(remote.price_data?.product_data?.tax_code).toBe("txcd_30011000");
+    expect(() => buildLineItems([{ variantId: "x", name: "X", quantity: 1, price: 1, image: "/x.png" }], "https://shop.test")).toThrow(ConvexError);
   });
 
   it("buildShippingOptions labels free vs paid and adds the estimate on request", () => {
     const [free] = buildShippingOptions(0, true, true);
-    expect(free.shipping_rate_data?.display_name).toBe("Free US Express Delivery");
-    expect(free.shipping_rate_data?.delivery_estimate).toBeDefined();
+    expect(free.shipping_rate_data?.display_name).toBe("Free standard shipping");
+    expect(free.shipping_rate_data?.delivery_estimate).toEqual({
+      minimum: { unit: "business_day", value: 2 },
+      maximum: { unit: "business_day", value: 5 },
+    });
     const [paid] = buildShippingOptions(8, false, false);
     expect(paid.shipping_rate_data?.fixed_amount?.amount).toBe(800);
-    expect(paid.shipping_rate_data?.display_name).toBe("US Tracked Express Courier");
+    expect(paid.shipping_rate_data?.display_name).toBe("Standard shipping");
     expect(paid.shipping_rate_data?.delivery_estimate).toBeUndefined();
+    expect(paid.shipping_rate_data?.tax_code).toBe("txcd_92010001");
+    expect(paid.shipping_rate_data?.tax_behavior).toBe("exclusive");
+  });
+
+  it("no shipping option promises express delivery", () => {
+    for (const [option] of [buildShippingOptions(0, true, true), buildShippingOptions(8, false, true)]) {
+      expect(option.shipping_rate_data?.display_name).not.toMatch(/express/i);
+    }
+  });
+
+  it("INVOICE_FOOTER states the 30-day Returns policy, not final sale", () => {
+    expect(INVOICE_FOOTER).toContain(RETURN_POLICY_SUMMARY);
+    expect(INVOICE_FOOTER).toMatch(/30 days of delivery/);
+    expect(INVOICE_FOOTER).not.toMatch(/final sale/i);
   });
 
   it("toStripeAddress requires a street and forces US", () => {

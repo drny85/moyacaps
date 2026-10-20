@@ -7,6 +7,7 @@ import { useTranslations, useLocale } from "next-intl";
 import { useStore } from "@/store/useStore";
 import { useStoreSettings } from "@/hooks/useStoreSettings";
 import { cartVariantIds } from "@/lib/cartVariantIds";
+import { findLineVariant, isUnreleasedDrop } from "@/lib/cartStock";
 import { formatUsd } from "@/lib/whatsapp";
 import { useSafeUser } from "@/lib/useSafeUser";
 import { useQuery } from "convex/react";
@@ -44,13 +45,8 @@ export default function CheckoutPage() {
   const hasUnreleasedDrop = Boolean(
     convexVariants &&
       cart.some((item) => {
-        const variant = convexVariants.find((v) => v.variantId === (item.variantId || item.id));
-        if (!variant) return false;
-        return Boolean(
-          variant.isDrop &&
-          variant.dropStatus !== "live" &&
-          ((typeof variant.dropDate === "number" && Date.now() < variant.dropDate) || variant.dropStatus === "scheduled")
-        );
+        const variant = findLineVariant(item, convexVariants);
+        return variant ? isUnreleasedDrop(variant, Date.now()) : false;
       })
   );
 

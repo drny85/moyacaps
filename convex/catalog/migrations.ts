@@ -1,6 +1,6 @@
 /**
  * One-shot and idempotent catalog data jobs: the dev seed, the unified-catalog
- * migration (ADR 0015/0016) and bulk apparel repricing.
+ * migration (ADR 0015/0016), bulk apparel repricing and the field backfills.
  */
 import { mutation, internalMutation } from "../_generated/server";
 import { v, ConvexError } from "convex/values";
@@ -9,7 +9,7 @@ import { getVariant, listSkus } from "./inventory";
 import { SHIRT_VARIANTS } from "../../src/data/caps";
 import catalogShots from "../../src/data/catalogShots.json";
 import { SEED_PRODUCT, SEED_VARIANTS } from "./data";
-import { distributeStock, renamedLifestyleShot as renamed, teeFieldsPatch, TEE_SIZES, variantCategory } from "./model";
+import { distributeStock, renamedLifestyleShot as renamed, taxCodeBackfill, teeFieldsPatch, TEE_SIZES, variantCategory } from "./model";
 import type { Doc, Id } from "../_generated/dataModel";
 import { deleteStorageQuietly, MAX_CATALOG_VARIANTS } from "./shared";
 import { isStorageIdReferenced, legacyVariantStorageIds } from "./images/references";
@@ -62,7 +62,8 @@ export const seedAll = mutation({
     for (const v of SEED_VARIANTS) {
       // Seed products are shown unless the seed says otherwise (a missing flag is hidden, ADR 0022).
       const seeded: Partial<Doc<"variants">> = v;
-      await ctx.db.insert("variants", { ...v, isAvailable: seeded.isAvailable ?? true });
+      // Checkout taxes by category (plan 0008 PR 4); seed caps carry neither field.
+      await ctx.db.insert("variants", { ...v, ...taxCodeBackfill(v), isAvailable: seeded.isAvailable ?? true });
     }
 
     return { success: true, count: SEED_VARIANTS.length };
@@ -233,5 +234,33 @@ export const backfillAvailability = internalMutation({
       patched++;
     }
     return { patched, isDone: variants.length < MAX_CATALOG_VARIANTS };
+  },
+});
+
+/**
+ * Plan 0008 PR 4: checkout refuses a product with neither a tax code nor a category. Fills a
+ * missing category (from the storefront's own Caps/Tees split) and a missing tax code (from the
+ * category) on every row. Rows with an unknown category are listed, not guessed. Idempotent;
+ * run on each deployment before the strict checkout ships:
+ *   npx convex run catalog/migrations:backfillTaxCodes
+ */
+export const backfillTaxCodes = internalMutation({
+  args: {},
+  returns: v.object({ patched: v.number(), needsReview: v.array(v.string()), isDone: v.boolean() }),
+  handler: async (ctx) => {
+    const variants = await ctx.db.query("variants").take(MAX_CATALOG_VARIANTS);
+    let patched = 0;
+    const needsReview: string[] = [];
+    for (const variant of variants) {
+      const patch = taxCodeBackfill(variant);
+      if (patch === null) {
+        needsReview.push(variant.variantId);
+        continue;
+      }
+      if (Object.keys(patch).length === 0) continue;
+      await ctx.db.patch("variants", variant._id, patch);
+      patched++;
+    }
+    return { patched, needsReview, isDone: variants.length < MAX_CATALOG_VARIANTS };
   },
 });

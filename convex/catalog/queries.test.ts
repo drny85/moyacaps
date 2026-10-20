@@ -69,6 +69,32 @@ describe("getCartVariants", () => {
     expect(await t.query(api.catalog.queries.getCartVariants, { variantIds: ["gone"] })).toEqual([]);
   });
 
+  it("returns SKU stock for tees and null for caps", async () => {
+    const t = await setup();
+    await t.run(async (ctx) => {
+      await ctx.db.insert("variants", {
+        ...cap,
+        variantId: "tee",
+        category: "apparel",
+        silhouette: "tee",
+        stock: 5,
+        colorways: [
+          { id: "washed-black", nameEn: "Washed Black", nameEs: "Negro Lavado", hex: "#222222", borderHex: "#000000", lifestyleImage: "/t.jpg", catalogShot: "/t.webp" },
+        ],
+        sizes: ["M", "L"],
+      });
+      await ctx.db.insert("skus", { variantId: "tee", colorway: "washed-black", size: "M", stock: 1 });
+      await ctx.db.insert("skus", { variantId: "tee", colorway: "washed-black", size: "L", stock: 4 });
+    });
+    const rows = await t.query(api.catalog.queries.getCartVariants, { variantIds: ["tee", "oro-negro"] });
+    const tee = rows.find((r) => r.variantId === "tee");
+    expect(tee?.skus?.map(({ colorway, size, stock }) => ({ colorway, size, stock }))).toEqual([
+      { colorway: "washed-black", size: "L", stock: 4 },
+      { colorway: "washed-black", size: "M", stock: 1 },
+    ]);
+    expect(rows.find((r) => r.variantId === "oro-negro")?.skus).toBeNull();
+  });
+
   it("reads at most 50 ids", async () => {
     const t = await setup();
     const many = [...Array.from({ length: 50 }, (_, i) => `x-${i}`), "oro-negro"];
