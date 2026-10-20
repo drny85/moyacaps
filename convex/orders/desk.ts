@@ -21,6 +21,7 @@ import {
 import { readLedger, reserveRefund } from "../payments/refundLedger";
 import { findOrderByTypedNumber, hasEmail, releaseStock, scheduleSessionExpiry } from "./shared";
 import { carrierTrackingNumber } from "./trackingNumber";
+import { normalizeEmail } from "./guestClaimModel";
 import { cancellationNotice, manualMoveEmail } from "../notifications/orderEmails";
 import {
   fulfillmentStatusValidator,
@@ -209,7 +210,7 @@ export const updateShippingAddressAdmin = mutation({
       shippingAddress: args.shippingAddress,
       ...(args.customerPhone !== undefined && { customerPhone: args.customerPhone }),
       ...(args.customerName !== undefined && { customerName: args.customerName }),
-      ...(args.customerEmail !== undefined && { customerEmail: args.customerEmail }),
+      ...(args.customerEmail !== undefined && { customerEmail: normalizeEmail(args.customerEmail) }),
       ...(args.adminNotes !== undefined && { adminNotes: args.adminNotes }),
       updatedAt: Date.now(),
     });

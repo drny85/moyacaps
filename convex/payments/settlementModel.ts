@@ -7,6 +7,7 @@
 import type Stripe from "stripe";
 import { decodeItemsMetadata } from "./checkoutMetadata";
 import { lineItemName } from "./checkoutModel";
+import { normalizeEmail } from "../orders/guestClaimModel";
 
 /** Events the webhook acts on; every other event is acknowledged without side effects. */
 export const HANDLED_STRIPE_EVENTS = [
@@ -161,7 +162,7 @@ export function settlementFromSession(
     hostedInvoiceUrl: invoiceObj?.hosted_invoice_url || undefined,
     orderNumber:
       metadata.orderNumber || (options.useClientReference ? session.client_reference_id : undefined) || fallbackNumber,
-    customerEmail: session.customer_details?.email || undefined,
+    customerEmail: normalizeEmail(session.customer_details?.email),
     customerName: session.customer_details?.name || undefined,
     customerPhone: session.customer_details?.phone || undefined,
     clerkUserId: metadata.clerkUserId || undefined,
