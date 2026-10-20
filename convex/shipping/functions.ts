@@ -7,6 +7,7 @@ import { requireAdminInAction } from "../lib/auth";
 import { planLabelPurchase } from "../orders/status";
 import { Shippo } from "shippo";
 import { isExcludedTerritory } from "./territory";
+import { planLabelMode, ratesUnavailableError, shippoKeyMode, shippoPolicy } from "./shippoMode";
 
 /**
  * Good Luck Atelier Studio - Official Dispatch Center
@@ -101,10 +102,16 @@ export function buildCarrierTrackingUrl(carrier?: string, trackingNumber?: strin
 
 function getShippoClient(): Shippo | null {
   const apiKey = process.env.SHIPPO_API_KEY;
-  if (!apiKey || apiKey.trim() === "" || apiKey === "mock" || apiKey === "test_dummy") {
-    return null;
-  }
-  return new Shippo({ apiKeyHeader: apiKey.trim() });
+  if (shippoKeyMode(apiKey) === "none") return null;
+  return new Shippo({ apiKeyHeader: apiKey!.trim() });
+}
+
+/** Simulated rates and labels are off unless this deployment opts in (see ./shippoMode). */
+function currentShippoPolicy() {
+  return shippoPolicy({
+    apiKey: process.env.SHIPPO_API_KEY,
+    allowSimulation: process.env.SHIPPO_ALLOW_SIMULATION,
+  });
 }
 
 export interface FormattedRate {
@@ -247,6 +254,8 @@ export const getShippingRates = action({
     };
 
     const shippo = getShippoClient();
+    const policy = currentShippoPolicy();
+    let ratesFailure: string | undefined;
 
     if (shippo) {
       try {
@@ -323,12 +332,32 @@ export const getShippingRates = action({
             isPoBox,
           };
         }
+        const carrierMessages = (shipment.messages || [])
+          .map((m: any) => m?.text)
+          .filter(Boolean)
+          .slice(0, 3)
+          .join(" ");
+        ratesFailure = carrierMessages || "no carrier returned a rate for this address and parcel.";
       } catch (err: any) {
-        console.warn("[Shippo] Live rates API request returned error, falling back to sandbox mode:", err?.message || err);
+        ratesFailure = err?.message || String(err);
+        console.warn("[Shippo] Rates request failed:", ratesFailure);
       }
     }
 
-    // Fallback sandbox simulation rates with commercial discount benchmarks
+    // Real rates only, unless this deployment explicitly allows simulation (./shippoMode).
+    if (!policy.allowSimulation) {
+      return {
+        success: false,
+        rates: [],
+        parcel,
+        destination: destSummary,
+        isSandbox: false,
+        isPoBox,
+        error: ratesUnavailableError(policy, ratesFailure),
+      };
+    }
+
+    // Simulated rates (development only, SHIPPO_ALLOW_SIMULATION=true) with commercial discount benchmarks
     const isHeavy = parcel.weight > 16;
     const baseUspsPrice = isHeavy ? 8.95 : 5.85;
     const baseUpsPrice = isHeavy ? 10.45 : 8.45;
@@ -472,7 +501,11 @@ export const buyShippingLabel = action({
     }
 
     const shippo = getShippoClient();
-    const isSimulatedRate = args.rateObjectId.startsWith("sim_");
+    // A simulated rate never becomes a label unless this deployment allows simulation.
+    const labelMode = planLabelMode(currentShippoPolicy(), args.rateObjectId);
+    if (!labelMode.ok) {
+      throw new ConvexError(labelMode.error);
+    }
 
     let trackingNumber = "";
     let labelUrl = "";
@@ -480,7 +513,7 @@ export const buyShippingLabel = action({
     let isSandbox = false;
     let transactionId = "";
 
-    if (shippo && !isSimulatedRate) {
+    if (shippo && !labelMode.simulated) {
       try {
         const labelFormat = args.labelFileType === "PDF" ? "PDF" : "PDF_4x6";
         const transaction: any = await shippo.transactions.create({
@@ -504,7 +537,7 @@ export const buyShippingLabel = action({
         throw new ConvexError(`Shipping label purchase failed: ${err?.message || String(err)}`);
       }
     } else {
-      // Sandbox fallback mode: generate valid mock tracking & thermal label sample
+      // Simulated label (development only): mock tracking and a sample thermal label
       isSandbox = true;
       const randomDigits = Math.floor(1000000000 + Math.random() * 9000000000);
       if (chosenCarrier.toUpperCase().includes("UPS")) {
