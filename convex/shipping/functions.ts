@@ -15,7 +15,7 @@ import { countParcelLines, insuranceFor, presetToParcel, suggestParcel } from ".
  */
 export const ATELIER_ORIGIN_ADDRESS = {
   name: "Good Luck Atelier",
-  company: "Good Luck 0880",
+  company: "Moya BarberShop",
   street1: "1402 Clay Ave",
   city: "Bronx",
   state: "NY",
