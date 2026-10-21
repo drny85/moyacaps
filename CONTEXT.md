@@ -172,9 +172,13 @@ _Avoid_: Order number, internal tracking code
 Returning a refunded or returned line's units to Available Inventory. Always an explicit Administrator choice per line, never automatic; an unsellable return is never restocked.
 _Avoid_: Inventory release (that is for an expired Checkout Hold), auto-restock
 
+**Final Sale**:
+The store's Return Policy: every sale is final, so nothing is taken back for a change of mind, fit, size or color. A paid Order can still be cancelled before it ships (Customer Cancellation). A package that never arrives is refunded in full once tracking confirms it was not delivered, and a defective item can be sent back as a Return.
+_Avoid_: No refunds, returns window, 30-day returns
+
 **Return**:
-A Customer sending back unworn items with tags within 30 days of delivery for a refund. Requested through support and processed by an Administrator, who refunds by line and decides Restock per line. The Customer pays return shipping unless the item is defective or wrong; the original shipping fee is not refunded.
-_Avoid_: Exchange (an exchange is a Return plus a new Order), final sale
+A Customer sending back a defective item, the only kind of Return under Final Sale. Requested by email to support; the Administrator replies with a return address and, once the item arrives, refunds it or exchanges it for the same item (a refund when that item is sold out). Refunds are by line, and Restock is decided per line; a defective item is never restocked.
+_Avoid_: Exchange (an exchange is a Return plus a new Order), change-of-mind return
 
 **Customer Cancellation**:
 A signed-in Customer cancelling their own paid Order for a full automatic refund, allowed only while it is unfulfilled. Guests cancel through support.
