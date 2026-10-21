@@ -101,11 +101,11 @@ describe("computeAnalytics", () => {
 });
 
 describe("computeAttentionStats", () => {
-  it("counts the paid queue, overdue paid orders and low stock (≤ 2)", () => {
+  it("counts the paid queue, overdue paid orders and low stock (≤ 5)", () => {
     const stats = computeAttentionStats(
       [{ createdAt: NOW }, { createdAt: NOW - 2 * DAY }, {}],
       NOW,
-      [variant("cap", 2), variant("tee", 3)],
+      [variant("cap", 5), variant("tee", 6)],
       NOW
     );
     expect(stats).toEqual({
@@ -113,7 +113,7 @@ describe("computeAttentionStats", () => {
       unfulfilledPaid: 3,
       overduePaid: 2,
       lowStockCount: 1,
-      lowStockVariants: [{ variantId: "cap", nameEn: "cap", nameEs: "cap", stock: 2 }],
+      lowStockVariants: [{ variantId: "cap", nameEn: "cap", nameEs: "cap", stock: 5 }],
       latestOrderTimestamp: NOW,
     });
   });

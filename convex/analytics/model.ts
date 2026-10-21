@@ -14,12 +14,9 @@ import {
   type PaymentStatus,
 } from "../orders/status";
 
-const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+import { isLowStock } from "../catalog/stock";
 
-/** Analytics low-stock threshold (units). */
-export const ANALYTICS_LOW_STOCK_UNITS = 5;
-/** Order-desk attention low-stock threshold (units). */
-export const ATTENTION_LOW_STOCK_UNITS = 2;
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
 export function computeAnalytics(orders: Doc<"orders">[], allVariants: Doc<"variants">[], now: number) {
   // Archived products are out of the catalog: they do not count toward stock or low-stock views.
@@ -93,7 +90,7 @@ export function computeAnalytics(orders: Doc<"orders">[], allVariants: Doc<"vari
     .slice(0, 5);
 
   const lowStockVariants = variants
-    .filter((v) => v.stock <= ANALYTICS_LOW_STOCK_UNITS)
+    .filter((v) => isLowStock(v.stock))
     .map((v) => ({
       _id: v._id,
       variantId: v.variantId,
@@ -144,7 +141,7 @@ export function computeAttentionStats(
   const overduePaid = paidOrders.filter((o) => (o.createdAt || 0) < twentyFourHoursAgo).length;
 
   const lowStockVariants = variants
-    .filter((v) => v.stock <= ATTENTION_LOW_STOCK_UNITS)
+    .filter((v) => isLowStock(v.stock))
     .map((v) => ({
       variantId: v.variantId,
       nameEn: v.nameEn,
