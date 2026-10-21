@@ -8,7 +8,7 @@ import { ConvexError } from "convex/values";
 import { diffFields, recordCatalogEvent, type CatalogEventType } from "./audit";
 import { getVariant } from "./inventory";
 import { nextUpdatedAt, versionOf } from "./model";
-import { isPrimaryCatalogRow, overlayProductImages, primaryImage, type CapAngles, type ResolvedImageRow } from "./images/overlay";
+import { dropSitePaths, isPrimaryCatalogRow, overlayProductImages, primaryImage, type CapAngles, type ResolvedImageRow } from "./images/overlay";
 
 /**
  * Upper bound for whole-catalog reads. The catalog is ~30 products; the bound keeps
@@ -70,7 +70,7 @@ export async function resolveProduct<T extends Doc<"variants">>(
   // Rows are grouped in memory by the pure overlay.
   const resolved = await resolvedImageRows(ctx, variant.variantId);
   return {
-    ...overlayProductImages(variant, resolved),
+    ...overlayProductImages(dropSitePaths(variant), resolved),
     image: primaryImage({ ...variant, legacyUrl: await legacyStorageUrl(ctx, variant) }, resolved),
     isAvailable: variant.isAvailable === true,
   };

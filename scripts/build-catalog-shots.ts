@@ -5,11 +5,11 @@
  *   bun run build-catalog-shots
  *
  * Outputs
- *   public/catalog/caps/{id}.webp            1600×2000 Catalog Shot on #ECEAE6
- *   public/catalog/caps/{id}/{angle}.webp    1200×1200 transparent turntable angle
- *   public/catalog/tees/{id}/{colorway}.webp 800×1000 Catalog Shot (on-model crop; flat-lay when photographed)
+ *   assets/source/catalog/caps/{id}.webp            1600×2000 Catalog Shot on #ECEAE6
+ *   assets/source/catalog/caps/{id}/{angle}.webp    1200×1200 transparent turntable angle
+ *   assets/source/catalog/tees/{id}/{colorway}.webp 800×1000 Catalog Shot (on-model crop; flat-lay when photographed)
  *                                            or 1600×2000 from a printed tee's `flatLayPhoto` cut-out
- *   public/shirts/{design}-{color}.jpg       on-model Lifestyle Shots printed from the templates
+ *   assets/source/shirts/{design}-{color}.jpg       on-model Lifestyle Shots printed from the templates
  *   src/data/catalogShots.json               manifest of everything written
  *   public/og/home.jpg                       1200×630 share image
  */
@@ -26,9 +26,9 @@ import teeTemplates from "./data/teeTemplates.json";
 
 const ROOT = path.resolve(import.meta.dir, "..");
 const PUBLIC = path.join(ROOT, "public");
-const OUT = path.join(PUBLIC, "catalog");
-/** Unserved pipeline sources: tee templates and flat-lay cut-outs */
+/** Unserved product images (ADR 0021): pipeline sources and the shots it builds, uploaded by migrate:product-images */
 const SOURCE = path.join(ROOT, "assets", "source");
+const OUT = path.join(SOURCE, "catalog");
 
 export const BACKDROP = "#ECEAE6";
 const SHOT = { width: 1600, height: 2000 };
@@ -117,13 +117,13 @@ async function exists(file: string) {
 
 async function buildCaps() {
   const manifest = ALL_CAPS_MANIFEST_MAP as Record<string, { angles: Record<CapAngleKey, string> }>;
-  const capFiles = (await fs.readdir(path.join(PUBLIC, "caps"))).filter((f) => f.endsWith(".png") && !/^hq\d/.test(f));
+  const capFiles = (await fs.readdir(path.join(SOURCE, "caps"))).filter((f) => f.endsWith(".png") && !/^hq\d/.test(f));
   const ids = [...new Set([...Object.keys(manifest), ...capFiles.map((f) => f.replace(/\.png$/, ""))])].sort();
 
   const result: Record<string, { catalog: string; angles?: Record<CapAngleKey, string> }> = {};
   for (const id of ids) {
     const angleSrc = manifest[id]?.angles;
-    const front = angleSrc ? path.join(PUBLIC, angleSrc.front) : path.join(PUBLIC, "caps", `${id}.png`);
+    const front = angleSrc ? path.join(SOURCE, angleSrc.front) : path.join(SOURCE, "caps", `${id}.png`);
     if (!(await exists(front))) {
       console.warn(`⚠️  ${id}: no source photo, skipped`);
       continue;
@@ -134,7 +134,7 @@ async function buildCaps() {
     if (angleSrc) {
       const angles = {} as Record<CapAngleKey, string>;
       for (const angle of ANGLES) {
-        const src = path.join(PUBLIC, angleSrc[angle]);
+        const src = path.join(SOURCE, angleSrc[angle]);
         if (!(await exists(src))) throw new Error(`${id}: missing ${angle} angle at ${angleSrc[angle]}`);
         angles[angle] = await capAngle(id, angle, src);
       }
@@ -269,7 +269,7 @@ async function buildTeeColorway(teeId: string, colorway: FabricId, side: PrintSi
   const out = path.join(OUT, "tees", teeId, `${colorway}.webp`);
   await fs.mkdir(path.dirname(out), { recursive: true });
   const template = TEE_TEMPLATES[`${side}-${TEMPLATE_COLOR[colorway]}`];
-  const lifestyleFile = path.join(PUBLIC, lifestyle);
+  const lifestyleFile = path.join(SOURCE, lifestyle);
 
   if (template && !SHOOT_PHOTOS.has(lifestyle)) {
     const jpg = await printOnModel({
@@ -303,7 +303,7 @@ async function buildTees() {
       continue;
     }
     const side: PrintSide = tee.printPosition === "back" ? "back" : "front";
-    const art = tee.graphicImage ? path.join(PUBLIC, tee.graphicImage) : "";
+    const art = tee.graphicImage ? path.join(SOURCE, tee.graphicImage) : "";
     const ink: InkMode = tee.graphicImage && UNDERBASE_PRINTS.has(tee.graphicImage) ? "underbase" : "invert";
     const colorways: Record<string, string> = {};
     const sources = new Set<string>();

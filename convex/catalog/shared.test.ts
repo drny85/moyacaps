@@ -38,10 +38,11 @@ const resolve = (t: Awaited<ReturnType<typeof setup>>) =>
   });
 
 describe("resolveProduct", () => {
-  it("keeps legacy fields when the product has no rows", async () => {
+  it("drops a legacy site-path image when the product has no rows (it is no longer served)", async () => {
     const t = await setup();
     const out = await resolve(t);
-    expect(out).toMatchObject({ image: cap.image, isAvailable: true });
+    expect(cap.image.startsWith("/")).toBe(true);
+    expect(out).toMatchObject({ image: "", isAvailable: true });
     expect(out.catalogShot).toBeUndefined();
     expect(out.angles).toBeUndefined();
   });

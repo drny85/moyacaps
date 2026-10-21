@@ -29,7 +29,7 @@ const COLORWAY_SPECS: ColorwaySpec[] = [
     isTruckerMesh: false,
     gridRow: 0,
     gridCol: 0,
-    hqSource: "public/caps/hq2.png",
+    hqSource: "assets/source/caps/hq2.png",
     isCore12: true,
   },
   {
@@ -41,7 +41,7 @@ const COLORWAY_SPECS: ColorwaySpec[] = [
     isTruckerMesh: false,
     gridRow: 1,
     gridCol: 0,
-    hqSource: "public/caps/hq1.png",
+    hqSource: "assets/source/caps/hq1.png",
     isCore12: true,
   },
   {
@@ -756,9 +756,10 @@ async function main() {
   console.log("🚀 Starting Automated Cap Asset Pipeline (scripts/process-cap-assets.ts)...");
 
   const rootDir = process.cwd();
-  const publicCapsDir = path.join(rootDir, "public", "caps");
-  const anglesDir = path.join(publicCapsDir, "angles");
-  const processedRootDir = path.join(rootDir, "public", "images", "caps", "processed");
+  // Product cutouts are unserved sources (ADR 0021); only the Anatomy master angles stay in public/.
+  const publicCapsDir = path.join(rootDir, "assets", "source", "caps");
+  const anglesDir = path.join(rootDir, "public", "caps", "angles");
+  const processedRootDir = path.join(rootDir, "assets", "source", "images", "caps", "processed");
   const silhouettesDir = path.join(processedRootDir, "silhouettes");
 
   await fs.mkdir(processedRootDir, { recursive: true });
@@ -773,8 +774,8 @@ async function main() {
 
   // 2. Process Master 4 Cardinal Views (front, left, back, right)
   console.log("✨ Cleaning & normalizing master cardinal angles (1024x1024)...");
-  const hq2Buf = await fs.readFile(path.join(rootDir, "public/caps/hq2.png"));
-  const hq1Buf = await fs.readFile(path.join(rootDir, "public/caps/hq1.png"));
+  const hq2Buf = await fs.readFile(path.join(rootDir, "assets/source/caps/hq2.png"));
+  const hq1Buf = await fs.readFile(path.join(rootDir, "assets/source/caps/hq1.png"));
 
   const caps2Meta = await sharp(caps2Path).metadata();
   const imgW = caps2Meta.width || 1254;
@@ -1051,7 +1052,7 @@ async function main() {
     await fs.writeFile(path.join(outDir, "back.png"), backNormalized);
     await fs.writeFile(path.join(outDir, "left.png"), leftNormalized);
 
-    // Also update the main /public/caps/[id].png so existing catalog cards have the clean full-brim cutout!
+    // Also update the main assets/source/caps/[id].png so existing catalog cards have the clean full-brim cutout!
     await fs.writeFile(path.join(publicCapsDir, `${spec.id}.png`), frontNormalized);
 
     console.log(

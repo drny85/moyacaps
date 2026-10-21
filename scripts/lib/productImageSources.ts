@@ -1,5 +1,5 @@
 /**
- * Pure: which files in `public/` become `productImages` rows (ADR 0021, migration script).
+ * Pure: which files in `assets/source/` become `productImages` rows (ADR 0021, migration script).
  * Variant data is the raw stored fields from `catalog/images/migration:legacyImageFields`
  * (never overlaid with rows, archived products included). Only values starting with `/` are
  * local files; absolute URLs are skipped.

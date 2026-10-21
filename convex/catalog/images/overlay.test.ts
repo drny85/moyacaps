@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isPrimaryCatalogRow, overlayProductImages, primaryImage, type ResolvedImageRow } from "./overlay";
+import { dropSitePaths, isPrimaryCatalogRow, isSitePath, overlayProductImages, primaryImage, type ResolvedImageRow } from "./overlay";
 
 const cap = { catalogShot: "/legacy-catalog.png", images: ["/legacy-life.jpg"] };
 const tee = {
@@ -82,7 +82,11 @@ describe("primaryImage", () => {
   });
 
   it("then a non-blank stored image", () => {
-    expect(primaryImage({ image: "/cap.png" }, [row({ role: "catalog", url: "https://s/c" })])).toBe("/cap.png");
+    expect(primaryImage({ image: "https://s/cap.png" }, [row({ role: "catalog", url: "https://s/c" })])).toBe("https://s/cap.png");
+  });
+
+  it("skips a stored image that is a site path (no longer served)", () => {
+    expect(primaryImage({ image: "/cap.png" }, [row({ role: "catalog", url: "https://s/c" })])).toBe("https://s/c");
   });
 
   it("then the catalog row with no colorway", () => {
@@ -109,5 +113,39 @@ describe("isPrimaryCatalogRow", () => {
     expect(isPrimaryCatalogRow({ role: "catalog", colorway: "white" }, "black")).toBe(false);
     expect(isPrimaryCatalogRow({ role: "catalog", colorway: "white" }, undefined)).toBe(false);
     expect(isPrimaryCatalogRow({ role: "lifestyle" }, "black")).toBe(false);
+  });
+});
+
+describe("isSitePath", () => {
+  it("is true only for paths into the site's own folders", () => {
+    expect(isSitePath("/shirts/a.jpg")).toBe(true);
+    expect(isSitePath("https://x.convex.cloud/api/storage/1")).toBe(false);
+    expect(isSitePath("")).toBe(false);
+    expect(isSitePath(undefined)).toBe(false);
+  });
+});
+
+describe("dropSitePaths", () => {
+  it("blanks site-path image fields and keeps storage URLs", () => {
+    const out = dropSitePaths({
+      image: "/shirts/a.jpg",
+      catalogShot: "https://s/c",
+      graphicImage: "/shirts/graphics/a.jpg",
+      images: ["/shirts/b.jpg", "https://s/l"],
+      colorways: [{ id: "black", lifestyleImage: "/shirts/a-black.jpg", catalogShot: "https://s/cb" }],
+    });
+    expect(out).toEqual({
+      image: "",
+      catalogShot: "https://s/c",
+      graphicImage: undefined,
+      images: ["https://s/l"],
+      colorways: [{ id: "black", lifestyleImage: "", catalogShot: "https://s/cb" }],
+    });
+  });
+
+  it("lets rows replace what was blanked", () => {
+    const out = overlayProductImages(dropSitePaths(tee), [row({ role: "catalog", colorway: "black", url: "https://s/new" })]);
+    expect(out.colorways?.[0]).toMatchObject({ catalogShot: "https://s/new", lifestyleImage: "", lifestyleImages: [] });
+    expect(out.catalogShot).toBeUndefined();
   });
 });

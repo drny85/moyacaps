@@ -52,7 +52,7 @@ async function testVignette() {
       }
     }
 
-    const outPath = path.join(process.cwd(), "public", "caps", `vignette-${name}.png`);
+    const outPath = path.join(process.cwd(), "assets", "source", "caps", `vignette-${name}.png`);
     await sharp(pixels, {
       raw: { width, height, channels: 4 },
     })

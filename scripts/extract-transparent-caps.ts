@@ -3,7 +3,7 @@ import fs from "fs/promises";
 import path from "path";
 
 async function main() {
-  const publicCapsDir = path.join(process.cwd(), "public", "caps");
+  const publicCapsDir = path.join(process.cwd(), "assets", "source", "caps");
   const anglesDir = path.join(publicCapsDir, "angles");
 
   await fs.mkdir(publicCapsDir, { recursive: true });
