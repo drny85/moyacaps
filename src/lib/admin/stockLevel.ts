@@ -1,7 +1,7 @@
 import type { AdminProduct } from "./productSearch";
 
 /** At or below this many units (and above 0) a Product is low on stock. */
-export const LOW_STOCK_THRESHOLD = 5;
+export const LOW_STOCK_THRESHOLD = 5; // mirrors convex/catalog/stock.ts LOW_STOCK_UNITS (pure modules cannot import convex/)
 
 export type StockLevel = "out" | "low" | "in";
 

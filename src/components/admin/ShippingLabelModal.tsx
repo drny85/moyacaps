@@ -1,9 +1,18 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
-import { useAction, useMutation } from "convex/react";
+import React, { useState, useEffect } from "react";
+import { useAction, useMutation, useQuery } from "convex/react";
+import { useLocale } from "next-intl";
 import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
+import {
+  FALLBACK_PRESET_ID,
+  getParcelPreset,
+  PARCEL_PRESETS,
+  presetDescription,
+  presetName,
+  presetToParcel,
+} from "@convex/shipping/parcels";
 import {
   Printer,
   Truck,
@@ -36,35 +45,7 @@ export interface ShippingLabelModalProps {
   reship?: boolean;
 }
 
-const BOX_PRESETS = [
-  {
-    id: "one_cap",
-    name: "1 Cap Standard",
-    description: "Rigid crown protection",
-    length: 8,
-    width: 8,
-    height: 6,
-    weight: 8, // oz
-  },
-  {
-    id: "two_caps",
-    name: "2 Caps Double",
-    description: "Nested dustbag fit",
-    length: 10,
-    width: 8,
-    height: 6,
-    weight: 13, // oz
-  },
-  {
-    id: "three_plus_caps",
-    name: "3+ Caps Atelier",
-    description: "Luxury master carton",
-    length: 12,
-    width: 10,
-    height: 8,
-    weight: 20, // oz
-  },
-];
+// Parcel presets come from convex/shipping/parcels.ts (shared with the rates action).
 
 export function ShippingLabelModal({
   order,
@@ -76,6 +57,7 @@ export function ShippingLabelModal({
   const getRates = useAction(api.shipping.functions.getShippingRates);
   const buyLabel = useAction(api.shipping.functions.buyShippingLabel);
   const updateAddress = useMutation(api.orders.desk.updateShippingAddressAdmin);
+  const locale = useLocale();
 
   // Address edit state
   const [isEditingAddress, setIsEditingAddress] = useState(false);
@@ -92,22 +74,16 @@ export function ShippingLabelModal({
     country: "US",
   });
 
-  // Box preset & custom dimensions state
-  const totalCaps = useMemo(() => {
-    if (!order?.items) return 1;
-    return order.items.reduce((acc: number, it: any) => acc + (it.quantity || 1), 0);
-  }, [order?.items]);
-
-  const defaultPresetId = totalCaps <= 1 ? "one_cap" : totalCaps === 2 ? "two_caps" : "three_plus_caps";
+  // Box preset & custom dimensions state. The server picks the default from the order's
+  // caps and tees (convex/shipping/queries.ts); until it answers, the 1-cap box stands in.
+  const suggestion = useQuery(
+    api.shipping.queries.suggestParcelForOrder,
+    isOpen && order?._id ? { orderId: order._id as Id<"orders"> } : "skip"
+  );
+  const defaultPresetId = suggestion?.presetId ?? FALLBACK_PRESET_ID;
   const [selectedPresetId, setSelectedPresetId] = useState<string>(defaultPresetId);
 
-  const [dimensions, setDimensions] = useState({
-    length: 8,
-    width: 8,
-    height: 6,
-    weight: 8,
-    unit: "in",
-  });
+  const [dimensions, setDimensions] = useState(presetToParcel(getParcelPreset(FALLBACK_PRESET_ID)!));
 
   const [labelFormat, setLabelFormat] = useState<"PDF_4x6" | "PDF">("PDF_4x6");
 
@@ -134,17 +110,25 @@ export function ShippingLabelModal({
   // Sync dimensions when preset changes
   useEffect(() => {
     if (selectedPresetId === "custom") return;
-    const preset = BOX_PRESETS.find((p) => p.id === selectedPresetId);
-    if (preset) {
-      setDimensions({
-        length: preset.length,
-        width: preset.width,
-        height: preset.height,
-        weight: preset.weight,
-        unit: "in",
-      });
-    }
+    const preset = getParcelPreset(selectedPresetId);
+    if (preset) setDimensions(presetToParcel(preset));
   }, [selectedPresetId]);
+
+  // Adopt the server's suggestion once it arrives, unless the admin already chose a box.
+  // The first rate fetch may have used the stand-in box, so fetch again for the suggested one.
+  const [presetTouched, setPresetTouched] = useState(false);
+  useEffect(() => {
+    if (!isOpen || !order || presetTouched || !suggestion) return;
+    if (suggestion.presetId === selectedPresetId) return;
+    const preset = getParcelPreset(suggestion.presetId);
+    if (!preset) return;
+    setSelectedPresetId(preset.id);
+    const dims = presetToParcel(preset);
+    setDimensions(dims);
+    const canQuote = !purchasedLabel && Boolean(order.shippingAddress?.line1 && order.shippingAddress?.postalCode);
+    if (canQuote) fetchRatesForOrder(order._id, dims);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, order?._id, presetTouched, suggestion?.presetId]);
 
   // Reset or initialize state when order opens
   useEffect(() => {
@@ -192,15 +176,10 @@ export function ShippingLabelModal({
       });
     } else {
       setPurchasedLabel(null);
+      setPresetTouched(false);
       setSelectedPresetId(defaultPresetId);
-      const preset = BOX_PRESETS.find((p) => p.id === defaultPresetId) || BOX_PRESETS[0];
-      const initialDims = {
-        length: preset.length,
-        width: preset.width,
-        height: preset.height,
-        weight: preset.weight,
-        unit: "in",
-      };
+      const preset = getParcelPreset(defaultPresetId) ?? getParcelPreset(FALLBACK_PRESET_ID)!;
+      const initialDims = presetToParcel(preset);
       setDimensions(initialDims);
 
       if (hasValidAddress) {
@@ -373,7 +352,7 @@ export function ShippingLabelModal({
   );
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
       <div className="relative w-full max-w-2xl bg-zinc-950 border border-zinc-800 rounded-2xl shadow-2xl p-6 sm:p-7 text-zinc-100 animate-in fade-in zoom-in-95 duration-200">
         {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-zinc-800/80">
@@ -413,7 +392,10 @@ export function ShippingLabelModal({
                 #{order.orderNumber}
               </span>
               <span className="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-zinc-800 text-zinc-300">
-                {order.items?.length || 1} {order.items?.length === 1 ? "Item" : "Items"} ({totalCaps} {totalCaps === 1 ? "Cap" : "Caps"})
+                {order.items?.length || 1} {order.items?.length === 1 ? "Item" : "Items"}
+                {suggestion
+                  ? ` (${suggestion.caps} ${suggestion.caps === 1 ? "Cap" : "Caps"}${suggestion.tees ? `, ${suggestion.tees} ${suggestion.tees === 1 ? "Tee" : "Tees"}` : ""})`
+                  : ""}
               </span>
             </div>
             <div className="text-zinc-400 text-xs mt-1.5 flex items-center gap-1.5 flex-wrap">
@@ -661,18 +643,21 @@ export function ShippingLabelModal({
                   1. Select Packaging Box
                 </label>
                 <span className="text-[11px] text-zinc-500">
-                  Calibrated for structured cap crowns
+                  Boxes for caps; mailers for tees only
                 </span>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                {BOX_PRESETS.map((preset) => {
+                {PARCEL_PRESETS.map((preset) => {
                   const isSelected = selectedPresetId === preset.id;
                   return (
                     <button
                       key={preset.id}
                       type="button"
-                      onClick={() => setSelectedPresetId(preset.id)}
+                      onClick={() => {
+                        setPresetTouched(true);
+                        setSelectedPresetId(preset.id);
+                      }}
                       className={`text-left p-3 rounded-xl border transition-all ${
                         isSelected
                           ? "bg-amber-500/10 border-amber-500/50 text-white shadow-sm shadow-amber-500/10"
@@ -680,14 +665,14 @@ export function ShippingLabelModal({
                       }`}
                     >
                       <div className="flex items-center justify-between">
-                        <span className="font-semibold text-xs text-white">{preset.name}</span>
+                        <span className="font-semibold text-xs text-white">{presetName(preset, locale)}</span>
                         {isSelected && <Check className="w-3.5 h-3.5 text-amber-400" />}
                       </div>
                       <div className="text-[11px] text-zinc-400 font-mono mt-1">
                         {preset.length}&quot; × {preset.width}&quot; × {preset.height}&quot; • {preset.weight} oz
                       </div>
                       <div className="text-[10px] text-zinc-500 mt-0.5">
-                        {preset.description}
+                        {presetDescription(preset, locale)}
                       </div>
                     </button>
                   );
@@ -698,7 +683,10 @@ export function ShippingLabelModal({
               <div className="mt-2.5">
                 <button
                   type="button"
-                  onClick={() => setSelectedPresetId(selectedPresetId === "custom" ? defaultPresetId : "custom")}
+                  onClick={() => {
+                    setPresetTouched(true);
+                    setSelectedPresetId(selectedPresetId === "custom" ? defaultPresetId : "custom");
+                  }}
                   className="text-[11px] text-zinc-400 hover:text-amber-400 transition-colors flex items-center gap-1"
                 >
                   <span>{selectedPresetId === "custom" ? "− Hide custom dimensions" : "+ Adjust custom dimensions / weight"}</span>

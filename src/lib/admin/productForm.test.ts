@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  storePath,
   emptyForm,
   formFromVariant,
   formToCreateArgs,
@@ -237,5 +238,17 @@ describe("isFormDirty", () => {
     expect(isFormDirty(initial, { ...initial, sizes: ["S"] })).toBe(true);
     expect(isFormDirty(initial, { ...initial, colorways: [initial.colorways[0]] })).toBe(true);
     expect(isFormDirty(initial, { ...initial, defaultColorway: "bone" })).toBe(true);
+  });
+});
+
+describe("a new Product", () => {
+  it("starts hidden: images come after creation, and a visible Product needs a Catalog Shot", () => {
+    expect(emptyForm("headwear").isAvailable).toBe(false);
+    expect(emptyForm("apparel").isAvailable).toBe(false);
+  });
+
+  it("previews the store path from the slug", () => {
+    expect(storePath("gothic-skull-tee")).toBe("/products/gothic-skull-tee");
+    expect(storePath("")).toBe("/products/…");
   });
 });

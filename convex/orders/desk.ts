@@ -24,7 +24,10 @@ import { carrierTrackingNumber } from "./trackingNumber";
 import { normalizeEmail } from "./guestClaimModel";
 import { cancellationNotice, manualMoveEmail } from "../notifications/orderEmails";
 import {
+  FULFILLMENT_STATUSES,
   fulfillmentStatusValidator,
+  type FulfillmentStatus,
+  type PaymentStatus,
   hasSettled,
   planCancellation,
   planManualFulfillmentChange,
@@ -35,10 +38,12 @@ import { orderDoc, shippingAddressValidator, successResult } from "./validators"
 
 type Order = Doc<"orders">;
 
-/** Newest first across several index reads, at most `limit`. */
+/** Newest first across several index reads, each Order once, at most `limit`. */
 function newestFirst(lists: Order[][], limit: number): Order[] {
+  const seen = new Set<string>();
   return lists
     .flat()
+    .filter((o) => !seen.has(o._id) && seen.add(o._id))
     .sort((a, b) => b._creationTime - a._creationTime)
     .slice(0, limit);
 }
@@ -59,14 +64,46 @@ async function packingQueue(ctx: QueryCtx, limit: number): Promise<Order[]> {
   return newestFirst(lists, limit);
 }
 
+const byFulfillment = (ctx: QueryCtx, fulfillmentStatus: FulfillmentStatus, limit: number) =>
+  ctx.db.query("orders").withIndex("by_fulfillmentStatus", (q) => q.eq("fulfillmentStatus", fulfillmentStatus)).order("desc").take(limit);
+
+/**
+ * Newest first for one Payment Status. The index sorts by fulfillmentStatus before time, so one
+ * read per Fulfillment Status, merged, is what keeps a capped read from dropping recent Orders.
+ */
+const byPayment = async (ctx: QueryCtx, paymentStatus: PaymentStatus, limit: number) =>
+  newestFirst(
+    await Promise.all(
+      FULFILLMENT_STATUSES.map((fulfillmentStatus) =>
+        ctx.db
+          .query("orders")
+          .withIndex("by_paymentStatus_and_fulfillmentStatus_and_cancelledAt", (q) =>
+            q.eq("paymentStatus", paymentStatus).eq("fulfillmentStatus", fulfillmentStatus)
+          )
+          .order("desc")
+          .take(limit)
+      )
+    ),
+    limit
+  );
+
 /** Index read that narrows to a desk tab; `matchesDeskFilter` decides membership. */
 async function readDeskFilter(ctx: QueryCtx, filter: DeskFilter, limit: number): Promise<Order[]> {
   switch (filter) {
     case "all":
       return await ctx.db.query("orders").withIndex("by_createdAt").order("desc").take(limit);
-    case "needs_attention":
+    case "needs_packing":
     case "overdue":
       return await packingQueue(ctx, limit);
+    case "shipped":
+      return newestFirst(await Promise.all((["label_purchased", "in_transit"] as const).map((f) => byFulfillment(ctx, f, limit))), limit);
+    case "problems":
+      return newestFirst(
+        await Promise.all([byFulfillment(ctx, "delivery_exception", limit), byFulfillment(ctx, "returned", limit), byPayment(ctx, "disputed", limit)]),
+        limit
+      );
+    case "done":
+      return newestFirst(await Promise.all([byFulfillment(ctx, "delivered", limit), byPayment(ctx, "refunded", limit)]), limit);
     case "awaiting_payment":
       return await ctx.db
         .query("orders")
@@ -78,11 +115,7 @@ async function readDeskFilter(ctx: QueryCtx, filter: DeskFilter, limit: number):
     case "partially_refunded":
     case "refunded":
     case "disputed":
-      return await ctx.db
-        .query("orders")
-        .withIndex("by_paymentStatus_and_fulfillmentStatus_and_cancelledAt", (q) => q.eq("paymentStatus", filter))
-        .order("desc")
-        .take(limit);
+      return await byPayment(ctx, filter, limit);
     case "cancelled":
       return await ctx.db
         .query("orders")
@@ -90,11 +123,7 @@ async function readDeskFilter(ctx: QueryCtx, filter: DeskFilter, limit: number):
         .order("desc")
         .take(limit);
     default:
-      return await ctx.db
-        .query("orders")
-        .withIndex("by_fulfillmentStatus", (q) => q.eq("fulfillmentStatus", filter))
-        .order("desc")
-        .take(limit);
+      return await byFulfillment(ctx, filter, limit);
   }
 }
 
@@ -124,8 +153,9 @@ export const getAllOrdersAdmin = query({
   args: {
     clientTime: v.number(),
     status: v.optional(v.string()),
-    paymentMethod: v.optional(v.string()),
     search: v.optional(v.string()),
+    // Only Orders created at or after this time (plan 0009 D17); the index read still caps at `limit`.
+    since: v.optional(v.number()),
     limit: v.optional(v.number()),
   },
   returns: v.array(orderDoc),
@@ -138,13 +168,10 @@ export const getAllOrdersAdmin = query({
     const maxItems = Math.min(args.limit ?? 250, 500);
 
     const filter = parseDeskFilter(args.status);
-    let orders = (await readDeskFilter(ctx, filter, maxItems)).filter((o) =>
-      matchesDeskFilter(o, filter, args.clientTime)
+    const since = args.since;
+    let orders = (await readDeskFilter(ctx, filter, maxItems)).filter(
+      (o) => matchesDeskFilter(o, filter, args.clientTime) && (since === undefined || o.createdAt >= since)
     );
-
-    if (args.paymentMethod && args.paymentMethod !== "all") {
-      orders = orders.filter((o) => o.paymentMethod === args.paymentMethod);
-    }
 
     if (args.search && args.search.trim() !== "") {
       const search = args.search;
