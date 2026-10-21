@@ -848,7 +848,7 @@
         "printLabel": "Imprimir guía (PDF)",
         "manual": "Agregar rastreo a mano",
         "manualTitle": "Agregar rastreo a mano",
-        "manualHelp": "Para una guía comprada fuera de la tienda. La orden conserva su estado; los escaneos lo actualizan desde aquí.",
+        "manualHelp": "Para una guía comprada fuera de la tienda. Una orden sin enviar pasa a en tránsito y el cliente recibe el correo de envío; después, esto solo corrige los datos.",
         "manualSave": "Guardar rastreo",
         "cancel": "Cancelar",
         "override": "La entrega se confirmó a mano; las actualizaciones de la paquetería ya no la cambian.",
@@ -882,7 +882,8 @@
         "tracking": "Rastreo guardado.",
         "delivered": "Marcada como entregada.",
         "reverted": "De vuelta a en tránsito.",
-        "cancelled": "Orden cancelada."
+        "cancelled": "Orden cancelada.",
+        "dispatched": "Marcada en tránsito; se avisó al cliente."
       }
     }
   },

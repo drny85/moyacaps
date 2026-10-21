@@ -13,6 +13,7 @@ export function ConfirmDialog({
   confirmLabel,
   destructive = false,
   busy = false,
+  error,
   onConfirm,
   onClose,
   children,
@@ -23,6 +24,8 @@ export function ConfirmDialog({
   confirmLabel?: string;
   destructive?: boolean;
   busy?: boolean;
+  /** The last failure of this dialog's action, shown where the Administrator is looking. */
+  error?: string | null;
   onConfirm: () => void;
   onClose: () => void;
   /** An optional form (a reason, a toggle) shown between the body and the buttons. */
@@ -42,6 +45,7 @@ export function ConfirmDialog({
         </div>
       </div>
       {children}
+      {error && <p role="alert" className="p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-xs text-rose-600 dark:text-rose-400">{error}</p>}
       <div className="flex justify-end gap-2 pt-1">
         <button type="button" onClick={onClose} disabled={busy} className="px-3.5 py-2 rounded-xl text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/[0.06] disabled:opacity-50">
           {t("cancel")}

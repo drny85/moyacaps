@@ -36,18 +36,26 @@ export function OrderDetailPage({ orderNumber }: { orderNumber: string }) {
   const t = useTranslations("admin.orderDetail");
   const tCommon = useTranslations("admin.common");
   const router = useRouter();
-  const { order, vm, nextAction, manualMoves, busy, error, success, dismissError, actions } = useOrderDetail(orderNumber);
+  const { order, vm, nextAction, manualMoves, busy, error, success, dismissError, reportError, reportSuccess, actions } = useOrderDetail(orderNumber);
   const [dialog, setDialog] = useState<Dialog>(null);
   const [sheet, setSheet] = useState<PackingLine | null>(null);
-  const close = () => setDialog(null);
+  const close = () => {
+    setDialog(null);
+    dismissError();
+  };
 
-  // The open form (address or notes) registers what ⌘S should submit; nothing open, nothing happens.
+  // Dirty notes register what ⌘S should submit; the address dialog handles ⌘S itself.
   const submitRef = useRef<(() => void) | null>(null);
   const registerSubmit = (fn: (() => void) | null) => {
     submitRef.current = fn;
   };
+  const dialogRef = useRef<Dialog>(null);
+  dialogRef.current = dialog;
   useAdminShortcuts({
-    escape: () => router.push("/admin/orders"),
+    // Esc leaves the page only when nothing is open.
+    escape: () => {
+      if (dialogRef.current === null) router.push("/admin/orders");
+    },
     "mod+s": () => submitRef.current?.(),
   });
 
@@ -102,7 +110,7 @@ export function OrderDetailPage({ orderNumber }: { orderNumber: string }) {
             <ItemsSection items={vm.items} itemCount={vm.itemCount} onOpen={setSheet} />
             <MoneySection money={vm.money} />
             <div id="refunds" className="scroll-mt-20">
-              <OrderRefundsPanel order={order} onMessage={() => undefined} onError={() => undefined} />
+              <OrderRefundsPanel order={order} onMessage={reportSuccess} onError={reportError} />
             </div>
             <NotesSection notes={vm.notes} busy={busy} onSave={actions.saveNotes} registerSubmit={registerSubmit} />
           </div>
@@ -127,13 +135,13 @@ export function OrderDetailPage({ orderNumber }: { orderNumber: string }) {
 
       <PackingSheet line={sheet} onClose={() => setSheet(null)} />
       <ShippingLabelModal order={order} isOpen={dialog === "label" || dialog === "reship"} reship={dialog === "reship"} onClose={close} />
-      <ConfirmDialog open={dialog === "deliver"} title={t("labels.deliverTitle")} body={t("labels.deliverBody")} confirmLabel={t("labels.markDelivered")} busy={busy} onClose={close}
+      <ConfirmDialog open={dialog === "deliver"} title={t("labels.deliverTitle")} body={t("labels.deliverBody")} confirmLabel={t("labels.markDelivered")} busy={busy} error={error} onClose={close}
         onConfirm={async () => { if (await actions.markDelivered()) close(); }} />
-      <ConfirmDialog open={dialog === "revert"} title={t("labels.revertTitle")} body={t("labels.revertBody")} confirmLabel={t("labels.revert")} busy={busy} onClose={close}
+      <ConfirmDialog open={dialog === "revert"} title={t("labels.revertTitle")} body={t("labels.revertBody")} confirmLabel={t("labels.revert")} busy={busy} error={error} onClose={close}
         onConfirm={async () => { if (await actions.revert()) close(); }} />
-      <AddressDialog open={dialog === "address"} initial={addressInitial} busy={busy} onSave={actions.saveAddress} onClose={close} registerSubmit={registerSubmit} />
-      <ManualTrackingDialog open={dialog === "tracking"} initial={{ carrier: order.carrier, trackingNumber: vm.labels.trackingNumber }} busy={busy} onSave={actions.saveTracking} onClose={close} />
-      <CancelDialog open={dialog === "cancel"} refundable={vm.danger.refundable} busy={busy} onConfirm={actions.cancel} onClose={close} />
+      <AddressDialog open={dialog === "address"} initial={addressInitial} busy={busy} error={error} onSave={actions.saveAddress} onClose={close} />
+      <ManualTrackingDialog open={dialog === "tracking"} initial={{ carrier: order.carrier, trackingNumber: vm.labels.trackingNumber }} busy={busy} error={error} onSave={actions.saveTracking} onClose={close} />
+      <CancelDialog open={dialog === "cancel"} refundable={vm.danger.refundable} busy={busy} error={error} onConfirm={actions.cancel} onClose={close} />
     </>
   );
 }

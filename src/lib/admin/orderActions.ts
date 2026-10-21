@@ -43,3 +43,13 @@ export function allowedManualMoves(order: StatusSource): ManualMove[] {
   if (axes.fulfillmentStatus === "delivered") return ["revert"];
   return [];
 }
+
+/**
+ * Saving a carrier and Tracking Number by hand (D15): a paid Order that has not shipped moves
+ * to in transit (the dispatch email goes out); any later save only corrects the numbers.
+ */
+export function manualTrackingMove(order: StatusSource): "in_transit" | null {
+  const axes = statusAxes(order);
+  if (axes.cancelledAt !== undefined || !canChangeFulfillment(order)) return null;
+  return axes.fulfillmentStatus === "unfulfilled" ? "in_transit" : null;
+}

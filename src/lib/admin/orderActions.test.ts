@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { allowedManualMoves, nextOrderAction } from "./orderActions";
+import { allowedManualMoves, manualTrackingMove, nextOrderAction } from "./orderActions";
 import type { FulfillmentStatus, PaymentStatus } from "../../../convex/orders/status";
 
 const NOW = Date.UTC(2026, 9, 17, 12);
@@ -55,5 +55,15 @@ describe("allowedManualMoves", () => {
     expect(allowedManualMoves(order("paid", "unfulfilled"))).toEqual([]);
     expect(allowedManualMoves(order("awaiting_payment", "unfulfilled"))).toEqual([]);
     expect(allowedManualMoves(order("paid", "in_transit", { cancelledAt: NOW }))).toEqual([]);
+  });
+});
+
+describe("manualTrackingMove", () => {
+  it("a hand-shipped unfulfilled order moves to in transit; later edits only correct the tracking", () => {
+    expect(manualTrackingMove(order("paid", "unfulfilled"))).toBe("in_transit");
+    expect(manualTrackingMove(order("partially_refunded", "unfulfilled"))).toBe("in_transit");
+    expect(manualTrackingMove(order("paid", "in_transit"))).toBeNull();
+    expect(manualTrackingMove(order("paid", "label_purchased"))).toBeNull();
+    expect(manualTrackingMove(order("paid", "delivered"))).toBeNull();
   });
 });

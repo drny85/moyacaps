@@ -81,7 +81,15 @@ export type OrderDetailVM = {
     paid: boolean;
   };
   shipTo: { name?: string; email?: string; phone?: string; lines: string[]; editable: boolean; missing: boolean };
-  labels: { carrier?: string; trackingNumber?: string; trackingUrl: string | null; labelUrl?: string; manualOverride: boolean };
+  labels: {
+    carrier?: string;
+    trackingNumber?: string;
+    trackingUrl: string | null;
+    labelUrl?: string;
+    manualOverride: boolean;
+    /** Typing a Tracking Number by hand is for a paid Order with no carrier label; a Shippo number must not be overwritten (scans match on it). */
+    manualAllowed: boolean;
+  };
   notes: string;
   danger: { canCancel: boolean; refundable: boolean };
 };
@@ -162,6 +170,7 @@ export function toOrderDetail(order: DetailOrderInput, products: PackingProductI
       trackingUrl: getCarrierTrackingUrl(order.carrier, trackingNumber),
       labelUrl: order.shippingLabelUrl,
       manualOverride: order.manualStatusOverride === true,
+      manualAllowed: paid && !isCancelled(order) && trackingNumber === undefined,
     },
     notes: order.adminNotes ?? "",
     danger: {

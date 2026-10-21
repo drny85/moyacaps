@@ -86,10 +86,17 @@ describe("toOrderDetail", () => {
   });
 
   it("labels: tracking url for USPS, none without a label", () => {
-    expect(vm.labels).toEqual({ carrier: undefined, trackingNumber: undefined, trackingUrl: null, labelUrl: undefined, manualOverride: false });
+    expect(vm.labels).toEqual({ carrier: undefined, trackingNumber: undefined, trackingUrl: null, labelUrl: undefined, manualOverride: false, manualAllowed: true });
     const shipped = toOrderDetail({ ...order, fulfillmentStatus: "in_transit", carrier: "USPS", trackingNumber: "9400111", shippingLabelUrl: "https://l/1.pdf", manualStatusOverride: true }, products, "en", NOW).labels;
     expect(shipped).toMatchObject({ carrier: "USPS", trackingNumber: "9400111", labelUrl: "https://l/1.pdf", manualOverride: true });
     expect(shipped.trackingUrl).toContain("usps.com");
+  });
+
+  it("manual tracking is offered only for a paid order with no carrier label, never once cancelled", () => {
+    expect(toOrderDetail({ ...order, trackingNumber: "9400111", carrier: "USPS" }, products, "en", NOW).labels.manualAllowed).toBe(false);
+    expect(toOrderDetail({ ...order, paymentStatus: "awaiting_payment" }, products, "en", NOW).labels.manualAllowed).toBe(false);
+    expect(toOrderDetail({ ...order, cancelledAt: NOW }, products, "en", NOW).labels.manualAllowed).toBe(false);
+    expect(toOrderDetail({ ...order, trackingNumber: "GL-TRK-legacy" }, products, "en", NOW).labels.manualAllowed).toBe(true);
   });
 
   it("danger: refundable only for Stripe orders with a session; cancel only once", () => {

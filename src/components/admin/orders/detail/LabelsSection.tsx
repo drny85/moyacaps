@@ -48,7 +48,9 @@ export function LabelsSection({ labels, manualMoves, showDeliverHere, onPrintLab
         {showDeliverHere && manualMoves.includes("mark_delivered") && <button type="button" onClick={onMarkDelivered} className={secondaryBtn}><PackageCheck className="w-3.5 h-3.5" /> {t("markDelivered")}</button>}
         {manualMoves.includes("revert") && <button type="button" onClick={onRevert} className={secondaryBtn}><Undo2 className="w-3.5 h-3.5" /> {t("revert")}</button>}
       </div>
-      <button type="button" onClick={onManualTracking} className="text-[11px] text-zinc-500 hover:text-zinc-900 dark:hover:text-white underline underline-offset-2">{t("manual")}</button>
+      {labels.manualAllowed && (
+        <button type="button" onClick={onManualTracking} className="text-[11px] text-zinc-500 hover:text-zinc-900 dark:hover:text-white underline underline-offset-2">{t("manual")}</button>
+      )}
     </Section>
   );
 }

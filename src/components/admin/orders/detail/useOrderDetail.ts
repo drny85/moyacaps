@@ -6,7 +6,7 @@ import { useAction, useMutation, useQuery } from "convex/react";
 import { ConvexError } from "convex/values";
 import { api } from "@convex/_generated/api";
 import { useMinuteClock } from "@/hooks/useMinuteClock";
-import { allowedManualMoves, nextOrderAction } from "@/lib/admin/orderActions";
+import { allowedManualMoves, manualTrackingMove, nextOrderAction } from "@/lib/admin/orderActions";
 import { toOrderDetail } from "@/lib/admin/orderDetail";
 
 export type AddressForm = {
@@ -102,7 +102,14 @@ export function useOrderDetail(orderNumber: string) {
       saveTracking: (input: { carrier: string; trackingNumber: string }) =>
         run(async () => {
           if (!order) throw new Error();
-          await updateOrderFulfillment({ orderId: order._id, carrier: input.carrier, trackingNumber: input.trackingNumber.trim() || undefined });
+          const trackingNumber = input.trackingNumber.trim() || undefined;
+          const move = manualTrackingMove(order);
+          if (move) {
+            // Shipped by hand: the Order leaves Needs Packing and the customer gets the dispatch email.
+            await updateFulfillmentStatus({ orderId: order._id, fulfillmentStatus: move, carrier: input.carrier, trackingNumber });
+            return t("dispatched");
+          }
+          await updateOrderFulfillment({ orderId: order._id, carrier: input.carrier, trackingNumber });
           return t("tracking");
         }),
       markDelivered: () =>
@@ -134,5 +141,17 @@ export function useOrderDetail(orderNumber: string) {
     [order, run, t, updateShippingAddress, updateOrderFulfillment, updateFulfillmentStatus, cancelAndRefund]
   );
 
-  return { order, vm, nextAction, manualMoves, busy, error, success, dismissError: () => setError(null), actions };
+  return {
+    order,
+    vm,
+    nextAction,
+    manualMoves,
+    busy,
+    error,
+    success,
+    dismissError: () => setError(null),
+    reportError: (message: string) => setError(message),
+    reportSuccess: (message: string) => setSuccess(message),
+    actions,
+  };
 }

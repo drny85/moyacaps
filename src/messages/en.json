@@ -848,7 +848,7 @@
         "printLabel": "Print label (PDF)",
         "manual": "Add tracking manually",
         "manualTitle": "Add tracking manually",
-        "manualHelp": "For a label bought outside the store. The order keeps its status; scans update it from here.",
+        "manualHelp": "For a label bought outside the store. An unshipped order moves to in transit and the customer gets the dispatch email; after that, this only corrects the numbers.",
         "manualSave": "Save tracking",
         "cancel": "Cancel",
         "override": "Delivery was confirmed by hand; carrier updates no longer change it.",
@@ -882,7 +882,8 @@
         "tracking": "Tracking saved.",
         "delivered": "Marked delivered.",
         "reverted": "Back to in transit.",
-        "cancelled": "Order cancelled."
+        "cancelled": "Order cancelled.",
+        "dispatched": "Marked in transit; the customer has been told."
       }
     }
   },

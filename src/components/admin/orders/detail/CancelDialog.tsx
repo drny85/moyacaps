@@ -6,10 +6,11 @@ import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { inputClass } from "./Section";
 
 /** Cancel an Order (D13 danger zone): reason, and a Stripe refund when the Order can take one. */
-export function CancelDialog({ open, refundable, busy, onConfirm, onClose }: {
+export function CancelDialog({ open, refundable, busy, error, onConfirm, onClose }: {
   open: boolean;
   refundable: boolean;
   busy: boolean;
+  error: string | null;
   onConfirm: (input: { refundStripe: boolean; reason: string }) => Promise<boolean>;
   onClose: () => void;
 }) {
@@ -30,9 +31,13 @@ export function CancelDialog({ open, refundable, busy, onConfirm, onClose }: {
       confirmLabel={t("confirm")}
       destructive
       busy={busy}
+      error={error}
       onClose={onClose}
       onConfirm={async () => {
-        if (await onConfirm({ refundStripe: refundable && refundStripe, reason })) onClose();
+        // The Order is cancelled server-side even when the Stripe refund fails: close either way;
+        // the page banner then points at the refunds panel to retry.
+        await onConfirm({ refundStripe: refundable && refundStripe, reason });
+        onClose();
       }}
     >
       <div className="space-y-3">
