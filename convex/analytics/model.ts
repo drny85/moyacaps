@@ -1,6 +1,6 @@
 /**
  * Pure admin analytics: revenue, pipeline, top sellers, stock health and the
- * 7-day sales chart. Covered by analyticsModel.test.ts.
+ * 30-day sales chart. Covered by model.test.ts.
  */
 import { v } from "convex/values";
 import type { Doc } from "../_generated/dataModel";
@@ -17,16 +17,57 @@ import {
 import { isLowStock } from "../catalog/stock";
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+/** Days on the Home chart; the 7-day and today windows are slices of it. */
+const CHART_DAYS = 30;
 
-export function computeAnalytics(orders: Doc<"orders">[], allVariants: Doc<"variants">[], now: number) {
+/** "YYYY-MM-DD" of `ts` in the caller's local time (`tzOffsetMinutes` as `Date#getTimezoneOffset`). */
+function localDayKey(ts: number, tzOffsetMinutes: number): string {
+  return new Date(ts - tzOffsetMinutes * 60_000).toISOString().slice(0, 10);
+}
+
+type DayBucket = { date: string; revenue: number; orders: number };
+
+function sumWindow(days: DayBucket[]): { revenue: number; orders: number } {
+  return days.reduce((acc, d) => ({ revenue: acc.revenue + d.revenue, orders: acc.orders + d.orders }), { revenue: 0, orders: 0 });
+}
+
+export type LowStockRow = {
+  variantId: string;
+  nameEn: string;
+  nameEs: string;
+  colorway?: string;
+  size?: string;
+  stock: number;
+  image: string;
+};
+
+/** Low stock rows: one per SKU for a Heavyweight Tee, one per Cap. Lowest first. */
+function lowStockRows(variants: Doc<"variants">[], skus: Doc<"skus">[]): LowStockRow[] {
+  const rows: LowStockRow[] = [];
+  for (const v of variants) {
+    const base = { variantId: v.variantId, nameEn: v.nameEn, nameEs: v.nameEs, image: v.catalogShot ?? v.image };
+    if (v.category === "apparel") {
+      for (const s of skus) {
+        if (s.variantId === v.variantId && isLowStock(s.stock)) rows.push({ ...base, colorway: s.colorway, size: s.size, stock: s.stock });
+      }
+    } else if (isLowStock(v.stock)) {
+      rows.push({ ...base, stock: v.stock });
+    }
+  }
+  return rows.sort((a, b) => a.stock - b.stock);
+}
+
+export function computeAnalytics(
+  orders: Doc<"orders">[],
+  allVariants: Doc<"variants">[],
+  skus: Doc<"skus">[],
+  now: number,
+  tzOffsetMinutes: number
+) {
   // Archived products are out of the catalog: they do not count toward stock or low-stock views.
   const variants = allVariants.filter((v) => v.archivedAt === undefined);
   let totalRevenue = 0;
   let completedOrdersCount = 0;
-  let stripeRevenue = 0;
-  let stripeOrdersCount = 0;
-  let whatsappRevenue = 0;
-  let whatsappPaidCount = 0;
 
   // Orders on each axis (ADR 0024). Cancelled Orders are counted once, apart; fulfillment
   // counts only settled Orders, so abandoned checkouts do not swell "unfulfilled".
@@ -39,10 +80,10 @@ export function computeAnalytics(orders: Doc<"orders">[], allVariants: Doc<"vari
 
   const variantSalesMap: Record<string, { name: string; units: number; revenue: number; image: string }> = {};
 
-  // Last 7 days, keyed by UTC date, ending at `now`.
-  const dailyMap: Record<string, { date: string; revenue: number; orders: number }> = {};
-  for (let i = 6; i >= 0; i--) {
-    const key = new Date(now - i * ONE_DAY_MS).toISOString().split("T")[0];
+  // Last 30 local days ending at `now`.
+  const dailyMap: Record<string, DayBucket> = {};
+  for (let i = CHART_DAYS - 1; i >= 0; i--) {
+    const key = localDayKey(now - i * ONE_DAY_MS, tzOffsetMinutes);
     dailyMap[key] = { date: key, revenue: 0, orders: 0 };
   }
 
@@ -58,14 +99,6 @@ export function computeAnalytics(orders: Doc<"orders">[], allVariants: Doc<"vari
       totalRevenue += o.total;
       completedOrdersCount += 1;
 
-      if (o.paymentMethod === "stripe") {
-        stripeRevenue += o.total;
-        stripeOrdersCount += 1;
-      } else if (o.paymentMethod === "whatsapp") {
-        whatsappRevenue += o.total;
-        whatsappPaidCount += 1;
-      }
-
       for (const item of o.items) {
         if (!variantSalesMap[item.variantId]) {
           variantSalesMap[item.variantId] = { name: item.name, units: 0, revenue: 0, image: item.image };
@@ -74,7 +107,7 @@ export function computeAnalytics(orders: Doc<"orders">[], allVariants: Doc<"vari
         variantSalesMap[item.variantId].revenue += item.price * item.quantity;
       }
 
-      const orderDate = new Date(o.createdAt).toISOString().split("T")[0];
+      const orderDate = localDayKey(o.createdAt, tzOffsetMinutes);
       if (dailyMap[orderDate]) {
         dailyMap[orderDate].revenue += o.total;
         dailyMap[orderDate].orders += 1;
@@ -89,42 +122,29 @@ export function computeAnalytics(orders: Doc<"orders">[], allVariants: Doc<"vari
     .sort((a, b) => b.units - a.units)
     .slice(0, 5);
 
-  const lowStockVariants = variants
-    .filter((v) => isLowStock(v.stock))
-    .map((v) => ({
-      _id: v._id,
-      variantId: v.variantId,
-      nameEn: v.nameEn,
-      nameEs: v.nameEs,
-      stock: v.stock,
-      silhouette: v.silhouette,
-      priceUsd: v.priceUsd,
-      image: v.image,
-      primaryHex: v.primaryHex,
-    }))
-    .sort((a, b) => a.stock - b.stock);
+  const dailySales = Object.values(dailyMap);
 
   return {
     totalRevenue,
     completedOrdersCount,
     totalOrdersCount: orders.length,
     aov,
-    paymentBreakdown: {
-      stripe: { revenue: stripeRevenue, orders: stripeOrdersCount },
-      // Historical WhatsApp/Zelle sales (ADR 0023): no new ones are created.
-      whatsapp: { revenue: whatsappRevenue, orders: whatsappPaidCount },
-    },
     paymentStatusCounts,
     fulfillmentStatusCounts,
     cancelledCount,
+    windows: {
+      today: sumWindow(dailySales.slice(-1)),
+      d7: sumWindow(dailySales.slice(-7)),
+      d30: sumWindow(dailySales),
+    },
     topVariants,
-    lowStockVariants,
+    lowStock: lowStockRows(variants, skus),
     inventorySummary: {
       totalVariantsCount: variants.length,
       totalInventoryUnits: variants.reduce((sum, v) => sum + v.stock, 0),
       outOfStockCount: variants.filter((v) => v.stock === 0).length,
     },
-    dailySales: Object.values(dailyMap),
+    dailySales,
   };
 }
 
@@ -168,24 +188,22 @@ export const analyticsValidator = v.object({
   completedOrdersCount: v.number(),
   totalOrdersCount: v.number(),
   aov: v.number(),
-  paymentBreakdown: v.object({ stripe: revenueCount, whatsapp: revenueCount }),
   paymentStatusCounts: v.record(v.string(), v.number()),
   fulfillmentStatusCounts: v.record(v.string(), v.number()),
   cancelledCount: v.number(),
+  windows: v.object({ today: revenueCount, d7: revenueCount, d30: revenueCount }),
   topVariants: v.array(
     v.object({ variantId: v.string(), name: v.string(), units: v.number(), revenue: v.number(), image: v.string() })
   ),
-  lowStockVariants: v.array(
+  lowStock: v.array(
     v.object({
-      _id: v.id("variants"),
       variantId: v.string(),
       nameEn: v.string(),
       nameEs: v.string(),
+      colorway: v.optional(v.string()),
+      size: v.optional(v.string()),
       stock: v.number(),
-      silhouette: v.string(),
-      priceUsd: v.number(),
       image: v.string(),
-      primaryHex: v.string(),
     })
   ),
   inventorySummary: v.object({
