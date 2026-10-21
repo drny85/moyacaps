@@ -8,7 +8,7 @@ import { DropScheduleDialog } from "@/components/admin/DropScheduleDialog";
 import type { DropScheduleTarget } from "@/components/admin/DropScheduleDialog";
 import { QueryErrorBoundary } from "@/components/admin/QueryErrorBoundary";
 import { EmptyState } from "@/components/admin/products/EmptyState";
-import { dropMetrics, schedulableProducts, toDropCard } from "@/lib/admin/dropCard";
+import { dropMetrics, schedulableProducts, scheduleStartDate, toDropCard } from "@/lib/admin/dropCard";
 import type { DropCardVM, DropRowInput } from "@/lib/admin/dropCard";
 import { DeleteDropDialog } from "./DeleteDropDialog";
 import { DropCard } from "./DropCard";
@@ -20,14 +20,17 @@ import { useTicker } from "./useTicker";
 
 type Dialog = { kind: "schedule"; target: DropScheduleTarget } | { kind: "release" | "cancel" | "delete"; card: DropCardVM } | null;
 
-function toTarget(row: DropRowInput, locale: "en" | "es", fresh: boolean): DropScheduleTarget {
+type TargetRow = Pick<DropRowInput, "variantId" | "nameEn" | "nameEs" | "silhouette" | "image" | "catalogShot" | "dropDate" | "dropBadgeTextEn" | "dropBadgeTextEs" | "subscribersCount">;
+
+/** The dialog starts enabled; a date in the past (a live drop's release time) gives way to its default. */
+function toTarget(row: TargetRow, locale: "en" | "es", now: number): DropScheduleTarget {
   return {
     variantId: row.variantId,
     name: locale === "es" ? row.nameEs : row.nameEn,
     silhouette: row.silhouette,
     image: row.catalogShot || row.image,
     isDrop: true,
-    dropDate: fresh ? undefined : row.dropDate,
+    dropDate: scheduleStartDate(row.dropDate, now),
     dropBadgeTextEn: row.dropBadgeTextEn,
     dropBadgeTextEs: row.dropBadgeTextEs,
     subscribersCount: row.subscribersCount,
@@ -36,6 +39,7 @@ function toTarget(row: DropRowInput, locale: "en" | "es", fresh: boolean): DropS
 
 function DropsBody() {
   const t = useTranslations("admin.drops");
+  const tCommon = useTranslations("admin.common");
   const locale = useLocale() as "en" | "es";
   const { drops, catalog, subscribers, busy, error, success, dismissError, actions } = useDrops();
   const [dialog, setDialog] = useState<Dialog>(null);
@@ -51,18 +55,19 @@ function DropsBody() {
   const byId = useMemo(() => new Map(drops?.map((row) => [row.variantId, row])), [drops]);
   const schedulable = useMemo(() => schedulableProducts(catalog?.variants ?? []), [catalog]);
 
-  const openSchedule = (variantId: string, fresh: boolean) => {
+  const openSchedule = (variantId: string) => {
     const row = byId.get(variantId) ?? schedulable.find((p) => p.variantId === variantId);
     if (!row) return;
-    setDialog({ kind: "schedule", target: toTarget({ ...row, subscribersCount: "subscribersCount" in row ? row.subscribersCount : 0, computedStatus: "archived" }, locale, fresh) });
+    setPick("");
+    setDialog({ kind: "schedule", target: toTarget(row, locale, Date.now()) });
   };
 
   return (
     <div className="space-y-6">
-      {error && (
+      {error && dialog === null && (
         <p role="alert" className="flex items-center justify-between gap-2 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-xs text-rose-600 dark:text-rose-400">
           <span className="flex items-center gap-2"><AlertTriangle className="w-4 h-4 shrink-0" /> {error}</span>
-          <button type="button" onClick={dismissError} aria-label={t("subscribers.title")} className="p-1 rounded hover:bg-rose-500/20"><X className="w-3.5 h-3.5" /></button>
+          <button type="button" onClick={dismissError} aria-label={tCommon("dismiss")} className="p-1 rounded hover:bg-rose-500/20"><X className="w-3.5 h-3.5" /></button>
         </p>
       )}
       {success && <p role="status" className="flex items-center gap-2 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-xs text-emerald-700 dark:text-emerald-300"><Check className="w-4 h-4" /> {success}</p>}
@@ -75,7 +80,7 @@ function DropsBody() {
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              if (pick) openSchedule(pick, true);
+              if (pick) openSchedule(pick);
             }}
             className="flex items-center gap-2"
           >
@@ -100,7 +105,7 @@ function DropsBody() {
                 vm={card}
                 busy={busy}
                 onRelease={() => setDialog({ kind: "release", card })}
-                onReschedule={() => openSchedule(card.variantId, false)}
+                onReschedule={() => openSchedule(card.variantId)}
                 onCancel={() => setDialog({ kind: "cancel", card })}
                 onDelete={() => setDialog({ kind: "delete", card })}
               />
@@ -115,7 +120,7 @@ function DropsBody() {
         target={dialog?.kind === "schedule" ? dialog.target : null}
         isOpen={dialog?.kind === "schedule"}
         onClose={close}
-        onSave={actions.schedule}
+        onSave={(args) => actions.schedule(args, byId.has(args.variantId))}
         isProcessing={busy}
       />
       <ConfirmDialog

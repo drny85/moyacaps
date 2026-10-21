@@ -33,7 +33,12 @@ export function DropCard({ vm, busy, onRelease, onReschedule, onCancel, onDelete
         <div>
           <h3 className="font-display font-bold text-sm text-zinc-950 dark:text-white truncate">{vm.name}</h3>
           {vm.badge && <p className="text-[11px] text-moya-red font-semibold truncate">{vm.badge}</p>}
-          {vm.dateLabel && <p className="text-[11px] font-mono text-zinc-500">{vm.status === "scheduled" ? t("card.launches", { when: vm.dateLabel }) : t("card.launched", { when: vm.dateLabel })}</p>}
+          {vm.dateLabel && (
+            <p className="text-[11px] font-mono text-zinc-500">
+              {vm.awaitingRelease ? t("card.awaitingRelease", { when: vm.dateLabel }) : vm.status === "scheduled" ? t("card.launches", { when: vm.dateLabel }) : t("card.launched", { when: vm.dateLabel })}
+            </p>
+          )}
+          {vm.awaitingRelease && <p className="text-[11px] font-semibold text-amber-600 dark:text-amber-400">{t("card.awaitingHelp")}</p>}
         </div>
         {c && !c.past && (
           <p className="text-lg font-display font-bold text-zinc-900 dark:text-white tabular-nums">{`${c.d}d ${c.h}h ${c.m}m ${c.s}s`}</p>

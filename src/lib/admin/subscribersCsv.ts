@@ -38,9 +38,14 @@ export function toCsvRows(subs: SubscriberInput[], locale: "en" | "es"): string[
   ]);
 }
 
-/** RFC 4180: a field holding a comma, a quote or a line break is quoted, with quotes doubled. */
+/**
+ * RFC 4180: a field holding a comma, a quote or a line break is quoted, with quotes doubled.
+ * A field that a spreadsheet would run as a formula (subscribers type their own name) gets a
+ * leading apostrophe, which Excel and Numbers hide.
+ */
 function csvField(value: string): string {
-  return /[",\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
+  const safe = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
+  return /[",\r\n]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
 }
 
 /** A BOM first so Excel and Numbers read accents; CRLF line ends. */

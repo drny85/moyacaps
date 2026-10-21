@@ -663,11 +663,13 @@
         "release": "Release now",
         "reschedule": "Reschedule",
         "cancel": "Cancel drop",
-        "delete": "Delete drop"
+        "delete": "Delete drop",
+        "awaitingRelease": "Date passed {when} · awaiting release",
+        "awaitingHelp": "Customers cannot buy it until you press Release now."
       },
       "release": {
         "title": "Release {name} now?",
-        "body": "The Product becomes visible and sellable right away; the countdown ends and subscribers are told.",
+        "body": "The Product becomes visible and sellable right away and the countdown ends.",
         "confirm": "Release now"
       },
       "cancel": {
@@ -701,6 +703,9 @@
         "released": "Drop released.",
         "cancelled": "Drop cancelled.",
         "deleted": "Drop deleted."
+      },
+      "errors": {
+        "pastDate": "Pick a date and time in the future."
       }
     },
     "launch": {

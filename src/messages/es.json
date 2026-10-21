@@ -663,11 +663,13 @@
         "release": "Lanzar ahora",
         "reschedule": "Reprogramar",
         "cancel": "Cancelar drop",
-        "delete": "Eliminar drop"
+        "delete": "Eliminar drop",
+        "awaitingRelease": "Fecha pasada {when} · pendiente de lanzar",
+        "awaitingHelp": "Los clientes no pueden comprarlo hasta que pulses Lanzar ahora."
       },
       "release": {
         "title": "¿Lanzar {name} ahora?",
-        "body": "El Producto se vuelve visible y comprable de inmediato; la cuenta regresiva termina y se avisa a los suscriptores.",
+        "body": "El Producto se vuelve visible y comprable de inmediato y la cuenta regresiva termina.",
         "confirm": "Lanzar ahora"
       },
       "cancel": {
@@ -701,6 +703,9 @@
         "released": "Drop lanzado.",
         "cancelled": "Drop cancelado.",
         "deleted": "Drop eliminado."
+      },
+      "errors": {
+        "pastDate": "Elige una fecha y hora en el futuro."
       }
     },
     "launch": {

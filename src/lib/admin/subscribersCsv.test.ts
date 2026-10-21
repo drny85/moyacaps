@@ -32,6 +32,11 @@ describe("csv", () => {
     expect(text.split("\r\n")[1]).toBe('"O\'Brien, ""Big"" Jim\nJr",plain');
   });
 
+  it("neutralises spreadsheet formulas in subscriber-typed fields", () => {
+    const text = csvText([['=HYPERLINK("x")', "+15550100", "-1", "@cmd", "plain"]]);
+    expect(text.split("\r\n")[1]).toBe(`"'=HYPERLINK(""x"")",'+15550100,'-1,'@cmd,plain`);
+  });
+
   it("text starts with a BOM, then the headers, and uses CRLF", () => {
     const text = csvText([["x", "y"]]);
     expect(text.charCodeAt(0)).toBe(0xfeff);

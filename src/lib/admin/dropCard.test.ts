@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { countdown, dropMetrics, schedulableProducts, toDropCard } from "./dropCard";
+import { countdown, dropMetrics, schedulableProducts, scheduleStartDate, toDropCard } from "./dropCard";
 import type { DropRowInput } from "./dropCard";
 
 const SEC = 1000;
@@ -42,10 +42,23 @@ describe("toDropCard", () => {
     expect(vm.dateLabel).toBeTruthy();
   });
 
-  it("a drop past its date reads as live even before the cron flips it", () => {
-    const vm = toDropCard(row({ dropDate: NOW - HOUR, computedStatus: "live" }), "en", NOW);
-    expect(vm.status).toBe("live");
+  it("a scheduled drop past its date awaits release: still releasable, no countdown", () => {
+    // Nothing flips a drop live on its own; the storefront keeps blocking purchase until Release now.
+    const vm = toDropCard(row({ dropDate: NOW - HOUR, computedStatus: "live", dropStatus: "scheduled" }), "en", NOW);
+    expect(vm).toMatchObject({ status: "scheduled", awaitingRelease: true, canRelease: true });
     expect(vm.countdown).toBeUndefined();
+    const released = toDropCard(row({ dropDate: NOW - HOUR, computedStatus: "live", dropStatus: "live" }), "en", NOW);
+    expect(released).toMatchObject({ status: "live", awaitingRelease: false, canRelease: false });
+  });
+
+  it("a cancelled drop can be scheduled again", () => {
+    expect(toDropCard(row({ computedStatus: "archived", dropStatus: "archived", isDrop: false }), "en", NOW)).toMatchObject({ canRelease: false, canReschedule: true, canCancel: false });
+  });
+
+  it("the dialog starts from the row's date only while it is still ahead", () => {
+    expect(scheduleStartDate(NOW + DAY, NOW)).toBe(NOW + DAY);
+    expect(scheduleStartDate(NOW - 1, NOW)).toBeUndefined();
+    expect(scheduleStartDate(undefined, NOW)).toBeUndefined();
   });
 
   it("names and badge follow the locale, falling back to the variant image", () => {
@@ -56,7 +69,6 @@ describe("toDropCard", () => {
   it("capabilities by status", () => {
     expect(toDropCard(row(), "en", NOW)).toMatchObject({ canRelease: true, canReschedule: true, canCancel: true });
     expect(toDropCard(row({ computedStatus: "live", dropStatus: "live" }), "en", NOW)).toMatchObject({ canRelease: false, canReschedule: true, canCancel: true });
-    expect(toDropCard(row({ computedStatus: "archived", dropStatus: "archived", isDrop: false }), "en", NOW)).toMatchObject({ canRelease: false, canReschedule: false, canCancel: false });
   });
 });
 
@@ -69,6 +81,8 @@ describe("dropMetrics", () => {
       row({ variantId: "d", computedStatus: "archived", dropStatus: "archived", subscribersCount: 10 }),
     ];
     expect(dropMetrics(rows, NOW)).toEqual({ scheduled: 2, live: 1, subscribers: 21, nextDropAt: NOW + DAY });
+    // A past-date drop still waiting for Release now counts as scheduled, not live.
+    expect(dropMetrics([row({ dropDate: NOW - DAY, computedStatus: "live", dropStatus: "scheduled" })], NOW)).toMatchObject({ scheduled: 1, live: 0 });
     expect(dropMetrics([], NOW)).toEqual({ scheduled: 0, live: 0, subscribers: 0, nextDropAt: undefined });
   });
 });

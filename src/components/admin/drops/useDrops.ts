@@ -17,6 +17,7 @@ function errorMessage(err: unknown, fallback: string): string {
 /** The Drops page's data and actions. `schedule` throws so DropScheduleDialog can show the failure itself. */
 export function useDrops() {
   const t = useTranslations("admin.drops.toast");
+  const tErrors = useTranslations("admin.drops.errors");
   const tCommon = useTranslations("admin.common");
   const clientTime = useMinuteClock();
 
@@ -57,14 +58,19 @@ export function useDrops() {
 
   const actions = useMemo(
     () => ({
-      /** DropScheduleDialog's onSave: enabled with a date schedules (or reschedules); disabled cancels. */
-      schedule: async (args: ScheduleArgs) => {
+      /**
+       * DropScheduleDialog's onSave: enabled with a date schedules (or reschedules); disabled
+       * cancels an existing drop. Turning the toggle off on a Product that never had a drop is a
+       * no-op, so it does not gain drop history. Throws so the dialog shows the failure.
+       */
+      schedule: async (args: ScheduleArgs, hasDrop: boolean) => {
         setBusy(true);
         try {
           if (args.isDrop && args.dropDate !== undefined) {
+            if (args.dropDate <= Date.now()) throw new ConvexError(tErrors("pastDate"));
             await scheduleDrop({ variantId: args.variantId, dropDate: args.dropDate, dropBadgeTextEn: args.dropBadgeTextEn, dropBadgeTextEs: args.dropBadgeTextEs });
             setSuccess(t("scheduled"));
-          } else {
+          } else if (hasDrop) {
             await cancelDrop({ variantId: args.variantId });
             setSuccess(t("cancelled"));
           }
@@ -88,7 +94,7 @@ export function useDrops() {
           return t("deleted");
         }),
     }),
-    [run, t, scheduleDrop, releaseDropNow, cancelDrop, deleteDrop]
+    [run, t, tErrors, scheduleDrop, releaseDropNow, cancelDrop, deleteDrop]
   );
 
   return { clientTime, drops, catalog, subscribers, busy, error, success, dismissError: () => setError(null), actions };

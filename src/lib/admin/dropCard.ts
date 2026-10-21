@@ -46,6 +46,8 @@ export type DropCardVM = {
   name: string;
   image: string;
   status: DropStatus;
+  /** Past its date but never released: nothing flips a Drop live on its own, and the storefront keeps blocking purchase. */
+  awaitingRelease: boolean;
   dateLabel?: string;
   countdown?: Countdown;
   subscribers: number;
@@ -58,23 +60,41 @@ export type DropCardVM = {
 
 type Locale = "en" | "es";
 
+/** Awaiting release: marked a drop, past its date, but `releaseDropNow` never ran. */
+function awaitsRelease(row: DropRowInput, now: number): boolean {
+  return row.isDrop === true && row.dropStatus === "scheduled" && row.dropDate !== undefined && row.dropDate <= now;
+}
+
+/** The status the Administrator works from: a drop past its date is still "scheduled" until released. */
+export function adminDropStatus(row: DropRowInput, now: number): DropStatus {
+  return awaitsRelease(row, now) ? "scheduled" : row.computedStatus;
+}
+
 export function toDropCard(row: DropRowInput, locale: Locale, now: number): DropCardVM {
-  const status = row.computedStatus;
+  const awaitingRelease = awaitsRelease(row, now);
+  const status = adminDropStatus(row, now);
   const badge = locale === "es" ? row.dropBadgeTextEs : row.dropBadgeTextEn;
   return {
     variantId: row.variantId,
     name: locale === "es" ? row.nameEs : row.nameEn,
     image: row.catalogShot || row.image,
     status,
+    awaitingRelease,
     dateLabel: row.dropDate === undefined ? undefined : new Date(row.dropDate).toLocaleString(locale, { dateStyle: "medium", timeStyle: "short" }),
-    countdown: status === "scheduled" && row.dropDate !== undefined ? countdown(row.dropDate, now) : undefined,
+    countdown: status === "scheduled" && !awaitingRelease && row.dropDate !== undefined ? countdown(row.dropDate, now) : undefined,
     subscribers: row.subscribersCount,
     stock: row.stock,
     badge: badge || undefined,
     canRelease: status === "scheduled",
-    canReschedule: status !== "archived",
+    // A cancelled (archived) drop can be scheduled again; scheduleDrop accepts it.
+    canReschedule: true,
     canCancel: status !== "archived",
   };
+}
+
+/** Where the schedule dialog starts: the row's date while it is still ahead, else the dialog's own default. */
+export function scheduleStartDate(dropDate: number | undefined, now: number): number | undefined {
+  return dropDate !== undefined && dropDate > now ? dropDate : undefined;
 }
 
 export type DropMetrics = { scheduled: number; live: number; subscribers: number; nextDropAt?: number };
@@ -83,8 +103,9 @@ export function dropMetrics(rows: DropRowInput[], now: number): DropMetrics {
   const metrics: DropMetrics = { scheduled: 0, live: 0, subscribers: 0, nextDropAt: undefined };
   for (const row of rows) {
     metrics.subscribers += row.subscribersCount;
-    if (row.computedStatus === "live") metrics.live += 1;
-    if (row.computedStatus === "scheduled") {
+    const status = adminDropStatus(row, now);
+    if (status === "live") metrics.live += 1;
+    if (status === "scheduled") {
       metrics.scheduled += 1;
       if (row.dropDate !== undefined && row.dropDate > now && (metrics.nextDropAt === undefined || row.dropDate < metrics.nextDropAt)) {
         metrics.nextDropAt = row.dropDate;
