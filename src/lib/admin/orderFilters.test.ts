@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_ORDER_FILTERS,
+  effectiveSince,
+  rangeApplies,
   filtersFromSearchParams,
   filtersToSearchParams,
   hasActiveFilters,
@@ -46,6 +48,30 @@ describe("sinceFor", () => {
     expect(sinceFor("7d", now, 0)).toBe(now - 7 * DAY);
     expect(sinceFor("30d", now, 0)).toBe(now - 30 * DAY);
     expect(sinceFor("all", now, 0)).toBeUndefined();
+  });
+});
+
+describe("range on working queues", () => {
+  const now = Date.UTC(2026, 9, 17, 12);
+
+  it("applies only to Shipped, Done and All", () => {
+    expect(rangeApplies({ queue: "needs_packing", range: "7d", q: "" })).toBe(false);
+    expect(rangeApplies({ queue: "overdue", range: "7d", q: "" })).toBe(false);
+    expect(rangeApplies({ queue: "awaiting_payment", range: "7d", q: "" })).toBe(false);
+    expect(rangeApplies({ queue: "problems", range: "7d", q: "" })).toBe(false);
+    expect(rangeApplies({ queue: "shipped", range: "7d", q: "" })).toBe(true);
+    expect(rangeApplies({ queue: "done", range: "7d", q: "" })).toBe(true);
+    expect(rangeApplies({ queue: "all", range: "7d", q: "" })).toBe(true);
+  });
+
+  it("a search looks through all time", () => {
+    expect(rangeApplies({ queue: "all", range: "7d", q: "GL-1" })).toBe(false);
+    expect(effectiveSince({ queue: "all", range: "7d", q: "GL-1" }, now, 0)).toBeUndefined();
+  });
+
+  it("effectiveSince honours the rule", () => {
+    expect(effectiveSince({ queue: "overdue", range: "7d", q: "" }, now, 0)).toBeUndefined();
+    expect(effectiveSince({ queue: "done", range: "7d", q: "" }, now, 0)).toBe(now - 7 * DAY);
   });
 });
 

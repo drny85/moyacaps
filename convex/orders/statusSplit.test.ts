@@ -262,6 +262,19 @@ describe("admin desk on the two axes", () => {
     await drain(tt);
   });
 
+  it("a capped Done read keeps the newest refunded orders whatever their package status", async () => {
+    const tt = t();
+    for (const [n, fulfillmentStatus, createdAt] of [
+      ["GL-CAP-OLD", "unfulfilled", 1_000],
+      ["GL-CAP-MID", "returned", 2_000],
+      ["GL-CAP-NEW", "in_transit", 3_000],
+    ] as const) {
+      await seedOrder(tt, { orderNumber: n, paymentStatus: "refunded", fulfillmentStatus, createdAt });
+    }
+    const list = await admin(tt).query(api.orders.desk.getAllOrdersAdmin, { clientTime: Date.now(), status: "done", limit: 2 });
+    expect(list.map((o) => o.orderNumber)).toEqual(["GL-CAP-NEW", "GL-CAP-MID"]);
+  });
+
   it("an Administrator confirming delivery locks out carrier overwrites", async () => {
     const tt = t();
     await seedVariant(tt, "V1", 5);

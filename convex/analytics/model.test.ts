@@ -127,6 +127,19 @@ describe("computeAnalytics", () => {
     ]);
   });
 
+  it("counts Problems by the desk's rule: open exceptions, returns and disputes, not cancelled or refunded ones", () => {
+    const problems = computeAnalytics(
+      [
+        order({ fulfillmentStatus: "delivery_exception" }),
+        order({ fulfillmentStatus: "returned", paymentStatus: "refunded" }),
+        order({ paymentStatus: "disputed", fulfillmentStatus: "in_transit" }),
+        order({ fulfillmentStatus: "returned", cancelledAt: NOW }),
+      ],
+      [], [], NOW, TZ
+    ).problemsCount;
+    expect(problems).toBe(2);
+  });
+
   it("summarizes inventory", () => {
     expect(result.inventorySummary).toEqual({ totalVariantsCount: 3, totalInventoryUnits: 34, outOfStockCount: 1 });
   });

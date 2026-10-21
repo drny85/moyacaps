@@ -24,6 +24,7 @@ import { carrierTrackingNumber } from "./trackingNumber";
 import { normalizeEmail } from "./guestClaimModel";
 import { cancellationNotice, manualMoveEmail } from "../notifications/orderEmails";
 import {
+  FULFILLMENT_STATUSES,
   fulfillmentStatusValidator,
   type FulfillmentStatus,
   type PaymentStatus,
@@ -66,12 +67,25 @@ async function packingQueue(ctx: QueryCtx, limit: number): Promise<Order[]> {
 const byFulfillment = (ctx: QueryCtx, fulfillmentStatus: FulfillmentStatus, limit: number) =>
   ctx.db.query("orders").withIndex("by_fulfillmentStatus", (q) => q.eq("fulfillmentStatus", fulfillmentStatus)).order("desc").take(limit);
 
-const byPayment = (ctx: QueryCtx, paymentStatus: PaymentStatus, limit: number) =>
-  ctx.db
-    .query("orders")
-    .withIndex("by_paymentStatus_and_fulfillmentStatus_and_cancelledAt", (q) => q.eq("paymentStatus", paymentStatus))
-    .order("desc")
-    .take(limit);
+/**
+ * Newest first for one Payment Status. The index sorts by fulfillmentStatus before time, so one
+ * read per Fulfillment Status, merged, is what keeps a capped read from dropping recent Orders.
+ */
+const byPayment = async (ctx: QueryCtx, paymentStatus: PaymentStatus, limit: number) =>
+  newestFirst(
+    await Promise.all(
+      FULFILLMENT_STATUSES.map((fulfillmentStatus) =>
+        ctx.db
+          .query("orders")
+          .withIndex("by_paymentStatus_and_fulfillmentStatus_and_cancelledAt", (q) =>
+            q.eq("paymentStatus", paymentStatus).eq("fulfillmentStatus", fulfillmentStatus)
+          )
+          .order("desc")
+          .take(limit)
+      )
+    ),
+    limit
+  );
 
 /** Index read that narrows to a desk tab; `matchesDeskFilter` decides membership. */
 async function readDeskFilter(ctx: QueryCtx, filter: DeskFilter, limit: number): Promise<Order[]> {

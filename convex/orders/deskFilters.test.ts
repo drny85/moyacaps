@@ -66,8 +66,15 @@ describe("matchesDeskFilter", () => {
     expect(tabsOf(order("refunded", "unfulfilled"))).toEqual(["all", "done", "refunded"]);
   });
 
-  it("a cancelled order is never Done or a Problem, whatever its axes say", () => {
+  it("a cancelled order is never Shipped, Done or a Problem, whatever its axes say", () => {
     expect(tabsOf(order("refunded", "unfulfilled", { cancelledAt: NOW }))).toEqual(["all", "refunded", "cancelled"]);
     expect(tabsOf(order("paid", "returned", { cancelledAt: NOW }))).toEqual(["all", "returned", "cancelled"]);
+    expect(tabsOf(order("paid", "in_transit", { cancelledAt: NOW }))).toEqual(["all", "in_transit", "cancelled"]);
+  });
+
+  it("a refunded return or exception is resolved: Done, no longer a Problem", () => {
+    expect(tabsOf(order("refunded", "returned"))).toEqual(["all", "done", "returned", "refunded"]);
+    expect(tabsOf(order("refunded", "delivery_exception"))).toEqual(["all", "done", "delivery_exception", "refunded"]);
+    expect(tabsOf(order("partially_refunded", "returned"))).toEqual(["all", "problems", "returned", "partially_refunded"]);
   });
 });

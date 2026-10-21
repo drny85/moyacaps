@@ -8,7 +8,7 @@ import { Check, RotateCw, Search, SearchX, X } from "lucide-react";
 import { api } from "@convex/_generated/api";
 import { useRouter } from "@/i18n/routing";
 import { useMinuteClock } from "@/hooks/useMinuteClock";
-import { ORDERS_LIMIT, hasActiveFilters, legacyOrderParamHref, sinceFor } from "@/lib/admin/orderFilters";
+import { ORDERS_LIMIT, effectiveSince, hasActiveFilters, legacyOrderParamHref, rangeApplies } from "@/lib/admin/orderFilters";
 import { toOrderRow } from "@/lib/admin/orderRow";
 import type { OrderRowVM } from "@/lib/admin/orderRow";
 import { QueryErrorBoundary } from "@/components/admin/QueryErrorBoundary";
@@ -21,7 +21,9 @@ import { QueueChips } from "./QueueChips";
 import { RangeChips } from "./RangeChips";
 import { useOrderFilters } from "./useOrderFilters";
 
-type LabelTarget = { order: OrderRowVM; reship: boolean } | null;
+type OrderDoc = NonNullable<ReturnType<typeof useQuery<typeof api.orders.desk.getAllOrdersAdmin>>>[number];
+/** A snapshot: once a label is bought the Order leaves this queue, but the modal must stay up to print. */
+type LabelTarget = { order: OrderDoc; reship: boolean } | null;
 
 function ListBody() {
   const t = useTranslations("admin.orders");
@@ -37,7 +39,7 @@ function ListBody() {
     clientTime,
     status: filters.queue,
     search: filters.q,
-    since: sinceFor(filters.range, clientTime, tzOffsetMinutes),
+    since: effectiveSince(filters, clientTime, tzOffsetMinutes),
     limit: ORDERS_LIMIT,
   });
   const attention = useQuery(api.orders.desk.getOrdersAttentionStats, { clientTime });
@@ -45,6 +47,10 @@ function ListBody() {
   const rows = useMemo(() => orders?.map((o) => toOrderRow(o, clientTime, locale)), [orders, clientTime, locale]);
   // The modal needs the full Order document, not the row.
   const byId = useMemo(() => new Map(orders?.map((o) => [o._id as string, o])), [orders]);
+  const openLabel = (row: OrderRowVM) => {
+    const order = byId.get(row.id);
+    if (order) setLabel({ order, reship: row.quickAction === "reship" });
+  };
 
   const [label, setLabel] = useState<LabelTarget>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -73,7 +79,7 @@ function ListBody() {
         counts={{ needs_packing: attention?.totalActionRequired, overdue: attention?.overduePaid }}
         onChange={(queue) => setFilters({ queue })}
       />
-      <RangeChips value={filters.range} onChange={(range) => setFilters({ range })} />
+      {rangeApplies(filters) && <RangeChips value={filters.range} onChange={(range) => setFilters({ range })} />}
 
       {success && (
         <p role="status" className="flex items-center justify-between gap-2 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-xs text-emerald-700 dark:text-emerald-300">
@@ -96,7 +102,7 @@ function ListBody() {
         <>
           <ul className="space-y-2.5">
             {rows.map((row) => (
-              <OrderRow key={row.id} row={row} onQuickAction={(r) => setLabel({ order: r, reship: r.quickAction === "reship" })} />
+              <OrderRow key={row.id} row={row} onQuickAction={openLabel} />
             ))}
           </ul>
           {rows.length >= ORDERS_LIMIT && (
@@ -106,14 +112,11 @@ function ListBody() {
       )}
 
       <ShippingLabelModal
-        order={label ? (byId.get(label.order.id) ?? null) : null}
+        order={label?.order ?? null}
         isOpen={Boolean(label)}
         reship={label?.reship ?? false}
         onClose={() => setLabel(null)}
-        onSuccess={(message) => {
-          setSuccess(message);
-          setLabel(null);
-        }}
+        onSuccess={setSuccess}
       />
     </div>
   );

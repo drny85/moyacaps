@@ -61,6 +61,18 @@ export function sinceFor(range: Range, now: number, tzOffsetMinutes: number): nu
   }
 }
 
+/** Queues of finished work, where a date range makes sense. Working queues and searches look through all time. */
+const RANGED_QUEUES: readonly Queue[] = ["shipped", "done", "all"];
+
+export function rangeApplies(f: OrderFilters): boolean {
+  return f.q === "" && RANGED_QUEUES.includes(f.queue);
+}
+
+/** The `since` bound to send: the range's, or none when the range does not apply. */
+export function effectiveSince(f: OrderFilters, now: number, tzOffsetMinutes: number): number | undefined {
+  return rangeApplies(f) ? sinceFor(f.range, now, tzOffsetMinutes) : undefined;
+}
+
 /** Where an old `?order=` bookmark goes now that the drawer is gone: the Order's own page. */
 export function legacyOrderParamHref(sp: URLSearchParams): string | null {
   const raw = (sp.get("order") ?? "").trim().toUpperCase().replace(/^#/, "");

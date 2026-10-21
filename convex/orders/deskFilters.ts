@@ -16,7 +16,7 @@ export const DESK_FILTERS = [
   "awaiting_payment",
   // Queues (plan 0009 D11): groups of statuses the desk works from.
   "shipped", // label_purchased + in_transit
-  "problems", // delivery_exception + returned + disputed
+  "problems", // delivery_exception + returned + disputed, until refunded
   "done", // delivered + refunded (a partial refund alone is a money note, not a finished order)
   "label_purchased",
   "in_transit",
@@ -68,10 +68,12 @@ export function matchesDeskFilter(
     case "cancelled":
       return isCancelled(order);
     case "shipped":
-      return axes.fulfillmentStatus === "label_purchased" || axes.fulfillmentStatus === "in_transit";
+      return axes.cancelledAt === undefined && (axes.fulfillmentStatus === "label_purchased" || axes.fulfillmentStatus === "in_transit");
     case "problems":
+      // A full refund settles a return or exception: it moves to Done. A dispute is a problem until it closes.
       return (
         axes.cancelledAt === undefined &&
+        axes.paymentStatus !== "refunded" &&
         (axes.fulfillmentStatus === "delivery_exception" ||
           axes.fulfillmentStatus === "returned" ||
           axes.paymentStatus === "disputed")
