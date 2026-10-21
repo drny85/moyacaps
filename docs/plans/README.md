@@ -12,6 +12,7 @@ This directory houses technical design documents, architectural blueprints, and 
 | **0004** | **Admin Catalog Foundation** | In progress | `feat/admin-catalog-foundation` | [`0004-admin-catalog-foundation.md`](./0004-admin-catalog-foundation.md) |
 | **0005** | **Admin Products UI Redesign** | Design settled; waits on 0004 | `claude/admin-ui-redesign-25791f` | [`0005-admin-products-ui-redesign.md`](./0005-admin-products-ui-redesign.md) |
 | **0007** | **Category Launch States** | Ready for Implementation | `feat/category-launch-states` | [`0007-category-launch-states.md`](./0007-category-launch-states.md) |
+| **0010** | **Photo Autofill** | Ready for Implementation | `feat/photo-autofill` | [`0010-photo-autofill.md`](./0010-photo-autofill.md) |
 
 ---
 

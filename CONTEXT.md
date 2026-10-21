@@ -68,6 +68,10 @@ _Avoid_: Model photo, lookbook image, hero shot
 A transparent cutout of a Cap from one of four fixed angles (front, left, back, right), used by Try-On and the turntable. A Cap missing any Angle Shot is left out of both. Never shown in grids or cards, and never taken of a Heavyweight Tee.
 _Avoid_: Angle image, cutout, 360 shot, turntable frame
 
+**Photo Autofill**:
+Proposing a new Product's form values from up to four photos for an Administrator to review: its category, Silhouette, colors (Apparel Colorways for a Heavyweight Tee), bilingual names and copy, and the category's default price. It fills only empty fields, never saves anything, and never sets stock, sizes, visibility or Featured. The photos are used for the proposal only and are not kept.
+_Avoid_: AI form, magic fill, auto-create, smart fill
+
 **Shop**:
 The single browsable listing of every Product, filterable by category, Colorway, Silhouette and Graphic Design.
 _Avoid_: Catalog page, store page, collection page (Collection means a themed release)
