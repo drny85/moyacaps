@@ -10,6 +10,10 @@ const withNextIntl = createNextIntlPlugin({
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  experimental: {
+    // Photo Autofill sends up to four downscaled photos to one server action (ADR 0027)
+    serverActions: { bodySizeLimit: "4mb" },
+  },
   // `ANALYZE_SOURCEMAPS=1 bun run build` emits browser source maps to attribute chunk bytes to modules
   productionBrowserSourceMaps: process.env.ANALYZE_SOURCEMAPS === "1",
   images: {

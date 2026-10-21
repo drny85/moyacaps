@@ -2,7 +2,7 @@ import { PRODUCT_LIMITS } from "../../../../convex/catalog/rules";
 import type { AutofillCatalogContext } from "./context";
 
 /** The system prompt for Photo Autofill: the store's vocabulary, the catalog's colorways and voice samples. */
-export function buildAutofillSystemPrompt(ctx: AutofillCatalogContext): string {
+export function buildAutofillSystemPrompt(ctx: AutofillCatalogContext, locale: "en" | "es" = "en"): string {
   const colorways =
     ctx.colorways.length === 0
       ? "(none yet)"
@@ -23,6 +23,7 @@ Vocabulary (always follow):
 - Silhouette: the Cap's construction profile.
 
 Recognition:
+- Write "note" in ${locale === "es" ? "Spanish" : "English"}: it is shown to the Administrator as is.
 - Set "recognized" to "cap" or "tee". If the photos show anything else (another garment, no product, unreadable), set "recognized" to "other", explain why in "note", and leave the other fields empty.
 - Silhouette: a structured cap with a solid back is "snapback"; a cap with a mesh back is "trucker"; any tee is "tee". If the cap fits neither, pick the closest and say so in "note".
 

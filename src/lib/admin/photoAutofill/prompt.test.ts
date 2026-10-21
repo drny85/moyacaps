@@ -29,3 +29,10 @@ describe("buildAutofillSystemPrompt", () => {
     expect(prompt).toContain("1000");
   });
 });
+
+describe("note language", () => {
+  it("asks for the note in the Administrator's language", () => {
+    expect(buildAutofillSystemPrompt(empty, "es")).toContain('Write "note" in Spanish');
+    expect(buildAutofillSystemPrompt(empty, "en")).toContain('Write "note" in English');
+  });
+});
