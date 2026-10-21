@@ -16,13 +16,13 @@ import { countParcelLines, insuranceFor, presetToParcel, suggestParcel } from ".
 export const ATELIER_ORIGIN_ADDRESS = {
   name: "Good Luck Atelier",
   company: "Good Luck 0880",
-  street1: "1450 Clay Ave",
+  street1: "1402 Clay Ave",
   city: "Bronx",
   state: "NY",
   zip: "10456",
   country: "US",
-  phone: "6462251912",
-  email: "concierge@goodluckcaps.com",
+  phone: "8456005628",
+  email: "orders@goodluckcaps.com",
 };
 
 // Parcel presets and the default-parcel rule live in ./parcels.ts (shared with the admin modal).
