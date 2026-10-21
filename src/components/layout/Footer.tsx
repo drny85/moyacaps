@@ -75,6 +75,10 @@ export function Footer() {
               {t("privacy")}
             </Link>
             <span className="text-zinc-300 dark:text-zinc-700">•</span>
+            <Link href="/returns" className="hover:text-zinc-900 dark:hover:text-white underline-offset-2 hover:underline transition-colors">
+              {t("returns")}
+            </Link>
+            <span className="text-zinc-300 dark:text-zinc-700">•</span>
             {/* rel="me" ties the profile to this site for search engines and AI tools */}
             <a
               href={INSTAGRAM_URL}

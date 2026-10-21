@@ -184,6 +184,7 @@ export const sendCustomerReceipt = internalAction({
           shippingFee: args.shippingFee,
           tax: args.tax,
           trackingUrl,
+          returnPolicyUrl: `${baseUrl}/returns`,
         })
       );
 

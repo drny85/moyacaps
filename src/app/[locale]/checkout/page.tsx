@@ -323,6 +323,16 @@ export default function CheckoutPage() {
               </div>
             )}
 
+            <p className="text-[11px] leading-snug text-zinc-500 text-center">
+              {t.rich("finalSale", {
+                link: (chunks) => (
+                  <Link href="/returns" className="font-medium text-zinc-700 dark:text-zinc-300 underline underline-offset-2 hover:text-moya-red">
+                    {chunks}
+                  </Link>
+                ),
+              })}
+            </p>
+
             {/* Footer security badge */}
             <div className="flex items-center justify-center gap-2 text-[10px] font-mono text-zinc-500 pt-2">
               <ShieldCheck className="w-3.5 h-3.5 text-moya-green" />

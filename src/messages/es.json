@@ -40,6 +40,7 @@
     "tax": "Impuesto estimado",
     "total": "Total",
     "secureNotice": "Transacción encriptada SSL de 256 bits procesada por Stripe Payments",
+    "finalSale": "Todas las ventas son finales, salvo pedidos que nunca llegan o llegan defectuosos. <link>Política de Devoluciones</link>",
     "outOfStockTitle": "Inventario No Disponible",
     "outOfStockDesc": "Uno o más artículos en tu bolsa se han agotado o superan el inventario disponible. Por favor ajusta tu bolsa antes de continuar.",
     "connectingGateway": "Verificando inventario y asegurando sesión de pago...",
@@ -84,6 +85,7 @@
     "total": "Total",
     "checkoutStripe": "Pagar con Tarjeta / Apple Pay",
     "secureCheckout": "Garantía de Autenticidad",
+    "finalSale": "Todas las ventas son finales, salvo pedidos que nunca llegan o llegan defectuosos. <link>Política de Devoluciones</link>",
     "stockAdjusted": "Cantidad ajustada al inventario disponible",
     "onlyXAvailable": "Solo {count} disponibles",
     "soldOutItem": "Agotado"
@@ -151,6 +153,7 @@
     "currencyNote": "Precios expresados en {currency}. Conversión disponible.",
     "terms": "Términos y Condiciones",
     "privacy": "Política de Privacidad",
+    "returns": "Política de Devoluciones",
     "legalNav": "Legal",
     "about": "Sobre nosotros"
   },
@@ -1193,7 +1196,8 @@
     "printBack": "Estampado completo en la espalda",
     "printBody": "Serigrafía de alta densidad que aguanta lavado tras lavado.",
     "teeCare": "Lavar en frío al revés. Secar colgada o en secadora a baja temperatura.",
-    "shippingBody": "Se envía en 24 horas. El envío estándar con rastreo en EE. UU. llega en 2–5 días hábiles, gratis con {threshold} o más artículos. ¿Algún problema con tu pedido? Escríbenos y lo resolvemos.",
+    "shippingBody": "Se envía en 24 horas. El envío estándar con rastreo en EE. UU. llega en 2–5 días hábiles, gratis con {threshold} o más artículos.",
+    "returnsBody": "Todas las ventas son finales. Reembolsamos pedidos que nunca llegan, y reembolsamos o cambiamos artículos que llegan defectuosos. <link>Lee nuestra Política de Devoluciones</link>",
     "moreCaps": "Más gorras",
     "moreTees": "Más playeras"
   },
@@ -1367,8 +1371,7 @@
         "returns": {
           "heading": "Devoluciones y problemas con tu pedido",
           "body": [
-            "Nuestra política de devoluciones viene pronto y la publicaremos en esta página.",
-            "Si tu pedido llega dañado o defectuoso, o recibiste un artículo equivocado, escríbenos a <email>{address}</email> con tu número de pedido y te ayudamos."
+            "Todas las ventas son finales. Solo reembolsamos o cambiamos un pedido si nunca llega o si un artículo llega defectuoso. Nuestra <returnPolicy>Política de Devoluciones</returnPolicy> explica cómo funciona."
           ]
         },
         "drops": {
@@ -1531,6 +1534,46 @@
           "heading": "Contacto",
           "body": [
             "¿Preguntas o solicitudes sobre tu privacidad? Escríbenos a <email>{address}</email>."
+          ]
+        }
+      }
+    },
+    "returns": {
+      "metaTitle": "Política de Devoluciones | Good Luck",
+      "metaDescription": "Cuándo Good Luck reembolsa o cambia un pedido: paquetes que nunca llegan y artículos que llegan defectuosos.",
+      "title": "Política de Devoluciones",
+      "intro": "Todas las ventas son finales. Solo reembolsamos o cambiamos un pedido en los dos casos de abajo. La escribimos corta y en lenguaje sencillo.",
+      "sections": {
+        "finalSale": {
+          "heading": "Todas las ventas son finales",
+          "body": [
+            "No aceptamos devoluciones ni cambios porque cambiaste de opinión o no te gustó el ajuste, la talla o el color. Revisa tu pedido antes de pagar.",
+            "Aún puedes cancelar un pedido antes de que se envíe, como se explica en nuestros <terms>Términos y Condiciones</terms>."
+          ]
+        },
+        "notDelivered": {
+          "heading": "Si tu paquete nunca llega",
+          "body": [
+            "Si tu paquete nunca se entrega, te reembolsamos el pedido completo a tu método de pago original.",
+            "Escríbenos a <email>{address}</email> con tu número de pedido. Revisamos el rastreo con la paquetería y, cuando confirmamos que el paquete no se entregó, te enviamos el reembolso."
+          ]
+        },
+        "defective": {
+          "heading": "Si un artículo llega defectuoso",
+          "body": [
+            "Si un artículo llega con un defecto, te lo reembolsamos o te lo cambiamos. Así funciona:"
+          ],
+          "list": [
+            "Escríbenos a <email>{address}</email> con tu número de pedido y una breve descripción del defecto. Una foto ayuda.",
+            "Te respondemos con la dirección a donde debes devolver el artículo. No envíes nada de vuelta antes de que te mandemos esa dirección.",
+            "Cuando recibimos el artículo, te lo reembolsamos a tu método de pago original o te lo cambiamos por el mismo artículo.",
+            "Los cambios dependen del inventario. Si el artículo está agotado, te lo reembolsamos."
+          ]
+        },
+        "contact": {
+          "heading": "Preguntas",
+          "body": [
+            "¿Preguntas sobre esta política o tu pedido? Escríbenos a <email>{address}</email>."
           ]
         }
       }

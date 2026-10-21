@@ -13,7 +13,7 @@ function keyPaths(value: unknown, prefix = ""): string[] {
   return [prefix];
 }
 
-const DOCS = ["terms", "privacy"] as const;
+const DOCS = ["terms", "privacy", "returns"] as const;
 
 describe("legal copy", () => {
   it("has every message key in both locales", () => {
@@ -47,9 +47,22 @@ describe("legal copy", () => {
     expect(emailTags(en).length).toBeGreaterThan(0);
   });
 
-  it("promises no returns window: the policy is not decided yet", () => {
+  it("links the other legal pages in the same places in both locales", () => {
+    for (const tag of ["terms", "returnPolicy"]) {
+      const tagged = (messages: typeof en) =>
+        keyPaths(messages.legal).filter((path) => {
+          const value = path.split(".").reduce<unknown>((node, part) => (node as Record<string, unknown>)[part], messages.legal);
+          return new RegExp(`<${tag}>[^<]+</${tag}>`).test(String(value));
+        });
+      expect(tagged(es)).toEqual(tagged(en));
+      expect(tagged(en).length).toBeGreaterThan(0);
+    }
+  });
+
+  it("promises no returns window: none has been set", () => {
     for (const messages of [en, es]) {
       expect(JSON.stringify(messages.legal.terms.sections.returns)).not.toMatch(/\d/);
+      expect(JSON.stringify(messages.legal.returns)).not.toMatch(/\d/);
       expect(JSON.stringify(messages.legal)).not.toMatch(/\b30\b/);
     }
   });
@@ -72,11 +85,12 @@ describe("legal facts", () => {
     expect(countItems((key) => keys.has(key), "s.list")).toBe(0);
   });
 
-  it("lists both pages in the sitemap in every locale", () => {
+  it("lists every legal page in the sitemap in every locale", () => {
     const urls = buildSitemap([], "https://example.com", new Date(0), NONE_LIVE).map((e) => e.url);
     for (const locale of ["en", "es"]) {
       expect(urls).toContain(`https://example.com/${locale}/terms`);
       expect(urls).toContain(`https://example.com/${locale}/privacy`);
+      expect(urls).toContain(`https://example.com/${locale}/returns`);
     }
   });
 });

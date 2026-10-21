@@ -30,6 +30,21 @@ export function organizationJsonLd(base: string): JsonLd {
       email: SUPPORT_EMAIL,
       availableLanguage: ["English", "Spanish"],
     },
+    hasMerchantReturnPolicy: returnPolicyJsonLd("en", base),
+  };
+}
+
+/**
+ * The Return Policy page as schema.org: all sales are final, so returns are not permitted.
+ * Refunds for undelivered packages and refunds or exchanges for defective items are not
+ * returns in schema.org's sense, so only the linked page describes them.
+ */
+export function returnPolicyJsonLd(locale: string, base: string): JsonLd {
+  return {
+    "@type": "MerchantReturnPolicy",
+    applicableCountry: "US",
+    returnPolicyCategory: "https://schema.org/MerchantReturnNotPermitted",
+    merchantReturnLink: localizedUrl(locale, "/returns", base),
   };
 }
 
@@ -118,6 +133,7 @@ export function productJsonLd(product: CapVariant, locale: string, base: string,
       availability: product.stock > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
       seller: { "@id": `${base}/#organization` },
       ...(shipping ? { shippingDetails: shippingDetailsJsonLd(shipping) } : {}),
+      hasMerchantReturnPolicy: returnPolicyJsonLd(locale, base),
     },
   };
 }

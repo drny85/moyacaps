@@ -76,6 +76,12 @@ describe("receipt", () => {
     expect(flagged.body).toMatch(/refund it in full/);
     expect(flagged.subject).toContain("#GL-1");
   });
+
+  it("states the final-sale policy only on an order we will ship", () => {
+    expect(receiptCopy("GL-1", false).returnsNote).toMatch(/All sales are final/);
+    expect(receiptCopy("GL-1", false).returnsNote).not.toMatch(/\d+ days?/);
+    expect(receiptCopy("GL-1", true).returnsNote).toBeUndefined();
+  });
 });
 
 describe("Customer notices", () => {

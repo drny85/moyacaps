@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
-import { FileText, ShieldCheck } from "lucide-react";
+import { FileText, PackageCheck, ShieldCheck } from "lucide-react";
+import { Link } from "@/i18n/routing";
 import { countItems, formatLastUpdated, LEGAL_SECTIONS, SUPPORT_EMAIL, type LegalDocument } from "@/lib/legal";
 import { absoluteUrl, DEFAULT_OG_IMAGE, ogLocale, pageAlternates } from "@/lib/seo/site";
 
-const ICONS = { terms: FileText, privacy: ShieldCheck } as const;
+const ICONS = { terms: FileText, privacy: ShieldCheck, returns: PackageCheck } as const;
 
 export async function legalMetadata(locale: string, doc: LegalDocument): Promise<Metadata> {
   const t = await getTranslations({ locale, namespace: "legal" });
@@ -28,17 +29,29 @@ export async function legalMetadata(locale: string, doc: LegalDocument): Promise
   };
 }
 
-/** `<email>{address}</email>` in the copy becomes a mailto link to support */
+const LINK_CLASS = "font-medium text-moya-red underline underline-offset-2 hover:text-moya-red-light";
+
+/** `<email>{address}</email>` in the copy becomes a mailto link to support; `<terms>` and `<returnPolicy>` link the other pages */
 const richValues = {
   address: SUPPORT_EMAIL,
   email: (chunks: React.ReactNode) => (
-    <a href={`mailto:${SUPPORT_EMAIL}`} className="font-medium text-moya-red underline underline-offset-2 hover:text-moya-red-light">
+    <a href={`mailto:${SUPPORT_EMAIL}`} className={LINK_CLASS}>
       {chunks}
     </a>
   ),
+  terms: (chunks: React.ReactNode) => (
+    <Link href="/terms" className={LINK_CLASS}>
+      {chunks}
+    </Link>
+  ),
+  returnPolicy: (chunks: React.ReactNode) => (
+    <Link href="/returns" className={LINK_CLASS}>
+      {chunks}
+    </Link>
+  ),
 };
 
-/** Terms & Conditions or Privacy Policy: server-rendered from the `legal` messages (src/lib/legal.ts). */
+/** Terms & Conditions, Privacy Policy or Return Policy: server-rendered from the `legal` messages (src/lib/legal.ts). */
 export async function LegalPage({ locale, doc }: { locale: string; doc: LegalDocument }) {
   const t = await getTranslations({ locale, namespace: "legal" });
   const sections = LEGAL_SECTIONS[doc].map((id) => {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { CAP_VARIANTS, type CapVariant } from "../../data/caps";
 import { absoluteUrl, languageAlternates, pageAlternates, siteUrl } from "./site";
-import { breadcrumbJsonLd, organizationJsonLd, productDescription, productJsonLd, serializeJsonLd, websiteJsonLd } from "./jsonLd";
+import { breadcrumbJsonLd, organizationJsonLd, productDescription, productJsonLd, returnPolicyJsonLd, serializeJsonLd, websiteJsonLd } from "./jsonLd";
 import { SUPPORT_EMAIL } from "../legal";
 import { buildSitemap, NONE_LIVE, STATIC_PAGES } from "./sitemap";
 import { ALL_LIVE } from "../launch";
@@ -66,6 +66,18 @@ describe("structured data", () => {
     expect(shipping.shippingDestination.addressCountry).toBe("US");
     expect(shipping.deliveryTime.transitTime).toMatchObject({ minValue: 2, maxValue: 5, unitCode: "DAY" });
     expect((productJsonLd(tee, "en", BASE, NOW) as any).offers).not.toHaveProperty("shippingDetails");
+  });
+
+  it("states the final-sale return policy on every offer and the organization, linking the page", () => {
+    const policy = returnPolicyJsonLd("es", BASE) as any;
+    expect(policy).toEqual({
+      "@type": "MerchantReturnPolicy",
+      applicableCountry: "US",
+      returnPolicyCategory: "https://schema.org/MerchantReturnNotPermitted",
+      merchantReturnLink: `${BASE}/es/returns`,
+    });
+    expect((productJsonLd(cap, "es", BASE, NOW) as any).offers.hasMerchantReturnPolicy).toEqual(policy);
+    expect((organizationJsonLd(BASE) as any).hasMerchantReturnPolicy.merchantReturnLink).toBe(`${BASE}/en/returns`);
   });
 
   it("gives the organization a contact email and names both caps and tees", () => {
