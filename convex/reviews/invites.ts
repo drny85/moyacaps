@@ -3,6 +3,7 @@
  * delivery, asking the Customer to review what they bought. Guests (no clerkUserId at
  * delivery) get none. The invite is skipped, with the reason recorded, when it would be
  * pointless: already sent, Order no longer delivered, email opted out, or nothing left to review.
+ * A failed send is recorded as "send_failed" and not retried.
  */
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
@@ -12,7 +13,12 @@ import { generateUnsubscribeToken, isUnsubscribeToken } from "../notifications/u
 import { REVIEW_INVITE_DELAY_MS, reviewableLines } from "./model";
 import { loadRefunds } from "./shared";
 
-export type InviteSkipReason = "already_sent" | "order_not_delivered" | "opted_out" | "nothing_to_review";
+export type InviteSkipReason =
+  | "already_sent"
+  | "order_not_delivered"
+  | "opted_out"
+  | "nothing_to_review"
+  | "send_failed";
 
 const normalizeEmail = (email: string) => email.trim().toLowerCase();
 
@@ -133,9 +139,8 @@ export const sendReviewInvite = internalAction({
       unsubscribeToken: info.unsubscribeToken,
       itemNames: info.reviewableNames,
     });
-    if (result.success) {
-      await ctx.runMutation(internal.reviews.invites.markInvite, { inviteId, sentAt: Date.now() });
-    }
+    if (!result.success) return await skip("send_failed");
+    await ctx.runMutation(internal.reviews.invites.markInvite, { inviteId, sentAt: Date.now() });
     return null;
   },
 });
