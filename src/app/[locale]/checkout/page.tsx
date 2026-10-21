@@ -60,6 +60,8 @@ export default function CheckoutPage() {
   const freeShipping = totalItems >= freeShippingThresholdUnits;
   const shippingFee = freeShipping ? 0 : flatShippingFeeUsd;
   const total = subtotal + shippingFee;
+  // Only while a Stripe session is being made: after Back or an error the page must stop saying it is connecting.
+  const isWorking = status === "idle" || status === "connecting" || status === "redirecting";
 
   const handleCheckout = async () => {
     if (cart.length === 0 || isSubmittingRef.current) return;
@@ -190,14 +192,15 @@ export default function CheckoutPage() {
                 <span>0880 Good Luck Drop</span>
               </div>
               <h1 className="text-2xl sm:text-3xl font-display font-bold text-zinc-900 dark:text-white">
-                {t("title")}
+                {status === "canceled" ? t("canceledTitle") : t("title")}
               </h1>
               <p className="text-xs text-zinc-500 max-w-xs mx-auto">
-                {status === "redirecting" ? t("redirecting") : t("subtitle")}
+                {status === "canceled" ? t("canceledDesc") : status === "redirecting" ? t("redirecting") : isWorking ? t("subtitle") : null}
               </p>
             </div>
 
             {/* Visual Progress Bar */}
+            {isWorking && (
             <div className="w-full bg-black/10 dark:bg-white/10 h-1.5 rounded-full overflow-hidden">
               <m.div
                 className="bg-gradient-to-r from-moya-red via-moya-violet to-moya-green h-full rounded-full"
@@ -212,6 +215,7 @@ export default function CheckoutPage() {
                 style={{ width: "60%" }}
               />
             </div>
+            )}
 
             {/* Cart Overview */}
             <div className="p-4 rounded-2xl bg-black/[0.03] dark:bg-white/[0.03] border border-black/[0.06] dark:border-white/[0.06] space-y-3">
@@ -272,8 +276,6 @@ export default function CheckoutPage() {
             {/* Status Messages & Manual Trigger */}
             {status === "canceled" ? (
               <div className="p-4 rounded-2xl bg-black/[0.03] dark:bg-white/[0.03] border border-black/[0.06] dark:border-white/[0.06] text-center space-y-3">
-                <p className="font-display font-bold text-xs text-zinc-900 dark:text-white">{t("canceledTitle")}</p>
-                <p className="text-xs text-zinc-600 dark:text-zinc-400">{t("canceledDesc")}</p>
                 <button
                   onClick={() => {
                     isSubmittingRef.current = false;
