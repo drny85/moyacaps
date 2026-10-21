@@ -265,7 +265,9 @@
       "drops": "Drops",
       "settings": "Ajustes",
       "ordersBadge": "{count, plural, one {# orden por empacar} other {# órdenes por empacar}}",
-      "toggle": "Abrir o cerrar el menú"
+      "toggle": "Abrir o cerrar el menú",
+      "reviews": "Reseñas",
+      "reviewsBadge": "{count, plural, one {# reseña por moderar} other {# reseñas por moderar}}"
     },
     "orders": {
       "title": "Órdenes",
@@ -1000,6 +1002,41 @@
       "saved": "Guardado. La portada se actualiza en un momento.",
       "error": "No se pudo guardar. Puede que ese producto se haya archivado; elige otro.",
       "fallbackHint": "El producto elegido ya no está, así que el mosaico muestra el destacado."
+    },
+    "reviews": {
+      "title": "Reseñas",
+      "tabs": {
+        "pending": "Pendientes",
+        "published": "Publicadas",
+        "rejected": "Rechazadas"
+      },
+      "empty": {
+        "pending": "No hay reseñas por moderar.",
+        "published": "Aún no hay reseñas publicadas.",
+        "rejected": "No hay reseñas rechazadas."
+      },
+      "stars": "{rating} de 5 estrellas",
+      "untitled": "Sin título",
+      "by": "Por {name}",
+      "created": "Escrita el {date}",
+      "updated": "Actualizada el {date}",
+      "bought": "Compró: {item}",
+      "deletedAccount": "Cuenta eliminada",
+      "rejectReason": "Motivo: {reason}",
+      "actions": {
+        "publish": "Publicar",
+        "reject": "Rechazar",
+        "unpublish": "Despublicar"
+      },
+      "dialog": {
+        "rejectTitle": "¿Rechazar esta reseña?",
+        "unpublishTitle": "¿Despublicar esta reseña?",
+        "rejectBody": "No aparecerá en la tienda. El motivo es solo para tu registro.",
+        "unpublishBody": "Saldrá de la tienda y pasará a Rechazadas. El motivo es solo para tu registro.",
+        "reasonLabel": "Motivo (opcional)",
+        "counter": "{count} / {max}"
+      },
+      "loadMore": "Cargar más"
     }
   },
   "track": {

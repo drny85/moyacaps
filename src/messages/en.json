@@ -265,7 +265,9 @@
       "drops": "Drops",
       "settings": "Settings",
       "ordersBadge": "{count, plural, one {# order needs packing} other {# orders need packing}}",
-      "toggle": "Toggle admin navigation"
+      "toggle": "Toggle admin navigation",
+      "reviews": "Reviews",
+      "reviewsBadge": "{count, plural, one {# review awaiting moderation} other {# reviews awaiting moderation}}"
     },
     "orders": {
       "title": "Orders",
@@ -1000,6 +1002,41 @@
       "saved": "Saved. The homepage updates in a moment.",
       "error": "Couldn't save. That product may have been archived; pick another.",
       "fallbackHint": "The picked product is gone, so the tile shows the featured one."
+    },
+    "reviews": {
+      "title": "Reviews",
+      "tabs": {
+        "pending": "Pending",
+        "published": "Published",
+        "rejected": "Rejected"
+      },
+      "empty": {
+        "pending": "No reviews waiting for moderation.",
+        "published": "No published reviews yet.",
+        "rejected": "No rejected reviews."
+      },
+      "stars": "{rating} out of 5 stars",
+      "untitled": "No title",
+      "by": "By {name}",
+      "created": "Written {date}",
+      "updated": "Updated {date}",
+      "bought": "Bought: {item}",
+      "deletedAccount": "Deleted account",
+      "rejectReason": "Reason: {reason}",
+      "actions": {
+        "publish": "Publish",
+        "reject": "Reject",
+        "unpublish": "Unpublish"
+      },
+      "dialog": {
+        "rejectTitle": "Reject this review?",
+        "unpublishTitle": "Unpublish this review?",
+        "rejectBody": "It will not appear on the storefront. The reason is for your own records.",
+        "unpublishBody": "It will leave the storefront and move to Rejected. The reason is for your own records.",
+        "reasonLabel": "Reason (optional)",
+        "counter": "{count} / {max}"
+      },
+      "loadMore": "Load more"
     }
   },
   "track": {

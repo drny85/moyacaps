@@ -11,7 +11,8 @@ import { useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
 import { useMinuteClock } from "@/hooks/useMinuteClock";
 import { useSoundPreference } from "@/hooks/useSoundPreference";
-import { ArrowUpRight, Flame, Home, Layers, Menu, PackageCheck, Settings, Store, X } from "lucide-react";
+import { ArrowUpRight, Flame, Home, Layers, Menu, MessageSquareText, PackageCheck, Settings, Store, X } from "lucide-react";
+import { pendingBadgeLabel } from "@/components/admin/reviews/reviewQueueModel";
 
 /**
  * Plays a pleasant, high-contrast two-tone notification chime
@@ -73,6 +74,8 @@ export function AdminConsoleLayout({ children }: { children: React.ReactNode }) 
     isAuthorized ? { clientTime: statsClock } : "skip"
   );
 
+  const pendingReviews = useQuery(api.reviews.admin.getPendingReviewCount, isAuthorized ? {} : "skip");
+
   // Real-time order arrival sound cue watcher
   const lastTimestampRef = useRef<number | null>(null);
   useEffect(() => {
@@ -93,7 +96,7 @@ export function AdminConsoleLayout({ children }: { children: React.ReactNode }) 
   }, [attentionStats?.latestOrderTimestamp, soundEnabled]);
 
   const badgeCount = attentionStats?.totalActionRequired || 0;
-  const navItems = [
+  const navItems: NavItem[] = [
     { label: t("nav.home"), href: "/admin", icon: Home },
     {
       label: t("nav.orders"),
@@ -101,15 +104,33 @@ export function AdminConsoleLayout({ children }: { children: React.ReactNode }) 
       icon: PackageCheck,
       badgeCount,
       isOverdue: (attentionStats?.overduePaid || 0) > 0,
+      badgeTitle: t("nav.ordersBadge", { count: badgeCount }),
     },
     { label: t("nav.products"), href: "/admin/products", icon: Layers },
     { label: t("nav.drops"), href: "/admin/drops", icon: Flame },
+    {
+      label: t("nav.reviews"),
+      href: "/admin/reviews",
+      icon: MessageSquareText,
+      badgeCount: pendingReviews,
+      badgeText: pendingBadgeLabel(pendingReviews) ?? undefined,
+      badgeTitle: t("nav.reviewsBadge", { count: pendingReviews ?? 0 }),
+    },
     { label: t("nav.settings"), href: "/admin/settings", icon: Settings },
   ];
   // Home matches only itself; the others own their sub-routes (an Order's page keeps Orders lit).
   const isActive = (href: string) => (href === "/admin" ? pathname === href : pathname.startsWith(href));
 
-  const navLink = (item: (typeof navItems)[number], onClick?: () => void) => {
+  type NavItem = {
+    label: string;
+    href: string;
+    icon: typeof Home;
+    badgeCount?: number;
+    badgeText?: string;
+    badgeTitle?: string;
+    isOverdue?: boolean;
+  };
+  const navLink = (item: NavItem, onClick?: () => void) => {
     const Icon = item.icon;
     const active = isActive(item.href);
     return (
@@ -128,12 +149,12 @@ export function AdminConsoleLayout({ children }: { children: React.ReactNode }) 
         <span className="truncate">{item.label}</span>
         {item.badgeCount ? (
           <span
-            title={t("nav.ordersBadge", { count: item.badgeCount })}
+            title={item.badgeTitle}
             className={`ml-auto flex items-center justify-center min-w-[20px] h-5 px-1.5 text-[10px] font-mono font-bold rounded-full ${
               active ? "bg-white text-moya-red shadow-xs" : item.isOverdue ? "bg-rose-500 text-white" : "bg-amber-500 text-black"
             }`}
           >
-            {item.badgeCount}
+            {item.badgeText ?? item.badgeCount}
           </span>
         ) : null}
       </Link>
