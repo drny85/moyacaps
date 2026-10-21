@@ -14,7 +14,7 @@ type Status =
   | { kind: "idle" }
   | { kind: "working" }
   | { kind: "error"; key: "forbidden" | "badPhotos" | "modelFailed" | "decode" }
-  | { kind: "result"; outcome: AutofillOutcome };
+  | { kind: "done" };
 
 const ERROR_KEYS = { forbidden: "forbidden", bad_photos: "badPhotos", model_failed: "modelFailed" } as const;
 
@@ -24,8 +24,12 @@ const ERROR_KEYS = { forbidden: "forbidden", bad_photos: "badPhotos", model_fail
  */
 export function PhotoAutofillPanel({
   onProposal,
+  outcome,
 }: {
-  onProposal: (proposal: AutofillProposal, ctx: AutofillCatalogContext) => AutofillOutcome;
+  /** Merges the proposal into the live form (editor reducer), so edits made meanwhile survive. */
+  onProposal: (proposal: AutofillProposal, ctx: AutofillCatalogContext) => void;
+  /** The editor's last autofill outcome, shown once this panel's run is done. */
+  outcome: AutofillOutcome | null;
 }) {
   const t = useTranslations("admin.products.autofill");
   const tProducts = useTranslations("admin.products");
@@ -35,6 +39,12 @@ export function PhotoAutofillPanel({
 
   const previews = useMemo(() => files.map((f) => URL.createObjectURL(f)), [files]);
   useEffect(() => () => previews.forEach((url) => URL.revokeObjectURL(url)), [previews]);
+
+  const done = status.kind === "done" ? outcome : null;
+  // An applied run clears the photos; an unrecognized one keeps them so the Administrator can swap one.
+  useEffect(() => {
+    if (done?.kind === "applied") setFiles([]);
+  }, [done]);
 
   const check = checkPhotos(files);
   const working = status.kind === "working";
@@ -64,9 +74,8 @@ export function PhotoAutofillPanel({
         setStatus({ kind: "error", key: ERROR_KEYS[response.error] });
         return;
       }
-      const outcome = onProposal(response.proposal, response.context);
-      setStatus({ kind: "result", outcome });
-      if (outcome.kind === "applied") setFiles([]);
+      onProposal(response.proposal, response.context);
+      setStatus({ kind: "done" });
     } catch {
       setStatus({ kind: "error", key: "modelFailed" });
     }
@@ -138,21 +147,21 @@ export function PhotoAutofillPanel({
 
       <div role="status" aria-live="polite" className="space-y-1 text-[11px]">
         {status.kind === "error" && <p className="text-red-600 dark:text-red-400">{t(`errors.${status.key}`)}</p>}
-        {status.kind === "result" && status.outcome.kind === "unrecognized" && (
+        {done?.kind === "unrecognized" && (
           <>
             <p className="text-amber-700 dark:text-amber-400">{t("unrecognized")}</p>
-            {status.outcome.note && <p className="text-zinc-500">{status.outcome.note}</p>}
+            {done.note && <p className="text-zinc-500">{done.note}</p>}
           </>
         )}
-        {status.kind === "result" && status.outcome.kind === "applied" && (
+        {done?.kind === "applied" && (
           <>
-            <p className="text-zinc-700 dark:text-zinc-300">{t("done", { count: Object.keys(status.outcome.filled).length })}</p>
-            {status.outcome.categoryConflict && (
+            <p className="text-zinc-700 dark:text-zinc-300">{t("done", { count: Object.keys(done.filled).length })}</p>
+            {done.categoryConflict && (
               <p className="text-amber-700 dark:text-amber-400">
-                {t("categoryConflict", { category: tProducts(`categories.${status.outcome.categoryConflict}`) })}
+                {t("categoryConflict", { category: tProducts(`categories.${done.categoryConflict}`) })}
               </p>
             )}
-            {status.outcome.note && <p className="text-zinc-500">{status.outcome.note}</p>}
+            {done.note && <p className="text-zinc-500">{done.note}</p>}
           </>
         )}
       </div>

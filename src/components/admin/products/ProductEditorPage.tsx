@@ -155,7 +155,7 @@ export function ProductEditorPage({ target }: { target: EditorTarget }) {
             <ProductImagesPanel variantId={liveRow.variantId} colorways={liveRow.colorways} defaultColorway={liveRow.defaultColorway} locale={locale} />
           ) : (
             <>
-              {isNew && <PhotoAutofillPanel onProposal={editor.applyAutofillProposal} />}
+              {isNew && <PhotoAutofillPanel onProposal={editor.applyAutofillProposal} outcome={editor.lastAutofill} />}
               <div className={`${sectionClass} flex flex-col justify-center gap-4 aspect-[4/5] max-h-[28rem]`}>
                 <div className="flex flex-col items-center text-center gap-2">
                   <ImagePlus className="w-10 h-10 text-zinc-400" />

@@ -5,14 +5,13 @@ import { useMutation } from "convex/react";
 import { ConvexError } from "convex/values";
 import { api } from "@convex/_generated/api";
 import type { Category } from "@convex/catalog/rules";
-import { formToCreateArgs, formToPatch, isFormDirty, validateForm, withCategory, withNameEn } from "@/lib/admin/productForm";
+import { formToCreateArgs, formToPatch, isFormDirty, validateForm, withNameEn } from "@/lib/admin/productForm";
 import type { ProductFormState, ResolvedVariant } from "@/lib/admin/productForm";
 import { editorFeedback, NO_FEEDBACK, splitFieldErrors } from "@/lib/admin/editorErrors";
 import type { EditorFeedback } from "@/lib/admin/editorErrors";
 import { canSave, editorReducer, initialEditorState, reapplyField } from "@/lib/admin/editorSession";
 import type { EditorState } from "@/lib/admin/editorSession";
-import { aiFilledFields, applyAutofill } from "@/lib/admin/photoAutofill/merge";
-import type { AutofillFilled, AutofillOutcome } from "@/lib/admin/photoAutofill/merge";
+import { aiFilledFields } from "@/lib/admin/photoAutofill/merge";
 import type { AutofillCatalogContext } from "@/lib/admin/photoAutofill/context";
 import type { AutofillProposal } from "@/lib/admin/photoAutofill/schema";
 import type { EditorDropLink } from "./useProductActions";
@@ -44,9 +43,6 @@ export function useProductEditor(target: EditorTarget, rows: ResolvedVariant[] |
   const [saving, setSaving] = useState(false);
   const [pendingStock, setPendingStock] = useState<StockChange | null>(null);
   const [restoring, setRestoring] = useState(false);
-  // Photo Autofill: the values it put in the form, and whether the Administrator picked the category in the form.
-  const [autofilled, setAutofilled] = useState<AutofillFilled>({});
-  const [categoryTouched, setCategoryTouched] = useState(false);
 
   const targetRow = target.mode === "edit" ? rows?.find((r) => r.variantId === target.variantId) : undefined;
   const liveRow = session?.mode === "edit" ? rows?.find((r) => r.variantId === session.variantId) : undefined;
@@ -73,28 +69,15 @@ export function useProductEditor(target: EditorTarget, rows: ResolvedVariant[] |
 
   const edit = useCallback((fn: (f: ProductFormState) => ProductFormState) => dispatch({ type: "edit", fn }), []);
   const update = useCallback((changes: Partial<ProductFormState>) => edit((f) => ({ ...f, ...changes })), [edit]);
-  const setCategory = useCallback(
-    (category: Category) => {
-      setCategoryTouched(true);
-      edit((f) => withCategory(f, category));
-    },
-    [edit]
-  );
+  const setCategory = useCallback((category: Category) => dispatch({ type: "chooseCategory", category }), []);
   const setNameEn = useCallback((nameEn: string) => edit((f) => withNameEn(f, nameEn, isNew)), [edit, isNew]);
 
-  /** Fill the empty fields from a Photo Autofill proposal; nothing is saved. */
+  /** Fill the empty fields from a Photo Autofill proposal; nothing is saved. Merged against the live form. */
   const applyAutofillProposal = useCallback(
-    (proposal: AutofillProposal, ctx: AutofillCatalogContext): AutofillOutcome => {
-      const outcome = applyAutofill(form, proposal, ctx, categoryTouched);
-      if (outcome.kind === "applied") {
-        edit(() => outcome.form);
-        setAutofilled((prev) => ({ ...prev, ...outcome.filled }));
-      }
-      return outcome;
-    },
-    [form, categoryTouched, edit]
+    (proposal: AutofillProposal, ctx: AutofillCatalogContext) => dispatch({ type: "autofill", proposal, ctx }),
+    []
   );
-  const aiFilled = useMemo(() => aiFilledFields(form, autofilled), [form, autofilled]);
+  const aiFilled = useMemo(() => aiFilledFields(form, state.autofill.filled), [form, state.autofill.filled]);
 
   const reloadLatest = useCallback(() => {
     if (!liveRow) return;
@@ -225,6 +208,7 @@ export function useProductEditor(target: EditorTarget, rows: ResolvedVariant[] |
     setNameEn,
     applyAutofillProposal,
     aiFilled,
+    lastAutofill: state.autofill.last,
     reloadLatest,
     reapply,
     dismissUnsaved: () => dispatch({ type: "dismissUnsaved" }),

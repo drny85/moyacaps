@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checkPhotos, fitWithin } from "./photos";
+import { checkPhotos, fitWithin, paintForJpeg } from "./photos";
 
 const jpeg = { type: "image/jpeg" };
 
@@ -28,5 +28,20 @@ describe("checkPhotos", () => {
   });
   it("accepts HEIC and leaves decoding to the browser", () => {
     expect(checkPhotos([{ type: "image/heic" }])).toEqual({ ok: true });
+  });
+});
+
+describe("paintForJpeg", () => {
+  it("paints a white background before the photo so transparent cutouts are not read as black", () => {
+    const calls: string[] = [];
+    const ctx = {
+      set fillStyle(v: string) {
+        calls.push(`fill:${v}`);
+      },
+      fillRect: (...a: number[]) => calls.push(`rect:${a.join(",")}`),
+      drawImage: (_img: unknown, ...a: number[]) => calls.push(`draw:${a.join(",")}`),
+    };
+    paintForJpeg(ctx, {} as CanvasImageSource, 100, 80);
+    expect(calls).toEqual(["fill:#ffffff", "rect:0,0,100,80", "draw:0,0,100,80"]);
   });
 });
