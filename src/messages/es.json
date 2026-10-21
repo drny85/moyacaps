@@ -313,13 +313,29 @@
       "noOrdersFound": "No se encontraron órdenes con este filtro."
     },
     "settings": {
-      "title": "Reglas de envío",
-      "subtitle": "Tarifa fija y mínimo para envío gratis. Los clientes las ven en el carrito y el pago; el servidor las aplica a cada pedido.",
-      "flatFee": "Tarifa fija de envío (USD)",
-      "threshold": "Envío gratis desde (unidades)",
-      "save": "Guardar reglas de envío",
-      "saved": "Reglas de envío guardadas.",
-      "saveFailed": "No se pudo guardar. Inténtalo de nuevo."
+      "title": "Ajustes",
+      "shipping": {
+        "title": "Reglas de envío",
+        "subtitle": "Tarifa fija y mínimo para envío gratis. Los clientes las ven en el carrito y el pago; el servidor las aplica a cada pedido.",
+        "flatFee": "Tarifa fija de envío (USD)",
+        "threshold": "Envío gratis desde (unidades)",
+        "save": "Guardar reglas de envío",
+        "saved": "Reglas de envío guardadas.",
+        "saveFailed": "No se pudo guardar. Inténtalo de nuevo."
+      },
+      "alerts": {
+        "title": "Alertas",
+        "subtitle": "Las órdenes nuevas, disputas, órdenes fuera del territorio y reembolsos fallidos llegan por correo aquí.",
+        "recipient": "Los correos de alerta van a",
+        "fallback": "ADMIN_NOTIFICATION_EMAIL no está definida en el despliegue de Convex, así que las alertas van al Administrador principal. Defínela ahí para cambiar la bandeja.",
+        "chime": "Sonar un aviso cuando llegue una orden nueva (este navegador)"
+      },
+      "account": {
+        "title": "Cuenta",
+        "language": "Idioma",
+        "theme": "Tema",
+        "signedIn": "Sesión de"
+      }
     },
     "products": {
       "variantId": "ID del Producto (slug)",

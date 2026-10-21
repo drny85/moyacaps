@@ -313,13 +313,29 @@
       "noOrdersFound": "No orders found matching this filter."
     },
     "settings": {
-      "title": "Shipping rules",
-      "subtitle": "Flat fee and free-shipping threshold. Customers see these in the cart and checkout; the server applies them to every order.",
-      "flatFee": "Flat shipping fee (USD)",
-      "threshold": "Free shipping at (units)",
-      "save": "Save shipping rules",
-      "saved": "Shipping rules saved.",
-      "saveFailed": "Could not save. Please try again."
+      "title": "Settings",
+      "shipping": {
+        "title": "Shipping rules",
+        "subtitle": "Flat fee and free-shipping threshold. Customers see these in the cart and checkout; the server applies them to every order.",
+        "flatFee": "Flat shipping fee (USD)",
+        "threshold": "Free shipping at (units)",
+        "save": "Save shipping rules",
+        "saved": "Shipping rules saved.",
+        "saveFailed": "Could not save. Please try again."
+      },
+      "alerts": {
+        "title": "Alerts",
+        "subtitle": "New orders, disputes, out-of-territory orders and failed refunds are emailed here.",
+        "recipient": "Alert emails go to",
+        "fallback": "ADMIN_NOTIFICATION_EMAIL is not set on the Convex deployment, so alerts go to the primary Administrator. Set it there to change the inbox.",
+        "chime": "Play a chime when a new order arrives (this browser)"
+      },
+      "account": {
+        "title": "Account",
+        "language": "Language",
+        "theme": "Theme",
+        "signedIn": "Signed in as"
+      }
     },
     "products": {
       "variantId": "Product ID (slug)",
