@@ -530,7 +530,7 @@ export function ShippingLabelModal({
                     type="text"
                     required
                     maxLength={10}
-                    placeholder="10456"
+                    placeholder="10001"
                     value={addressForm.postalCode}
                     onChange={(e) => setAddressForm({ ...addressForm, postalCode: e.target.value })}
                     className="w-full py-1.5 px-2.5 rounded-lg bg-zinc-950 border border-zinc-700 text-white text-xs font-mono"

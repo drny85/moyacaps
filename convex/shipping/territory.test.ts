@@ -20,7 +20,7 @@ describe("checkFulfillmentTerritory", () => {
   });
 
   it("accepts the 50 States and DC", () => {
-    expect(at("NY", "10456")).toEqual({ inTerritory: true, state: "NY" });
+    expect(at("NY", "10001")).toEqual({ inTerritory: true, state: "NY" });
     expect(at("DC", "20001")).toEqual({ inTerritory: true, state: "DC" });
     expect(at("HI", "96813").inTerritory).toBe(true);
     expect(at("AK", "99501").inTerritory).toBe(true);
