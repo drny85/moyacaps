@@ -86,7 +86,7 @@ export const submitReview = mutation({
       title: input.title,
       body: input.body,
       locale: args.locale,
-      displayName: reviewerDisplayName(user?.name ?? eligible.order.customerName),
+      displayName: reviewerDisplayName(user?.name?.trim() || eligible.order.customerName),
       boughtColorway: eligible.line.colorway,
       boughtSize: eligible.line.size,
       status: "pending" as const,

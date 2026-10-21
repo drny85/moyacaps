@@ -133,6 +133,16 @@ describe("submitReview", () => {
     expect((await tt.run(async (ctx) => ctx.db.get(id)))?.displayName).toBe("Anita R.");
   });
 
+  it("falls back to the Order customerName when the users row has an empty name", async () => {
+    const tt = t();
+    await seedOrder(tt, { customerName: "Ana Lopez" });
+    await tt.run(async (ctx) =>
+      ctx.db.insert("users", { clerkId: ANA, email: "a@x.com", name: "", role: "customer", createdAt: 1 })
+    );
+    const id = await submit(asAna(tt));
+    expect((await tt.run(async (ctx) => ctx.db.get(id)))?.displayName).toBe("Ana L.");
+  });
+
   it("edit of a published review returns it to pending and drops stats", async () => {
     const tt = t();
     await seedOrder(tt);
