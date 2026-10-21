@@ -46,7 +46,26 @@ async function review(tt: TT, subject: string, variantId: string, rating = 5, n 
 
 const ADMIN_PAGE = { numItems: 20, cursor: null };
 
+const revalidations = async (tt: TT) =>
+  (await tt.run(async (ctx) => ctx.db.system.query("_scheduled_functions").collect())).filter((j) =>
+    j.name.endsWith("revalidateStorefront")
+  ).length;
+
 describe("moderation", () => {
+  it("revalidates the storefront only when public reviews change", async () => {
+    const tt = t();
+    const admin = asAdmin(tt);
+    const pending = await review(tt, "u1", "V1");
+    await admin.mutation(api.reviews.admin.rejectReview, { reviewId: pending });
+    expect(await revalidations(tt)).toBe(0);
+
+    const id = await review(tt, "u2", "V1", 4, 2);
+    await admin.mutation(api.reviews.admin.publishReview, { reviewId: id });
+    expect(await revalidations(tt)).toBe(1);
+    await admin.mutation(api.reviews.admin.rejectReview, { reviewId: id });
+    expect(await revalidations(tt)).toBe(2);
+  });
+
   it("non-admin cannot publish", async () => {
     const tt = t();
     const id = await review(tt, "u1", "V1");

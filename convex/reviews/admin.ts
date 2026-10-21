@@ -1,6 +1,7 @@
 /** Administrator review moderation (ADR 0028): publish, reject, and the moderation queue. */
 import { paginationOptsValidator, paginationResultValidator } from "convex/server";
 import { ConvexError, v } from "convex/values";
+import { internal } from "../_generated/api";
 import { mutation, query } from "../_generated/server";
 import { requireAdmin } from "../lib/auth";
 import { REJECT_REASON_MAX } from "./model";
@@ -61,6 +62,8 @@ export const publishReview = mutation({
       updatedAt: Date.now(),
     });
     await applyStatsChange(ctx, prev.variantId, prev, await ctx.db.get(prev._id));
+    // The product page and its JSON-LD show published reviews: rebuild now, not at the ISR tick.
+    await ctx.scheduler.runAfter(0, internal.settings.revalidate.revalidateStorefront, {});
     return null;
   },
 });
@@ -84,6 +87,10 @@ export const rejectReview = mutation({
       updatedAt: Date.now(),
     });
     await applyStatsChange(ctx, prev.variantId, prev, await ctx.db.get(prev._id));
+    if (prev.status === "published" && prev.hiddenAt === undefined) {
+      // Unpublishing: take the text off the static product page now, not at the ISR tick.
+      await ctx.scheduler.runAfter(0, internal.settings.revalidate.revalidateStorefront, {});
+    }
     return null;
   },
 });
