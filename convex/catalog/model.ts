@@ -125,6 +125,37 @@ export function isPurchaseBlockedByDrop(variant: DropFields, now: number): boole
   );
 }
 
+/**
+ * Fields written when a drop goes live, by the admin's Release now and by the scheduled
+ * release alike. `dropDate` moves just behind `now` so the storefront countdown is over.
+ * `keepBadge` keeps the drop's badge copy; otherwise it becomes the "Released Drop" badge.
+ */
+export function dropReleasePatch(
+  variant: Pick<Doc<"variants">, "dropBadgeTextEn" | "dropBadgeTextEs">,
+  now: number,
+  keepBadge: boolean
+): Pick<Doc<"variants">, "dropDate" | "dropStatus" | "dropBadgeTextEn" | "dropBadgeTextEs"> {
+  return {
+    dropDate: now - 1000,
+    dropStatus: "live",
+    dropBadgeTextEn: keepBadge ? variant.dropBadgeTextEn : "Released Drop",
+    dropBadgeTextEs: keepBadge ? variant.dropBadgeTextEs : "Drop Lanzado",
+  };
+}
+
+/**
+ * Whether a release job scheduled for `jobDropDate` still applies: the drop is still scheduled
+ * for that very date. A job left over from a reschedule or a cancelled drop must do nothing.
+ */
+export function isReleaseJobCurrent(variant: DropFields, jobDropDate: number): boolean {
+  return variant.isDrop === true && variant.dropStatus === "scheduled" && variant.dropDate === jobDropDate;
+}
+
+/** A scheduled drop whose date has already passed (release backfill, catalog/migrations.ts). */
+export function isOverdueScheduledDrop(variant: DropFields, now: number): boolean {
+  return variant.isDrop === true && variant.dropStatus === "scheduled" && typeof variant.dropDate === "number" && variant.dropDate <= now;
+}
+
 /** Toggle visibility, or set it outright when the Administrator passes a value. */
 export function nextAvailability(current: boolean | undefined, requested: boolean | undefined): boolean {
   // A row without the flag counts as hidden (ADR 0022), so toggling it shows it.

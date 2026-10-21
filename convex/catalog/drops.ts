@@ -4,14 +4,16 @@
  */
 import { query, mutation, internalMutation } from "../_generated/server";
 import type { MutationCtx } from "../_generated/server";
+import type { Doc, Id } from "../_generated/dataModel";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import schema from "../schema";
 import { requireAdmin } from "../lib/auth";
-import { computedDropStatus, hasDropHistory, isCustomerVisible, isUpcomingDrop } from "./model";
+import { computedDropStatus, dropReleasePatch, hasDropHistory, isCustomerVisible, isOverdueScheduledDrop, isReleaseJobCurrent, isUpcomingDrop } from "./model";
 import { getCategoryLaunches } from "../settings/launch";
 import { generateUnsubscribeToken } from "../notifications/unsubscribe";
 import { actorEmail } from "./audit";
+import { getVariant } from "./inventory";
 import { countDropAlerts, listCatalogVariants, patchVariantAudited, requireActiveVariant, requireVariant, requireVersion, resolveProduct } from "./shared";
 import { adminDropRow, dropStatusValidator, dropSubscriberRow, variantWithSubscribers } from "./validators";
 
@@ -23,6 +25,63 @@ const MAX_SUBSCRIBERS_LISTED = 1000;
 
 /** Drop alerts deleted per mutation; larger waitlists continue in a scheduled batch. */
 const ALERT_DELETE_BATCH = 500;
+
+/** Actor recorded on the audit event of a release the scheduler performed. */
+export const SCHEDULER_ACTOR = "system:drop-scheduler";
+
+/**
+ * Release job lifecycle. A drop scheduled for `dropDate` carries one `_scheduled_functions`
+ * job (`dropReleaseJobId`) that runs `releaseScheduledDrop` at that instant. Any change to the
+ * drop (reschedule, release now, cancel, delete) cancels the job first; rescheduling makes a
+ * new one. The job also re-checks the row when it runs (`isReleaseJobCurrent`), so a job that
+ * slipped past a cancel is still a no-op. `dropReleaseJobId` is bookkeeping, patched outside
+ * the audit trail: it never appears in the product history.
+ */
+async function cancelReleaseJob(ctx: MutationCtx, variant: Doc<"variants">, runningJobId?: Id<"_scheduled_functions">): Promise<void> {
+  if (variant.dropReleaseJobId === undefined) return;
+  // The release job itself is already running: forget it, never cancel it.
+  if (variant.dropReleaseJobId !== runningJobId) await ctx.scheduler.cancel(variant.dropReleaseJobId);
+  await ctx.db.patch("variants", variant._id, { dropReleaseJobId: undefined });
+}
+
+/** Replace the variant's release job with one firing at `dropDate`. */
+async function scheduleReleaseJob(ctx: MutationCtx, variant: Doc<"variants">, dropDate: number): Promise<void> {
+  await cancelReleaseJob(ctx, variant);
+  const jobId = await ctx.scheduler.runAt(dropDate, internal.catalog.drops.releaseScheduledDrop, {
+    variantId: variant.variantId,
+    dropDate,
+  });
+  await ctx.db.patch("variants", variant._id, { dropReleaseJobId: jobId });
+}
+
+/**
+ * Put a drop on sale: the admin's Release now and the scheduled release both come here, so
+ * both write the same fields and the same `drop_changed` event. Any pending job is cancelled.
+ */
+async function releaseDrop(
+  ctx: MutationCtx,
+  variant: Doc<"variants">,
+  keepBadge: boolean,
+  actor: string,
+  runningJobId?: Id<"_scheduled_functions">
+): Promise<void> {
+  await cancelReleaseJob(ctx, variant, runningJobId);
+  await patchVariantAudited(ctx, variant, dropReleasePatch(variant, Date.now(), keepBadge), "drop_changed", actor);
+}
+
+/**
+ * Release every scheduled drop in `variants` whose date has passed (catalog/migrations.ts
+ * backfill). Returns the released variant ids. Keeps the badge, like the scheduled release.
+ */
+export async function releaseOverdue(ctx: MutationCtx, variants: Doc<"variants">[], now: number, actor: string): Promise<string[]> {
+  const released: string[] = [];
+  for (const variant of variants) {
+    if (!isOverdueScheduledDrop(variant, now)) continue;
+    await releaseDrop(ctx, variant, true, actor);
+    released.push(variant.variantId);
+  }
+  return released;
+}
 
 /** Delete one batch of a variant's alerts; true when more may remain. */
 export async function deleteAlertBatch(ctx: MutationCtx, variantId: string): Promise<boolean> {
@@ -132,13 +191,19 @@ export const updateVariantDropStatus = mutation({
     if (args.expectedUpdatedAt !== undefined) requireVersion(variant, args.expectedUpdatedAt);
 
     const nextStatus: "scheduled" | "live" | "archived" = args.dropStatus || (args.isDrop ? "scheduled" : "archived");
+    const dropDate = args.isDrop ? (args.dropDate || Date.now() + 86400000 * 2) : undefined;
 
+    if (args.isDrop && nextStatus === "scheduled" && dropDate !== undefined) {
+      await scheduleReleaseJob(ctx, variant, dropDate);
+    } else {
+      await cancelReleaseJob(ctx, variant);
+    }
     const updatedAt = await patchVariantAudited(
       ctx,
       variant,
       {
         isDrop: args.isDrop,
-        dropDate: args.isDrop ? (args.dropDate || Date.now() + 86400000 * 2) : undefined,
+        dropDate,
         dropBadgeTextEn: args.dropBadgeTextEn,
         dropBadgeTextEs: args.dropBadgeTextEs,
         dropStatus: nextStatus,
@@ -163,6 +228,7 @@ export const scheduleDrop = mutation({
     const actor = actorEmail(await requireAdmin(ctx));
     const variant = await requireActiveVariant(ctx, args.variantId);
 
+    await scheduleReleaseJob(ctx, variant, args.dropDate);
     await patchVariantAudited(
       ctx,
       variant,
@@ -191,20 +257,29 @@ export const releaseDropNow = mutation({
     const actor = actorEmail(await requireAdmin(ctx));
     const variant = await requireActiveVariant(ctx, args.variantId);
 
-    await patchVariantAudited(
-      ctx,
-      variant,
-      {
-        dropDate: Date.now() - 1000,
-        dropStatus: "live",
-        dropBadgeTextEn: args.keepBadge ? variant.dropBadgeTextEn : "Released Drop",
-        dropBadgeTextEs: args.keepBadge ? variant.dropBadgeTextEs : "Drop Lanzado",
-      },
-      "drop_changed",
-      actor
-    );
+    await releaseDrop(ctx, variant, args.keepBadge === true, actor);
 
     return { success: true, variantId: args.variantId, dropStatus: "live" as const };
+  },
+});
+
+/**
+ * INTERNAL: the release job (scheduled by scheduleDrop / postponeDrop / updateVariantDropStatus).
+ * Releases the drop only while it is still scheduled for this job's `dropDate`; a job left
+ * over from a reschedule, a cancel or a deleted product does nothing. Keeps the badge copy
+ * the Administrator wrote (the admin button's `keepBadge`): the automatic release is the
+ * planned one, so the badge still fits.
+ */
+export const releaseScheduledDrop = internalMutation({
+  args: { variantId: v.string(), dropDate: v.number() },
+  returns: v.object({ released: v.boolean() }),
+  handler: async (ctx, args) => {
+    const variant = await getVariant(ctx, args.variantId);
+    if (!variant || variant.archivedAt !== undefined || !isReleaseJobCurrent(variant, args.dropDate)) {
+      return { released: false };
+    }
+    await releaseDrop(ctx, variant, true, SCHEDULER_ACTOR, variant.dropReleaseJobId);
+    return { released: true };
   },
 });
 
@@ -218,6 +293,7 @@ export const postponeDrop = mutation({
     const actor = actorEmail(await requireAdmin(ctx));
     const variant = await requireActiveVariant(ctx, args.variantId);
 
+    await scheduleReleaseJob(ctx, variant, args.newDropDate);
     await patchVariantAudited(
       ctx,
       variant,
@@ -242,6 +318,7 @@ export const cancelDrop = mutation({
     const actor = actorEmail(await requireAdmin(ctx));
     const variant = await requireVariant(ctx, args.variantId);
 
+    await cancelReleaseJob(ctx, variant);
     await patchVariantAudited(
       ctx,
       variant,
@@ -271,6 +348,7 @@ export const deleteDrop = mutation({
     const variant = await requireVariant(ctx, args.variantId);
 
     // Completely clear all drop attributes from the variant
+    await cancelReleaseJob(ctx, variant);
     await patchVariantAudited(
       ctx,
       variant,

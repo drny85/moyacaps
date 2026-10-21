@@ -4,6 +4,9 @@ import type { Doc, Id } from "../_generated/dataModel";
 import {
   computedDropStatus,
   distributeStock,
+  dropReleasePatch,
+  isOverdueScheduledDrop,
+  isReleaseJobCurrent,
   filterCatalogVariants,
   hasDropHistory,
   isPurchaseBlockedByDrop,
@@ -180,6 +183,33 @@ describe("drop rules", () => {
     expect(isPurchaseBlockedByDrop({ ...scheduled, dropStatus: "live" }, NOW)).toBe(false);
     expect(isPurchaseBlockedByDrop({ isDrop: true, dropDate: NOW - HOUR }, NOW)).toBe(false);
     expect(isPurchaseBlockedByDrop({}, NOW)).toBe(false);
+  });
+
+  it("dropReleasePatch: goes live just behind now; keeps or replaces the badge", () => {
+    const badge = { dropBadgeTextEn: "Gold Rush", dropBadgeTextEs: "Fiebre del Oro" };
+    expect(dropReleasePatch(badge, NOW, true)).toEqual({ dropDate: NOW - 1000, dropStatus: "live", ...badge });
+    expect(dropReleasePatch(badge, NOW, false)).toEqual({
+      dropDate: NOW - 1000,
+      dropStatus: "live",
+      dropBadgeTextEn: "Released Drop",
+      dropBadgeTextEs: "Drop Lanzado",
+    });
+  });
+
+  it("isReleaseJobCurrent: only a drop still scheduled for the job's own date", () => {
+    expect(isReleaseJobCurrent(scheduled, scheduled.dropDate)).toBe(true);
+    expect(isReleaseJobCurrent(scheduled, scheduled.dropDate + 1)).toBe(false);
+    expect(isReleaseJobCurrent({ ...scheduled, dropStatus: "live" }, scheduled.dropDate)).toBe(false);
+    expect(isReleaseJobCurrent({ ...scheduled, isDrop: false, dropStatus: "archived" }, scheduled.dropDate)).toBe(false);
+    expect(isReleaseJobCurrent({ isDrop: true, dropDate: scheduled.dropDate }, scheduled.dropDate)).toBe(false);
+  });
+
+  it("isOverdueScheduledDrop: scheduled with a date at or before now", () => {
+    expect(isOverdueScheduledDrop({ ...scheduled, dropDate: NOW - HOUR }, NOW)).toBe(true);
+    expect(isOverdueScheduledDrop({ ...scheduled, dropDate: NOW }, NOW)).toBe(true);
+    expect(isOverdueScheduledDrop(scheduled, NOW)).toBe(false);
+    expect(isOverdueScheduledDrop({ ...scheduled, dropDate: NOW - HOUR, dropStatus: "live" }, NOW)).toBe(false);
+    expect(isOverdueScheduledDrop({ isDrop: true, dropStatus: "scheduled" }, NOW)).toBe(false);
   });
 });
 

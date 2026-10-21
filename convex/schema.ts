@@ -43,6 +43,8 @@ export default defineSchema({
     dropBadgeTextEn: v.optional(v.string()),
     dropBadgeTextEs: v.optional(v.string()),
     dropStatus: v.optional(v.union(v.literal("scheduled"), v.literal("live"), v.literal("archived"))),
+    // The scheduled function that releases this drop at `dropDate` (catalog/drops.ts); set while `dropStatus` is "scheduled".
+    dropReleaseJobId: v.optional(v.id("_scheduled_functions")),
     // 4:5 Catalog Shot for grids and cards (ADR 0016). Tees carry one per colorway instead.
     catalogShot: v.optional(v.string()),
     // ── Heavyweight Tee fields (ADR 0015). For tees `stock` is the sum of the variant's SKUs. ──
