@@ -142,7 +142,7 @@ async function testExtraction() {
       }
     }
 
-    const outPath = path.join(process.cwd(), "public", "caps", `test-${name}.png`);
+    const outPath = path.join(process.cwd(), "assets", "source", "caps", `test-${name}.png`);
     await sharp(pixels, {
       raw: { width, height, channels: 4 },
     })

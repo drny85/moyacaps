@@ -1,5 +1,5 @@
 /**
- * Moves the product images in public/ into Convex storage as `productImages` rows (ADR 0021).
+ * Moves the product images in assets/source/ (formerly public/) into Convex storage as `productImages` rows (ADR 0021).
  * Idempotent: re-running uploads nothing new, and never overwrites an Administrator's image.
  *
  *   bun run migrate:product-images --dev|--prod [--dry-run] [--variants-file <legacyImageFields.json>]
@@ -18,7 +18,7 @@ import { ALL_CAPS_MANIFEST_MAP } from "../src/data/capsManifest";
 import { parseMigrateImagesArgs } from "./lib/migrateImagesArgs";
 import { collectImageSources, type ImageSource, type VariantInput } from "./lib/productImageSources";
 
-const PUBLIC_DIR = path.resolve(process.cwd(), "public");
+const PUBLIC_DIR = path.resolve(process.cwd(), "assets", "source");
 
 const MIME: Record<string, string> = { ".webp": "image/webp", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg" };
 
