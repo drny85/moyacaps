@@ -490,6 +490,8 @@ export const purgeVariant = internalMutation({
 
     await deleteAllProductImages(ctx, variant.variantId);
 
+    // A pending release job would find no row and do nothing; cancel it anyway.
+    if (variant.dropReleaseJobId !== undefined) await ctx.scheduler.cancel(variant.dropReleaseJobId);
     await ctx.db.delete("variants", variant._id);
     // The legacy upload may also back a productImages row (the image migration reuses files), so it is reference-checked.
     if (variant.storageId) await scheduleFileDelete(ctx, variant.storageId);

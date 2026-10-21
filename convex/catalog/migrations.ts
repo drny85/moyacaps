@@ -12,6 +12,8 @@ import { SEED_PRODUCT, SEED_VARIANTS } from "./data";
 import { distributeStock, renamedLifestyleShot as renamed, taxCodeBackfill, teeFieldsPatch, TEE_SIZES, variantCategory } from "./model";
 import type { Doc, Id } from "../_generated/dataModel";
 import { deleteStorageQuietly, MAX_CATALOG_VARIANTS } from "./shared";
+import { isOverdueScheduledDrop } from "./model";
+import { releaseOverdue } from "./drops";
 import { isStorageIdReferenced, legacyVariantStorageIds } from "./images/references";
 
 /** Rows of each table one `seedAll` wipes; past it the seed refuses (and writes nothing) rather than wipe part of the catalog. */
@@ -262,5 +264,31 @@ export const backfillTaxCodes = internalMutation({
       patched++;
     }
     return { patched, needsReview, isDone: variants.length < MAX_CATALOG_VARIANTS };
+  },
+});
+
+/** Actor recorded on the audit event of a release this backfill performed. */
+export const RELEASE_BACKFILL_ACTOR = "system:release-overdue-drops";
+
+/**
+ * One-shot backfill for the scheduled release (catalog/drops.ts): drops scheduled before the
+ * release job existed have no job, so one whose `dropDate` has already passed stays blocked
+ * until an Administrator presses Release now. This releases every scheduled drop whose date is
+ * past, with the same patch and audit event as the scheduled release (badge kept). Idempotent;
+ * `dryRun` only reports what would be released. Run once after the deploy that ships the job:
+ *   npx convex run catalog/migrations:releaseOverdueDrops '{"dryRun": true}'
+ *   npx convex run catalog/migrations:releaseOverdueDrops
+ */
+export const releaseOverdueDrops = internalMutation({
+  args: { dryRun: v.optional(v.boolean()) },
+  returns: v.object({ dryRun: v.boolean(), count: v.number(), variantIds: v.array(v.string()), isDone: v.boolean() }),
+  handler: async (ctx, args) => {
+    const dryRun = args.dryRun === true;
+    const variants = await ctx.db.query("variants").take(MAX_CATALOG_VARIANTS);
+    const now = Date.now();
+    const variantIds = dryRun
+      ? variants.filter((variant) => isOverdueScheduledDrop(variant, now)).map((variant) => variant.variantId)
+      : await releaseOverdue(ctx, variants, now, RELEASE_BACKFILL_ACTOR);
+    return { dryRun, count: variantIds.length, variantIds, isDone: variants.length < MAX_CATALOG_VARIANTS };
   },
 });
