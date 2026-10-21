@@ -20,3 +20,4 @@ Photo Autofill proposes a new Product's form values from photos (CONTEXT.md). It
 
 - Photo Autofill does not work where the Next.js app is not running on Vercel or lacks an OIDC token or `AI_GATEWAY_API_KEY`; the form still works by hand.
 - Spend shows in the AI Gateway dashboard; a Gateway budget is the only hard ceiling.
+- The AI Gateway free tier refuses every vision model tried (Sonnet 5.5, Haiku 5.5, Gemini 3 Flash): Photo Autofill needs paid Gateway credits on the Vercel team. Until then it answers with its "couldn't read the photos" error and the form works by hand.
