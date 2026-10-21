@@ -254,24 +254,15 @@
   },
   "admin": {
     "title": "Sede Central Good Luck",
-    "subtitle": "Operaciones, Inventario y Despachos",
-    "backToStore": "Tienda en Vivo",
+    "backToStore": "Tienda",
     "nav": {
-      "analytics": "Métricas y Ventas",
-      "orders": "Mesa de Órdenes",
-      "products": "Gorras y Combinaciones",
-      "drops": "Drops VIP",
-      "settings": "Ajustes"
-    },
-    "metrics": {
-      "grossRevenue": "Ingresos Brutos",
-      "completedOrders": "Órdenes Concretadas",
-      "avgOrderValue": "Ticket Promedio (AOV)",
-      "lowStockAlerts": "Alertas de Poco Stock",
-      "inventoryVelocity": "Salud de Inventario",
-      "totalUnits": "Piezas Totales en Stock",
-      "outOfStock": "Combinaciones Agotadas",
-      "stripeShare": "Pasarela Stripe"
+      "home": "Inicio",
+      "orders": "Órdenes",
+      "products": "Productos",
+      "drops": "Drops",
+      "settings": "Ajustes",
+      "ordersBadge": "{count, plural, one {# orden por empacar} other {# órdenes por empacar}}",
+      "toggle": "Abrir o cerrar el menú"
     },
     "orders": {
       "title": "Mesa de Control de Órdenes",
@@ -311,13 +302,29 @@
       "noOrdersFound": "No se encontraron órdenes con este filtro."
     },
     "settings": {
-      "title": "Reglas de envío",
-      "subtitle": "Tarifa fija y mínimo para envío gratis. Los clientes las ven en el carrito y el pago; el servidor las aplica a cada pedido.",
-      "flatFee": "Tarifa fija de envío (USD)",
-      "threshold": "Envío gratis desde (unidades)",
-      "save": "Guardar reglas de envío",
-      "saved": "Reglas de envío guardadas.",
-      "saveFailed": "No se pudo guardar. Inténtalo de nuevo."
+      "title": "Ajustes",
+      "shipping": {
+        "title": "Reglas de envío",
+        "subtitle": "Tarifa fija y mínimo para envío gratis. Los clientes las ven en el carrito y el pago; el servidor las aplica a cada pedido.",
+        "flatFee": "Tarifa fija de envío (USD)",
+        "threshold": "Envío gratis desde (unidades)",
+        "save": "Guardar reglas de envío",
+        "saved": "Reglas de envío guardadas.",
+        "saveFailed": "No se pudo guardar. Inténtalo de nuevo."
+      },
+      "alerts": {
+        "title": "Alertas",
+        "subtitle": "Las órdenes nuevas, disputas, órdenes fuera del territorio y reembolsos fallidos llegan por correo aquí.",
+        "recipient": "Los correos de alerta van a",
+        "fallback": "ADMIN_NOTIFICATION_EMAIL no está definida en el despliegue de Convex, así que las alertas van al Administrador principal. Defínela ahí para cambiar la bandeja.",
+        "chime": "Sonar un aviso cuando llegue una orden nueva (este navegador)"
+      },
+      "account": {
+        "title": "Cuenta",
+        "language": "Idioma",
+        "theme": "Tema",
+        "signedIn": "Sesión de"
+      }
     },
     "products": {
       "variantId": "ID del Producto (slug)",
@@ -730,6 +737,41 @@
       "confirmBody": "{count, plural, =0 {Ningún producto visible se verá afectado.} one {# producto visible desaparecerá de la tienda.} other {# productos visibles desaparecerán de la tienda.}} Los carritos que los tengan los mostrarán como no disponibles.",
       "cancel": "Cancelar",
       "confirm": "Sí, cambiar"
+    },
+    "home": {
+      "title": "Inicio",
+      "attention": {
+        "needs_packing": "Por empacar",
+        "overdue": "Atrasadas",
+        "problems": "Problemas",
+        "low_stock": "Poco stock"
+      },
+      "tiles": {
+        "today": "Hoy",
+        "d7": "Últimos 7 días",
+        "d30": "Últimos 30 días",
+        "orders": "{count, plural, =0 {sin órdenes pagadas} one {# orden pagada} other {# órdenes pagadas}}"
+      },
+      "chart": {
+        "title": "Ingresos, últimos 30 días",
+        "subtitle": "Órdenes pagadas por día, en tu hora local."
+      },
+      "lowStock": {
+        "title": "Poco stock",
+        "empty": "Todos los Productos y SKUs están por encima del mínimo.",
+        "left": "{count, plural, =0 {Agotado} one {Queda #} other {Quedan #}}",
+        "viewAll": "Ver los {count} en Productos"
+      },
+      "bestSellers": {
+        "title": "Más vendidos",
+        "empty": "Sin órdenes pagadas en los últimos 30 días.",
+        "units": "{count, plural, one {# unidad} other {# unidades}}"
+      }
+    },
+    "common": {
+      "queryFailed": "Esta página no pudo cargar. Revisa tu conexión e inténtalo de nuevo.",
+      "retry": "Reintentar",
+      "showingLatest": "Mostrando las últimas {count}"
     }
   },
   "track": {

@@ -135,7 +135,7 @@ export function Navbar() {
             {/* Admin Dashboard shortcut for authorized staff */}
             {isAdmin && (
               <Link
-                href="/admin/analytics"
+                href="/admin"
                 className="hidden md:inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-gradient-to-r from-red-600/90 to-rose-700 hover:from-red-600 hover:to-rose-600 text-white text-xs font-display font-bold shadow-lg shadow-red-500/20 border border-red-400/30 transition-colors"
                 title="Good Luck Operations HQ (Admin Dashboard)"
               >
@@ -230,7 +230,7 @@ export function Navbar() {
 
                 {isAdmin && (
                   <Link
-                    href="/admin/analytics"
+                    href="/admin"
                     onClick={() => setMobileMenuOpen(false)}
                     className="mt-2 flex items-center gap-3 p-3 rounded-2xl bg-moya-red/10 border border-moya-red/30"
                   >

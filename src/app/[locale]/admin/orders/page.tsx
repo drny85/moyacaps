@@ -39,6 +39,7 @@ import {
 } from "lucide-react";
 import { Link } from "@/i18n/routing";
 import { useSearchParams } from "next/navigation";
+import { deskFilterForQueueParam } from "@/lib/admin/queueParam";
 import { ShippingLabelModal } from "@/components/admin/ShippingLabelModal";
 import { labelAction } from "@convex/orders/status";
 import { carrierTrackingNumber } from "@convex/orders/trackingNumber";
@@ -57,17 +58,17 @@ export default function AdminOrdersPage() {
   const tStatus = useTranslations("account");
   const locale = useLocale();
 
-  // Filters state
+  // URL query param synchronization
+  const searchParams = useSearchParams();
+  const orderParam = searchParams.get("order");
+
+  // Filters state (Home's ?queue= links pick the opening filter)
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState(() => deskFilterForQueueParam(searchParams.get("queue")));
   const [paymentFilter, setPaymentFilter] = useState("all");
 
   // Selected order for detail drawer
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
-
-  // URL query param synchronization
-  const searchParams = useSearchParams();
-  const orderParam = searchParams.get("order");
 
   const handleSelectOrder = (order: any | null) => {
     setSelectedOrder(order);
@@ -166,24 +167,7 @@ export default function AdminOrdersPage() {
   const updateShippingAddressAdmin = useMutation(api.orders.desk.updateShippingAddressAdmin);
   const cancelAndRefundAdmin = useAction(api.payments.refunds.cancelAndRefundOrderAdmin);
 
-  // Attention stats & Resend test alert action
   const attentionStats = useQuery(api.orders.desk.getOrdersAttentionStats, { clientTime: statsClock });
-  const sendTestAlert = useAction(api.notifications.emails.sendTestAdminOrderAlert);
-  const [isSendingTestAlert, setIsSendingTestAlert] = useState(false);
-
-  const handleSendTestAlert = async () => {
-    try {
-      setIsSendingTestAlert(true);
-      setActionError(null);
-      const res = await sendTestAlert({});
-      triggerSuccess(`Test order alert dispatched via Resend to ${res.recipient}!`);
-    } catch (err: any) {
-      console.error("Failed to send test alert:", err);
-      setActionError(err?.message || "Failed to dispatch test order alert via Resend.");
-    } finally {
-      setIsSendingTestAlert(false);
-    }
-  };
 
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -405,20 +389,6 @@ export default function AdminOrdersPage() {
 
         {/* Actions & Counter */}
         <div className="flex items-center gap-2">
-          <button
-            onClick={handleSendTestAlert}
-            disabled={isSendingTestAlert}
-            className="px-3 py-1.5 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-white/[0.03] hover:bg-zinc-50 dark:hover:bg-white/[0.08] text-xs font-medium text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5 transition-colors disabled:opacity-50"
-            title="Dispatch a test order alert to verify Resend email delivery"
-          >
-            {isSendingTestAlert ? (
-              <span className="w-3.5 h-3.5 border-2 border-moya-red border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <Mail className="w-3.5 h-3.5 text-moya-red" />
-            )}
-            <span>{isSendingTestAlert ? "Sending..." : "Test Resend Alert"}</span>
-          </button>
-
           <span className="px-3 py-1.5 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-white/[0.03] text-xs font-mono text-zinc-700 dark:text-zinc-300">
             {orders ? `${orders.length} orders` : "Loading..."}
           </span>

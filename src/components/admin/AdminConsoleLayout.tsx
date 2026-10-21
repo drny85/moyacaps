@@ -1,30 +1,17 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { useTranslations, useLocale } from "next-intl";
-import { Link, usePathname, useRouter } from "@/i18n/routing";
+import { useTranslations } from "next-intl";
+import { Link, usePathname } from "@/i18n/routing";
 import { BrandMark } from "@/components/layout/BrandMark";
 import { AdminGuard } from "@/components/admin/AdminGuard";
-import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { SafeUserButton, useSafeUser } from "@/lib/useSafeUser";
 import { useIsAdmin } from "@/lib/useIsAdmin";
 import { useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
 import { useMinuteClock } from "@/hooks/useMinuteClock";
-import {
-  BarChart3,
-  PackageCheck,
-  Layers,
-  ArrowUpRight,
-  Menu,
-  X,
-  Sparkles,
-  Flame,
-  Globe,
-  Volume2,
-  VolumeX,
-  Bell,
-} from "lucide-react";
+import { useSoundPreference } from "@/hooks/useSoundPreference";
+import { ArrowUpRight, Flame, Home, Layers, Menu, PackageCheck, Settings, X } from "lucide-react";
 
 /**
  * Plays a pleasant, high-contrast two-tone notification chime
@@ -65,38 +52,12 @@ function playOrderChime() {
   }
 }
 
-export function AdminConsoleLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export function AdminConsoleLayout({ children }: { children: React.ReactNode }) {
   const t = useTranslations("admin");
-  const locale = useLocale();
   const pathname = usePathname();
-  const router = useRouter();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-
-  // Sound preference state persisted in localStorage
-  const [soundEnabled, setSoundEnabled] = useState<boolean>(() => {
-    if (typeof window !== "undefined") {
-      const stored = localStorage.getItem("moya_admin_sound");
-      return stored === null ? true : stored === "true";
-    }
-    return true;
-  });
-
-  const toggleSound = () => {
-    setSoundEnabled((prev) => {
-      const next = !prev;
-      if (typeof window !== "undefined") {
-        localStorage.setItem("moya_admin_sound", String(next));
-      }
-      if (next) {
-        playOrderChime();
-      }
-      return next;
-    });
-  };
+  // Changed on Settings → Alerts; the shell only listens.
+  const [soundEnabled] = useSoundPreference();
 
   const { isLoaded, isSignedIn } = useSafeUser();
   const { isAdmin } = useIsAdmin();
@@ -131,178 +92,82 @@ export function AdminConsoleLayout({
     }
   }, [attentionStats?.latestOrderTimestamp, soundEnabled]);
 
+  const badgeCount = attentionStats?.totalActionRequired || 0;
   const navItems = [
-    {
-      label: t("nav.analytics"),
-      href: "/admin/analytics",
-      icon: BarChart3,
-    },
+    { label: t("nav.home"), href: "/admin", icon: Home },
     {
       label: t("nav.orders"),
       href: "/admin/orders",
       icon: PackageCheck,
-      badgeCount: attentionStats?.totalActionRequired || 0,
+      badgeCount,
       isOverdue: (attentionStats?.overduePaid || 0) > 0,
     },
-    {
-      label: t("nav.products"),
-      href: "/admin/products",
-      icon: Layers,
-    },
-    {
-      label: t("nav.drops"),
-      href: "/admin/drops",
-      icon: Flame,
-    },
+    { label: t("nav.products"), href: "/admin/products", icon: Layers },
+    { label: t("nav.drops"), href: "/admin/drops", icon: Flame },
+    { label: t("nav.settings"), href: "/admin/settings", icon: Settings },
   ];
+  // Home matches only itself; the others own their sub-routes (an Order's page keeps Orders lit).
+  const isActive = (href: string) => (href === "/admin" ? pathname === href : pathname.startsWith(href));
 
-  const switchLocale = (newLocale: "en" | "es") => {
-    router.replace(pathname, { locale: newLocale });
+  const navLink = (item: (typeof navItems)[number], onClick?: () => void) => {
+    const Icon = item.icon;
+    const active = isActive(item.href);
+    return (
+      <Link
+        key={item.href}
+        href={item.href}
+        onClick={onClick}
+        aria-current={active ? "page" : undefined}
+        className={`flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium text-xs transition-all duration-200 ${
+          active
+            ? "bg-moya-red text-white shadow-md shadow-moya-red/25 font-semibold"
+            : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/[0.04]"
+        }`}
+      >
+        <Icon className={`w-4 h-4 ${active ? "text-white" : "text-zinc-600 dark:text-zinc-400"}`} />
+        <span className="truncate">{item.label}</span>
+        {item.badgeCount ? (
+          <span
+            title={t("nav.ordersBadge", { count: item.badgeCount })}
+            className={`ml-auto flex items-center justify-center min-w-[20px] h-5 px-1.5 text-[10px] font-mono font-bold rounded-full ${
+              active ? "bg-white text-moya-red shadow-xs" : item.isOverdue ? "bg-rose-500 text-white" : "bg-amber-500 text-black"
+            }`}
+          >
+            {item.badgeCount}
+          </span>
+        ) : null}
+      </Link>
+    );
   };
 
   return (
     <AdminGuard>
       <div className="min-h-screen bg-[#f7f8fa] dark:bg-[#07070b] text-zinc-900 dark:text-zinc-100 flex flex-col md:flex-row transition-colors duration-300 print:bg-white print:text-black print:min-h-0 print:block">
         {/* ── Desktop Sidebar ── */}
-        <aside className="print:hidden hidden md:flex flex-col w-64 lg:w-72 bg-white dark:bg-[#0a0a10] border-r border-zinc-200 dark:border-white/[0.06] shrink-0 sticky top-0 h-screen z-30">
-          {/* Brand Header */}
-          <div className="p-5 border-b border-zinc-200 dark:border-white/[0.06] flex items-center justify-between">
-            <Link href="/admin/analytics" className="flex items-center gap-2.5 group">
+        <aside className="print:hidden hidden md:flex flex-col w-60 lg:w-64 bg-white dark:bg-[#0a0a10] border-r border-zinc-200 dark:border-white/[0.06] shrink-0 sticky top-0 h-screen z-30">
+          <div className="p-5 border-b border-zinc-200 dark:border-white/[0.06]">
+            <Link href="/admin" className="flex items-center gap-2.5">
               <BrandMark className="w-8 h-8 shrink-0 rounded-[22%] shadow-md shadow-moya-red/20" />
-              <div>
-                <span className="font-display font-bold text-sm tracking-tight block text-zinc-950 dark:text-white">
-                  GOOD<span className="text-moya-red">LUCK</span>
-                </span>
-                <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-600 dark:text-zinc-400 block -mt-0.5">
-                  Operations HQ
-                </span>
-              </div>
+              <span className="font-display font-bold text-sm tracking-tight text-zinc-950 dark:text-white">
+                GOOD<span className="text-moya-red">LUCK</span>
+              </span>
             </Link>
-
-            <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold uppercase tracking-wider bg-moya-red/10 border border-moya-red/30 text-moya-red">
-              STAFF
-            </span>
           </div>
 
-          {/* Navigation Links */}
-          <nav className="flex-1 px-3 py-4 space-y-1.5 overflow-y-auto">
-            <div className="px-3 pb-2 text-[10px] font-mono uppercase tracking-widest text-zinc-600 dark:text-zinc-400 font-semibold">
-              Operations Desk
-            </div>
+          <nav className="flex-1 px-3 py-4 space-y-1.5 overflow-y-auto" aria-label={t("title")}>
+            {navItems.map((item) => navLink(item))}
+          </nav>
 
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive =
-                pathname === item.href ||
-                (item.href === "/admin/analytics" && pathname === "/admin");
-
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium text-xs transition-all duration-200 ${
-                    isActive
-                      ? "bg-moya-red text-white shadow-md shadow-moya-red/25 font-semibold"
-                      : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/[0.04]"
-                  }`}
-                >
-                  <Icon
-                    className={`w-4 h-4 ${isActive ? "text-white" : "text-zinc-600 dark:text-zinc-400"}`}
-                  />
-                  <span className="truncate">{item.label}</span>
-
-                  {item.badgeCount && item.badgeCount > 0 ? (
-                    <span
-                      title={`${item.badgeCount} orders requiring attention`}
-                      className={`ml-auto flex items-center justify-center min-w-[20px] h-5 px-1.5 text-[10px] font-mono font-bold rounded-full ${
-                        isActive
-                          ? "bg-white text-moya-red shadow-xs"
-                          : item.isOverdue
-                            ? "bg-rose-500 text-white animate-pulse"
-                            : "bg-amber-500 text-black animate-pulse"
-                      }`}
-                    >
-                      {item.badgeCount}
-                    </span>
-                  ) : null}
-                </Link>
-              );
-            })}
-
-            <div className="pt-6 px-3 pb-2 text-[10px] font-mono uppercase tracking-widest text-zinc-600 dark:text-zinc-400 font-semibold">
-              Live Channels
-            </div>
-
+          <div className="p-3 border-t border-zinc-200 dark:border-white/[0.06] flex items-center justify-between gap-2">
             <Link
               href="/"
               target="_blank"
-              className="flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/[0.04] transition-colors group"
+              className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/[0.04] transition-colors group"
             >
-              <div className="flex items-center gap-3">
-                <Sparkles className="w-4 h-4 text-amber-500" />
-                <span>{t("backToStore")}</span>
-              </div>
-              <ArrowUpRight className="w-3.5 h-3.5 text-zinc-600 dark:text-zinc-400 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+              <span>{t("backToStore")}</span>
+              <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
             </Link>
-          </nav>
-
-          {/* Footer Controls: Audio Toggle, Locale, Theme, User */}
-          <div className="p-3 border-t border-zinc-200 dark:border-white/[0.06] space-y-3 bg-zinc-50/50 dark:bg-white/[0.01]">
-            <div className="flex items-center justify-between px-2">
-              <div className="flex items-center gap-1.5">
-                <Globe className="w-3.5 h-3.5 text-zinc-600 dark:text-zinc-400" />
-                <div className="flex bg-zinc-200/70 dark:bg-white/[0.06] rounded-lg p-0.5 text-[11px] font-mono font-medium">
-                  <button
-                    onClick={() => switchLocale("en")}
-                    className={`px-2 py-0.5 rounded-md transition-colors ${
-                      locale === "en"
-                        ? "bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-xs font-bold"
-                        : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
-                    }`}
-                  >
-                    EN
-                  </button>
-                  <button
-                    onClick={() => switchLocale("es")}
-                    className={`px-2 py-0.5 rounded-md transition-colors ${
-                      locale === "es"
-                        ? "bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-xs font-bold"
-                        : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
-                    }`}
-                  >
-                    ES
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-1">
-                {/* Audio alert toggle */}
-                <button
-                  onClick={toggleSound}
-                  title={soundEnabled ? "Order sound alerts enabled (Click to mute)" : "Order sound alerts muted (Click to enable)"}
-                  className={`p-2 rounded-xl transition-colors ${
-                    soundEnabled
-                      ? "text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20"
-                      : "text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 bg-zinc-100 dark:bg-white/[0.04]"
-                  }`}
-                  aria-label="Toggle audio alerts"
-                >
-                  {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
-                </button>
-
-                <ThemeToggle />
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between px-2 pt-2 border-t border-zinc-200/60 dark:border-white/[0.04]">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-[10px] font-mono text-zinc-600 dark:text-zinc-400">
-                  Convex Reactive
-                </span>
-              </div>
-              <SafeUserButton />
-            </div>
+            <SafeUserButton />
           </div>
         </aside>
 
@@ -312,97 +177,27 @@ export function AdminConsoleLayout({
             <button
               onClick={() => setMobileNavOpen(!mobileNavOpen)}
               className="p-1.5 rounded-xl border border-zinc-200 dark:border-white/10 text-zinc-700 dark:text-zinc-300 relative"
-              aria-label="Toggle admin navigation"
+              aria-label={t("nav.toggle")}
+              aria-expanded={mobileNavOpen}
             >
               {mobileNavOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-              {attentionStats && attentionStats.totalActionRequired > 0 && (
-                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping" />
-              )}
+              {badgeCount > 0 && <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping" />}
             </button>
-            <span className="font-display font-bold text-sm tracking-tight text-zinc-900 dark:text-white">
-              GOOD<span className="text-moya-red">LUCK</span>{" "}
-              <span className="text-[10px] font-mono text-zinc-600 dark:text-zinc-400">HQ</span>
-            </span>
+            <Link href="/admin" className="font-display font-bold text-sm tracking-tight text-zinc-900 dark:text-white">
+              GOOD<span className="text-moya-red">LUCK</span>
+            </Link>
           </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={toggleSound}
-              title={soundEnabled ? "Mute order chimes" : "Enable order chimes"}
-              className={`p-1.5 rounded-xl border border-zinc-200 dark:border-white/10 ${
-                soundEnabled ? "text-emerald-600 dark:text-emerald-400" : "text-zinc-400"
-              }`}
-              aria-label="Toggle audio alerts"
-            >
-              {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
-            </button>
-            <ThemeToggle />
-            <SafeUserButton />
-          </div>
+          <SafeUserButton />
         </div>
 
         {/* ── Mobile Dropdown Menu ── */}
         {mobileNavOpen && (
-          <div className="print:hidden md:hidden bg-white dark:bg-[#0c0c14] border-b border-zinc-200 dark:border-white/[0.06] p-4 space-y-2 z-30 shadow-xl">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = pathname === item.href;
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setMobileNavOpen(false)}
-                  className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium ${
-                    isActive
-                      ? "bg-moya-red text-white font-semibold"
-                      : "text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/[0.04]"
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <Icon className="w-4 h-4" />
-                    <span>{item.label}</span>
-                  </div>
-
-                  {item.badgeCount && item.badgeCount > 0 ? (
-                    <span
-                      className={`px-2 py-0.5 text-[10px] font-mono font-bold rounded-full ${
-                        isActive
-                          ? "bg-white text-moya-red"
-                          : item.isOverdue
-                            ? "bg-rose-500 text-white"
-                            : "bg-amber-500 text-black"
-                      }`}
-                    >
-                      {item.badgeCount}
-                    </span>
-                  ) : null}
-                </Link>
-              );
-            })}
-
-            <div className="pt-3 border-t border-zinc-200 dark:border-white/[0.06] flex items-center justify-between">
-              <Link
-                href="/"
-                className="text-xs text-moya-red font-medium flex items-center gap-1.5"
-              >
-                <Sparkles className="w-3.5 h-3.5" /> {t("backToStore")}
-              </Link>
-              <div className="flex bg-zinc-200/70 dark:bg-white/[0.06] rounded-lg p-0.5 text-xs font-mono">
-                <button
-                  onClick={() => switchLocale("en")}
-                  className={`px-2 py-0.5 rounded-md ${locale === "en" ? "bg-white dark:bg-zinc-800 font-bold text-zinc-900 dark:text-white" : "text-zinc-600 dark:text-zinc-400"}`}
-                >
-                  EN
-                </button>
-                <button
-                  onClick={() => switchLocale("es")}
-                  className={`px-2 py-0.5 rounded-md ${locale === "es" ? "bg-white dark:bg-zinc-800 font-bold text-zinc-900 dark:text-white" : "text-zinc-600 dark:text-zinc-400"}`}
-                >
-                  ES
-                </button>
-              </div>
-            </div>
-          </div>
+          <nav className="print:hidden md:hidden bg-white dark:bg-[#0c0c14] border-b border-zinc-200 dark:border-white/[0.06] p-4 space-y-1.5 z-30 shadow-xl" aria-label={t("title")}>
+            {navItems.map((item) => navLink(item, () => setMobileNavOpen(false)))}
+            <Link href="/" className="flex items-center gap-2 px-3 pt-3 mt-2 border-t border-zinc-200 dark:border-white/[0.06] text-xs text-moya-red font-medium">
+              {t("backToStore")} <ArrowUpRight className="w-3.5 h-3.5" />
+            </Link>
+          </nav>
         )}
 
         {/* ── Main Operations Content Surface ── */}
