@@ -2,7 +2,7 @@
 
 Prices checked on 2026-10-21. USPS prices quoted are from Price List Notice 123 effective October 4, 2026, which includes the temporary peak-season increase that runs through January 17, 2027; expect a small drop after that date and a new general increase in January 2027. Shippo gives the store USPS Commercial pricing on every label, so the "Commercial" columns below are what the admin sees in the Shipping Label Modal. Anything marked **unverified** could not be confirmed from an official page.
 
-Origin for all zone examples: Bronx, NY 10456 (`ATELIER_ORIGIN_ADDRESS` in `convex/shipping/functions.ts`).
+Origin for all zone examples: the store's ship-from ZIP in the Bronx, NY (the `SHIP_FROM_*` env vars read by `convex/shipping/shipFrom.ts`).
 
 ---
 
@@ -55,7 +55,7 @@ The default preset is picked from `totalCaps`, which is the sum of `order.items[
 
 ### What is sent to Shippo (`getShippingRates`)
 
-- `shippo.shipments.create({ addressFrom: ATELIER_ORIGIN_ADDRESS, addressTo, parcels: [{ length, width, height, distanceUnit: "in", weight, massUnit: "oz" }], async: false })`.
+- `shippo.shipments.create({ addressFrom: <ship-from from env>, addressTo, parcels: [{ length, width, height, distanceUnit: "in", weight, massUnit: "oz" }], async: false })`.
 - Always a custom parcel. The `template` field (USPS Flat Rate / carrier predefined packages) is never used.
 - No `extra.insurance`, no `signature_confirmation`, no carrier-account or service-level filter: Shippo returns every rate on the account (USPS, UPS, and whatever else is enabled) and the code sorts by price, tags `CHEAPEST`/`FASTEST`, marks UPS/FedEx as incompatible for PO Box addresses, and adds a "recommended" tag (USPS cheapest for <= 2 items, UPS for >= 3).
 - `buyShippingLabel` calls `shippo.transactions.create({ rate, labelFileType: "PDF_4x6" | "PDF", async: false })` and voids the label with `shippo.refunds.create` if the order cannot be updated afterwards.
@@ -111,7 +111,7 @@ USPS sells "ReadyPost" retail boxes, bubble mailers and tape at Post Office coun
 
 ## 4. Rate tables (Notice 123 effective 2026-10-04, checked 2026-10-21)
 
-Columns are USPS zones from the Bronx. Rough mapping from 10456: Local = NYC/most of Long Island and nearby NJ; 1–2 = tri-state and Hudson Valley; 3 = New England, PA, MD, DE, VA; 4 = OH, NC, SC, WV, parts of the Midwest; 5 = GA, FL (north), IL, MI, TN; 6 = south FL, TX (east), MN, MO; 7 = mountain states, TX (west); 8 = CA, WA, OR, AK, HI. Zone 9 is territories only, which the store does not ship to. Exact zone comes from the USPS zone chart for ZIP prefix 104.
+Columns are USPS zones from the Bronx. Rough mapping from the Bronx: Local = NYC/most of Long Island and nearby NJ; 1–2 = tri-state and Hudson Valley; 3 = New England, PA, MD, DE, VA; 4 = OH, NC, SC, WV, parts of the Midwest; 5 = GA, FL (north), IL, MI, TN; 6 = south FL, TX (east), MN, MO; 7 = mountain states, TX (west); 8 = CA, WA, OR, AK, HI. Zone 9 is territories only, which the store does not ship to. Exact zone comes from the USPS zone chart for ZIP prefix 104.
 
 ### 4a. USPS Ground Advantage, Commercial (what Shippo charges)
 

@@ -471,7 +471,7 @@ export function ShippingLabelModal({
                 <label className="text-[10px] text-zinc-400 block mb-1">Phone Number (Carrier Contact)</label>
                 <input
                   type="tel"
-                  placeholder="e.g. 6462251912"
+                  placeholder="e.g. 5550100100"
                   value={addressForm.phone}
                   onChange={(e) => setAddressForm({ ...addressForm, phone: e.target.value })}
                   className="w-full py-1.5 px-2.5 rounded-lg bg-zinc-950 border border-zinc-700 text-white text-xs"
@@ -482,7 +482,7 @@ export function ShippingLabelModal({
                 <input
                   type="text"
                   required
-                  placeholder="e.g. 1450 Clay Avenue"
+                  placeholder="e.g. 123 Main St"
                   value={addressForm.line1}
                   onChange={(e) => setAddressForm({ ...addressForm, line1: e.target.value })}
                   className="w-full py-1.5 px-2.5 rounded-lg bg-zinc-950 border border-zinc-700 text-white text-xs"
