@@ -592,7 +592,12 @@
         "restoreToEdit": "Restore to edit",
         "danger": "Danger zone",
         "archiveHint": "Archiving hides the Product everywhere. You can restore it later.",
-        "archiveSaveFirst": "Save or discard your changes before archiving."
+        "archiveSaveFirst": "Save or discard your changes before archiving.",
+        "saved": "Saved",
+        "noChanges": "No changes to save",
+        "dismiss": "Dismiss",
+        "creating": "Creating…",
+        "invalid": "Not saved: {count, plural, one {# field needs} other {# fields need}} fixing. {count, plural, one {It is} other {They are}} marked in red below."
       },
       "stale": {
         "title": "Your unsaved values",

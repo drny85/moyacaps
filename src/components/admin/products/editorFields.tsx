@@ -20,7 +20,11 @@ export const sectionTitleClass = "text-sm font-display font-bold text-zinc-900 d
 export function FieldErrorText({ error }: { error?: FieldError }) {
   const t = useTranslations("admin.products.errors");
   if (!error) return null;
-  return <p className="mt-1 text-[11px] text-red-600 dark:text-red-400">{t(error.code)}</p>;
+  return (
+    <p data-field-error className="mt-1 text-[11px] text-red-600 dark:text-red-400">
+      {t(error.code)}
+    </p>
+  );
 }
 
 /** Marks a field Photo Autofill filled, until its value changes. */

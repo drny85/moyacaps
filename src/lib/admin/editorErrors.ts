@@ -18,7 +18,27 @@ export type EditorBanner =
   | { kind: "archived" }
   | { kind: "image_rule"; code: ImageErrorCode }
   | { kind: "message"; text: string }
-  | { kind: "unknown" };
+  | { kind: "unknown" }
+  /** Client or server validation failed; `count` errors are marked under their inputs. */
+  | { kind: "invalid"; count: number }
+  | { kind: "saved" }
+  | { kind: "no_changes" };
+
+export type BannerTone = "error" | "warning" | "success" | "info";
+
+/** How a banner looks: confirmations must never read like failures. */
+export function bannerTone(b: EditorBanner): BannerTone {
+  switch (b.kind) {
+    case "saved":
+      return "success";
+    case "no_changes":
+      return "info";
+    case "stale":
+      return "warning";
+    default:
+      return "error";
+  }
+}
 
 export type EditorFeedback = {
   fieldErrors: FieldError[];
@@ -71,7 +91,13 @@ export function splitFieldErrors(errors: FieldError[]): EditorFeedback {
     if (isEditorField(field)) fieldErrors.push({ ...error, field });
     else formErrors.push(error);
   }
-  return { fieldErrors, formErrors, banner: null };
+  // Inline errors can sit below the fold, so a banner always says the save was stopped.
+  return { fieldErrors, formErrors, banner: fieldErrors.length > 0 ? { kind: "invalid", count: fieldErrors.length } : null };
+}
+
+/** What a successful Save shows: confirmation, or that there was nothing to send. */
+export function saveFeedback({ changed }: { changed: boolean }): EditorFeedback {
+  return { ...NO_FEEDBACK, banner: { kind: changed ? "saved" : "no_changes" } };
 }
 
 function isSkuCell(value: unknown): value is SkuCellStock {

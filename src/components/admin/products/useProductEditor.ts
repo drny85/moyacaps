@@ -7,7 +7,7 @@ import { api } from "@convex/_generated/api";
 import type { Category } from "@convex/catalog/rules";
 import { formToCreateArgs, formToPatch, isFormDirty, validateForm, withNameEn } from "@/lib/admin/productForm";
 import type { ProductFormState, ResolvedVariant } from "@/lib/admin/productForm";
-import { editorFeedback, NO_FEEDBACK, splitFieldErrors } from "@/lib/admin/editorErrors";
+import { editorFeedback, NO_FEEDBACK, saveFeedback, splitFieldErrors } from "@/lib/admin/editorErrors";
 import type { EditorFeedback } from "@/lib/admin/editorErrors";
 import { canSave, editorReducer, initialEditorState, reapplyField } from "@/lib/admin/editorSession";
 import type { EditorState } from "@/lib/admin/editorSession";
@@ -79,6 +79,8 @@ export function useProductEditor(target: EditorTarget, rows: ResolvedVariant[] |
   );
   const aiFilled = useMemo(() => aiFilledFields(form, state.autofill.filled), [form, state.autofill.filled]);
 
+  const dismissFeedback = useCallback(() => setFeedback(NO_FEEDBACK), []);
+
   const reloadLatest = useCallback(() => {
     if (!liveRow) return;
     setFeedback(NO_FEEDBACK);
@@ -126,11 +128,12 @@ export function useProductEditor(target: EditorTarget, rows: ResolvedVariant[] |
       }
       if (session.version === null) return;
       const patch = formToPatch(initial, form);
-      const { updatedAt } =
-        Object.keys(patch).length > 0
-          ? await updateVariant({ variantId: session.variantId, expectedUpdatedAt: session.version, patch, ...(discardStock ? { discardStock } : {}) })
-          : { updatedAt: session.version };
+      const changed = Object.keys(patch).length > 0;
+      const { updatedAt } = changed
+        ? await updateVariant({ variantId: session.variantId, expectedUpdatedAt: session.version, patch, ...(discardStock ? { discardStock } : {}) })
+        : { updatedAt: session.version };
       dispatch({ type: "saved", updatedAt });
+      setFeedback(saveFeedback({ changed }));
     } catch (err: unknown) {
       if (!(err instanceof ConvexError)) console.error("Failed to save product", err);
       setFeedback(editorFeedback(err instanceof ConvexError ? (err.data as unknown) : undefined));
@@ -195,6 +198,8 @@ export function useProductEditor(target: EditorTarget, rows: ResolvedVariant[] |
     notFound: target.mode === "edit" && rows !== undefined && session === null && !targetRow,
     /** Set once a Product created here has its row: the page moves to its own URL. */
     createdVariantId: target.mode === "new" && session?.mode === "edit" && session.version !== null ? session.variantId : null,
+    /** Created, waiting for the new row and the move to its own page: still busy, not idle. */
+    awaitingRow: target.mode === "new" && session?.mode === "edit",
     form,
     feedback,
     saving,
@@ -214,7 +219,7 @@ export function useProductEditor(target: EditorTarget, rows: ResolvedVariant[] |
     dismissUnsaved: () => dispatch({ type: "dismissUnsaved" }),
     discard,
     dropLink,
-    dismissFeedback: () => setFeedback(NO_FEEDBACK),
+    dismissFeedback,
     requestSave,
     saveDiscardingStock,
     confirmStock,

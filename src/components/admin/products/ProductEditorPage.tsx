@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { useQuery } from "convex/react";
 import { Archive, ArchiveRestore, ArrowLeft, ImagePlus, Loader2, PackageX, Undo2 } from "lucide-react";
@@ -11,6 +11,8 @@ import { DetailsSection } from "./DetailsSection";
 import { DropSection } from "./DropSection";
 import { EmptyState } from "./EmptyState";
 import { FeedbackBanner } from "./FeedbackBanner";
+import { bannerTone } from "@/lib/admin/editorErrors";
+import { scrollToElement } from "@/lib/scrollToElement";
 import { PricingStockSection } from "./PricingStockSection";
 import { ProductActionDialogs } from "./ProductActionDialogs";
 import { ProductHistory } from "./ProductHistory";
@@ -41,9 +43,9 @@ function SaveButtons({ editor, onDiscard, className }: { editor: ProductEditorSt
       <button type="button" onClick={onDiscard} disabled={!editor.isDirty || editor.saving} className={ghostBtn}>
         <Undo2 className="w-3.5 h-3.5" /> {t("discard")}
       </button>
-      <button type="submit" form={FORM_ID} disabled={editor.saving || !editor.canSave} className={saveBtn}>
-        {editor.saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-        <span>{editor.saving ? t("saving") : editor.isNew ? t("create") : t("save")}</span>
+      <button type="submit" form={FORM_ID} disabled={editor.saving || editor.awaitingRow || !editor.canSave} className={saveBtn}>
+        {(editor.saving || editor.awaitingRow) && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+        <span>{editor.awaitingRow ? t("creating") : editor.saving ? t("saving") : editor.isNew ? t("create") : t("save")}</span>
         <kbd className="hidden lg:inline font-mono text-[10px] opacity-70">⌘S</kbd>
       </button>
     </div>
@@ -66,6 +68,25 @@ export function ProductEditorPage({ target }: { target: EditorTarget }) {
   const discardMessage = tProducts("discardConfirm");
 
   useUnsavedChangesGuard(editor.isDirty, discardMessage);
+
+  // Every Save answers where the Administrator can see it: a confirmation toast fades out,
+  // the first invalid field scrolls into view, a failure banner scrolls into view.
+  const bannerRef = useRef<HTMLDivElement>(null);
+  const { dismissFeedback } = editor;
+  useEffect(() => {
+    const tone = feedback.banner ? bannerTone(feedback.banner) : null;
+    if (tone === "success" || tone === "info") {
+      const timer = window.setTimeout(dismissFeedback, 4000);
+      return () => window.clearTimeout(timer);
+    }
+    if (feedback.fieldErrors.length > 0) {
+      const first = document.querySelector<HTMLElement>(`#${FORM_ID} [data-field-error]`);
+      if (first) scrollToElement(first);
+      first?.parentElement?.querySelector<HTMLElement>("input, textarea, select")?.focus({ preventScroll: true });
+      return;
+    }
+    if ((feedback.banner || feedback.formErrors.length > 0) && bannerRef.current) scrollToElement(bannerRef.current);
+  }, [feedback, dismissFeedback]);
 
   const createdId = editor.createdVariantId;
   useEffect(() => {
@@ -138,6 +159,7 @@ export function ProductEditorPage({ target }: { target: EditorTarget }) {
         </div>
       )}
 
+      <div ref={bannerRef} className="scroll-mt-24 empty:hidden">
       <FeedbackBanner
         banner={feedback.banner}
         formErrors={feedback.formErrors}
@@ -146,6 +168,7 @@ export function ProductEditorPage({ target }: { target: EditorTarget }) {
         onReload={liveRow ? editor.reloadLatest : undefined}
         onDiscardStock={editor.saveDiscardingStock}
       />
+      </div>
       <FeedbackBanner banner={actions.error} onDismiss={actions.clearError} />
       {editor.unsaved && <StaleValuesPanel form={form} unsaved={editor.unsaved} onApply={editor.reapply} onDismiss={editor.dismissUnsaved} />}
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ConvexError } from "convex/values";
-import { editorFeedback, editorFieldKey, errorLine, fieldErrorFor, formatSkuCells, isEditorField, splitFieldErrors, stockUnits } from "./editorErrors";
+import { bannerTone, editorFeedback, editorFieldKey, errorLine, fieldErrorFor, formatSkuCells, isEditorField, saveFeedback, splitFieldErrors, stockUnits } from "./editorErrors";
 
 describe("editorFieldKey", () => {
   it("folds per-size errors onto the sizes input", () => {
@@ -36,7 +36,30 @@ describe("splitFieldErrors", () => {
       { field: "sizes", code: "format" },
     ]);
     expect(feedback.formErrors).toEqual([{ field: "image", code: "required" }]);
-    expect(feedback.banner).toBeNull();
+    expect(feedback.banner).toEqual({ kind: "invalid", count: 2 });
+  });
+
+  it("adds no banner when every error is form-level", () => {
+    expect(splitFieldErrors([{ field: "image", code: "required" }]).banner).toBeNull();
+  });
+});
+
+describe("saveFeedback", () => {
+  it("confirms a save that changed something", () => {
+    expect(saveFeedback({ changed: true })).toEqual({ fieldErrors: [], formErrors: [], banner: { kind: "saved" } });
+  });
+  it("says so when there was nothing to save", () => {
+    expect(saveFeedback({ changed: false }).banner).toEqual({ kind: "no_changes" });
+  });
+});
+
+describe("bannerTone", () => {
+  it("styles confirmations apart from failures", () => {
+    expect(bannerTone({ kind: "saved" })).toBe("success");
+    expect(bannerTone({ kind: "no_changes" })).toBe("info");
+    expect(bannerTone({ kind: "invalid", count: 1 })).toBe("error");
+    expect(bannerTone({ kind: "stale" })).toBe("warning");
+    expect(bannerTone({ kind: "unknown" })).toBe("error");
   });
 });
 
@@ -55,7 +78,7 @@ describe("editorFeedback", () => {
       { field: "defaultColorway", code: "mismatch" },
     ]);
     expect(feedback.formErrors).toEqual([{ field: "dropBadgeTextEn", code: "too_long" }]);
-    expect(feedback.banner).toBeNull();
+    expect(feedback.banner).toEqual({ kind: "invalid", count: 2 });
   });
 
   it("treats a validation payload without errors as no field errors", () => {

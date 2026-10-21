@@ -592,7 +592,12 @@
         "restoreToEdit": "Restaurar para editar",
         "danger": "Zona de riesgo",
         "archiveHint": "Archivar oculta el producto en todas partes. Puedes restaurarlo después.",
-        "archiveSaveFirst": "Guarda o descarta tus cambios antes de archivar."
+        "archiveSaveFirst": "Guarda o descarta tus cambios antes de archivar.",
+        "saved": "Guardado",
+        "noChanges": "No hay cambios que guardar",
+        "dismiss": "Cerrar",
+        "creating": "Creando…",
+        "invalid": "No se guardó: {count, plural, one {# campo necesita} other {# campos necesitan}} corrección. {count, plural, one {Está marcado} other {Están marcados}} en rojo abajo."
       },
       "stale": {
         "title": "Tus valores sin guardar",

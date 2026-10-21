@@ -1,9 +1,9 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { RotateCw, X } from "lucide-react";
+import { CheckCircle2, Info, RotateCw, X } from "lucide-react";
 import type { FieldError } from "@convex/catalog/rules";
-import { formatSkuCells, stockUnits } from "@/lib/admin/editorErrors";
+import { bannerTone, formatSkuCells, stockUnits } from "@/lib/admin/editorErrors";
 import type { EditorBanner } from "@/lib/admin/editorErrors";
 
 /** One save/action failure, worded from `admin.products.errors`. */
@@ -25,6 +25,28 @@ export function FeedbackBanner({
 }) {
   const t = useTranslations("admin.products");
   if (!banner && formErrors.length === 0) return null;
+
+  // Confirmations float at the bottom so they are seen wherever the page is scrolled.
+  if (banner && formErrors.length === 0 && (bannerTone(banner) === "success" || bannerTone(banner) === "info")) {
+    const success = bannerTone(banner) === "success";
+    return (
+      <div
+        role="status"
+        aria-live="polite"
+        className={`fixed z-40 left-1/2 -translate-x-1/2 bottom-24 sm:bottom-6 flex items-center gap-2 pl-3 pr-1.5 py-1.5 rounded-full shadow-lg text-xs font-semibold border animate-slide-up ${
+          success
+            ? "bg-emerald-600 text-white border-emerald-500"
+            : "bg-white text-zinc-700 border-zinc-200 dark:bg-zinc-800 dark:text-zinc-200 dark:border-white/10"
+        }`}
+      >
+        {success ? <CheckCircle2 className="w-4 h-4" aria-hidden /> : <Info className="w-4 h-4" aria-hidden />}
+        <span>{t(success ? "editor.saved" : "editor.noChanges")}</span>
+        <button type="button" onClick={onDismiss} aria-label={t("editor.dismiss")} className="p-1 rounded-full hover:bg-black/10">
+          <X className="w-3.5 h-3.5" />
+        </button>
+      </div>
+    );
+  }
 
   if (banner?.kind === "stale") {
     return (
@@ -55,6 +77,8 @@ export function FeedbackBanner({
         return t(`images.errors.${b.code}`);
       case "message":
         return b.text;
+      case "invalid":
+        return t("editor.invalid", { count: b.count });
       default:
         return t("errors.unknown");
     }
