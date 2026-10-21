@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Image from "next/image";
 import { Link } from "@/i18n/routing";
 import { useTranslations, useLocale } from "next-intl";
@@ -12,6 +12,7 @@ import { getCarrierTrackingUrl } from "@/lib/tracking";
 import { getWhatsAppConciergeUrl } from "@/lib/whatsapp";
 import { isAddressEditable, isShippedOrder } from "@/lib/orderStatus";
 import { customerCancellationAllowed } from "@convex/orders/status";
+import { OrderReviewActions } from "@/components/reviews/OrderReviewActions";
 import { OrderStatusBadges } from "@/components/orders/OrderStatusBadges";
 import {
   Package,
@@ -373,6 +374,13 @@ export default function AccountOrdersPage() {
                     </div>
                   ))}
                 </div>
+
+                {/* Reviews: only delivered Orders have reviewable items */}
+                {ord.fulfillmentStatus === "delivered" && (
+                  <Suspense fallback={null}>
+                    <OrderReviewActions orderId={ord._id} orderNumber={ord.orderNumber} items={ord.items} />
+                  </Suspense>
+                )}
 
                 {/* Shipping Destination Summary */}
                 {ord.shippingAddress && (
