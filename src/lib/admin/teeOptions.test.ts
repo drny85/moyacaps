@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { emptyForm } from "./productForm";
 import type { ProductFormState } from "./productForm";
-import { addColorway, clampSkuStockInput, colorInputValue, isColorwayLocked, removeColorway, toggleSize, updateColorway, withColorwayUids } from "./teeOptions";
+import { addColorway, addStandardColorways, STANDARD_TEE_COLORWAYS, clampSkuStockInput, colorInputValue, isColorwayLocked, removeColorway, toggleSize, updateColorway, withColorwayUids } from "./teeOptions";
 
 const black = { id: "black", nameEn: "Black", nameEs: "Negro", hex: "#111111", borderHex: "#333333" };
 const white = { id: "white", nameEn: "White", nameEs: "Blanco", hex: "#ffffff", borderHex: "#dddddd" };
@@ -127,5 +127,21 @@ describe("clampSkuStockInput", () => {
     expect(clampSkuStockInput("")).toBe(0);
     expect(clampSkuStockInput("abc")).toBe(0);
     expect(clampSkuStockInput("999999999")).toBe(100000);
+  });
+});
+
+describe("addStandardColorways", () => {
+  it("adds the four standard Apparel Colorways once, keeping any already present, and picks a default", () => {
+    const base = emptyForm("apparel");
+    const once = addStandardColorways(base);
+    expect(once.colorways.map((c) => c.id)).toEqual(STANDARD_TEE_COLORWAYS.map((c) => c.id));
+    expect(once.colorways.every((c) => c.uid)).toBe(true);
+    expect(once.defaultColorway).toBe("washed-black");
+    const twice = addStandardColorways(once);
+    expect(twice.colorways).toHaveLength(4);
+    const custom = addStandardColorways({ ...base, colorways: [{ id: "crisp-white", nameEn: "Mine", nameEs: "Mío", hex: "#fff", borderHex: "#eee", uid: "u1" }], defaultColorway: "crisp-white" });
+    expect(custom.colorways.map((c) => c.id)).toEqual(["crisp-white", "washed-black", "heather-grey", "butter-cream"]);
+    expect(custom.colorways[0].nameEn).toBe("Mine");
+    expect(custom.defaultColorway).toBe("crisp-white");
   });
 });

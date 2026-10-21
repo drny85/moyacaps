@@ -78,7 +78,8 @@ export function emptyForm(category: Category): ProductFormState {
     badgeTextEn: "",
     badgeTextEs: "",
     isFeatured: false,
-    isAvailable: true,
+    // Hidden until the Administrator adds a Catalog Shot and publishes: a visible Product needs an image.
+    isAvailable: false,
     fabricEn: "",
     fabricEs: "",
     fitEn: "",
@@ -203,6 +204,11 @@ export function validateForm(form: ProductFormState): FieldError[] {
 /** Slug a typed name into a product id suggestion. */
 export function suggestVariantId(name: string): string {
   return normalizeSlug(name);
+}
+
+/** The storefront path a slug will get, previewed under the slug field. */
+export function storePath(variantId: string): string {
+  return `/products/${variantId.trim() === "" ? "…" : variantId}`;
 }
 
 const FORM_KEYS = Object.keys(emptyForm("headwear")) as (keyof ProductFormState)[];
