@@ -255,13 +255,15 @@
   "admin": {
     "title": "Sede Central Good Luck",
     "subtitle": "Operaciones, Inventario y Despachos",
-    "backToStore": "Tienda en Vivo",
+    "backToStore": "Tienda",
     "nav": {
-      "analytics": "Métricas y Ventas",
-      "orders": "Mesa de Órdenes",
-      "products": "Gorras y Combinaciones",
-      "drops": "Drops VIP",
-      "settings": "Ajustes"
+      "home": "Inicio",
+      "orders": "Órdenes",
+      "products": "Productos",
+      "drops": "Drops",
+      "settings": "Ajustes",
+      "ordersBadge": "{count, plural, one {# orden por empacar} other {# órdenes por empacar}}",
+      "toggle": "Abrir o cerrar el menú"
     },
     "metrics": {
       "grossRevenue": "Ingresos Brutos",

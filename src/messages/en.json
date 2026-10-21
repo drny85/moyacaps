@@ -257,11 +257,13 @@
     "subtitle": "Operations, Inventory & Fulfillment",
     "backToStore": "Storefront",
     "nav": {
-      "analytics": "Analytics",
-      "orders": "Orders Desk",
-      "products": "Caps & Colorways",
-      "drops": "VIP Drops",
-      "settings": "Settings"
+      "home": "Home",
+      "orders": "Orders",
+      "products": "Products",
+      "drops": "Drops",
+      "settings": "Settings",
+      "ordersBadge": "{count, plural, one {# order needs packing} other {# orders need packing}}",
+      "toggle": "Toggle admin navigation"
     },
     "metrics": {
       "grossRevenue": "Gross Revenue",
