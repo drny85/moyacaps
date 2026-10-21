@@ -12,6 +12,7 @@ import { formatUsd } from "@/lib/whatsapp";
 import { useSafeUser } from "@/lib/useSafeUser";
 import { useQuery } from "convex/react";
 import { useCardCheckout } from "@/hooks/useCardCheckout";
+import { usePageRestore } from "@/hooks/usePageRestore";
 import { isCanceledCheckoutReturn } from "@/lib/openCheckout";
 import { api } from "../../../../convex/_generated/api";
 import {
@@ -106,6 +107,14 @@ export default function CheckoutPage() {
     }
     // Runs once per visit; abandonOpenCheckout reads the open checkout saved before the redirect.
   }, []);
+
+  // The browser's Back button from Stripe restores this page still "redirecting": treat it like Stripe's back link.
+  usePageRestore(() => {
+    isSubmittingRef.current = false;
+    setStripeUrl(null);
+    setStatus("canceled");
+    void abandonOpenCheckout();
+  });
 
   // Automatically initiate checkout as soon as the session state and cart are ready (guests included)
   useEffect(() => {
