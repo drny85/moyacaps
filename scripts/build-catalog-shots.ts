@@ -27,6 +27,8 @@ import teeTemplates from "./data/teeTemplates.json";
 const ROOT = path.resolve(import.meta.dir, "..");
 const PUBLIC = path.join(ROOT, "public");
 const OUT = path.join(PUBLIC, "catalog");
+/** Unserved pipeline sources: tee templates and flat-lay cut-outs */
+const SOURCE = path.join(ROOT, "assets", "source");
 
 export const BACKDROP = "#ECEAE6";
 const SHOT = { width: 1600, height: 2000 };
@@ -46,7 +48,7 @@ const TEE_SIZE = 1360;
 const TEE_BODY_CENTER = 0.534;
 const TEE_CENTER_Y = 0.47;
 /** Real blank flat-lays, when shot to docs/photography-spec.md: {side}-{colorway}.png */
-const FLATLAY_DIR = path.join(PUBLIC, "shirts", "flatlay");
+const FLATLAY_DIR = path.join(SOURCE, "shirts", "flatlay");
 
 const WEBP = { quality: 88, effort: 5 } as const;
 
@@ -150,7 +152,7 @@ async function liftShadow(product: Buffer, size: number) {
   return sharp({ create: { width: size, height: size, channels: 3, background: "#000" } }).joinChannel(alpha).png().toBuffer();
 }
 
-/** Template colour name for each Apparel Colorway (public/shirts/templates/{side}-{color}.jpg) */
+/** Template colour name for each Apparel Colorway (assets/source/shirts/templates/{side}-{color}.jpg) */
 const TEMPLATE_COLOR: Record<FabricId, string> = {
   "washed-black": "black",
   "crisp-white": "white",
@@ -271,7 +273,7 @@ async function buildTeeColorway(teeId: string, colorway: FabricId, side: PrintSi
 
   if (template && !SHOOT_PHOTOS.has(lifestyle)) {
     const jpg = await printOnModel({
-      templatePath: path.join(PUBLIC, template.file),
+      templatePath: path.join(SOURCE, template.file),
       artPath,
       box: template.box,
       darkFabric: colorway === "washed-black",
@@ -310,7 +312,7 @@ async function buildTees() {
         // Real printed garment: its photo is the Catalog Shot source, nothing is printed digitally
         const out = path.join(OUT, "tees", tee.id, `${cw.id}.webp`);
         await fs.mkdir(path.dirname(out), { recursive: true });
-        await printedFlatLayCatalogShot(path.join(PUBLIC, cw.flatLayPhoto), out);
+        await printedFlatLayCatalogShot(path.join(SOURCE, cw.flatLayPhoto), out);
         colorways[cw.id] = `/catalog/tees/${tee.id}/${cw.id}.webp`;
         sources.add("printed flat-lay photo");
         continue;

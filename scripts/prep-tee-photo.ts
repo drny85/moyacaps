@@ -5,7 +5,7 @@
  *
  *   bun run scripts/prep-tee-photo.ts <photo> <name>
  *
- * Writes public/shirts/flatlay/{name}.png: the garment cut out to transparency and trimmed,
+ * Writes assets/source/shirts/flatlay/{name}.png: the garment cut out to transparency and trimmed,
  * which is the colorway's `flatLayPhoto` that build-catalog-shots frames into the Catalog
  * Shot. Keep the original under shirts/ (outside public/) so the cut-out can be redone.
  */
@@ -44,7 +44,7 @@ async function main() {
     .raw()
     .toBuffer();
 
-  const flatlay = path.join(ROOT, "public", "shirts", "flatlay", `${name}.png`);
+  const flatlay = path.join(ROOT, "assets", "source", "shirts", "flatlay", `${name}.png`);
   await fs.mkdir(path.dirname(flatlay), { recursive: true });
   // Two passes: sharp applies extract before joinChannel within one pipeline
   const rgba = await sharp(data, { raw: { width, height, channels: 3 } })

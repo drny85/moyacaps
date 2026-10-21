@@ -13,7 +13,7 @@ import path from "node:path";
 import { floodFillMask, measureTee, printBoxFor, type PrintBox, type TeeMeasure } from "./lib/teeCalibration";
 
 const ROOT = path.resolve(import.meta.dir, "..");
-const TEMPLATES = path.join(ROOT, "public", "shirts", "templates");
+const TEMPLATES = path.join(ROOT, "assets", "source", "shirts", "templates");
 const OUT_DIR = path.join(ROOT, "scripts", "data");
 
 type Side = "front" | "back";
