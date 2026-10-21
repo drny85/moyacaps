@@ -8,6 +8,7 @@ import { planLabelPurchase } from "../orders/status";
 import { Shippo } from "shippo";
 import { isExcludedTerritory } from "./territory";
 import { planLabelMode, ratesUnavailableError, shippoKeyMode, shippoPolicy } from "./shippoMode";
+import { countParcelLines, insuranceFor, presetToParcel, suggestParcel } from "./parcels";
 
 /**
  * Good Luck Atelier Studio - Official Dispatch Center
@@ -24,51 +25,7 @@ export const ATELIER_ORIGIN_ADDRESS = {
   email: "concierge@goodluckcaps.com",
 };
 
-/**
- * Specialized Cap Box Packaging Presets
- * Calibrated specifically for handcrafted structured caps to protect crowns.
- */
-export const CAP_BOX_PRESETS = [
-  {
-    id: "one_cap",
-    name: "1 Cap Standard Box",
-    description: "Rigid protective box for 1 structured cap with crown insert",
-    length: 8,
-    width: 8,
-    height: 6,
-    weight: 8, // oz (~0.5 lb)
-    unit: "in",
-    massUnit: "oz" as const,
-  },
-  {
-    id: "two_caps",
-    name: "2 Caps Double Box",
-    description: "Expanded box for 2 nested caps with silk dustbags",
-    length: 10,
-    width: 8,
-    height: 6,
-    weight: 13, // oz (~0.81 lb)
-    unit: "in",
-    massUnit: "oz" as const,
-  },
-  {
-    id: "three_plus_caps",
-    name: "3+ Caps Atelier Collector Box",
-    description: "Heavy-duty luxury master carton for 3 to 4 caps",
-    length: 12,
-    width: 10,
-    height: 8,
-    weight: 20, // oz (1.25 lb)
-    unit: "in",
-    massUnit: "oz" as const,
-  },
-] as const;
-
-export function getDefaultBoxPreset(itemsCount: number) {
-  if (itemsCount <= 1) return CAP_BOX_PRESETS[0];
-  if (itemsCount === 2) return CAP_BOX_PRESETS[1];
-  return CAP_BOX_PRESETS[2];
-}
+// Parcel presets and the default-parcel rule live in ./parcels.ts (shared with the admin modal).
 
 /**
  * Detects whether an address is a Post Office Box.
@@ -205,7 +162,7 @@ export const getShippingRates = action({
       return {
         success: false,
         rates: [],
-        parcel: { length: 8, width: 8, height: 6, weight: 8, unit: "in" },
+        parcel: presetToParcel(suggestParcel([])),
         destination: { name: order.customerName, address: "", city: "", state: "", postalCode: "", country: "US" },
         isSandbox: false,
         isPoBox: false,
@@ -230,7 +187,7 @@ export const getShippingRates = action({
       return {
         success: false,
         rates: [],
-        parcel: { length: 8, width: 8, height: 6, weight: 8, unit: "in" },
+        parcel: presetToParcel(suggestParcel([])),
         destination: destSummary,
         isSandbox: false,
         isPoBox: false,
@@ -241,17 +198,13 @@ export const getShippingRates = action({
     // 2. PO Box Address Check
     const isPoBox = isPoBoxAddress(line1, line2);
 
-    // Calculate or take parcel dimensions
-    const totalCaps = (order.items || []).reduce((acc: number, it: any) => acc + (it.quantity || 1), 0);
-    const defaultPreset = getDefaultBoxPreset(totalCaps);
-
-    const parcel = args.parcel || {
-      length: defaultPreset.length,
-      width: defaultPreset.width,
-      height: defaultPreset.height,
-      weight: defaultPreset.weight,
-      unit: "in",
-    };
+    // Default parcel from what is actually in the order (caps and tees counted apart, ./parcels.ts).
+    const lines = await ctx.runQuery(internal.shipping.queries.orderParcelLinesInternal, { orderId: args.orderId });
+    const { caps, tees } = countParcelLines(lines);
+    const totalPieces = caps + tees;
+    const parcel = args.parcel || presetToParcel(suggestParcel(lines));
+    // USPS includes $100 of cover; above that the shipment buys insurance for the order total.
+    const insurance = insuranceFor(order.total);
 
     const shippo = getShippoClient();
     const policy = currentShippoPolicy();
@@ -283,6 +236,7 @@ export const getShippingRates = action({
               massUnit: "oz",
             },
           ],
+          extra: insurance ? { insurance } : undefined,
           async: false,
         });
 
@@ -297,9 +251,9 @@ export const getShippingRates = action({
             const isPoBoxIncompatible = isPoBox && isCarrierUpsOrFedex;
 
             let recommendedTag: string | undefined = undefined;
-            if (totalCaps <= 2 && providerUpper.includes("USPS") && attrs.includes("CHEAPEST")) {
+            if (totalPieces <= 2 && providerUpper.includes("USPS") && attrs.includes("CHEAPEST")) {
               recommendedTag = "Standard (Free Daily Pickup)";
-            } else if (totalCaps >= 3 && providerUpper.includes("UPS") && !isPoBox) {
+            } else if (totalPieces >= 3 && providerUpper.includes("UPS") && !isPoBox) {
               recommendedTag = "Rigid Box Protection (Guaranteed Ground)";
             }
 
