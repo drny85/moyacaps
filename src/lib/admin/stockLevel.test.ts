@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { stockLevel, totalStock } from "./stockLevel";
+import { LOW_STOCK_THRESHOLD, stockLevel, totalStock } from "./stockLevel";
 import { capRow, teeRow } from "./productFixtures";
 
 describe("totalStock", () => {
@@ -18,5 +18,12 @@ describe("stockLevel", () => {
     expect(stockLevel(1)).toBe("low");
     expect(stockLevel(5)).toBe("low");
     expect(stockLevel(6)).toBe("in");
+  });
+});
+
+describe("threshold", () => {
+  it("mirrors the backend's LOW_STOCK_UNITS", async () => {
+    const { LOW_STOCK_UNITS } = await import("../../../convex/catalog/stock");
+    expect(LOW_STOCK_THRESHOLD).toBe(LOW_STOCK_UNITS);
   });
 });

@@ -243,7 +243,13 @@ describe("admin desk on the two axes", () => {
         .map((o) => o.orderNumber)
         .sort();
 
+    expect(await list("needs_packing")).toEqual(["GL-DESK-PAID", "GL-DESK-PARTIAL"]);
+    // The previous id still answers.
     expect(await list("needs_attention")).toEqual(["GL-DESK-PAID", "GL-DESK-PARTIAL"]);
+    expect(await list("shipped")).toEqual([]);
+    expect(await list("problems")).toEqual([]);
+    // Delivered and refunded: counted once; the cancelled order is excluded.
+    expect(await list("done")).toEqual(["GL-DESK-SHIPPED"]);
     expect(await list("delivered")).toEqual(["GL-DESK-SHIPPED"]);
     expect(await list("refunded")).toEqual(["GL-DESK-SHIPPED"]);
     expect(await list("cancelled")).toEqual(["GL-DESK-CANCELLED"]);
@@ -254,6 +260,19 @@ describe("admin desk on the two axes", () => {
     const stats = await admin(tt).query(api.orders.desk.getOrdersAttentionStats, { clientTime: Date.now() });
     expect(stats?.unfulfilledPaid).toBe(2);
     await drain(tt);
+  });
+
+  it("a capped Done read keeps the newest refunded orders whatever their package status", async () => {
+    const tt = t();
+    for (const [n, fulfillmentStatus, createdAt] of [
+      ["GL-CAP-OLD", "unfulfilled", 1_000],
+      ["GL-CAP-MID", "returned", 2_000],
+      ["GL-CAP-NEW", "in_transit", 3_000],
+    ] as const) {
+      await seedOrder(tt, { orderNumber: n, paymentStatus: "refunded", fulfillmentStatus, createdAt });
+    }
+    const list = await admin(tt).query(api.orders.desk.getAllOrdersAdmin, { clientTime: Date.now(), status: "done", limit: 2 });
+    expect(list.map((o) => o.orderNumber)).toEqual(["GL-CAP-NEW", "GL-CAP-MID"]);
   });
 
   it("an Administrator confirming delivery locks out carrier overwrites", async () => {

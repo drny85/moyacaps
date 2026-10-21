@@ -48,6 +48,9 @@ const NAME_MAX = 80;
 const DESCRIPTION_MAX = 1000;
 const BADGE_MAX = 24;
 const PRICE_MAX = 10000;
+
+/** Field limits the admin editor shows as counters; the validators below enforce them. */
+export const PRODUCT_LIMITS = { name: NAME_MAX, description: DESCRIPTION_MAX, badge: BADGE_MAX, slug: SLUG_MAX } as const;
 /** Largest stock one product or SKU may hold. */
 export const STOCK_MAX = 100000;
 

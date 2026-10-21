@@ -1,6 +1,7 @@
 import { ALLOWED_SIZES, STOCK_MAX } from "../../../convex/catalog/rules";
 import { suggestVariantId } from "./productForm";
 import type { ColorwayDraft, ProductFormState } from "./productForm";
+import type { TeeColorwayInput } from "../../../convex/catalog/rules";
 
 /** Pure edits behind the tee options editor: Apparel Colorways and sizes. */
 
@@ -23,6 +24,25 @@ export function withColorwayUids(form: ProductFormState): ProductFormState {
 
 export function addColorway(form: ProductFormState): ProductFormState {
   return { ...form, colorways: [...form.colorways, { ...BLANK_COLORWAY, uid: nextUid(form.colorways) }] };
+}
+
+/** The four Apparel Colorways most Graphic Designs come in (CONTEXT.md "Apparel Colorway"), as the catalog names them. */
+export const STANDARD_TEE_COLORWAYS: readonly TeeColorwayInput[] = [
+  { id: "washed-black", nameEn: "Vintage Washed Black", nameEs: "Negro Lavado", hex: "#18181b", borderHex: "#3f3f46" },
+  { id: "crisp-white", nameEn: "Crisp Optical White", nameEs: "Blanco Puro", hex: "#fafafa", borderHex: "#e4e4e7" },
+  { id: "heather-grey", nameEn: "Athletic Heather Grey", nameEs: "Gris Jaspe", hex: "#9ca3af", borderHex: "#6b7280" },
+  { id: "butter-cream", nameEn: "Butter Cream Vintage", nameEs: "Crema Vintage", hex: "#fefce8", borderHex: "#fef08a" },
+];
+
+/** One click for a new tee: add whichever standard colorways are missing; keep edits to ones already there. */
+export function addStandardColorways(form: ProductFormState): ProductFormState {
+  let next = form;
+  for (const standard of STANDARD_TEE_COLORWAYS) {
+    if (next.colorways.some((c) => c.id === standard.id)) continue;
+    next = { ...next, colorways: [...next.colorways, { ...standard, uid: nextUid(next.colorways) }] };
+  }
+  const defaultColorway = next.defaultColorway && next.colorways.some((c) => c.id === next.defaultColorway) ? next.defaultColorway : next.colorways[0]?.id;
+  return { ...next, defaultColorway };
 }
 
 /**

@@ -6,7 +6,7 @@ import { ALLOWED_SIZES } from "@convex/catalog/rules";
 import type { ColorwayDraft, ProductFormState } from "@/lib/admin/productForm";
 import { fieldErrorFor } from "@/lib/admin/editorErrors";
 import type { EditorFeedback } from "@/lib/admin/editorErrors";
-import { addColorway, isColorwayLocked, removeColorway, toggleSize, updateColorway } from "@/lib/admin/teeOptions";
+import { addColorway, addStandardColorways, isColorwayLocked, removeColorway, toggleSize, updateColorway } from "@/lib/admin/teeOptions";
 import { Field, FieldErrorText, HexField, TextField, inputClass, sectionClass, sectionTitleClass } from "./editorFields";
 
 /** Apparel Colorways, sizes, default colorway and fabric/fit copy of a tee. Stock per SKU lives in Pricing & Stock. */
@@ -36,18 +36,31 @@ export function TeeOptionsEditor({
   return (
     <section className={sectionClass}>
       <h3 className={sectionTitleClass}>{tSections("tee")}</h3>
-      <div className="flex items-center justify-between">
-        <span className="font-medium text-zinc-700 dark:text-zinc-300">{t("colorways")}</span>
-        <button
-          type="button"
-          onClick={() => onChange(addColorway)}
-          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-zinc-200 dark:border-white/10 text-[11px] font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-white/5"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          <span>{t("add")}</span>
-        </button>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="font-medium text-zinc-700 dark:text-zinc-300">
+          {t("colorways")}
+          <span className="text-moya-red ml-0.5" aria-hidden>*</span>
+        </span>
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => onChange(addStandardColorways)}
+            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-[11px] font-semibold hover:opacity-90"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>{t("addStandard")}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => onChange(addColorway)}
+            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-zinc-200 dark:border-white/10 text-[11px] font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-white/5"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>{t("add")}</span>
+          </button>
+        </div>
       </div>
-      {form.colorways.length === 0 && <p className="text-[11px] text-zinc-500">{t("empty")}</p>}
+      <p className="text-[11px] text-zinc-500">{form.colorways.length === 0 ? t("empty") : t("standardHint")}</p>
       <FieldErrorText error={err("colorways")} />
 
       {form.colorways.map((c, i) => {
@@ -56,8 +69,8 @@ export function TeeOptionsEditor({
         return (
           <div key={c.uid ?? i} className="p-3 rounded-xl bg-zinc-50 dark:bg-white/[0.02] border border-zinc-200 dark:border-white/10 space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <TextField label={t("nameEn")} value={c.nameEn} onChange={(nameEn) => setColorway(i, { nameEn })} error={err(`${at}.nameEn`)} />
-              <TextField label={t("nameEs")} value={c.nameEs} onChange={(nameEs) => setColorway(i, { nameEs })} error={err(`${at}.nameEs`)} />
+              <TextField label={t("nameEn")} value={c.nameEn} onChange={(nameEn) => setColorway(i, { nameEn })} error={err(`${at}.nameEn`)} placeholder="Crisp Optical White" required />
+              <TextField label={t("nameEs")} value={c.nameEs} onChange={(nameEs) => setColorway(i, { nameEs })} error={err(`${at}.nameEs`)} placeholder="Blanco Puro" required />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-start">
               <TextField
@@ -137,10 +150,10 @@ export function TeeOptionsEditor({
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <TextField label={t("fabricEn")} value={form.fabricEn} onChange={(fabricEn) => onChange((f) => ({ ...f, fabricEn }))} error={err("fabricEn")} />
-        <TextField label={t("fabricEs")} value={form.fabricEs} onChange={(fabricEs) => onChange((f) => ({ ...f, fabricEs }))} error={err("fabricEs")} />
-        <TextField label={t("fitEn")} value={form.fitEn} onChange={(fitEn) => onChange((f) => ({ ...f, fitEn }))} error={err("fitEn")} />
-        <TextField label={t("fitEs")} value={form.fitEs} onChange={(fitEs) => onChange((f) => ({ ...f, fitEs }))} error={err("fitEs")} />
+        <TextField label={t("fabricEn")} value={form.fabricEn} onChange={(fabricEn) => onChange((f) => ({ ...f, fabricEn }))} error={err("fabricEn")} placeholder="280 GSM combed cotton" />
+        <TextField label={t("fabricEs")} value={form.fabricEs} onChange={(fabricEs) => onChange((f) => ({ ...f, fabricEs }))} error={err("fabricEs")} placeholder="Algodón peinado 280 GSM" />
+        <TextField label={t("fitEn")} value={form.fitEn} onChange={(fitEn) => onChange((f) => ({ ...f, fitEn }))} error={err("fitEn")} placeholder="Boxy, drop-shoulder" />
+        <TextField label={t("fitEs")} value={form.fitEs} onChange={(fitEs) => onChange((f) => ({ ...f, fitEs }))} error={err("fitEs")} placeholder="Holgado, hombro caído" />
       </div>
     </section>
   );

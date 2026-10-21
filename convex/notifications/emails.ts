@@ -1,6 +1,6 @@
 "use node";
 
-import { internalAction, action } from "../_generated/server";
+import { internalAction } from "../_generated/server";
 import { v, ConvexError } from "convex/values";
 import { api, components, internal } from "../_generated/api";
 import { Resend } from "@convex-dev/resend";
@@ -26,7 +26,7 @@ import {
   receiptCopy,
   SUPPORT_EMAIL,
 } from "./orderEmails";
-import { PRIMARY_ADMIN_EMAIL, requireAdminInAction } from "../lib/auth";
+import { PRIMARY_ADMIN_EMAIL } from "../lib/auth";
 import { resolveAdminRecipient } from "./adminRecipient";
 
 export const resend = new Resend(components.resend, {
@@ -209,14 +209,12 @@ export const sendCustomerReceipt = internalAction({
 /**
  * Public action allowing authenticated staff to test email delivery.
  */
-export const sendTestAdminOrderAlert = action({
+export const sendTestAdminOrderAlert = internalAction({
   args: {
     targetEmail: v.optional(v.string()),
   },
   returns: v.object({ success: v.boolean(), emailId: v.string(), recipient: v.string() }),
   handler: async (ctx, args) => {
-    const identity = await requireAdminInAction(ctx);
-
     const recipient = args.targetEmail || adminEmail();
     const testOrderNum = `TEST-${Math.floor(1000 + Math.random() * 9000)}`;
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://goodluckcaps.com";

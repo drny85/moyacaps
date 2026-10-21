@@ -18,7 +18,7 @@ import { ProductActionDialogs } from "./ProductActionDialogs";
 import { ProductCard } from "./ProductCard";
 import type { ProductCardHandlers } from "./ProductCard";
 import { ProductGridSkeleton } from "./ProductGridSkeleton";
-import { QueryErrorBoundary } from "./QueryErrorBoundary";
+import { QueryErrorBoundary } from "@/components/admin/QueryErrorBoundary";
 import { useAdminShortcuts } from "./useAdminShortcuts";
 import { useProductActions } from "./useProductActions";
 import { useProductFilters } from "./useProductFilters";
