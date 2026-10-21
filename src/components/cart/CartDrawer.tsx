@@ -138,11 +138,7 @@ export function CartDrawer() {
                     </p>
                   ) : (
                     <p className="text-zinc-700 dark:text-zinc-300 text-center">
-                      {t("freeShippingRemaining", {
-                        amount: locale === "es"
-                          ? `${unitsToFreeShipping} gorra${unitsToFreeShipping === 1 ? "" : "s"} más`
-                          : `${unitsToFreeShipping} more cap${unitsToFreeShipping === 1 ? "" : "s"}`,
-                      })}
+                      {t("freeShippingRemaining", { count: unitsToFreeShipping })}
                     </p>
                   )}
                   <div className="w-full bg-black/10 dark:bg-black/50 h-1.5 rounded-full mt-2 overflow-hidden">
