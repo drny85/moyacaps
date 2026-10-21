@@ -94,6 +94,8 @@ import type * as settings_launch from "../settings/launch.js";
 import type * as settings_model from "../settings/model.js";
 import type * as settings_revalidate from "../settings/revalidate.js";
 import type * as shipping_functions from "../shipping/functions.js";
+import type * as shipping_parcels from "../shipping/parcels.js";
+import type * as shipping_queries from "../shipping/queries.js";
 import type * as shipping_shippoMode from "../shipping/shippoMode.js";
 import type * as shipping_territory from "../shipping/territory.js";
 import type * as users_clerk from "../users/clerk.js";
@@ -193,6 +195,8 @@ declare const fullApi: ApiFromModules<{
   "settings/model": typeof settings_model;
   "settings/revalidate": typeof settings_revalidate;
   "shipping/functions": typeof shipping_functions;
+  "shipping/parcels": typeof shipping_parcels;
+  "shipping/queries": typeof shipping_queries;
   "shipping/shippoMode": typeof shipping_shippoMode;
   "shipping/territory": typeof shipping_territory;
   "users/clerk": typeof users_clerk;
