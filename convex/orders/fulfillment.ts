@@ -10,6 +10,7 @@ import { hasEmail } from "./shared";
 import { fulfillmentStatusValidator, planLabelPurchase, statusAxes, statusPatch } from "./status";
 import { appendLabel } from "./labels";
 import { planTrackingUpdate } from "./tracking";
+import { scheduleReviewInvite } from "../reviews/invites";
 
 /**
  * INTERNAL: Commits a purchased shipping label to an order: adds it to the label history,
@@ -197,6 +198,7 @@ export const handleTrackingWebhookInternal = internalMutation({
         deliveredDetails: args.statusDetails,
         items: order.items,
       });
+      await scheduleReviewInvite(ctx, order, Date.now());
     }
 
     // Delivery Exception or returned to sender: tell the Administrator and the Customer, who

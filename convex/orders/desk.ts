@@ -21,6 +21,7 @@ import {
 import { readLedger, reserveRefund } from "../payments/refundLedger";
 import { findOrderByTypedNumber, hasEmail, releaseStock, scheduleSessionExpiry } from "./shared";
 import { carrierTrackingNumber } from "./trackingNumber";
+import { scheduleReviewInvite } from "../reviews/invites";
 import { normalizeEmail } from "./guestClaimModel";
 import { cancellationNotice, manualMoveEmail } from "../notifications/orderEmails";
 import {
@@ -411,6 +412,7 @@ export const updateFulfillmentStatusAdmin = mutation({
           trackingNumber,
           items: order.items,
         });
+        await scheduleReviewInvite(ctx, order, Date.now());
       }
     }
 

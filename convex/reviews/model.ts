@@ -13,6 +13,8 @@ export const CARD_RATING_MIN_COUNT = 3;
 export const REVIEW_TITLE_MAX = 80;
 export const REVIEW_BODY_MAX = 2000;
 export const REJECT_REASON_MAX = 300;
+/** Path of the Convex HTTP route for review-invite opt-out (RFC 8058 POST; GET shows a confirm page). */
+export const REVIEW_INVITE_UNSUBSCRIBE_PATH = "/review-invites/unsubscribe";
 /** How long after delivery a Customer is invited to review. */
 export const REVIEW_INVITE_DELAY_MS = 7 * 24 * 60 * 60 * 1000;
 

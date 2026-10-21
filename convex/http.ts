@@ -4,6 +4,8 @@ import { api, internal } from "./_generated/api";
 import { clerkUsersWebhook } from "./users/clerkWebhook";
 import { oneClickUnsubscribe, unsubscribeRedirect } from "./notifications/unsubscribeHttp";
 import { UNSUBSCRIBE_HTTP_PATH } from "./notifications/unsubscribe";
+import { optOutOfReviewInvites, reviewInviteOptOutPage } from "./reviews/invitesHttp";
+import { REVIEW_INVITE_UNSUBSCRIBE_PATH } from "./reviews/model";
 
 const http = httpRouter();
 
@@ -40,6 +42,10 @@ http.route({
 /** Marketing email `List-Unsubscribe`: one-click POST (RFC 8058) and a GET that redirects to the page. */
 http.route({ path: UNSUBSCRIBE_HTTP_PATH, method: "POST", handler: oneClickUnsubscribe });
 http.route({ path: UNSUBSCRIBE_HTTP_PATH, method: "GET", handler: unsubscribeRedirect });
+
+/** Review invite opt-out: POST is one-click (RFC 8058); GET only shows a confirm button, so prefetching scanners opt nobody out. */
+http.route({ path: REVIEW_INVITE_UNSUBSCRIBE_PATH, method: "POST", handler: optOutOfReviewInvites });
+http.route({ path: REVIEW_INVITE_UNSUBSCRIBE_PATH, method: "GET", handler: reviewInviteOptOutPage });
 
 /**
  * Shippo Carrier Tracking Webhook:

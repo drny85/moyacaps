@@ -56,6 +56,7 @@ import type * as notifications_templates_CustomerReceipt from "../notifications/
 import type * as notifications_templates_DeliveryExceptionEmail from "../notifications/templates/DeliveryExceptionEmail.js";
 import type * as notifications_templates_OrderDeliveredEmail from "../notifications/templates/OrderDeliveredEmail.js";
 import type * as notifications_templates_OrderDispatchedEmail from "../notifications/templates/OrderDispatchedEmail.js";
+import type * as notifications_templates_ReviewInviteEmail from "../notifications/templates/ReviewInviteEmail.js";
 import type * as notifications_templates_layout_BaseEmailLayout from "../notifications/templates/layout/BaseEmailLayout.js";
 import type * as notifications_templates_layout_OrderSummary from "../notifications/templates/layout/OrderSummary.js";
 import type * as notifications_templates_layout_brand from "../notifications/templates/layout/brand.js";
@@ -91,6 +92,8 @@ import type * as payments_stripeClient from "../payments/stripeClient.js";
 import type * as payments_webhook from "../payments/webhook.js";
 import type * as reviews_admin from "../reviews/admin.js";
 import type * as reviews_customer from "../reviews/customer.js";
+import type * as reviews_invites from "../reviews/invites.js";
+import type * as reviews_invitesHttp from "../reviews/invitesHttp.js";
 import type * as reviews_model from "../reviews/model.js";
 import type * as reviews_public from "../reviews/public.js";
 import type * as reviews_shared from "../reviews/shared.js";
@@ -166,6 +169,7 @@ declare const fullApi: ApiFromModules<{
   "notifications/templates/DeliveryExceptionEmail": typeof notifications_templates_DeliveryExceptionEmail;
   "notifications/templates/OrderDeliveredEmail": typeof notifications_templates_OrderDeliveredEmail;
   "notifications/templates/OrderDispatchedEmail": typeof notifications_templates_OrderDispatchedEmail;
+  "notifications/templates/ReviewInviteEmail": typeof notifications_templates_ReviewInviteEmail;
   "notifications/templates/layout/BaseEmailLayout": typeof notifications_templates_layout_BaseEmailLayout;
   "notifications/templates/layout/OrderSummary": typeof notifications_templates_layout_OrderSummary;
   "notifications/templates/layout/brand": typeof notifications_templates_layout_brand;
@@ -201,6 +205,8 @@ declare const fullApi: ApiFromModules<{
   "payments/webhook": typeof payments_webhook;
   "reviews/admin": typeof reviews_admin;
   "reviews/customer": typeof reviews_customer;
+  "reviews/invites": typeof reviews_invites;
+  "reviews/invitesHttp": typeof reviews_invitesHttp;
   "reviews/model": typeof reviews_model;
   "reviews/public": typeof reviews_public;
   "reviews/shared": typeof reviews_shared;

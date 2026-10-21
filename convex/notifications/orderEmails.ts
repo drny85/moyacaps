@@ -64,6 +64,22 @@ export function deliveredIdempotencyKey(orderNumber: string, trackingNumber?: st
   return `customer-delivered-${orderNumber}-${trackingNumber ?? "manual"}`;
 }
 
+/** The one-time "how did it go?" email, sent a week after delivery. */
+export function reviewInviteCopy(orderNumber: string): ShipmentCopy {
+  return {
+    subject: `How is your ${BRAND} order #${orderNumber}? Leave a review`,
+    preview: `Tell us what you think of order #${orderNumber}.`,
+    badge: "YOUR REVIEW",
+    heading: "How did it go?",
+    body: `Order #${orderNumber} arrived a week ago. A few honest words about what you got help other shoppers choose.`,
+  };
+}
+
+/** Resend key for the review invite: one per Order, whatever happens to the schedule. */
+export function reviewInviteIdempotencyKey(orderNumber: string): string {
+  return `customer-review-invite-${orderNumber}`;
+}
+
 type CareItem = { size?: string };
 export type CareTip = { title: string; body: string };
 

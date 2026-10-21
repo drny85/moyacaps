@@ -12,6 +12,9 @@ import { AdminTerritoryAlertEmail } from "./templates/AdminTerritoryAlert";
 import { CustomerReceiptEmail } from "./templates/CustomerReceipt";
 import { OrderDispatchedEmail } from "./templates/OrderDispatchedEmail";
 import { OrderDeliveredEmail } from "./templates/OrderDeliveredEmail";
+import { ReviewInviteEmail } from "./templates/ReviewInviteEmail";
+import { listUnsubscribeHeaders } from "./unsubscribe";
+import { REVIEW_INVITE_UNSUBSCRIBE_PATH } from "../reviews/model";
 import { DeliveryExceptionEmail } from "./templates/DeliveryExceptionEmail";
 import { CustomerNoticeEmail } from "./templates/CustomerNoticeEmail";
 import { AdminAlertEmail } from "./templates/AdminAlertEmail";
@@ -24,6 +27,8 @@ import {
   dispatchedCopy,
   dispatchedIdempotencyKey,
   receiptCopy,
+  reviewInviteCopy,
+  reviewInviteIdempotencyKey,
   SUPPORT_EMAIL,
 } from "./orderEmails";
 import { PRIMARY_ADMIN_EMAIL } from "../lib/auth";
@@ -505,6 +510,54 @@ export const sendOrderDeliveredEmail = internalAction({
       return { success: true, emailId };
     } catch (err: any) {
       console.error(`[OrderDeliveredEmail] Failed to send delivery email for ${args.orderNumber}:`, err?.message || err);
+      return { success: false, error: err?.message || String(err) };
+    }
+  },
+});
+
+/** Review invite a week after delivery: links to the account Orders page; one-click opt-out. */
+export const sendReviewInviteEmail = internalAction({
+  args: {
+    orderNumber: v.string(),
+    customerName: v.optional(v.string()),
+    customerEmail: v.string(),
+    unsubscribeToken: v.string(),
+    itemNames: v.array(v.string()),
+  },
+  returns: emailResult,
+  handler: async (ctx, args) => {
+    try {
+      if (!args.customerEmail.includes("@")) return { success: false, reason: "invalid_email" };
+
+      const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || "https://goodluckcaps.com").replace(/\/+$/, "");
+      const convexSiteUrl = process.env.CONVEX_SITE_URL?.replace(/\/+$/, "");
+      const oneClickUrl = convexSiteUrl
+        ? `${convexSiteUrl}${REVIEW_INVITE_UNSUBSCRIBE_PATH}?token=${encodeURIComponent(args.unsubscribeToken)}`
+        : undefined;
+
+      const email = await renderEmail(
+        React.createElement(ReviewInviteEmail, {
+          orderNumber: args.orderNumber,
+          customerName: args.customerName || "Valued Customer",
+          itemNames: args.itemNames,
+          reviewUrl: `${baseUrl}/account/orders?review=${encodeURIComponent(args.orderNumber)}`,
+          unsubscribeUrl: oneClickUrl,
+        })
+      );
+
+      const emailId = await resend.sendEmail(ctx, {
+        from: DEFAULT_SENDER,
+        to: args.customerEmail,
+        replyTo: CUSTOMER_REPLY_TO,
+        subject: reviewInviteCopy(args.orderNumber).subject,
+        html: email.html,
+        text: email.text,
+        headers: oneClickUrl ? listUnsubscribeHeaders(oneClickUrl) : undefined,
+        idempotencyKey: reviewInviteIdempotencyKey(args.orderNumber),
+      });
+      return { success: true, emailId };
+    } catch (err: any) {
+      console.error(`[ReviewInviteEmail] Failed for ${args.orderNumber}:`, err?.message || err);
       return { success: false, error: err?.message || String(err) };
     }
   },
