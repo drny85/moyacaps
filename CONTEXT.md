@@ -48,6 +48,10 @@ _Avoid_: Item, cap (when meaning tees too), listing
 Whether a category (Caps or Tees) is **Live** (its visible Products are shown and sellable), **Coming Soon** (a Coming Soon Teaser shows instead of Products) or **Hidden** (the category is gone from the storefront). Set by an Administrator, optionally with a launch date that turns it Live automatically (ADR 0022).
 _Avoid_: Category toggle, category flag, store mode
 
+**Drop**:
+A scheduled moment at which a hidden Product becomes visible and sellable, with a countdown and a notify-me list beforehand. Set, postponed, released early or cancelled by an Administrator.
+_Avoid_: Launch (that is Category Status), release, restock
+
 **Coming Soon Teaser**:
 What a Coming Soon category shows in place of its Products: a headline, an optional countdown to its launch date, and a sign-up to be notified when it goes Live.
 _Avoid_: Splash page, placeholder, waitlist page
@@ -151,6 +155,10 @@ _Avoid_: Order status (when meaning money only), paid flag
 **Fulfillment Status**:
 Where an Order's package stands: unfulfilled, label purchased, in transit, delivered, delivery exception or returned. Only changes once the Order is paid. Independent of Payment Status.
 _Avoid_: Shipping status, order status (when meaning the package only)
+
+**Needs Packing**:
+A paid Order with no shipping label yet. The Administrator's queue.
+_Avoid_: Pending, open, unfulfilled (when meaning the queue), needs attention (that is a Product concept)
 
 **Tracking Number**:
 The carrier's number for an Order's package. It exists only once a shipping label is bought; an Order with no label has none.

@@ -1,10 +1,5 @@
-import { redirect } from "next/navigation";
+import { HomePage } from "@/components/admin/home/HomePage";
 
-export default async function AdminPage({
-  params,
-}: {
-  params: Promise<{ locale: string }>;
-}) {
-  const { locale } = await params;
-  redirect(`/${locale}/admin/analytics`);
+export default function AdminHomePage() {
+  return <HomePage />;
 }

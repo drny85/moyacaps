@@ -254,70 +254,73 @@
   },
   "admin": {
     "title": "Good Luck HQ",
-    "subtitle": "Operations, Inventory & Fulfillment",
     "backToStore": "Storefront",
     "nav": {
-      "analytics": "Analytics",
-      "orders": "Orders Desk",
-      "products": "Caps & Colorways",
-      "drops": "VIP Drops",
-      "settings": "Settings"
-    },
-    "metrics": {
-      "grossRevenue": "Gross Revenue",
-      "completedOrders": "Completed Orders",
-      "avgOrderValue": "Average Order Value",
-      "lowStockAlerts": "Low Stock Alerts",
-      "inventoryVelocity": "Inventory Health",
-      "totalUnits": "Total Units in Stock",
-      "outOfStock": "Sold Out Colorways",
-      "stripeShare": "Stripe Direct Checkout"
+      "home": "Home",
+      "orders": "Orders",
+      "products": "Products",
+      "drops": "Drops",
+      "settings": "Settings",
+      "ordersBadge": "{count, plural, one {# order needs packing} other {# orders need packing}}",
+      "toggle": "Toggle admin navigation"
     },
     "orders": {
-      "title": "Orders & Fulfillment Desk",
-      "subtitle": "Inspect orders, process shipping dispatches, and track customer shipments.",
-      "searchPlaceholder": "Search by Order #, customer name, email, tracking, or colorway...",
-      "filterStatus": "Status",
-      "filterPayment": "Payment Method",
-      "allStatuses": "All Statuses",
-      "allPayments": "All Payments",
-      "dispatchTitle": "Dispatch Order & Assign Courier",
-      "dispatchDesc": "Assign shipping courier and tracking number for delivery.",
-      "carrierLabel": "Courier / Carrier",
-      "trackingLabel": "Tracking Number",
-      "adminNotesLabel": "Internal Fulfillment Notes",
-      "dispatchBtn": "Dispatch Order",
-      "dispatchAndNotify": "Dispatch & Notify via WhatsApp",
-      "markDelivered": "Mark Delivered",
-      "deliverTitle": "Confirm Package Delivery",
-      "deliverDesc": "Please confirm that courier tracking or customer confirmation indicates this shipment has been successfully delivered.",
-      "confirmDeliverBtn": "Confirm Delivery Completed",
-      "revertTitle": "Revert Status to Dispatched",
-      "revertDesc": "Was this order marked delivered by mistake? Reverting will reset the status back to Dispatched without modifying inventory.",
-      "revertBtn": "Revert to Dispatched",
-      "editAddressTitle": "Edit Recipient & Shipping Details",
-      "editAddressDesc": "Update customer delivery address and courier contact details before package dispatch.",
-      "saveAddressBtn": "Save Shipping Address",
-      "cancelOrder": "Cancel & Restock",
-      "cancelConfirmDesc": "Are you sure? This will cancel the order and automatically restore the ordered units to inventory.",
-      "stripeRefundLabel": "Issue full refund on Stripe immediately",
-      "stripeRefundDesc": "Triggers automated refund via Stripe API to the original payment method.",
-      "cancelReasonLabel": "Reason for cancellation / internal note",
-      "trackCarrierBtn": "Live Courier Tracking",
-      "pingWhatsApp": "Message on WhatsApp",
-      "orderDetail": "Order Details",
-      "shippingTo": "Shipping Address",
-      "editShippingBtn": "Edit Address",
-      "noOrdersFound": "No orders found matching this filter."
+      "title": "Orders",
+      "searchPlaceholder": "Search order #, name, email, tracking…",
+      "guest": "Guest",
+      "items": "{count, plural, one {# item} other {# items}}",
+      "age": {
+        "m": "{count}m",
+        "h": "{count}h",
+        "d": "{count}d"
+      },
+      "buyLabel": "Buy label",
+      "reship": "Reship",
+      "addressAndLabel": "Address & label",
+      "queue": {
+        "label": "Queue",
+        "needs_packing": "Needs packing",
+        "overdue": "Overdue",
+        "awaiting_payment": "Awaiting payment",
+        "shipped": "Shipped",
+        "problems": "Problems",
+        "done": "Done",
+        "all": "All"
+      },
+      "range": {
+        "label": "Range",
+        "today": "Today",
+        "7d": "7d",
+        "30d": "30d",
+        "all": "All"
+      },
+      "empty": "No orders in this queue",
+      "clearFilters": "Clear filters"
     },
     "settings": {
-      "title": "Shipping rules",
-      "subtitle": "Flat fee and free-shipping threshold. Customers see these in the cart and checkout; the server applies them to every order.",
-      "flatFee": "Flat shipping fee (USD)",
-      "threshold": "Free shipping at (units)",
-      "save": "Save shipping rules",
-      "saved": "Shipping rules saved.",
-      "saveFailed": "Could not save. Please try again."
+      "title": "Settings",
+      "shipping": {
+        "title": "Shipping rules",
+        "subtitle": "Flat fee and free-shipping threshold. Customers see these in the cart and checkout; the server applies them to every order.",
+        "flatFee": "Flat shipping fee (USD)",
+        "threshold": "Free shipping at (units)",
+        "save": "Save shipping rules",
+        "saved": "Shipping rules saved.",
+        "saveFailed": "Could not save. Please try again."
+      },
+      "alerts": {
+        "title": "Alerts",
+        "subtitle": "New orders, disputes, out-of-territory orders and failed refunds are emailed here.",
+        "recipient": "Alert emails go to",
+        "fallback": "ADMIN_NOTIFICATION_EMAIL is not set on the Convex deployment, so alerts go to the primary Administrator. Set it there to change the inbox.",
+        "chime": "Play a chime when a new order arrives (this browser)"
+      },
+      "account": {
+        "title": "Account",
+        "language": "Language",
+        "theme": "Theme",
+        "signedIn": "Signed in as"
+      }
     },
     "products": {
       "variantId": "Product ID (slug)",
@@ -677,56 +680,75 @@
       }
     },
     "drops": {
-      "title": "VIP Drops Launchpad",
-      "subtitle": "Schedule limited releases, orchestrate drop countdowns, and monitor VIP waitlist telemetry.",
-      "scheduleNewDrop": "Schedule VIP Drop",
-      "activeDrops": "Active & Scheduled Drops",
-      "subscribersWaitlist": "VIP Drop Waitlist",
-      "metricScheduled": "Scheduled Drops",
-      "metricLive": "Live / Released",
-      "metricSubscribers": "VIP Alert Subscribers",
-      "metricNextDrop": "Next Launch",
-      "selectProduct": "Select Colorway to Schedule",
-      "dropDateLabel": "Launch Date & Time",
-      "badgeEnLabel": "Drop Badge (English)",
-      "badgeEsLabel": "Drop Badge (Spanish)",
-      "badgeEnPlaceholder": "e.g. 0880 Good Luck Midnight Edition",
-      "badgeEsPlaceholder": "e.g. Edición Medianoche 0880 Good Luck",
-      "goLiveNow": "Go Live Now",
-      "confirmGoLiveTitle": "Launch VIP Drop Now?",
-      "confirmGoLiveDesc": "This will immediately release {name} on the storefront, unlock purchasing for all customers, and complete the countdown radar. Proceed?",
-      "confirmGoLiveBtn": "Confirm & Go Live",
-      "editSchedule": "Edit Schedule",
-      "postpone": "Postpone Drop",
-      "cancelDrop": "Cancel Drop",
-      "confirmCancelTitle": "Cancel Scheduled Drop?",
-      "confirmCancelDesc": "Are you sure you want to cancel the scheduled drop for {name}? The drop radar timer and VIP exclusive badges will be removed.",
-      "confirmCancelBtn": "Confirm & Cancel Drop",
-      "statusScheduled": "Scheduled Drop",
-      "statusLive": "Live & Purchasable",
-      "statusArchived": "Archived / Concluded",
-      "noDropsScheduled": "No VIP Drops scheduled at the moment.",
-      "noDropsDesc": "Schedule an upcoming limited colorway to build anticipation and capture customer alerts before launch.",
-      "exportSubscribers": "Export CSV",
-      "searchSubscribers": "Search subscribers by email, WhatsApp, or colorway...",
-      "filterColorway": "All Colorways",
-      "subscriberHeaderContact": "Subscriber Contact",
-      "subscriberHeaderChannel": "Channel",
-      "subscriberHeaderProduct": "Requested Colorway",
-      "subscriberHeaderDate": "Signed Up At",
-      "noSubscribers": "No drop alert subscribers yet.",
-      "liveCountdown": "Launches in",
-      "manageDrop": "Manage Drop",
-      "dropSavedSuccess": "VIP Drop successfully scheduled!",
-      "dropLiveSuccess": "VIP Drop is now LIVE and purchasable!",
-      "dropCancelledSuccess": "VIP Drop has been cancelled.",
-      "deleteDrop": "Delete Drop Permanently",
-      "confirmDeleteTitle": "Permanently Delete VIP Drop?",
-      "confirmDeleteDesc": "Are you sure you want to permanently delete the VIP drop configuration for {name}? This removes all drop scheduling, radar timers, and unlocks the colorway as a standard catalog item.",
-      "confirmDeleteBtn": "Delete Drop Permanently",
-      "deleteSubscribersLabel": "Also purge all registered waitlist alerts for this colorway",
-      "dropDeletedSuccess": "VIP Drop permanently deleted.",
-      "archiveDrop": "Archive Drop"
+      "title": "Drops",
+      "activeTitle": "Scheduled and live",
+      "scheduleDrop": "Schedule a drop",
+      "pickProduct": "Pick a Product…",
+      "noneToSchedule": "Every Product already has a drop",
+      "metrics": {
+        "scheduled": "Scheduled",
+        "live": "Live",
+        "subscribers": "Subscribers",
+        "next": "Next drop in",
+        "none": "—"
+      },
+      "status": {
+        "scheduled": "Scheduled",
+        "live": "Live",
+        "archived": "Archived"
+      },
+      "card": {
+        "launches": "Launches {when}",
+        "launched": "Launched {when}",
+        "subscribers": "{count, plural, one {# subscriber} other {# subscribers}}",
+        "stock": "{count} in stock",
+        "release": "Release now",
+        "reschedule": "Reschedule",
+        "cancel": "Cancel drop",
+        "delete": "Delete drop",
+        "awaitingRelease": "Date passed {when} · awaiting release",
+        "awaitingHelp": "Customers cannot buy it until you press Release now."
+      },
+      "release": {
+        "title": "Release {name} now?",
+        "body": "The Product becomes visible and sellable right away and the countdown ends.",
+        "confirm": "Release now"
+      },
+      "cancel": {
+        "title": "Cancel the drop for {name}?",
+        "body": "The countdown and the drop badge are removed. Subscribers are kept.",
+        "confirm": "Cancel the drop"
+      },
+      "delete": {
+        "title": "Delete the drop for {name}?",
+        "body": "Removes the drop configuration; the Product stays in the catalog as a normal item.",
+        "alsoSubscribers": "Also delete this Product's subscribers",
+        "confirm": "Delete"
+      },
+      "empty": "No drops yet",
+      "emptyBody": "Pick a Product above to schedule one.",
+      "subscribers": {
+        "title": "Subscribers",
+        "search": "Search email, phone, name or Product…",
+        "allProducts": "All Products",
+        "product": "Product",
+        "export": "Export CSV",
+        "contact": "Contact",
+        "channel": "Channel",
+        "name": "Name",
+        "signedUp": "Signed up",
+        "empty": "Nobody matches.",
+        "count": "{count}"
+      },
+      "toast": {
+        "scheduled": "Drop scheduled.",
+        "released": "Drop released.",
+        "cancelled": "Drop cancelled.",
+        "deleted": "Drop deleted."
+      },
+      "errors": {
+        "pastDate": "Pick a date and time in the future."
+      }
     },
     "launch": {
       "title": "Category launch",
@@ -772,6 +794,158 @@
       "confirmBody": "{count, plural, =0 {No listed products will be affected.} one {# listed product will disappear from the store.} other {# listed products will disappear from the store.}} Carts holding them will show them as unavailable.",
       "cancel": "Cancel",
       "confirm": "Yes, change it"
+    },
+    "home": {
+      "title": "Home",
+      "attention": {
+        "needs_packing": "Needs packing",
+        "overdue": "Overdue",
+        "problems": "Problems",
+        "low_stock": "Low stock"
+      },
+      "tiles": {
+        "today": "Today",
+        "d7": "Last 7 days",
+        "d30": "Last 30 days",
+        "orders": "{count, plural, =0 {no paid orders} one {# paid order} other {# paid orders}}"
+      },
+      "chart": {
+        "title": "Revenue, last 30 days",
+        "subtitle": "Paid orders by day, in your local time."
+      },
+      "lowStock": {
+        "title": "Low stock",
+        "empty": "Every Product and SKU is above the low-stock line.",
+        "left": "{count, plural, =0 {Sold out} one {# left} other {# left}}",
+        "viewAll": "View all {count} in Products"
+      },
+      "bestSellers": {
+        "title": "Best sellers",
+        "empty": "No paid orders in the last 30 days.",
+        "units": "{count, plural, one {# unit} other {# units}}"
+      }
+    },
+    "common": {
+      "queryFailed": "This page could not load. Check your connection and try again.",
+      "retry": "Retry",
+      "showingLatest": "Showing the latest {count}",
+      "dismiss": "Dismiss",
+      "confirm": "Confirm",
+      "cancel": "Cancel",
+      "actionFailed": "That did not go through. Try again.",
+      "close": "Close"
+    },
+    "orderDetail": {
+      "back": "Orders",
+      "notFound": "Order not found",
+      "notFoundBody": "No order matches {orderNumber}.",
+      "print": "Print packing slip",
+      "placed": "Placed {when}",
+      "disputed": "Payment disputed: a chargeback is open on this order. Labels are blocked until it closes.",
+      "next": {
+        "eyebrow": "Next",
+        "buyLabel": "Buy shipping label",
+        "addressAndLabel": "Add address & buy label",
+        "resolve": "The carrier bounced this package",
+        "reship": "Reship",
+        "refundInstead": "Refund instead →",
+        "inTransit": "On its way",
+        "scansMoveIt": "Carrier scans move it along. Mark it delivered only if a scan was missed.",
+        "markDelivered": "Mark delivered",
+        "awaitingPayment": "Waiting for payment.",
+        "holdExpires": "Waiting for payment · hold expires {when}"
+      },
+      "items": {
+        "title": "Items to pack",
+        "units": "{count, plural, one {# unit} other {# units}}",
+        "each": "{price} each",
+        "tapHint": "Tap an item to see it big."
+      },
+      "packing": {
+        "title": "Packing sheet",
+        "close": "Close",
+        "quantity": "Pack",
+        "colorway": "Colorway",
+        "size": "Size",
+        "slug": "Slug",
+        "lifestyle": "Lifestyle Shot",
+        "archived": "This Product is no longer in the catalog; the order's own name and image are shown."
+      },
+      "money": {
+        "title": "Money",
+        "subtotal": "Subtotal",
+        "shipping": "Shipping",
+        "free": "Free",
+        "tax": "Sales tax",
+        "taxRate": "Sales tax ({rate}%)",
+        "refunded": "Refunded",
+        "totalPaid": "Total paid",
+        "totalDue": "Total due"
+      },
+      "shipTo": {
+        "title": "Ship to",
+        "edit": "Edit",
+        "missing": "No shipping address yet. Add one before buying a label.",
+        "dialogTitle": "Edit recipient and address",
+        "customerName": "Name",
+        "customerEmail": "Email",
+        "customerPhone": "Phone",
+        "line1": "Address line 1",
+        "line2": "Address line 2",
+        "city": "City",
+        "state": "State",
+        "postalCode": "ZIP",
+        "country": "Country",
+        "save": "Save address",
+        "cancel": "Cancel"
+      },
+      "labels": {
+        "title": "Label & tracking",
+        "carrier": "Carrier",
+        "tracking": "Tracking",
+        "none": "No label yet.",
+        "copy": "Copy",
+        "track": "Track",
+        "printLabel": "Print label (PDF)",
+        "manual": "Add tracking manually",
+        "manualTitle": "Add tracking manually",
+        "manualHelp": "For a label bought outside the store. An unshipped order moves to in transit and the customer gets the dispatch email; after that, this only corrects the numbers.",
+        "manualSave": "Save tracking",
+        "cancel": "Cancel",
+        "override": "Delivery was confirmed by hand; carrier updates no longer change it.",
+        "markDelivered": "Mark delivered",
+        "revert": "Revert to in transit",
+        "deliverTitle": "Mark this order delivered?",
+        "deliverBody": "Only when a carrier scan was missed or the package was handed over in person. The customer is emailed.",
+        "revertTitle": "Revert to in transit?",
+        "revertBody": "Use this when the order was marked delivered by mistake. Inventory is not touched."
+      },
+      "notes": {
+        "title": "Notes",
+        "placeholder": "Internal notes: packing instructions, customer requests…",
+        "hint": "⌘S saves",
+        "save": "Save notes"
+      },
+      "danger": {
+        "title": "Cancel",
+        "help": "Cancelling releases any unshipped units back to stock and tells the customer.",
+        "cancel": "Cancel order",
+        "cancelTitle": "Cancel this order?",
+        "cancelBody": "This cannot be undone. Unshipped units return to stock.",
+        "reason": "Reason (internal)",
+        "refundStripe": "Refund in full on Stripe now",
+        "refundStripeHelp": "Sends the money back to the original card.",
+        "confirm": "Yes, cancel the order"
+      },
+      "toast": {
+        "address": "Address saved.",
+        "notes": "Notes saved.",
+        "tracking": "Tracking saved.",
+        "delivered": "Marked delivered.",
+        "reverted": "Back to in transit.",
+        "cancelled": "Order cancelled.",
+        "dispatched": "Marked in transit; the customer has been told."
+      }
     }
   },
   "track": {

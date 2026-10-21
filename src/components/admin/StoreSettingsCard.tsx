@@ -15,7 +15,7 @@ const inputClass =
 
 /** Administrator-editable shipping rules. The server validates and stays authoritative. */
 export function StoreSettingsCard() {
-  const t = useTranslations("admin.settings");
+  const t = useTranslations("admin.settings.shipping");
   const tErrors = useTranslations("admin.products.errors");
   const settings = useQuery(api.settings.functions.getStoreSettings);
   const update = useMutation(api.settings.functions.updateStoreSettings);

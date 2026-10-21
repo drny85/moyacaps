@@ -70,7 +70,7 @@ export function MobileActionBar() {
         {/* Admin HQ shortcut on mobile for staff */}
         {isAdmin && (
           <Link
-            href="/admin/analytics"
+            href="/admin"
             className="flex-1 py-1.5 px-2 rounded-xl flex flex-col items-center justify-center text-moya-red hover:text-rose-400 transition-colors active:scale-95 bg-moya-red/10 border border-moya-red/25"
             title="Good Luck Operations HQ"
           >
