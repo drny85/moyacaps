@@ -7,7 +7,7 @@ const full = {
   SHIP_FROM_STREET1: "1 Example St",
   SHIP_FROM_CITY: "Bronx",
   SHIP_FROM_STATE: "NY",
-  SHIP_FROM_ZIP: "10456",
+  SHIP_FROM_ZIP: "10001",
   SHIP_FROM_PHONE: "(555) 010-0100",
   SHIP_FROM_EMAIL: "orders@example.com",
 };
@@ -23,7 +23,7 @@ describe("parseShipFrom", () => {
         street2: undefined,
         city: "Bronx",
         state: "NY",
-        zip: "10456",
+        zip: "10001",
         country: "US",
         phone: "5550100100",
         email: "orders@example.com",
