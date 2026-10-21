@@ -5,12 +5,15 @@ import { useMutation } from "convex/react";
 import { ConvexError } from "convex/values";
 import { api } from "@convex/_generated/api";
 import type { Category } from "@convex/catalog/rules";
-import { formToCreateArgs, formToPatch, isFormDirty, validateForm, withCategory, withNameEn } from "@/lib/admin/productForm";
+import { formToCreateArgs, formToPatch, isFormDirty, validateForm, withNameEn } from "@/lib/admin/productForm";
 import type { ProductFormState, ResolvedVariant } from "@/lib/admin/productForm";
-import { editorFeedback, NO_FEEDBACK, splitFieldErrors } from "@/lib/admin/editorErrors";
+import { editorFeedback, NO_FEEDBACK, saveFeedback, splitFieldErrors } from "@/lib/admin/editorErrors";
 import type { EditorFeedback } from "@/lib/admin/editorErrors";
 import { canSave, editorReducer, initialEditorState, reapplyField } from "@/lib/admin/editorSession";
 import type { EditorState } from "@/lib/admin/editorSession";
+import { aiFilledFields } from "@/lib/admin/photoAutofill/merge";
+import type { AutofillCatalogContext } from "@/lib/admin/photoAutofill/context";
+import type { AutofillProposal } from "@/lib/admin/photoAutofill/schema";
 import type { EditorDropLink } from "./useProductActions";
 
 export type StockChange = { current: number; next: number };
@@ -66,8 +69,17 @@ export function useProductEditor(target: EditorTarget, rows: ResolvedVariant[] |
 
   const edit = useCallback((fn: (f: ProductFormState) => ProductFormState) => dispatch({ type: "edit", fn }), []);
   const update = useCallback((changes: Partial<ProductFormState>) => edit((f) => ({ ...f, ...changes })), [edit]);
-  const setCategory = useCallback((category: Category) => edit((f) => withCategory(f, category)), [edit]);
+  const setCategory = useCallback((category: Category) => dispatch({ type: "chooseCategory", category }), []);
   const setNameEn = useCallback((nameEn: string) => edit((f) => withNameEn(f, nameEn, isNew)), [edit, isNew]);
+
+  /** Fill the empty fields from a Photo Autofill proposal; nothing is saved. Merged against the live form. */
+  const applyAutofillProposal = useCallback(
+    (proposal: AutofillProposal, ctx: AutofillCatalogContext) => dispatch({ type: "autofill", proposal, ctx }),
+    []
+  );
+  const aiFilled = useMemo(() => aiFilledFields(form, state.autofill.filled), [form, state.autofill.filled]);
+
+  const dismissFeedback = useCallback(() => setFeedback(NO_FEEDBACK), []);
 
   const reloadLatest = useCallback(() => {
     if (!liveRow) return;
@@ -116,11 +128,12 @@ export function useProductEditor(target: EditorTarget, rows: ResolvedVariant[] |
       }
       if (session.version === null) return;
       const patch = formToPatch(initial, form);
-      const { updatedAt } =
-        Object.keys(patch).length > 0
-          ? await updateVariant({ variantId: session.variantId, expectedUpdatedAt: session.version, patch, ...(discardStock ? { discardStock } : {}) })
-          : { updatedAt: session.version };
+      const changed = Object.keys(patch).length > 0;
+      const { updatedAt } = changed
+        ? await updateVariant({ variantId: session.variantId, expectedUpdatedAt: session.version, patch, ...(discardStock ? { discardStock } : {}) })
+        : { updatedAt: session.version };
       dispatch({ type: "saved", updatedAt });
+      setFeedback(saveFeedback({ changed }));
     } catch (err: unknown) {
       if (!(err instanceof ConvexError)) console.error("Failed to save product", err);
       setFeedback(editorFeedback(err instanceof ConvexError ? (err.data as unknown) : undefined));
@@ -185,6 +198,8 @@ export function useProductEditor(target: EditorTarget, rows: ResolvedVariant[] |
     notFound: target.mode === "edit" && rows !== undefined && session === null && !targetRow,
     /** Set once a Product created here has its row: the page moves to its own URL. */
     createdVariantId: target.mode === "new" && session?.mode === "edit" && session.version !== null ? session.variantId : null,
+    /** Created, waiting for the new row and the move to its own page: still busy, not idle. */
+    awaitingRow: target.mode === "new" && session?.mode === "edit",
     form,
     feedback,
     saving,
@@ -196,12 +211,15 @@ export function useProductEditor(target: EditorTarget, rows: ResolvedVariant[] |
     edit,
     setCategory,
     setNameEn,
+    applyAutofillProposal,
+    aiFilled,
+    lastAutofill: state.autofill.last,
     reloadLatest,
     reapply,
     dismissUnsaved: () => dispatch({ type: "dismissUnsaved" }),
     discard,
     dropLink,
-    dismissFeedback: () => setFeedback(NO_FEEDBACK),
+    dismissFeedback,
     requestSave,
     saveDiscardingStock,
     confirmStock,

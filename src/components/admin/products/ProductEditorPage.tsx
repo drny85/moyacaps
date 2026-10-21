@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { useQuery } from "convex/react";
 import { Archive, ArchiveRestore, ArrowLeft, ImagePlus, Loader2, PackageX, Undo2 } from "lucide-react";
@@ -11,11 +11,14 @@ import { DetailsSection } from "./DetailsSection";
 import { DropSection } from "./DropSection";
 import { EmptyState } from "./EmptyState";
 import { FeedbackBanner } from "./FeedbackBanner";
+import { bannerTone } from "@/lib/admin/editorErrors";
+import { scrollToElement } from "@/lib/scrollToElement";
 import { PricingStockSection } from "./PricingStockSection";
 import { ProductActionDialogs } from "./ProductActionDialogs";
 import { ProductHistory } from "./ProductHistory";
 import { ProductImagesPanel } from "./ProductImagesPanel";
 import { StaleValuesPanel } from "./StaleValuesPanel";
+import { PhotoAutofillPanel } from "./PhotoAutofillPanel";
 import { TeeOptionsEditor } from "./TeeOptionsEditor";
 import { TeeSkuStock } from "./TeeSkuStock";
 import { sectionClass, sectionTitleClass } from "./editorFields";
@@ -40,9 +43,9 @@ function SaveButtons({ editor, onDiscard, className }: { editor: ProductEditorSt
       <button type="button" onClick={onDiscard} disabled={!editor.isDirty || editor.saving} className={ghostBtn}>
         <Undo2 className="w-3.5 h-3.5" /> {t("discard")}
       </button>
-      <button type="submit" form={FORM_ID} disabled={editor.saving || !editor.canSave} className={saveBtn}>
-        {editor.saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-        <span>{editor.saving ? t("saving") : editor.isNew ? t("create") : t("save")}</span>
+      <button type="submit" form={FORM_ID} disabled={editor.saving || editor.awaitingRow || !editor.canSave} className={saveBtn}>
+        {(editor.saving || editor.awaitingRow) && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+        <span>{editor.awaitingRow ? t("creating") : editor.saving ? t("saving") : editor.isNew ? t("create") : t("save")}</span>
         <kbd className="hidden lg:inline font-mono text-[10px] opacity-70">⌘S</kbd>
       </button>
     </div>
@@ -65,6 +68,25 @@ export function ProductEditorPage({ target }: { target: EditorTarget }) {
   const discardMessage = tProducts("discardConfirm");
 
   useUnsavedChangesGuard(editor.isDirty, discardMessage);
+
+  // Every Save answers where the Administrator can see it: a confirmation toast fades out,
+  // the first invalid field scrolls into view, a failure banner scrolls into view.
+  const bannerRef = useRef<HTMLDivElement>(null);
+  const { dismissFeedback } = editor;
+  useEffect(() => {
+    const tone = feedback.banner ? bannerTone(feedback.banner) : null;
+    if (tone === "success" || tone === "info") {
+      const timer = window.setTimeout(dismissFeedback, 4000);
+      return () => window.clearTimeout(timer);
+    }
+    if (feedback.fieldErrors.length > 0) {
+      const first = document.querySelector<HTMLElement>(`#${FORM_ID} [data-field-error]`);
+      if (first) scrollToElement(first);
+      first?.parentElement?.querySelector<HTMLElement>("input, textarea, select")?.focus({ preventScroll: true });
+      return;
+    }
+    if ((feedback.banner || feedback.formErrors.length > 0) && bannerRef.current) scrollToElement(bannerRef.current);
+  }, [feedback, dismissFeedback]);
 
   const createdId = editor.createdVariantId;
   useEffect(() => {
@@ -137,6 +159,7 @@ export function ProductEditorPage({ target }: { target: EditorTarget }) {
         </div>
       )}
 
+      <div ref={bannerRef} className="scroll-mt-24 empty:hidden">
       <FeedbackBanner
         banner={feedback.banner}
         formErrors={feedback.formErrors}
@@ -145,6 +168,7 @@ export function ProductEditorPage({ target }: { target: EditorTarget }) {
         onReload={liveRow ? editor.reloadLatest : undefined}
         onDiscardStock={editor.saveDiscardingStock}
       />
+      </div>
       <FeedbackBanner banner={actions.error} onDismiss={actions.clearError} />
       {editor.unsaved && <StaleValuesPanel form={form} unsaved={editor.unsaved} onApply={editor.reapply} onDismiss={editor.dismissUnsaved} />}
 
@@ -153,26 +177,29 @@ export function ProductEditorPage({ target }: { target: EditorTarget }) {
           {liveRow && !isNew ? (
             <ProductImagesPanel variantId={liveRow.variantId} colorways={liveRow.colorways} defaultColorway={liveRow.defaultColorway} locale={locale} />
           ) : (
-            <div className={`${sectionClass} flex flex-col justify-center gap-4 aspect-[4/5] max-h-[28rem]`}>
-              <div className="flex flex-col items-center text-center gap-2">
-                <ImagePlus className="w-10 h-10 text-zinc-400" />
-                <p className="text-zinc-600 dark:text-zinc-400">{tProducts("imagesAfterCreate")}</p>
+            <>
+              {isNew && <PhotoAutofillPanel onProposal={editor.applyAutofillProposal} outcome={editor.lastAutofill} />}
+              <div className={`${sectionClass} flex flex-col justify-center gap-4 aspect-[4/5] max-h-[28rem]`}>
+                <div className="flex flex-col items-center text-center gap-2">
+                  <ImagePlus className="w-10 h-10 text-zinc-400" />
+                  <p className="text-zinc-600 dark:text-zinc-400">{tProducts("imagesAfterCreate")}</p>
+                </div>
+                <ol className="space-y-2 text-xs max-w-xs mx-auto w-full">
+                  {(["details", "create", "images", "publish"] as const).map((step, i) => (
+                    <li key={step} className="flex items-start gap-2.5">
+                      <span className={`w-5 h-5 rounded-full shrink-0 flex items-center justify-center text-[10px] font-mono font-bold ${i === 0 ? "bg-moya-red text-white" : "bg-zinc-200 dark:bg-white/10 text-zinc-600 dark:text-zinc-400"}`}>{i + 1}</span>
+                      <span className={i === 0 ? "text-zinc-900 dark:text-white font-semibold" : "text-zinc-500"}>{tProducts(`form.steps.${step}`)}</span>
+                    </li>
+                  ))}
+                </ol>
               </div>
-              <ol className="space-y-2 text-xs max-w-xs mx-auto w-full">
-                {(["details", "create", "images", "publish"] as const).map((step, i) => (
-                  <li key={step} className="flex items-start gap-2.5">
-                    <span className={`w-5 h-5 rounded-full shrink-0 flex items-center justify-center text-[10px] font-mono font-bold ${i === 0 ? "bg-moya-red text-white" : "bg-zinc-200 dark:bg-white/10 text-zinc-600 dark:text-zinc-400"}`}>{i + 1}</span>
-                    <span className={i === 0 ? "text-zinc-900 dark:text-white font-semibold" : "text-zinc-500"}>{tProducts(`form.steps.${step}`)}</span>
-                  </li>
-                ))}
-              </ol>
-            </div>
+            </>
           )}
         </fieldset>
 
         <form id={FORM_ID} onSubmit={onSubmit} noValidate className="min-w-0">
           <fieldset disabled={isArchived || editor.saving} className="space-y-4 min-w-0">
-            <DetailsSection form={form} feedback={feedback} isNew={isNew} onChange={editor.update} onCategory={editor.setCategory} onNameEn={editor.setNameEn} />
+            <DetailsSection form={form} feedback={feedback} isNew={isNew} onChange={editor.update} onCategory={editor.setCategory} onNameEn={editor.setNameEn} aiFilled={editor.aiFilled} />
             <PricingStockSection
               form={form}
               feedback={feedback}
@@ -199,6 +226,7 @@ export function ProductEditorPage({ target }: { target: EditorTarget }) {
             />
             {form.category === "apparel" && (
               <TeeOptionsEditor
+                aiFilled={editor.aiFilled}
                 form={form}
                 feedback={feedback}
                 savedColorwayIds={editor.savedColorwayIds}

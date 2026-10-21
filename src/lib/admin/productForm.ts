@@ -2,6 +2,7 @@ import type { FunctionArgs, FunctionReturnType } from "convex/server";
 import type { api } from "../../../convex/_generated/api";
 import {
   ALLOWED_SIZES,
+  DEFAULT_PRICE_USD,
   DEFAULT_TAX_CODE,
   SILHOUETTES_BY_CATEGORY,
   normalizeSlug,
@@ -70,7 +71,7 @@ export function emptyForm(category: Category): ProductFormState {
     silhouette: SILHOUETTES_BY_CATEGORY[category][0],
     primaryHex: "#000000",
     secondaryHex: "#ffffff",
-    priceUsd: "",
+    priceUsd: String(DEFAULT_PRICE_USD[category]),
     stock: "0",
     taxCode: DEFAULT_TAX_CODE[category],
     descriptionEn: "",
@@ -132,6 +133,7 @@ export function withCategory(form: ProductFormState, category: Category): Produc
     category,
     silhouette: SILHOUETTES_BY_CATEGORY[category][0],
     taxCode: form.taxCode === DEFAULT_TAX_CODE[form.category] ? DEFAULT_TAX_CODE[category] : form.taxCode,
+    priceUsd: form.priceUsd === String(DEFAULT_PRICE_USD[form.category]) ? String(DEFAULT_PRICE_USD[category]) : form.priceUsd,
     sizes: category === "apparel" && form.sizes.length === 0 ? [...DEFAULT_TEE_SIZES] : form.sizes,
   };
 }

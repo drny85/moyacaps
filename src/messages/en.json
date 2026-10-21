@@ -592,7 +592,12 @@
         "restoreToEdit": "Restore to edit",
         "danger": "Danger zone",
         "archiveHint": "Archiving hides the Product everywhere. You can restore it later.",
-        "archiveSaveFirst": "Save or discard your changes before archiving."
+        "archiveSaveFirst": "Save or discard your changes before archiving.",
+        "saved": "Saved",
+        "noChanges": "No changes to save",
+        "dismiss": "Dismiss",
+        "creating": "Creating…",
+        "invalid": "Not saved: {count, plural, one {# field needs} other {# fields need}} fixing. {count, plural, one {It is} other {They are}} marked in red below."
       },
       "stale": {
         "title": "Your unsaved values",
@@ -676,6 +681,37 @@
           "create": "Create the Product (it stays hidden)",
           "images": "Add a Catalog Shot here",
           "publish": "Turn on Visible on the store"
+        }
+      },
+      "autofill": {
+        "title": "Fill from photos",
+        "hint": "Up to 4 photos of one Cap or Heavyweight Tee. We fill empty fields; you review and save. Photos are not kept.",
+        "drop": "Choose photos or drop them here",
+        "run": "Fill the form",
+        "working": "Reading your photos…",
+        "remove": "Remove photo",
+        "clear": "Clear photos",
+        "pill": "AI",
+        "pillLabel": "Filled by Photo Autofill",
+        "done": "Filled {count, plural, =0 {no empty fields} one {# field} other {# fields}}. Check each value before saving.",
+        "categoryConflict": "The photos look like {category}, but you chose a different category. Your choice was kept.",
+        "unrecognized": "These photos don't look like a Cap or a Heavyweight Tee. Nothing was filled.",
+        "errors": {
+          "forbidden": "Only an Administrator can use Photo Autofill.",
+          "badPhotos": "Choose 1 to 4 image files.",
+          "modelFailed": "Photo Autofill couldn't read the photos right now. Try again, or fill the form by hand.",
+          "decode": "One of the photos couldn't be opened. Try a JPEG or PNG."
+        },
+        "progress": {
+          "title": "Reading your photos",
+          "body": "Photo Autofill is looking at your photos and filling the empty fields. This usually takes 5–15 seconds.",
+          "keepOpen": "Keep this page open.",
+          "elapsed": "{seconds}s",
+          "steps": {
+            "prepare": "Preparing {count, plural, one {# photo} other {# photos}}",
+            "read": "Reading them with AI",
+            "fill": "Filling the empty fields"
+          }
         }
       }
     },

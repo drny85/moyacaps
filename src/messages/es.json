@@ -592,7 +592,12 @@
         "restoreToEdit": "Restaurar para editar",
         "danger": "Zona de riesgo",
         "archiveHint": "Archivar oculta el producto en todas partes. Puedes restaurarlo después.",
-        "archiveSaveFirst": "Guarda o descarta tus cambios antes de archivar."
+        "archiveSaveFirst": "Guarda o descarta tus cambios antes de archivar.",
+        "saved": "Guardado",
+        "noChanges": "No hay cambios que guardar",
+        "dismiss": "Cerrar",
+        "creating": "Creando…",
+        "invalid": "No se guardó: {count, plural, one {# campo necesita} other {# campos necesitan}} corrección. {count, plural, one {Está marcado} other {Están marcados}} en rojo abajo."
       },
       "stale": {
         "title": "Tus valores sin guardar",
@@ -676,6 +681,37 @@
           "create": "Crea el Producto (queda oculto)",
           "images": "Agrega una Foto de Catálogo aquí",
           "publish": "Activa Visible en la tienda"
+        }
+      },
+      "autofill": {
+        "title": "Llenar desde fotos",
+        "hint": "Hasta 4 fotos de una sola Gorra o Playera Heavyweight. Llenamos los campos vacíos; tú revisas y guardas. Las fotos no se guardan.",
+        "drop": "Elige fotos o suéltalas aquí",
+        "run": "Llenar el formulario",
+        "working": "Leyendo tus fotos…",
+        "remove": "Quitar foto",
+        "clear": "Quitar fotos",
+        "pill": "IA",
+        "pillLabel": "Llenado por Photo Autofill",
+        "done": "{count, plural, =0 {No había campos vacíos} one {Se llenó # campo} other {Se llenaron # campos}}. Revisa cada valor antes de guardar.",
+        "categoryConflict": "Las fotos parecen de {category}, pero elegiste otra categoría. Se mantuvo tu elección.",
+        "unrecognized": "Estas fotos no parecen una Gorra ni una Playera Heavyweight. No se llenó nada.",
+        "errors": {
+          "forbidden": "Solo un Administrador puede usar Photo Autofill.",
+          "badPhotos": "Elige de 1 a 4 imágenes.",
+          "modelFailed": "Photo Autofill no pudo leer las fotos ahora. Inténtalo de nuevo o llena el formulario a mano.",
+          "decode": "No se pudo abrir una de las fotos. Prueba con JPEG o PNG."
+        },
+        "progress": {
+          "title": "Leyendo tus fotos",
+          "body": "Photo Autofill está viendo tus fotos y llenando los campos vacíos. Suele tardar de 5 a 15 segundos.",
+          "keepOpen": "No cierres esta página.",
+          "elapsed": "{seconds} s",
+          "steps": {
+            "prepare": "Preparando {count, plural, one {# foto} other {# fotos}}",
+            "read": "Leyéndolas con IA",
+            "fill": "Llenando los campos vacíos"
+          }
         }
       }
     },

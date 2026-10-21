@@ -10,6 +10,11 @@ const withNextIntl = createNextIntlPlugin({
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  experimental: {
+    // Photo Autofill sends up to four downscaled photos (≤ 1 MB each) to one server action
+    // (ADR 0027). This limit applies to every server action; Vercel caps bodies at 4.5 MB.
+    serverActions: { bodySizeLimit: "4.5mb" },
+  },
   // `ANALYZE_SOURCEMAPS=1 bun run build` emits browser source maps to attribute chunk bytes to modules
   productionBrowserSourceMaps: process.env.ANALYZE_SOURCEMAPS === "1",
   images: {

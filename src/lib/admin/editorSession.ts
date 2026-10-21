@@ -1,7 +1,11 @@
 import type { Category } from "../../../convex/catalog/rules";
-import { emptyForm, formFromVariant, isFormDirty } from "./productForm";
+import { emptyForm, formFromVariant, isFormDirty, withCategory } from "./productForm";
 import type { ProductFormState, ResolvedVariant } from "./productForm";
 import { withColorwayUids } from "./teeOptions";
+import { applyAutofill } from "./photoAutofill/merge";
+import type { AutofillFilled, AutofillOutcome } from "./photoAutofill/merge";
+import type { AutofillCatalogContext } from "./photoAutofill/context";
+import type { AutofillProposal } from "./photoAutofill/schema";
 
 /**
  * Session transitions of the product editor. `version` is the row's
@@ -25,7 +29,18 @@ export type EditorState = {
   form: ProductFormState;
   /** Edits discarded by the last "Reload latest", shown beside the fresh values. */
   unsaved: ProductFormState | null;
+  /** Photo Autofill in a create session: the values it put in the form and its last outcome. */
+  autofill: AutofillState;
 };
+
+export type AutofillState = {
+  filled: AutofillFilled;
+  last: AutofillOutcome | null;
+  /** The Administrator picked the category in the form, so autofill keeps it. */
+  categoryTouched: boolean;
+};
+
+const NO_AUTOFILL: AutofillState = { filled: {}, last: null, categoryTouched: false };
 
 export type EditorAction =
   | { type: "openCreate"; category?: Category }
@@ -37,6 +52,9 @@ export type EditorAction =
   | { type: "dismissUnsaved" }
   | { type: "reload"; row: ResolvedVariant }
   | { type: "edit"; fn: (form: ProductFormState) => ProductFormState }
+  | { type: "chooseCategory"; category: Category }
+  /** Merged against the form at dispatch time, so edits made while the photos were read survive. */
+  | { type: "autofill"; proposal: AutofillProposal; ctx: AutofillCatalogContext }
   | { type: "close" };
 
 export function versionOf(row: Pick<ResolvedVariant, "updatedAt" | "_creationTime">): number {
@@ -45,12 +63,12 @@ export function versionOf(row: Pick<ResolvedVariant, "updatedAt" | "_creationTim
 
 export function initialEditorState(): EditorState {
   const blank = emptyForm("headwear");
-  return { session: null, initial: blank, form: blank, unsaved: null };
+  return { session: null, initial: blank, form: blank, unsaved: null, autofill: NO_AUTOFILL };
 }
 
 function seeded(row: ResolvedVariant): EditorState {
   const form = withColorwayUids(formFromVariant(row));
-  return { session: { mode: "edit", variantId: row.variantId, version: versionOf(row) }, initial: form, form, unsaved: null };
+  return { session: { mode: "edit", variantId: row.variantId, version: versionOf(row) }, initial: form, form, unsaved: null, autofill: NO_AUTOFILL };
 }
 
 export function editorReducer(state: EditorState, action: EditorAction): EditorState {
@@ -58,7 +76,7 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
   switch (action.type) {
     case "openCreate": {
       const blank = emptyForm(action.category ?? "headwear");
-      return { session: { mode: "create" }, initial: blank, form: blank, unsaved: null };
+      return { session: { mode: "create" }, initial: blank, form: blank, unsaved: null, autofill: NO_AUTOFILL };
     }
     case "openEdit":
       return seeded(action.row);
@@ -80,6 +98,20 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
       return { ...state, unsaved: null };
     case "edit":
       return session ? { ...state, form: action.fn(state.form) } : state;
+    case "chooseCategory":
+      if (!session) return state;
+      return { ...state, form: withCategory(state.form, action.category), autofill: { ...state.autofill, categoryTouched: true } };
+    case "autofill": {
+      // A result landing after Create belongs to no session: the form now mirrors the saved row.
+      if (session?.mode !== "create") return state;
+      const outcome = applyAutofill(state.form, action.proposal, action.ctx, state.autofill.categoryTouched);
+      if (outcome.kind === "unrecognized") return { ...state, autofill: { ...state.autofill, last: outcome } };
+      return {
+        ...state,
+        form: outcome.form,
+        autofill: { ...state.autofill, filled: { ...state.autofill.filled, ...outcome.filled }, last: outcome },
+      };
+    }
     case "close":
       return { ...state, session: null };
   }

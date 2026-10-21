@@ -7,7 +7,8 @@ import type { ColorwayDraft, ProductFormState } from "@/lib/admin/productForm";
 import { fieldErrorFor } from "@/lib/admin/editorErrors";
 import type { EditorFeedback } from "@/lib/admin/editorErrors";
 import { addColorway, addStandardColorways, isColorwayLocked, removeColorway, toggleSize, updateColorway } from "@/lib/admin/teeOptions";
-import { Field, FieldErrorText, HexField, TextField, inputClass, sectionClass, sectionTitleClass } from "./editorFields";
+import type { AutofillField } from "@/lib/admin/photoAutofill/merge";
+import { AiPill, Field, FieldErrorText, HexField, TextField, inputClass, sectionClass, sectionTitleClass } from "./editorFields";
 
 /** Apparel Colorways, sizes, default colorway and fabric/fit copy of a tee. Stock per SKU lives in Pricing & Stock. */
 export function TeeOptionsEditor({
@@ -17,6 +18,7 @@ export function TeeOptionsEditor({
   printPosition,
   locale,
   onChange,
+  aiFilled = [],
 }: {
   form: ProductFormState;
   feedback: EditorFeedback;
@@ -24,6 +26,8 @@ export function TeeOptionsEditor({
   printPosition?: "front" | "back";
   locale: string;
   onChange: (edit: (f: ProductFormState) => ProductFormState) => void;
+  /** Fields still holding a Photo Autofill value. */
+  aiFilled?: readonly AutofillField[];
 }) {
   const t = useTranslations("admin.products.teeOptions");
   const tSections = useTranslations("admin.products.sections");
@@ -40,6 +44,7 @@ export function TeeOptionsEditor({
         <span className="font-medium text-zinc-700 dark:text-zinc-300">
           {t("colorways")}
           <span className="text-moya-red ml-0.5" aria-hidden>*</span>
+          {aiFilled.includes("colorways") && <AiPill />}
         </span>
         <div className="flex items-center gap-1.5">
           <button
@@ -150,10 +155,10 @@ export function TeeOptionsEditor({
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <TextField label={t("fabricEn")} value={form.fabricEn} onChange={(fabricEn) => onChange((f) => ({ ...f, fabricEn }))} error={err("fabricEn")} placeholder="280 GSM combed cotton" />
-        <TextField label={t("fabricEs")} value={form.fabricEs} onChange={(fabricEs) => onChange((f) => ({ ...f, fabricEs }))} error={err("fabricEs")} placeholder="Algodón peinado 280 GSM" />
-        <TextField label={t("fitEn")} value={form.fitEn} onChange={(fitEn) => onChange((f) => ({ ...f, fitEn }))} error={err("fitEn")} placeholder="Boxy, drop-shoulder" />
-        <TextField label={t("fitEs")} value={form.fitEs} onChange={(fitEs) => onChange((f) => ({ ...f, fitEs }))} error={err("fitEs")} placeholder="Holgado, hombro caído" />
+        <TextField label={t("fabricEn")} value={form.fabricEn} onChange={(fabricEn) => onChange((f) => ({ ...f, fabricEn }))} error={err("fabricEn")} ai={aiFilled.includes("fabricEn")} placeholder="280 GSM combed cotton" />
+        <TextField label={t("fabricEs")} value={form.fabricEs} onChange={(fabricEs) => onChange((f) => ({ ...f, fabricEs }))} error={err("fabricEs")} ai={aiFilled.includes("fabricEs")} placeholder="Algodón peinado 280 GSM" />
+        <TextField label={t("fitEn")} value={form.fitEn} onChange={(fitEn) => onChange((f) => ({ ...f, fitEn }))} error={err("fitEn")} ai={aiFilled.includes("fitEn")} placeholder="Boxy, drop-shoulder" />
+        <TextField label={t("fitEs")} value={form.fitEs} onChange={(fitEs) => onChange((f) => ({ ...f, fitEs }))} error={err("fitEs")} ai={aiFilled.includes("fitEs")} placeholder="Holgado, hombro caído" />
       </div>
     </section>
   );

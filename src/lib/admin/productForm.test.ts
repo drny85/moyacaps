@@ -252,3 +252,16 @@ describe("a new Product", () => {
     expect(storePath("")).toBe("/products/…");
   });
 });
+
+describe("default price", () => {
+  it("starts a new Cap at 120 and a new Tee at 80", () => {
+    expect(emptyForm("headwear").priceUsd).toBe("120");
+    expect(emptyForm("apparel").priceUsd).toBe("80");
+  });
+  it("switches the price with the category while it is still the default", () => {
+    expect(withCategory(emptyForm("headwear"), "apparel").priceUsd).toBe("80");
+  });
+  it("keeps a typed price across a category switch", () => {
+    expect(withCategory({ ...emptyForm("headwear"), priceUsd: "95" }, "apparel").priceUsd).toBe("95");
+  });
+});
