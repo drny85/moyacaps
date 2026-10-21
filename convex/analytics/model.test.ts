@@ -103,6 +103,12 @@ describe("computeAnalytics", () => {
     expect(late.dailySales.at(-1)?.date).toBe("2026-10-17");
   });
 
+  it("ranks best sellers over the chart window only", () => {
+    const old = order({ total: 40, createdAt: NOW - 40 * DAY, items: [{ variantId: "old", name: "Old", quantity: 9, price: 40, image: "/o.png" }] });
+    const top = computeAnalytics([order({ total: 108 }), old], [], [], NOW, TZ).topVariants;
+    expect(top.map((v) => v.variantId)).toEqual(["cap"]);
+  });
+
   it("sums today, 7-day and 30-day windows", () => {
     const windows = computeAnalytics(
       [order({ total: 100 }), order({ total: 100, createdAt: NOW - 3 * DAY }), order({ total: 100, createdAt: NOW - 10 * DAY }), order({ total: 100, createdAt: NOW - 40 * DAY })],

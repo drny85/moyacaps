@@ -32,6 +32,12 @@ describe("toHomeVM", () => {
     ]);
   });
 
+  it("counts low stock from the same rows the list shows", () => {
+    const many = Array.from({ length: 12 }, (_, i) => ({ variantId: `cap-${i}`, nameEn: `Cap ${i}`, nameEs: `Gorra ${i}`, stock: i, image: "/c.png" }));
+    const capped = toHomeVM({ ...analytics, lowStock: many }, { ...attention, lowStockCount: 1 }, "en");
+    expect(capped.attention.find((a) => a.id === "low_stock")?.count).toBe(12);
+  });
+
   it("greys out a queue with nothing in it", () => {
     const quiet = toHomeVM({ ...analytics, fulfillmentStatusCounts: {}, paymentStatusCounts: {} }, { ...attention, overduePaid: 0 }, "en");
     expect(quiet.attention.map((a) => a.tone)).toEqual(["amber", "zinc", "zinc", "amber"]);

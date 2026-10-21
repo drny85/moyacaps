@@ -64,7 +64,8 @@ export function toHomeVM(analytics: AnalyticsInput, attention: AttentionInput, l
     needs_packing: attention.totalActionRequired,
     overdue: attention.overduePaid,
     problems: problemsCount(analytics),
-    low_stock: attention.lowStockCount,
+    // The same rows the list shows (Caps and tee SKUs), so the pill and the list agree.
+    low_stock: analytics.lowStock.length,
   };
   const maxRevenue = Math.max(0, ...analytics.dailySales.map((d) => d.revenue));
   return {

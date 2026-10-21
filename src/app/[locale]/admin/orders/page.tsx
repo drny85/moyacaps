@@ -39,6 +39,7 @@ import {
 } from "lucide-react";
 import { Link } from "@/i18n/routing";
 import { useSearchParams } from "next/navigation";
+import { deskFilterForQueueParam } from "@/lib/admin/queueParam";
 import { ShippingLabelModal } from "@/components/admin/ShippingLabelModal";
 import { labelAction } from "@convex/orders/status";
 import { carrierTrackingNumber } from "@convex/orders/trackingNumber";
@@ -57,17 +58,17 @@ export default function AdminOrdersPage() {
   const tStatus = useTranslations("account");
   const locale = useLocale();
 
-  // Filters state
+  // URL query param synchronization
+  const searchParams = useSearchParams();
+  const orderParam = searchParams.get("order");
+
+  // Filters state (Home's ?queue= links pick the opening filter)
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState(() => deskFilterForQueueParam(searchParams.get("queue")));
   const [paymentFilter, setPaymentFilter] = useState("all");
 
   // Selected order for detail drawer
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
-
-  // URL query param synchronization
-  const searchParams = useSearchParams();
-  const orderParam = searchParams.get("order");
 
   const handleSelectOrder = (order: any | null) => {
     setSelectedOrder(order);

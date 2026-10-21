@@ -103,18 +103,18 @@ export function computeAnalytics(
       totalRevenue += o.total;
       completedOrdersCount += 1;
 
+      // Best sellers and the chart share the 30-day window; totals above are all-time.
+      const orderDate = localDayKey(o.createdAt, tzOffsetMinutes);
+      if (!dailyMap[orderDate]) continue;
+      dailyMap[orderDate].revenue += o.total;
+      dailyMap[orderDate].orders += 1;
+
       for (const item of o.items) {
         if (!variantSalesMap[item.variantId]) {
           variantSalesMap[item.variantId] = { name: item.name, units: 0, revenue: 0, image: item.image };
         }
         variantSalesMap[item.variantId].units += item.quantity;
         variantSalesMap[item.variantId].revenue += item.price * item.quantity;
-      }
-
-      const orderDate = localDayKey(o.createdAt, tzOffsetMinutes);
-      if (dailyMap[orderDate]) {
-        dailyMap[orderDate].revenue += o.total;
-        dailyMap[orderDate].orders += 1;
       }
     }
   }
