@@ -196,6 +196,22 @@ _Avoid_: Replacement order, duplicate order
 A free-amount refund an Administrator gives outside any line (an apology, a delay). It never Restocks.
 _Avoid_: Credit, partial refund (when meaning a line refund)
 
+**Product Review**:
+A Verified Buyer's 1–5 star rating of a Product, with an optional title and text. It covers the whole Product across its Colorways and sizes, and notes what the Customer bought (e.g. "Bought: Black / L"). One per Customer per Product; the Customer may edit it. Shown on both locales in the language it was written, never translated.
+_Avoid_: Testimonial, feedback, comment, rating (when meaning the whole review)
+
+**Verified Buyer**:
+A signed-in Customer who owns a delivered Order containing the Product, on a line that was neither refunded nor cancelled. A guest Order counts once claimed by the Customer's verified email. Only a Verified Buyer can write a Product Review.
+_Avoid_: Reviewer, verified purchase (when meaning the person)
+
+**Review Status**:
+Where a Product Review stands: **Pending** (waiting for an Administrator), **Published** (shown on the storefront) or **Rejected** (never shown). Every new or edited review starts Pending; nothing is public until an Administrator publishes it. An Administrator may reject with a reason the Customer sees, or unpublish a Published review back to Rejected. A review stays Published if its line is later refunded.
+_Avoid_: Approved flag, hidden, moderation state
+
+**Review Invite**:
+One email per delivered Order, sent 7 days after delivery, asking the Customer to review the Products they can review. Never repeated as a reminder; respects the Customer's email unsubscribe.
+_Avoid_: Review reminder, feedback request
+
 **Cap Media Storage**:
 Convex binary storage (`_storage`) managing high-resolution product photography for Cap Variants, referenced by immutable `storageId` and resolved to signed CDN URLs during catalog queries.
 _Avoid_: Asset bucket, static image directory, media folder
