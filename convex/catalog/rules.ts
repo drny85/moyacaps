@@ -148,6 +148,9 @@ const COLORWAY_ID_MAX = 40;
 const COLORWAY_NAME_MAX = 40;
 const TEE_COPY_MAX = 200;
 
+/** Tee option limits, for clients that clip values before they reach the validators. */
+export const TEE_LIMITS = { colorwayId: COLORWAY_ID_MAX, colorwayName: COLORWAY_NAME_MAX, copy: TEE_COPY_MAX } as const;
+
 /** Colorway fields an Administrator edits; the server fills the shot paths. */
 export type TeeColorwayInput = { id: string; nameEn: string; nameEs: string; hex: string; borderHex: string };
 
