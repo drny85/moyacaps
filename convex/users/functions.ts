@@ -183,13 +183,15 @@ export const softDeleteUser = internalMutation({
       .withIndex("by_clerkId", (q) => q.eq("clerkId", args.clerkId))
       .first();
 
+    const now = Date.now();
+    // Reviews need no users row (submitReview does not require one), so hide them either way.
+    await hideReviewsForUser(ctx, args.clerkId, now);
+
     if (user) {
-      const now = Date.now();
       await ctx.db.patch(user._id, {
         deletedAt: now,
         updatedAt: now,
       });
-      await hideReviewsForUser(ctx, args.clerkId, now);
       return { success: true };
     }
 

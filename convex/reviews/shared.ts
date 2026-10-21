@@ -68,8 +68,9 @@ export async function loadRefunds(ctx: QueryCtx, orderId: Id<"orders">): Promise
 const MAX_REVIEWS_PER_USER = 500;
 
 /**
- * Hides every not-yet-hidden review by a deleted account and takes them out of the stats.
- * One-way: a deleted Clerk user does not come back. Returns how many rows were hidden.
+ * Hides every not-yet-hidden review by a deleted account and takes them out of the stats. A
+ * pending one also becomes rejected (no reason) so it leaves the moderation queue and badge.
+ * Restoring an account (clearing deletedAt) does not unhide them. Returns how many were hidden.
  */
 export async function hideReviewsForUser(ctx: MutationCtx, clerkUserId: string, now: number): Promise<number> {
   const reviews = await ctx.db
@@ -79,8 +80,12 @@ export async function hideReviewsForUser(ctx: MutationCtx, clerkUserId: string, 
   let hidden = 0;
   for (const prev of reviews) {
     if (prev.hiddenAt !== undefined) continue;
-    await ctx.db.patch(prev._id, { hiddenAt: now });
-    await applyStatsChange(ctx, prev.variantId, prev, { ...prev, hiddenAt: now });
+    const patch =
+      prev.status === "pending"
+        ? { hiddenAt: now, status: "rejected" as const, rejectReason: undefined, updatedAt: now }
+        : { hiddenAt: now };
+    await ctx.db.patch(prev._id, patch);
+    await applyStatsChange(ctx, prev.variantId, prev, await ctx.db.get(prev._id));
     hidden++;
   }
   return hidden;

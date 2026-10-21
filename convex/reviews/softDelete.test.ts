@@ -79,7 +79,25 @@ describe("softDeleteUser", () => {
 
     await tt.mutation(internal.users.functions.softDeleteUser, { clerkId: "u1" });
 
-    expect((await tt.run(async (ctx) => ctx.db.get(pending)))?.hiddenAt).toBeTypeOf("number");
+    const row = await tt.run(async (ctx) => ctx.db.get(pending));
+    expect(row?.hiddenAt).toBeTypeOf("number");
+    // Rejected so it leaves the moderation queue and the pending badge; no reason to show anyone.
+    expect(row?.status).toBe("rejected");
+    expect(row?.rejectReason).toBeUndefined();
+    expect(await asAdmin(tt).query(api.reviews.admin.getPendingReviewCount, {})).toBe(0);
     expect(await tt.query(api.reviews.public.getRatingSummary, { variantId: "V1" })).toEqual({ average: 4, count: 1 });
+  });
+
+  it("hides the reviews of an account that never had a users row", async () => {
+    const tt = t();
+    const id = await review(tt, "u_norow", "V1", 5, 1);
+    await asAdmin(tt).mutation(api.reviews.admin.publishReview, { reviewId: id });
+    expect(await tt.query(api.reviews.public.getRatingSummary, { variantId: "V1" })).toEqual({ average: 5, count: 1 });
+
+    const result = await tt.mutation(internal.users.functions.softDeleteUser, { clerkId: "u_norow" });
+
+    expect(result).toEqual({ success: false, reason: "User not found" });
+    expect(await tt.query(api.reviews.public.getRatingSummary, { variantId: "V1" })).toBeNull();
+    expect((await tt.run(async (ctx) => ctx.db.get(id)))?.hiddenAt).toBeTypeOf("number");
   });
 });
