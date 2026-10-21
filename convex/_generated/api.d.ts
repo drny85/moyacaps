@@ -89,6 +89,7 @@ import type * as payments_refunds from "../payments/refunds.js";
 import type * as payments_settlementModel from "../payments/settlementModel.js";
 import type * as payments_stripeClient from "../payments/stripeClient.js";
 import type * as payments_webhook from "../payments/webhook.js";
+import type * as reviews_customer from "../reviews/customer.js";
 import type * as reviews_model from "../reviews/model.js";
 import type * as reviews_shared from "../reviews/shared.js";
 import type * as reviews_validators from "../reviews/validators.js";
@@ -196,6 +197,7 @@ declare const fullApi: ApiFromModules<{
   "payments/settlementModel": typeof payments_settlementModel;
   "payments/stripeClient": typeof payments_stripeClient;
   "payments/webhook": typeof payments_webhook;
+  "reviews/customer": typeof reviews_customer;
   "reviews/model": typeof reviews_model;
   "reviews/shared": typeof reviews_shared;
   "reviews/validators": typeof reviews_validators;
