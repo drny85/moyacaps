@@ -63,3 +63,25 @@ export async function loadRefunds(ctx: QueryCtx, orderId: Id<"orders">): Promise
     .withIndex("by_orderId", (q) => q.eq("orderId", orderId))
     .take(100);
 }
+
+/** Most reviews read per user: a Customer has at most one per Product and the catalog is capped at 500. */
+const MAX_REVIEWS_PER_USER = 500;
+
+/**
+ * Hides every not-yet-hidden review by a deleted account and takes them out of the stats.
+ * One-way: a deleted Clerk user does not come back. Returns how many rows were hidden.
+ */
+export async function hideReviewsForUser(ctx: MutationCtx, clerkUserId: string, now: number): Promise<number> {
+  const reviews = await ctx.db
+    .query("product_reviews")
+    .withIndex("by_clerkUserId", (q) => q.eq("clerkUserId", clerkUserId))
+    .take(MAX_REVIEWS_PER_USER);
+  let hidden = 0;
+  for (const prev of reviews) {
+    if (prev.hiddenAt !== undefined) continue;
+    await ctx.db.patch(prev._id, { hiddenAt: now });
+    await applyStatsChange(ctx, prev.variantId, prev, { ...prev, hiddenAt: now });
+    hidden++;
+  }
+  return hidden;
+}

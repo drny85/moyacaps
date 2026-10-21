@@ -6,6 +6,7 @@ import { roleFor } from "./clerk";
 import schema from "../schema";
 import { claimGuestOrders } from "../orders/guestClaim";
 import { claimableEmail } from "../orders/guestClaimModel";
+import { hideReviewsForUser } from "../reviews/shared";
 
 /**
  * Just-In-Time (JIT) sync called by client upon authentication.
@@ -183,10 +184,12 @@ export const softDeleteUser = internalMutation({
       .first();
 
     if (user) {
+      const now = Date.now();
       await ctx.db.patch(user._id, {
-        deletedAt: Date.now(),
-        updatedAt: Date.now(),
+        deletedAt: now,
+        updatedAt: now,
       });
+      await hideReviewsForUser(ctx, args.clerkId, now);
       return { success: true };
     }
 
