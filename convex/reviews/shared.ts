@@ -34,7 +34,7 @@ export async function applyStatsChange(
 }
 
 /**
- * The newest of the Customer's Orders with a reviewable line for `variantId`, or null.
+ * The newest (by creation time) of the Customer's Orders with a reviewable line for `variantId`, or null.
  * Ownership is the Order's `clerkUserId` only; an unclaimed guest Order never qualifies.
  */
 export async function findReviewableLine(

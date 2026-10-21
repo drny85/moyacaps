@@ -105,13 +105,13 @@ describe("submitReview", () => {
 
   it("accepts when one of two Orders has a fully refunded line and the other is delivered", async () => {
     const tt = t();
-    const refunded = await seedOrder(tt, { orderNumber: "GL-NEW", createdAt: 2000 });
-    await seedFullRefund(tt, refunded);
+    // Insert order matters: the index scans by _creationTime desc, so the refunded Order is newest and must be skipped.
     const good = await seedOrder(tt, {
       orderNumber: "GL-OLD",
-      createdAt: 1000,
       items: [{ variantId: "V1", quantity: 1, colorway: "Red", size: "L" }],
     });
+    const refunded = await seedOrder(tt, { orderNumber: "GL-NEW" });
+    await seedFullRefund(tt, refunded);
     const id = await submit(asAna(tt));
     const row = await tt.run(async (ctx) => ctx.db.get(id));
     expect(row?.orderId).toBe(good);
