@@ -254,7 +254,6 @@
   },
   "admin": {
     "title": "Good Luck HQ",
-    "subtitle": "Operations, Inventory & Fulfillment",
     "backToStore": "Storefront",
     "nav": {
       "home": "Home",
@@ -264,16 +263,6 @@
       "settings": "Settings",
       "ordersBadge": "{count, plural, one {# order needs packing} other {# orders need packing}}",
       "toggle": "Toggle admin navigation"
-    },
-    "metrics": {
-      "grossRevenue": "Gross Revenue",
-      "completedOrders": "Completed Orders",
-      "avgOrderValue": "Average Order Value",
-      "lowStockAlerts": "Low Stock Alerts",
-      "inventoryVelocity": "Inventory Health",
-      "totalUnits": "Total Units in Stock",
-      "outOfStock": "Sold Out Colorways",
-      "stripeShare": "Stripe Direct Checkout"
     },
     "orders": {
       "title": "Orders & Fulfillment Desk",
