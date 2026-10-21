@@ -2,6 +2,7 @@
  * Schema.org structured data builders (Google rich results). Pure: callers pass the
  * site origin and clock so output is deterministic in tests.
  */
+import type { PublicReview } from "../../../convex/reviews/validators";
 import type { ShippingSettings } from "../../../convex/settings/model";
 import type { CapVariant } from "../../data/caps";
 import { SUPPORT_EMAIL } from "../legal";
@@ -102,8 +103,32 @@ function shippingDetailsJsonLd(shipping: ShippingSettings): JsonLd {
   };
 }
 
-/** `shipping` comes from store settings; without it the offer carries no shipping details. */
-export function productJsonLd(product: CapVariant, locale: string, base: string, now: Date, shipping?: ShippingSettings): JsonLd {
+export type ProductReviews = { summary: { average: number; count: number }; latest: PublicReview[] };
+
+/** Rating markup only once a Product has a published review; text is escaped by `serializeJsonLd`. */
+function reviewsJsonLd(reviews?: ProductReviews): JsonLd {
+  if (!reviews || reviews.summary.count === 0) return {};
+  return {
+    aggregateRating: {
+      "@type": "AggregateRating",
+      ratingValue: reviews.summary.average,
+      reviewCount: reviews.summary.count,
+      bestRating: 5,
+      worstRating: 1,
+    },
+    review: reviews.latest.map((r) => ({
+      "@type": "Review",
+      author: { "@type": "Person", name: r.displayName },
+      reviewRating: { "@type": "Rating", ratingValue: r.rating, bestRating: 5, worstRating: 1 },
+      datePublished: new Date(r.publishedAt).toISOString().slice(0, 10),
+      ...(r.title ? { name: r.title } : {}),
+      ...(r.body ? { reviewBody: r.body } : {}),
+    })),
+  };
+}
+
+/** `shipping` comes from store settings; without it the offer carries no shipping details. `reviews` adds aggregateRating and review. */
+export function productJsonLd(product: CapVariant, locale: string, base: string, now: Date, shipping?: ShippingSettings, reviews?: ProductReviews): JsonLd {
   const name = locale === "es" ? product.nameEs : product.nameEn;
   const url = localizedUrl(locale, `/products/${product.id}`, base);
   const images = [product.catalogShot ?? product.image, ...(product.images ?? [])]
@@ -135,6 +160,7 @@ export function productJsonLd(product: CapVariant, locale: string, base: string,
       ...(shipping ? { shippingDetails: shippingDetailsJsonLd(shipping) } : {}),
       hasMerchantReturnPolicy: returnPolicyJsonLd(locale, base),
     },
+    ...reviewsJsonLd(reviews),
   };
 }
 
