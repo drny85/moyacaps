@@ -40,6 +40,7 @@
     "tax": "Estimated Sales Tax",
     "total": "Total",
     "secureNotice": "Encrypted 256-bit SSL transaction via Stripe Payments",
+    "finalSale": "All sales are final, except orders that never arrive or arrive defective. <link>Return Policy</link>",
     "outOfStockTitle": "Stock Unavailable",
     "outOfStockDesc": "One or more items in your bag have sold out or requested quantity exceeds available inventory. Please adjust your bag before proceeding.",
     "connectingGateway": "Verifying stock & establishing gateway session...",
@@ -84,6 +85,7 @@
     "total": "Total",
     "checkoutStripe": "Checkout with Card / Apple Pay",
     "secureCheckout": "Guaranteed Authentic",
+    "finalSale": "All sales are final, except orders that never arrive or arrive defective. <link>Return Policy</link>",
     "stockAdjusted": "Quantity adjusted to match live stock",
     "onlyXAvailable": "Only {count} available",
     "soldOutItem": "Sold Out"
@@ -927,7 +929,8 @@
     "printBack": "Full back print",
     "printBody": "High-density screen print that holds up wash after wash.",
     "teeCare": "Machine wash cold inside out. Hang dry or tumble low.",
-    "shippingBody": "Ships within 24 hours. Standard shipping with US tracking arrives in 2–5 business days, free on {threshold} or more items. Problem with your order? Contact us and we'll make it right.",
+    "shippingBody": "Ships within 24 hours. Standard shipping with US tracking arrives in 2–5 business days, free on {threshold} or more items.",
+    "returnsBody": "All sales are final. We refund orders that never arrive, and refund or exchange items that arrive defective. <link>Read our Return Policy</link>",
     "moreCaps": "More caps",
     "moreTees": "More tees"
   },

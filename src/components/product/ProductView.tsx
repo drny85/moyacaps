@@ -164,6 +164,15 @@ export function ProductView({ initial }: { initial: ProductWithSkus }) {
               )}
               <Detail title={t("detailsShipping")}>
                 <p>{t("shippingBody", { threshold: freeShippingThresholdUnits })}</p>
+                <p className="mt-2">
+                  {t.rich("returnsBody", {
+                    link: (chunks) => (
+                      <Link href="/returns" className="font-medium text-zinc-900 underline underline-offset-2 hover:text-moya-red dark:text-white">
+                        {chunks}
+                      </Link>
+                    ),
+                  })}
+                </p>
               </Detail>
             </div>
           </div>

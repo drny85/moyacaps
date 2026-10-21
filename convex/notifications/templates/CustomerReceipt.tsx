@@ -23,6 +23,7 @@ export interface CustomerReceiptProps {
   shippingFee?: number;
   tax?: number;
   trackingUrl?: string;
+  returnPolicyUrl?: string;
   // Heading and greeting (orderEmails.ts receiptCopy); defaults to the "preparing your order" copy.
   copy?: ReceiptCopy;
 }
@@ -50,6 +51,7 @@ export function CustomerReceiptEmail({
   shippingFee = 0.0,
   tax = 0.0,
   trackingUrl = "https://goodluckcaps.com/track",
+  returnPolicyUrl = "https://goodluckcaps.com/returns",
   copy,
 }: CustomerReceiptProps) {
   const text = copy ?? receiptCopy(orderNumber, false);
@@ -89,6 +91,15 @@ export function CustomerReceiptEmail({
           Track order status
         </Link>
       </Section>
+
+      {text.returnsNote && (
+        <Text style={styles.paragraph}>
+          {text.returnsNote}{" "}
+          <Link href={returnPolicyUrl} style={styles.link}>
+            Read the Return Policy
+          </Link>
+        </Text>
+      )}
     </BaseEmailLayout>
   );
 }

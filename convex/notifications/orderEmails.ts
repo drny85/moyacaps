@@ -97,7 +97,8 @@ export function manualMoveEmail(previous: FulfillmentStatus, next: FulfillmentSt
 
 // ── Receipt ──────────────────────────────────────────────────────────────────
 
-export type ReceiptCopy = { subject: string; heading: string; body: string };
+/** `returnsNote` is the final-sale line; an order we won't ship has none. */
+export type ReceiptCopy = { subject: string; heading: string; body: string; returnsNote?: string };
 
 /** The receipt; an Order outside the Fulfillment Territory is told it will be refunded, not packed. */
 export function receiptCopy(orderNumber: string, outOfTerritory: boolean): ReceiptCopy {
@@ -112,6 +113,7 @@ export function receiptCopy(orderNumber: string, outOfTerritory: boolean): Recei
     subject: `Your ${BRAND} Order Confirmation #${orderNumber}`,
     heading: "Thank You for Your Order!",
     body: `We're preparing your order #${orderNumber}. We'll email you tracking information as soon as your package ships.`,
+    returnsNote: "All sales are final. If your package never arrives, we refund it. If an item arrives defective, we refund or exchange it.",
   };
 }
 

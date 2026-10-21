@@ -14,6 +14,7 @@ import { useStoreSettings } from "@/hooks/useStoreSettings";
 import { cartVariantIds } from "@/lib/cartVariantIds";
 import { findLineVariant, isUnreleasedDrop, lineOverStock, lineStock } from "@/lib/cartStock";
 import { useCardCheckout } from "@/hooks/useCardCheckout";
+import { Link } from "@/i18n/routing";
 
 export function CartDrawer() {
   const { cart, isCartOpen, closeCart, updateQuantity, removeFromCart, clampCartToStock } = useStore();
@@ -358,6 +359,16 @@ export function CartDrawer() {
                         )}
                       </div>
                     )}
+
+                    <p className="text-[11px] leading-snug text-zinc-500 text-center">
+                      {t.rich("finalSale", {
+                        link: (chunks) => (
+                          <Link href="/returns" onClick={closeCart} className="font-medium text-zinc-700 dark:text-zinc-300 underline underline-offset-2 hover:text-moya-red">
+                            {chunks}
+                          </Link>
+                        ),
+                      })}
+                    </p>
 
                     <div className="flex items-center justify-center gap-2 text-[10px] text-zinc-500 text-center">
                       <ShieldCheck className="w-3.5 h-3.5 text-moya-green" />
