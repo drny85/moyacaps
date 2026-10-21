@@ -254,7 +254,7 @@
   },
   "admin": {
     "title": "Good Luck HQ",
-    "backToStore": "Storefront",
+    "backToStore": "View storefront",
     "nav": {
       "home": "Home",
       "orders": "Orders",
