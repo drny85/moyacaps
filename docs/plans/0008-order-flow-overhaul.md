@@ -67,4 +67,4 @@ Each PR ships pure-module tests.
 ## Open items for the store owner
 
 - Confirm Stripe Tax registrations (at least NY) and the tax origin address in the Stripe dashboard.
-- Ship-from address set to 1450 Clay Ave, Bronx, NY 10456 (`ATELIER_ORIGIN_ADDRESS`). Match it as the tax origin in Stripe Tax.
+- Ship-from address lives in the Convex deployment's `SHIP_FROM_*` env vars (`convex/shipping/shipFrom.ts`), never in the repo. Match it as the tax origin in Stripe Tax.

@@ -9,21 +9,17 @@ import { Shippo } from "shippo";
 import { isExcludedTerritory } from "./territory";
 import { planLabelMode, ratesUnavailableError, shippoKeyMode, shippoPolicy } from "./shippoMode";
 import { countParcelLines, insuranceFor, presetToParcel, suggestParcel } from "./parcels";
+import { parseShipFrom, shipFromMissingMessage } from "./shipFrom";
 
 /**
  * Good Luck Atelier Studio - Official Dispatch Center
  */
-export const ATELIER_ORIGIN_ADDRESS = {
-  name: "Good Luck Atelier",
-  company: "Moya BarberShop",
-  street1: "1402 Clay Ave",
-  city: "Bronx",
-  state: "NY",
-  zip: "10456",
-  country: "US",
-  phone: "8456005628",
-  email: "orders@goodluckcaps.com",
-};
+/** The ship-from address comes from the deployment's env (shipFrom.ts); it is never committed. */
+function shipFromOrThrow() {
+  const parsed = parseShipFrom(process.env);
+  if (!parsed.ok) throw new ConvexError(shipFromMissingMessage(parsed.missing));
+  return parsed.address;
+}
 
 // Parcel presets and the default-parcel rule live in ./parcels.ts (shared with the admin modal).
 
@@ -212,8 +208,9 @@ export const getShippingRates = action({
 
     if (shippo) {
       try {
+        const shipFrom = shipFromOrThrow();
         const shipment = await shippo.shipments.create({
-          addressFrom: ATELIER_ORIGIN_ADDRESS,
+          addressFrom: shipFrom,
           addressTo: {
             name: order.customerName || "Valued Collector",
             company: "",
@@ -223,8 +220,9 @@ export const getShippingRates = action({
             state,
             zip: postalCode,
             country: country || "US",
-            email: order.customerEmail || "concierge@goodluckcaps.com",
-            phone: (order.customerPhone || "6462251912").replace(/[^\d]/g, "").slice(-10) || "6462251912",
+            // Carriers want a recipient contact; without the customer's, the store's own is used.
+            email: order.customerEmail || shipFrom.email,
+            phone: (order.customerPhone ?? "").replace(/[^\d]/g, "").slice(-10) || shipFrom.phone,
           },
           parcels: [
             {

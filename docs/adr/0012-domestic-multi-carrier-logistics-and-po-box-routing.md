@@ -1,7 +1,7 @@
 # Domestic Multi-Carrier Logistics Strategy, PO Box Routing, and Crown Preservation
 
 ## Context
-Good Luck 0880 retails handcrafted luxury streetwear caps ($65–$120+) featuring rigid crowns and high-density 3D embroidery. All shipments originate from the Bronx, NY atelier studio (`10456`). The brand operates within a strictly defined **Fulfillment Territory**: domestic United States (50 US States), explicitly excluding Puerto Rico, unincorporated US territories, and international destinations.
+Good Luck 0880 retails handcrafted luxury streetwear caps ($65–$120+) featuring rigid crowns and high-density 3D embroidery. All shipments originate from the Bronx, NY studio. The brand operates within a strictly defined **Fulfillment Territory**: domestic United States (50 US States), explicitly excluding Puerto Rico, unincorporated US territories, and international destinations.
 
 Caps are packaged in rigid corrugated boxes (`8"×8"×6"`, `10"×8"×6"`, `12"×10"×8"`) weighing between 8 oz and 20 oz. Standardizing entirely on USPS Ground Advantage maximizes margin on single-cap orders ($5.50–$6.50) and provides free daily doorstep pickup by the regular postal carrier. However, multi-cap master cartons (3+ caps, exceeding 1 lb) lose their pricing advantage on USPS Priority Mail, and USPS canvas bulk sacks expose rigid cap boxes to crushing under heavier packages. Conversely, commercial couriers like UPS Ground offer rigid conveyor belt handling and guaranteed day-definite delivery, but enforce an $8+ commercial floor rate on sub-1lb packages and legally cannot deliver to Post Office Box addresses.
 
