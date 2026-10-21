@@ -11,7 +11,7 @@ import { useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
 import { useMinuteClock } from "@/hooks/useMinuteClock";
 import { useSoundPreference } from "@/hooks/useSoundPreference";
-import { ArrowUpRight, Flame, Home, Layers, Menu, PackageCheck, Settings, X } from "lucide-react";
+import { ArrowUpRight, Flame, Home, Layers, Menu, PackageCheck, Settings, Store, X } from "lucide-react";
 
 /**
  * Plays a pleasant, high-contrast two-tone notification chime
@@ -158,15 +158,20 @@ export function AdminConsoleLayout({ children }: { children: React.ReactNode }) 
             {navItems.map((item) => navLink(item))}
           </nav>
 
-          <div className="p-3 border-t border-zinc-200 dark:border-white/[0.06] flex items-center justify-between gap-2">
+          {/* See the storefront exactly as a Customer does, in a new tab so the admin stays open. */}
+          <div className="px-3 pb-3">
             <Link
               href="/"
               target="_blank"
-              className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/[0.04] transition-colors group"
+              className="flex items-center gap-3 px-3 py-2.5 rounded-xl border border-moya-red/30 bg-moya-red/10 text-moya-red text-xs font-semibold hover:bg-moya-red/15 transition-colors group"
             >
-              <span>{t("backToStore")}</span>
-              <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+              <Store className="w-4 h-4" />
+              <span className="truncate">{t("backToStore")}</span>
+              <ArrowUpRight className="w-3.5 h-3.5 ml-auto group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
             </Link>
+          </div>
+
+          <div className="p-3 border-t border-zinc-200 dark:border-white/[0.06] flex items-center justify-end gap-2">
             <SafeUserButton />
           </div>
         </aside>
@@ -187,7 +192,19 @@ export function AdminConsoleLayout({ children }: { children: React.ReactNode }) 
               GOOD<span className="text-moya-red">LUCK</span>
             </Link>
           </div>
-          <SafeUserButton />
+          <div className="flex items-center gap-2">
+            <Link
+              href="/"
+              target="_blank"
+              aria-label={t("backToStore")}
+              title={t("backToStore")}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-moya-red/30 bg-moya-red/10 text-moya-red text-xs font-semibold"
+            >
+              <Store className="w-4 h-4" />
+              <ArrowUpRight className="w-3.5 h-3.5" />
+            </Link>
+            <SafeUserButton />
+          </div>
         </div>
 
         {/* ── Mobile Dropdown Menu ── */}

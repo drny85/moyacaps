@@ -254,7 +254,7 @@
   },
   "admin": {
     "title": "Sede Central Good Luck",
-    "backToStore": "Tienda",
+    "backToStore": "Ver tienda",
     "nav": {
       "home": "Inicio",
       "orders": "Órdenes",
