@@ -27,3 +27,8 @@ export function shouldShowCardRating(rating: RatingSummary | undefined | null): 
 export function showWriteReview(state: { canReview: boolean; review: unknown } | undefined | null): boolean {
   return !!state && state.canReview && !state.review;
 }
+
+/** Which product the `?review=` deep link opens: the first not yet reviewed, or none. */
+export function deepLinkTarget(products: readonly { variantId: string; reviewed: boolean }[]): string | null {
+  return products.find((p) => !p.reviewed)?.variantId ?? null;
+}

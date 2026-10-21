@@ -5,7 +5,7 @@ import { NextIntlClientProvider } from "next-intl";
 import en from "../../messages/en.json";
 import { ReviewList, type PublicReview } from "./ReviewList";
 import { StarRating } from "./StarRating";
-import { boughtNote, shouldShowCardRating, showWriteReview } from "./reviewView";
+import { boughtNote, deepLinkTarget, shouldShowCardRating, showWriteReview } from "./reviewView";
 
 const colorways = [{ id: "black", nameEn: "Black", nameEs: "Negro" }];
 
@@ -37,6 +37,10 @@ describe("ReviewList", () => {
 
   it("shows the Bought note for a tee review", () => {
     expect(render([review({ boughtColorway: "black", boughtSize: "L" })])).toContain("Bought: Black / L");
+  });
+
+  it("shows the Verified Buyer badge", () => {
+    expect(render([review()])).toContain("Verified Buyer");
   });
 
   it("shows no Bought note for a cap review", () => {
@@ -72,5 +76,13 @@ describe("card rating", () => {
     const html = renderToStaticMarkup(createElement(StarRating, { value: 4.5, label: "4.5 out of 5 stars" }));
     expect(html).toContain('aria-label="4.5 out of 5 stars"');
     expect(html).not.toContain("<input");
+  });
+});
+
+describe("deepLinkTarget", () => {
+  it("picks the first unreviewed product, or none when all are reviewed", () => {
+    expect(deepLinkTarget([{ variantId: "a", reviewed: true }, { variantId: "b", reviewed: false }, { variantId: "c", reviewed: false }])).toBe("b");
+    expect(deepLinkTarget([{ variantId: "a", reviewed: true }])).toBeNull();
+    expect(deepLinkTarget([])).toBeNull();
   });
 });

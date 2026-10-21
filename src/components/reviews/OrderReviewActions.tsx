@@ -6,7 +6,9 @@ import { useTranslations } from "next-intl";
 import { useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
+import { useSafeConvexAuth } from "@/lib/useSafeUser";
 import { ReviewForm } from "./ReviewForm";
+import { deepLinkTarget } from "./reviewView";
 
 type OrderLine = { variantId?: string; name: string };
 
@@ -25,7 +27,8 @@ export function OrderReviewActions({
   items: readonly OrderLine[];
 }) {
   const t = useTranslations("Reviews");
-  const reviewable = useQuery(api.reviews.customer.getMyReviewableItems, { orderId });
+  const { isAuthenticated } = useSafeConvexAuth();
+  const reviewable = useQuery(api.reviews.customer.getMyReviewableItems, isAuthenticated ? { orderId } : "skip");
   const targeted = useSearchParams().get("review") === String(orderNumber);
   const [openVariant, setOpenVariant] = useState<string | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -37,14 +40,14 @@ export function OrderReviewActions({
     if (products.has(r.variantId)) continue;
     products.set(r.variantId, { reviewed: r.reviewed, name: items.find((i) => i.variantId === r.variantId)?.name ?? r.variantId });
   }
-  const firstVariant = products.keys().next().value as string | undefined;
+  const target = deepLinkTarget([...products].map(([variantId, p]) => ({ variantId, reviewed: p.reviewed })));
 
   useEffect(() => {
-    if (!targeted || deepLinked.current || !firstVariant) return;
+    if (!targeted || deepLinked.current || reviewable === undefined) return;
     deepLinked.current = true;
     rootRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
-    setOpenVariant(firstVariant);
-  }, [targeted, firstVariant]);
+    if (target) setOpenVariant(target);
+  }, [targeted, reviewable, target]);
 
   if (products.size === 0) return null;
   const open = openVariant ? products.get(openVariant) : undefined;

@@ -44,6 +44,8 @@ export function ReviewList({
             <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
               {r.displayName}
               {" · "}
+              <span className="font-medium text-emerald-700 dark:text-emerald-400">{t("verifiedBuyer")}</span>
+              {" · "}
               <time dateTime={new Date(r.publishedAt).toISOString()}>
                 {new Date(r.publishedAt).toLocaleDateString(locale === "es" ? "es-MX" : "en-US", {
                   year: "numeric",

@@ -1641,6 +1641,7 @@
     "ratingRequired": "Choose a star rating.",
     "error": "Could not save your review. Try again.",
     "reviewedNote": "Editing a published review sends it back for review.",
-    "charsLeft": "{count} characters left"
+    "charsLeft": "{count} characters left",
+    "verifiedBuyer": "Verified Buyer"
   }
 }

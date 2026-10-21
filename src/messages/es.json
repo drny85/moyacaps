@@ -1641,6 +1641,7 @@
     "ratingRequired": "Elige una calificación en estrellas.",
     "error": "No se pudo guardar tu reseña. Inténtalo de nuevo.",
     "reviewedNote": "Editar una reseña publicada la envía de nuevo a revisión.",
-    "charsLeft": "Quedan {count} caracteres"
+    "charsLeft": "Quedan {count} caracteres",
+    "verifiedBuyer": "Compra verificada"
   }
 }
