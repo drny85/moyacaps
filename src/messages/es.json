@@ -1607,5 +1607,11 @@
         "body": "Escríbenos a <email>{address}</email> o búscanos en <ig>Instagram</ig>."
       }
     }
+  },
+  "error": {
+    "title": "Algo salió mal",
+    "body": "Esta página tuvo un problema. Recarga para intentarlo de nuevo; tu bolsa está guardada. Si usas la traducción del navegador, desactivarla para este sitio puede ayudar.",
+    "retry": "Intentar de nuevo",
+    "home": "Volver a la tienda"
   }
 }

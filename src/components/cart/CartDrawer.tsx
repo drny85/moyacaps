@@ -109,6 +109,7 @@ export function CartDrawer() {
             exit={{ x: "100%" }}
             transition={{ type: "spring", damping: 25, stiffness: 200 }}
             data-lenis-prevent
+            translate="no"
             className="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-white dark:bg-[#08080e] border-l border-black/[0.08] dark:border-white/[0.06] flex flex-col shadow-2xl transition-colors duration-300 overscroll-contain"
             style={{ overscrollBehavior: "contain" }}
           >

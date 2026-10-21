@@ -24,6 +24,7 @@ export const STOREFRONT_NAMESPACES = [
   "share",
   "tryOn",
   "search",
+  "error",
 ] as const;
 
 /**

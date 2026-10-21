@@ -1607,5 +1607,11 @@
         "body": "Email <email>{address}</email> or find us on <ig>Instagram</ig>."
       }
     }
+  },
+  "error": {
+    "title": "Something went wrong",
+    "body": "This page hit a snag. Reload to try again; your bag is saved. If you use your browser's translate feature, turning it off for this site can help.",
+    "retry": "Try again",
+    "home": "Back to the store"
   }
 }
