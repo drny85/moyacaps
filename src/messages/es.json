@@ -768,7 +768,123 @@
       "queryFailed": "Esta página no pudo cargar. Revisa tu conexión e inténtalo de nuevo.",
       "retry": "Reintentar",
       "showingLatest": "Mostrando las últimas {count}",
-      "dismiss": "Cerrar"
+      "dismiss": "Cerrar",
+      "confirm": "Confirmar",
+      "cancel": "Cancelar",
+      "actionFailed": "No se pudo completar. Inténtalo de nuevo.",
+      "close": "Cerrar"
+    },
+    "orderDetail": {
+      "back": "Órdenes",
+      "notFound": "Orden no encontrada",
+      "notFoundBody": "Ninguna orden coincide con {orderNumber}.",
+      "print": "Imprimir hoja de empaque",
+      "placed": "Creada {when}",
+      "disputed": "Pago en disputa: hay un contracargo abierto en esta orden. No se pueden comprar guías hasta que cierre.",
+      "next": {
+        "eyebrow": "Siguiente",
+        "buyLabel": "Comprar guía de envío",
+        "addressAndLabel": "Agregar dirección y comprar guía",
+        "resolve": "La paquetería devolvió este paquete",
+        "reship": "Reenviar",
+        "refundInstead": "Reembolsar en su lugar →",
+        "inTransit": "En camino",
+        "scansMoveIt": "Los escaneos de la paquetería lo avanzan. Márcalo entregado solo si faltó un escaneo.",
+        "markDelivered": "Marcar entregado",
+        "awaitingPayment": "Esperando el pago.",
+        "holdExpires": "Esperando el pago · la reserva vence {when}"
+      },
+      "items": {
+        "title": "Artículos por empacar",
+        "units": "{count, plural, one {# unidad} other {# unidades}}",
+        "each": "{price} c/u",
+        "tapHint": "Toca un artículo para verlo en grande."
+      },
+      "packing": {
+        "title": "Hoja de empaque",
+        "close": "Cerrar",
+        "quantity": "Empacar",
+        "colorway": "Color",
+        "size": "Talla",
+        "slug": "Slug",
+        "lifestyle": "Foto en modelo",
+        "archived": "Este Producto ya no está en el catálogo; se muestran el nombre y la imagen guardados en la orden."
+      },
+      "money": {
+        "title": "Dinero",
+        "subtotal": "Subtotal",
+        "shipping": "Envío",
+        "free": "Gratis",
+        "tax": "Impuesto",
+        "taxRate": "Impuesto ({rate}%)",
+        "refunded": "Reembolsado",
+        "totalPaid": "Total pagado",
+        "totalDue": "Total por pagar"
+      },
+      "shipTo": {
+        "title": "Enviar a",
+        "edit": "Editar",
+        "missing": "Aún no hay dirección de envío. Agrega una antes de comprar la guía.",
+        "dialogTitle": "Editar destinatario y dirección",
+        "customerName": "Nombre",
+        "customerEmail": "Correo",
+        "customerPhone": "Teléfono",
+        "line1": "Dirección línea 1",
+        "line2": "Dirección línea 2",
+        "city": "Ciudad",
+        "state": "Estado",
+        "postalCode": "Código postal",
+        "country": "País",
+        "save": "Guardar dirección",
+        "cancel": "Cancelar"
+      },
+      "labels": {
+        "title": "Guía y rastreo",
+        "carrier": "Paquetería",
+        "tracking": "Rastreo",
+        "none": "Aún no hay guía.",
+        "copy": "Copiar",
+        "track": "Rastrear",
+        "printLabel": "Imprimir guía (PDF)",
+        "manual": "Agregar rastreo a mano",
+        "manualTitle": "Agregar rastreo a mano",
+        "manualHelp": "Para una guía comprada fuera de la tienda. Una orden sin enviar pasa a en tránsito y el cliente recibe el correo de envío; después, esto solo corrige los datos.",
+        "manualSave": "Guardar rastreo",
+        "cancel": "Cancelar",
+        "override": "La entrega se confirmó a mano; las actualizaciones de la paquetería ya no la cambian.",
+        "markDelivered": "Marcar entregado",
+        "revert": "Volver a en tránsito",
+        "deliverTitle": "¿Marcar esta orden como entregada?",
+        "deliverBody": "Solo si faltó un escaneo o el paquete se entregó en persona. Se avisa al cliente por correo.",
+        "revertTitle": "¿Volver a en tránsito?",
+        "revertBody": "Úsalo si la orden se marcó entregada por error. El inventario no cambia."
+      },
+      "notes": {
+        "title": "Notas",
+        "placeholder": "Notas internas: instrucciones de empaque, peticiones del cliente…",
+        "hint": "⌘S guarda",
+        "save": "Guardar notas"
+      },
+      "danger": {
+        "title": "Cancelar",
+        "help": "Cancelar devuelve al stock las unidades no enviadas y avisa al cliente.",
+        "cancel": "Cancelar orden",
+        "cancelTitle": "¿Cancelar esta orden?",
+        "cancelBody": "No se puede deshacer. Las unidades no enviadas vuelven al stock.",
+        "reason": "Motivo (interno)",
+        "refundStripe": "Reembolsar todo en Stripe ahora",
+        "refundStripeHelp": "Devuelve el dinero a la tarjeta original.",
+        "confirm": "Sí, cancelar la orden"
+      },
+      "toast": {
+        "address": "Dirección guardada.",
+        "notes": "Notas guardadas.",
+        "tracking": "Rastreo guardado.",
+        "delivered": "Marcada como entregada.",
+        "reverted": "De vuelta a en tránsito.",
+        "cancelled": "Orden cancelada.",
+        "dispatched": "Marcada en tránsito; se avisó al cliente."
+      }
     }
   },
   "track": {

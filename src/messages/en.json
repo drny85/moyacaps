@@ -768,7 +768,123 @@
       "queryFailed": "This page could not load. Check your connection and try again.",
       "retry": "Retry",
       "showingLatest": "Showing the latest {count}",
-      "dismiss": "Dismiss"
+      "dismiss": "Dismiss",
+      "confirm": "Confirm",
+      "cancel": "Cancel",
+      "actionFailed": "That did not go through. Try again.",
+      "close": "Close"
+    },
+    "orderDetail": {
+      "back": "Orders",
+      "notFound": "Order not found",
+      "notFoundBody": "No order matches {orderNumber}.",
+      "print": "Print packing slip",
+      "placed": "Placed {when}",
+      "disputed": "Payment disputed: a chargeback is open on this order. Labels are blocked until it closes.",
+      "next": {
+        "eyebrow": "Next",
+        "buyLabel": "Buy shipping label",
+        "addressAndLabel": "Add address & buy label",
+        "resolve": "The carrier bounced this package",
+        "reship": "Reship",
+        "refundInstead": "Refund instead →",
+        "inTransit": "On its way",
+        "scansMoveIt": "Carrier scans move it along. Mark it delivered only if a scan was missed.",
+        "markDelivered": "Mark delivered",
+        "awaitingPayment": "Waiting for payment.",
+        "holdExpires": "Waiting for payment · hold expires {when}"
+      },
+      "items": {
+        "title": "Items to pack",
+        "units": "{count, plural, one {# unit} other {# units}}",
+        "each": "{price} each",
+        "tapHint": "Tap an item to see it big."
+      },
+      "packing": {
+        "title": "Packing sheet",
+        "close": "Close",
+        "quantity": "Pack",
+        "colorway": "Colorway",
+        "size": "Size",
+        "slug": "Slug",
+        "lifestyle": "Lifestyle Shot",
+        "archived": "This Product is no longer in the catalog; the order's own name and image are shown."
+      },
+      "money": {
+        "title": "Money",
+        "subtotal": "Subtotal",
+        "shipping": "Shipping",
+        "free": "Free",
+        "tax": "Sales tax",
+        "taxRate": "Sales tax ({rate}%)",
+        "refunded": "Refunded",
+        "totalPaid": "Total paid",
+        "totalDue": "Total due"
+      },
+      "shipTo": {
+        "title": "Ship to",
+        "edit": "Edit",
+        "missing": "No shipping address yet. Add one before buying a label.",
+        "dialogTitle": "Edit recipient and address",
+        "customerName": "Name",
+        "customerEmail": "Email",
+        "customerPhone": "Phone",
+        "line1": "Address line 1",
+        "line2": "Address line 2",
+        "city": "City",
+        "state": "State",
+        "postalCode": "ZIP",
+        "country": "Country",
+        "save": "Save address",
+        "cancel": "Cancel"
+      },
+      "labels": {
+        "title": "Label & tracking",
+        "carrier": "Carrier",
+        "tracking": "Tracking",
+        "none": "No label yet.",
+        "copy": "Copy",
+        "track": "Track",
+        "printLabel": "Print label (PDF)",
+        "manual": "Add tracking manually",
+        "manualTitle": "Add tracking manually",
+        "manualHelp": "For a label bought outside the store. An unshipped order moves to in transit and the customer gets the dispatch email; after that, this only corrects the numbers.",
+        "manualSave": "Save tracking",
+        "cancel": "Cancel",
+        "override": "Delivery was confirmed by hand; carrier updates no longer change it.",
+        "markDelivered": "Mark delivered",
+        "revert": "Revert to in transit",
+        "deliverTitle": "Mark this order delivered?",
+        "deliverBody": "Only when a carrier scan was missed or the package was handed over in person. The customer is emailed.",
+        "revertTitle": "Revert to in transit?",
+        "revertBody": "Use this when the order was marked delivered by mistake. Inventory is not touched."
+      },
+      "notes": {
+        "title": "Notes",
+        "placeholder": "Internal notes: packing instructions, customer requests…",
+        "hint": "⌘S saves",
+        "save": "Save notes"
+      },
+      "danger": {
+        "title": "Cancel",
+        "help": "Cancelling releases any unshipped units back to stock and tells the customer.",
+        "cancel": "Cancel order",
+        "cancelTitle": "Cancel this order?",
+        "cancelBody": "This cannot be undone. Unshipped units return to stock.",
+        "reason": "Reason (internal)",
+        "refundStripe": "Refund in full on Stripe now",
+        "refundStripeHelp": "Sends the money back to the original card.",
+        "confirm": "Yes, cancel the order"
+      },
+      "toast": {
+        "address": "Address saved.",
+        "notes": "Notes saved.",
+        "tracking": "Tracking saved.",
+        "delivered": "Marked delivered.",
+        "reverted": "Back to in transit.",
+        "cancelled": "Order cancelled.",
+        "dispatched": "Marked in transit; the customer has been told."
+      }
     }
   },
   "track": {
