@@ -3,7 +3,7 @@ import { deskFilterForQueueParam } from "./queueParam";
 
 describe("deskFilterForQueueParam", () => {
   it("maps Home's queue links onto the current desk filters", () => {
-    expect(deskFilterForQueueParam("needs_packing")).toBe("needs_attention");
+    expect(deskFilterForQueueParam("needs_packing")).toBe("needs_packing");
     expect(deskFilterForQueueParam("overdue")).toBe("overdue");
   });
 

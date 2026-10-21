@@ -243,7 +243,13 @@ describe("admin desk on the two axes", () => {
         .map((o) => o.orderNumber)
         .sort();
 
+    expect(await list("needs_packing")).toEqual(["GL-DESK-PAID", "GL-DESK-PARTIAL"]);
+    // The previous id still answers.
     expect(await list("needs_attention")).toEqual(["GL-DESK-PAID", "GL-DESK-PARTIAL"]);
+    expect(await list("shipped")).toEqual([]);
+    expect(await list("problems")).toEqual([]);
+    // Delivered and refunded: counted once; the cancelled order is excluded.
+    expect(await list("done")).toEqual(["GL-DESK-SHIPPED"]);
     expect(await list("delivered")).toEqual(["GL-DESK-SHIPPED"]);
     expect(await list("refunded")).toEqual(["GL-DESK-SHIPPED"]);
     expect(await list("cancelled")).toEqual(["GL-DESK-CANCELLED"]);

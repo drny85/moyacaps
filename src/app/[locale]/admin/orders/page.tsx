@@ -126,7 +126,6 @@ export default function AdminOrdersPage() {
   const orders = useQuery(api.orders.desk.getAllOrdersAdmin, {
     clientTime: statsClock,
     status: statusFilter,
-    paymentMethod: paymentFilter,
     search: searchQuery,
   });
 
@@ -428,7 +427,7 @@ export default function AdminOrdersPage() {
       )}
 
       {/* Realtime Attention Warning Banner */}
-      {attentionStats && attentionStats.totalActionRequired > 0 && statusFilter !== "needs_attention" && (
+      {attentionStats && attentionStats.totalActionRequired > 0 && statusFilter !== "needs_packing" && (
         <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border border-amber-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs animate-in fade-in">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400">
@@ -449,7 +448,7 @@ export default function AdminOrdersPage() {
             </div>
           </div>
           <button
-            onClick={() => setStatusFilter("needs_attention")}
+            onClick={() => setStatusFilter("needs_packing")}
             className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs transition-colors shrink-0 flex items-center gap-1 shadow-xs"
           >
             Filter Action Items →
@@ -499,7 +498,7 @@ export default function AdminOrdersPage() {
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs font-medium">
           {([
             {
-              id: "needs_attention",
+              id: "needs_packing",
               label: "⚠️ Action Required",
               count: attentionStats?.totalActionRequired || 0,
               highlight: true,
@@ -511,7 +510,7 @@ export default function AdminOrdersPage() {
               danger: true,
             },
             { id: "all", label: t("allStatuses") },
-            ...ADMIN_DESK_TABS.filter((tab) => !["all", "needs_attention", "overdue"].includes(tab.id)),
+            ...ADMIN_DESK_TABS.filter((tab) => !["all", "needs_packing", "overdue"].includes(tab.id)),
           ] as Array<{ id: string; label: string; count?: number; highlight?: boolean; danger?: boolean }>)
             .filter((pill) => {
               if (pill.id === "overdue") return (attentionStats?.overduePaid || 0) > 0;

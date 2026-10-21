@@ -3,7 +3,7 @@
  * `?queue=` land on the closest filter the current desk has. Problems has none yet.
  */
 const QUEUE_TO_DESK_FILTER: Record<string, string> = {
-  needs_packing: "needs_attention",
+  needs_packing: "needs_packing",
   overdue: "overdue",
 };
 

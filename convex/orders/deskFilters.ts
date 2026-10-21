@@ -9,11 +9,15 @@ const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
 export const DESK_FILTERS = [
   "all",
-  // Paid (or partially refunded), unfulfilled, not cancelled, not disputed: the packing queue.
-  "needs_attention",
-  // The packing queue, waiting more than 24 hours.
+  // Paid (or partially refunded), unfulfilled, not cancelled, not disputed: Needs Packing (CONTEXT.md).
+  "needs_packing",
+  // Needs Packing, waiting more than 24 hours.
   "overdue",
   "awaiting_payment",
+  // Queues (plan 0009 D11): groups of statuses the desk works from.
+  "shipped", // label_purchased + in_transit
+  "problems", // delivery_exception + returned + disputed
+  "done", // delivered + refunded (a partial refund alone is a money note, not a finished order)
   "label_purchased",
   "in_transit",
   "delivered",
@@ -28,7 +32,8 @@ export type DeskFilter = (typeof DESK_FILTERS)[number];
 
 /** Tab values of the single-status desk, still accepted so an older admin page keeps working. */
 const LEGACY_FILTERS: Record<string, DeskFilter> = {
-  paid: "needs_attention",
+  paid: "needs_packing",
+  needs_attention: "needs_packing",
   dispatched: "in_transit",
   pending: "awaiting_payment",
 };
@@ -50,7 +55,7 @@ export function matchesDeskFilter(
   switch (filter) {
     case "all":
       return true;
-    case "needs_attention":
+    case "needs_packing":
       return awaitsFulfillment(order);
     case "overdue":
       return awaitsFulfillment(order) && (order.createdAt || 0) < now - ONE_DAY_MS;
@@ -62,6 +67,17 @@ export function matchesDeskFilter(
       return axes.paymentStatus === filter;
     case "cancelled":
       return isCancelled(order);
+    case "shipped":
+      return axes.fulfillmentStatus === "label_purchased" || axes.fulfillmentStatus === "in_transit";
+    case "problems":
+      return (
+        axes.cancelledAt === undefined &&
+        (axes.fulfillmentStatus === "delivery_exception" ||
+          axes.fulfillmentStatus === "returned" ||
+          axes.paymentStatus === "disputed")
+      );
+    case "done":
+      return axes.cancelledAt === undefined && (axes.fulfillmentStatus === "delivered" || axes.paymentStatus === "refunded");
     default:
       return axes.fulfillmentStatus === filter;
   }
