@@ -8,19 +8,19 @@ import { Link } from "@/i18n/routing";
 import { useCapVariants } from "@/hooks/useCapVariants";
 import { categoryEntries, homeTiles } from "@/lib/homepage";
 import { useCategoryLaunches } from "@/hooks/useCategoryLaunches";
+import { useHomeTiles } from "@/hooks/useHomeTiles";
 
 /**
- * Caps and Tees entry points right under the hero: each is the category's Catalog Shot,
+ * Caps and Tees entry points right under the hero: each is the Catalog Shot of the Product
+ * picked in Admin → Settings,
  * its name in poster type, how many styles there are and the starting price.
  */
 export function CategoryTiles() {
   const t = useTranslations("home");
   const { caps: catalog } = useCapVariants();
   const launches = useCategoryLaunches();
-  const tiles = useMemo(
-    () => homeTiles(categoryEntries(catalog, { caps: "negro-rojo", tees: "butterfly-grunge-tee" }), launches),
-    [catalog, launches]
-  );
+  const picks = useHomeTiles();
+  const tiles = useMemo(() => homeTiles(categoryEntries(catalog, picks), launches), [catalog, picks, launches]);
   if (tiles.length === 0) return null;
   // A lone tile spans the row, so it becomes a wide banner instead of a very tall card.
   const tileAspect = tiles.length === 1 ? "sm:aspect-[21/9]" : "sm:aspect-[5/4]";

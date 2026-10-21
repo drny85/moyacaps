@@ -13,6 +13,7 @@ export type CatalogEventType =
   | "visibility_set"
   | "drop_changed"
   | "category_launch_set"
+  | "home_tile_set"
   | "image_added"
   | "image_replaced"
   | "image_removed"

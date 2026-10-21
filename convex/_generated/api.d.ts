@@ -90,6 +90,8 @@ import type * as payments_settlementModel from "../payments/settlementModel.js";
 import type * as payments_stripeClient from "../payments/stripeClient.js";
 import type * as payments_webhook from "../payments/webhook.js";
 import type * as settings_functions from "../settings/functions.js";
+import type * as settings_homeTiles from "../settings/homeTiles.js";
+import type * as settings_homeTilesModel from "../settings/homeTilesModel.js";
 import type * as settings_launch from "../settings/launch.js";
 import type * as settings_model from "../settings/model.js";
 import type * as settings_revalidate from "../settings/revalidate.js";
@@ -192,6 +194,8 @@ declare const fullApi: ApiFromModules<{
   "payments/stripeClient": typeof payments_stripeClient;
   "payments/webhook": typeof payments_webhook;
   "settings/functions": typeof settings_functions;
+  "settings/homeTiles": typeof settings_homeTiles;
+  "settings/homeTilesModel": typeof settings_homeTilesModel;
   "settings/launch": typeof settings_launch;
   "settings/model": typeof settings_model;
   "settings/revalidate": typeof settings_revalidate;

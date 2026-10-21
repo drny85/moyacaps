@@ -982,6 +982,21 @@
         "cancelled": "Orden cancelada.",
         "dispatched": "Marcada en tránsito; se avisó al cliente."
       }
+    },
+    "homeTiles": {
+      "title": "Mosaicos de la portada",
+      "subtitle": "El Producto cuya Foto de catálogo muestra cada mosaico de categoría bajo la portada. Los cambios llegan a la portada en menos de un minuto.",
+      "label": {
+        "headwear": "Mosaico de Gorras",
+        "apparel": "Mosaico de Playeras"
+      },
+      "automatic": "Producto destacado (automático)",
+      "loading": "Cargando…",
+      "hidden": "no visible",
+      "saving": "Guardando…",
+      "saved": "Guardado. La portada se actualiza en un momento.",
+      "error": "No se pudo guardar. Puede que ese producto se haya archivado; elige otro.",
+      "fallbackHint": "El producto elegido ya no está, así que el mosaico muestra el destacado."
     }
   },
   "track": {
