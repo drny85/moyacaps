@@ -497,7 +497,9 @@
         },
         "skuStock": "Stock per SKU",
         "skuAfterCreate": "Save the Product first to set stock per SKU.",
-        "skuStockInPricing": "Stock per SKU is set in Pricing & Stock."
+        "skuStockInPricing": "Stock per SKU is set in Pricing & Stock.",
+        "addStandard": "Add the standard four",
+        "standardHint": "Most Graphic Designs come in Vintage Washed Black, Crisp Optical White, Athletic Heather Grey and Butter Cream Vintage."
       },
       "discardConfirm": "Discard your unsaved changes to this product?",
       "grid": {
@@ -632,6 +634,46 @@
         "blocked": "Holds stock: set it to 0 before removing",
         "hint": "{total} units in all. Each cell saves on its own after you confirm.",
         "empty": "Add an Apparel Colorway and a size to get SKUs."
+      },
+      "form": {
+        "requiredHint": "Fields marked * are needed to create the Product. Everything else can come later.",
+        "copyFromEn": "Copy from English",
+        "advanced": "Advanced (tax code)",
+        "hiddenUntilPublished": "The Product is created hidden. Add a Catalog Shot after creating it, then turn on Visible on the store.",
+        "labels": {
+          "swatchHex": "Swatch color",
+          "swatchBorderHex": "Swatch border"
+        },
+        "placeholders": {
+          "nameEnCap": "0880 Black / Red",
+          "nameEsCap": "0880 Negro / Rojo",
+          "nameEnTee": "Gothic Skull Tee",
+          "nameEsTee": "Playera Calavera Gótica",
+          "descriptionCap": "What makes it special: the embroidery, the fabric, the fit…",
+          "descriptionCapEs": "Qué lo hace especial: el bordado, la tela, el ajuste…",
+          "descriptionTee": "The print, the fabric, the fit — what a customer should know before buying.",
+          "descriptionTeeEs": "El estampado, la tela, el corte: lo que el cliente debe saber antes de comprar.",
+          "badge": "Limited",
+          "badgeEs": "Edición limitada"
+        },
+        "hints": {
+          "nameEn": "The English name also suggests the slug below.",
+          "slug": "Store address: {path}. Lowercase letters, numbers and dashes.",
+          "primaryHex": "The crown color: fills the swatch on cards and the hero.",
+          "secondaryHex": "The visor or accent color: the other half of the swatch.",
+          "swatchHex": "Only for the color dot on cards; each Apparel Colorway below sets its own color.",
+          "description": "Optional. Shown on the product page.",
+          "badge": "Optional, short: a word or two on the card.",
+          "price": "In US dollars, up to two decimals.",
+          "stock": "Units you can sell right now.",
+          "taxCode": "Stripe tax code, prefilled for this category. Leave it unless accounting says otherwise."
+        },
+        "steps": {
+          "details": "Fill in the details on the right",
+          "create": "Create the Product (it stays hidden)",
+          "images": "Add a Catalog Shot here",
+          "publish": "Turn on Visible on the store"
+        }
       }
     },
     "drops": {

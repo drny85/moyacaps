@@ -497,7 +497,9 @@
         },
         "skuStock": "Stock por SKU",
         "skuAfterCreate": "Guarda el producto primero para fijar el stock por SKU.",
-        "skuStockInPricing": "Las existencias por SKU se ajustan en Precio y Existencias."
+        "skuStockInPricing": "Las existencias por SKU se ajustan en Precio y Existencias.",
+        "addStandard": "Agregar los cuatro estándar",
+        "standardHint": "La mayoría de los diseños vienen en Negro Lavado, Blanco Puro, Gris Jaspe y Crema Vintage."
       },
       "discardConfirm": "¿Descartar los cambios sin guardar de este producto?",
       "grid": {
@@ -632,6 +634,46 @@
         "blocked": "Tiene stock: ponlo en 0 antes de quitarlo",
         "hint": "{total} piezas en total. Cada celda se guarda sola al confirmar.",
         "empty": "Agrega un color de playera y una talla para tener SKUs."
+      },
+      "form": {
+        "requiredHint": "Los campos con * se necesitan para crear el Producto. Lo demás puede ir después.",
+        "copyFromEn": "Copiar del inglés",
+        "advanced": "Avanzado (código fiscal)",
+        "hiddenUntilPublished": "El Producto se crea oculto. Agrega una Foto de Catálogo después de crearlo y luego activa Visible en la tienda.",
+        "labels": {
+          "swatchHex": "Color de muestra",
+          "swatchBorderHex": "Borde de la muestra"
+        },
+        "placeholders": {
+          "nameEnCap": "0880 Black / Red",
+          "nameEsCap": "0880 Negro / Rojo",
+          "nameEnTee": "Gothic Skull Tee",
+          "nameEsTee": "Playera Calavera Gótica",
+          "descriptionCap": "What makes it special: the embroidery, the fabric, the fit…",
+          "descriptionCapEs": "Qué lo hace especial: el bordado, la tela, el ajuste…",
+          "descriptionTee": "The print, the fabric, the fit — what a customer should know before buying.",
+          "descriptionTeeEs": "El estampado, la tela, el corte: lo que el cliente debe saber antes de comprar.",
+          "badge": "Limited",
+          "badgeEs": "Edición limitada"
+        },
+        "hints": {
+          "nameEn": "El nombre en inglés también sugiere el slug de abajo.",
+          "slug": "Dirección en la tienda: {path}. Minúsculas, números y guiones.",
+          "primaryHex": "El color de la corona: llena la muestra en las tarjetas y la portada.",
+          "secondaryHex": "El color de la visera o detalle: la otra mitad de la muestra.",
+          "swatchHex": "Solo para el punto de color en las tarjetas; cada Color de Playera abajo define el suyo.",
+          "description": "Opcional. Se muestra en la página del producto.",
+          "badge": "Opcional y corto: una o dos palabras en la tarjeta.",
+          "price": "En dólares, hasta dos decimales.",
+          "stock": "Unidades que puedes vender ahora mismo.",
+          "taxCode": "Código fiscal de Stripe, prellenado para esta categoría. Déjalo salvo que contabilidad diga otra cosa."
+        },
+        "steps": {
+          "details": "Completa los datos a la derecha",
+          "create": "Crea el Producto (queda oculto)",
+          "images": "Agrega una Foto de Catálogo aquí",
+          "publish": "Activa Visible en la tienda"
+        }
       }
     },
     "drops": {

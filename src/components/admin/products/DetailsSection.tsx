@@ -1,12 +1,13 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { CATEGORIES, SILHOUETTES_BY_CATEGORY } from "@convex/catalog/rules";
+import { CATEGORIES, PRODUCT_LIMITS, SILHOUETTES_BY_CATEGORY } from "@convex/catalog/rules";
 import type { Category } from "@convex/catalog/rules";
+import { storePath } from "@/lib/admin/productForm";
 import type { ProductFormState } from "@/lib/admin/productForm";
 import { fieldErrorFor } from "@/lib/admin/editorErrors";
 import type { EditorFeedback } from "@/lib/admin/editorErrors";
-import { Field, HexField, TextAreaField, TextField, inputClass, sectionClass, sectionTitleClass } from "./editorFields";
+import { CopyFromAction, Field, HexField, TextAreaField, TextField, inputClass, sectionClass, sectionTitleClass } from "./editorFields";
 
 /** Identity, names, palette and storefront copy of a product. */
 export function DetailsSection({
@@ -25,11 +26,16 @@ export function DetailsSection({
   onNameEn: (nameEn: string) => void;
 }) {
   const t = useTranslations("admin.products");
+  const tf = useTranslations("admin.products.form");
   const err = (field: string) => fieldErrorFor(feedback, field);
+  const isTee = form.category === "apparel";
 
   return (
     <section className={sectionClass}>
-      <h3 className={sectionTitleClass}>{t("sections.details")}</h3>
+      <div>
+        <h3 className={sectionTitleClass}>{t("sections.details")}</h3>
+        <p className="text-[11px] text-zinc-500 mt-0.5">{tf("requiredHint")}</p>
+      </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Field label={t("category")} error={err("category")}>
           <select value={form.category} onChange={(e) => onCategory(e.target.value as Category)} className={`${inputClass} mt-1`}>
@@ -52,31 +58,94 @@ export function DetailsSection({
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <TextField label={t("productNameEn")} value={form.nameEn} onChange={onNameEn} error={err("nameEn")} />
-        <TextField label={t("productNameEs")} value={form.nameEs} onChange={(nameEs) => onChange({ nameEs })} error={err("nameEs")} />
+        <TextField
+          label={t("productNameEn")}
+          value={form.nameEn}
+          onChange={onNameEn}
+          error={err("nameEn")}
+          required
+          maxLength={PRODUCT_LIMITS.name}
+          placeholder={isTee ? tf("placeholders.nameEnTee") : tf("placeholders.nameEnCap")}
+          hint={isNew ? tf("hints.nameEn") : undefined}
+        />
+        <TextField
+          label={t("productNameEs")}
+          value={form.nameEs}
+          onChange={(nameEs) => onChange({ nameEs })}
+          error={err("nameEs")}
+          required
+          maxLength={PRODUCT_LIMITS.name}
+          placeholder={isTee ? tf("placeholders.nameEsTee") : tf("placeholders.nameEsCap")}
+          action={<CopyFromAction source={form.nameEn} onCopy={(nameEs) => onChange({ nameEs })} />}
+        />
       </div>
 
       <TextField
         label={t("variantId")}
         value={form.variantId}
         mono
+        required
         disabled={!isNew}
-        hint={isNew ? undefined : t("variantIdLocked")}
+        hint={isNew ? tf("hints.slug", { path: storePath(form.variantId) }) : t("variantIdLocked")}
         placeholder={t("variantIdPlaceholder")}
         onChange={(variantId) => onChange({ variantId })}
         error={err("variantId")}
       />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 rounded-xl bg-zinc-50 dark:bg-white/[0.02] border border-zinc-200 dark:border-white/10">
-        <HexField label={t("primaryHex")} value={form.primaryHex} onChange={(primaryHex) => onChange({ primaryHex })} error={err("primaryHex")} />
-        <HexField label={t("secondaryHex")} value={form.secondaryHex} onChange={(secondaryHex) => onChange({ secondaryHex })} error={err("secondaryHex")} />
+        <HexField
+          label={isTee ? tf("labels.swatchHex") : t("primaryHex")}
+          value={form.primaryHex}
+          onChange={(primaryHex) => onChange({ primaryHex })}
+          error={err("primaryHex")}
+          hint={isTee ? tf("hints.swatchHex") : tf("hints.primaryHex")}
+        />
+        <HexField
+          label={isTee ? tf("labels.swatchBorderHex") : t("secondaryHex")}
+          value={form.secondaryHex}
+          onChange={(secondaryHex) => onChange({ secondaryHex })}
+          error={err("secondaryHex")}
+          hint={isTee ? undefined : tf("hints.secondaryHex")}
+        />
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <TextAreaField label={t("descriptionEn")} value={form.descriptionEn} onChange={(descriptionEn) => onChange({ descriptionEn })} error={err("descriptionEn")} />
-        <TextAreaField label={t("descriptionEs")} value={form.descriptionEs} onChange={(descriptionEs) => onChange({ descriptionEs })} error={err("descriptionEs")} />
-        <TextField label={t("badgeTextEn")} value={form.badgeTextEn} onChange={(badgeTextEn) => onChange({ badgeTextEn })} error={err("badgeTextEn")} />
-        <TextField label={t("badgeTextEs")} value={form.badgeTextEs} onChange={(badgeTextEs) => onChange({ badgeTextEs })} error={err("badgeTextEs")} />
+        <TextAreaField
+          label={t("descriptionEn")}
+          value={form.descriptionEn}
+          onChange={(descriptionEn) => onChange({ descriptionEn })}
+          error={err("descriptionEn")}
+          placeholder={isTee ? tf("placeholders.descriptionTee") : tf("placeholders.descriptionCap")}
+          hint={tf("hints.description")}
+          maxLength={PRODUCT_LIMITS.description}
+        />
+        <TextAreaField
+          label={t("descriptionEs")}
+          value={form.descriptionEs}
+          onChange={(descriptionEs) => onChange({ descriptionEs })}
+          error={err("descriptionEs")}
+          placeholder={isTee ? tf("placeholders.descriptionTeeEs") : tf("placeholders.descriptionCapEs")}
+          maxLength={PRODUCT_LIMITS.description}
+          action={<CopyFromAction source={form.descriptionEn} onCopy={(descriptionEs) => onChange({ descriptionEs })} />}
+        />
+        <TextField
+          label={t("badgeTextEn")}
+          value={form.badgeTextEn}
+          onChange={(badgeTextEn) => onChange({ badgeTextEn })}
+          error={err("badgeTextEn")}
+          placeholder={tf("placeholders.badge")}
+          hint={tf("hints.badge")}
+          maxLength={PRODUCT_LIMITS.badge}
+        />
+        <TextField
+          label={t("badgeTextEs")}
+          value={form.badgeTextEs}
+          onChange={(badgeTextEs) => onChange({ badgeTextEs })}
+          error={err("badgeTextEs")}
+          placeholder={tf("placeholders.badgeEs")}
+          maxLength={PRODUCT_LIMITS.badge}
+          action={<CopyFromAction source={form.badgeTextEn} onCopy={(badgeTextEs) => onChange({ badgeTextEs })} />}
+        />
       </div>
     </section>
   );
