@@ -18,7 +18,7 @@ export interface ApparelColorwayOption {
   /**
    * Cut-out photo of the printed garment (transparent PNG from scripts/prep-tee-photo.ts).
    * When set, build-catalog-shots builds the Catalog Shot from it instead of printing the
-   * Graphic Design on a blank.
+   * Graphic Design on a blank. Path is relative to assets/source/ (not served).
    */
   flatLayPhoto?: string;
 }

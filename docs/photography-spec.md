@@ -48,7 +48,7 @@ Tee Catalog Shots are currently **illustrated** (`scripts/lib/flatTee.ts`). They
 | `front-butter-cream.png` | Butter Cream Vintage | front |
 | `back-butter-cream.png` | Butter Cream Vintage | back |
 
-Final files go in `public/shirts/flatlay/`.
+Final files go in `assets/source/shirts/flatlay/`.
 
 ### Garment prep
 - Use a blank production tee from the same 280 GSM stock as the sold tees, size L, with no print.
@@ -87,7 +87,7 @@ Final files go in `public/shirts/flatlay/`.
 A design that only exists as a finished garment (no separate print file to apply to the blanks), such as the Crash Scene Tee, uses a photo of the printed tee laid flat instead:
 
 1. Shoot it flat, front up, on a dark plain surface. The Crash Scene original is on a black car hood: `shirts/crash-scene-flatlay-original.jpg`.
-2. Cut it out with `bun run scripts/prep-tee-photo.ts <photo> <design>-<colorway>`. This writes `public/shirts/flatlay/<design>-<colorway>.png`. Check the edge, since the fabric test in `scripts/lib/teePhoto.ts` is tuned per colorway.
+2. Cut it out with `bun run scripts/prep-tee-photo.ts <photo> <design>-<colorway>`. This writes `assets/source/shirts/flatlay/<design>-<colorway>.png`. Check the edge, since the fabric test in `scripts/lib/teePhoto.ts` is tuned per colorway.
 3. Set the colorway's `flatLayPhoto` in `src/data/caps.ts` and run `bun run build-catalog-shots`. The garment is framed to the flat-lay guide above and laid on the backdrop. The log reports `printed flat-lay photo`.
 
 ## 3. Cap Catalog Shots
@@ -103,9 +103,9 @@ The script trims each photo, scales every angle to the same crown height, and pl
 
 ## 4. On-model blank templates (interim, until the model shoot)
 
-Every tee Lifestyle Shot, and until flat-lays exist every tee Catalog Shot, is printed onto a real photo of the model wearing a **blank** tee: `public/shirts/templates/{front|back}-{black|white|grey|cream}.jpg`.
+Every tee Lifestyle Shot, and until flat-lays exist every tee Catalog Shot, is printed onto a real photo of the model wearing a **blank** tee: `assets/source/shirts/templates/{front|back}-{black|white|grey|cream}.jpg`.
 
-- **New template** (new colour or new pose): shoot the blank garment in the same setting and drop it in `public/shirts/templates/` with the same naming. Then run:
+- **New template** (new colour or new pose): shoot the blank garment in the same setting and drop it in `assets/source/shirts/templates/` with the same naming. Then run:
 
   ```bash
   bun run calibrate-tee-templates

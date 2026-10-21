@@ -4,7 +4,7 @@
  * Interim: no flat-lay garment photos exist yet (only on-model shots), so the garment
  * is drawn as a boxy drop-shoulder silhouette with fabric shading and the real Graphic
  * Design artwork is printed onto it. When the blank flat-lay photos described in
- * docs/photography-spec.md land in public/shirts/flatlay/, they replace the drawing
+ * docs/photography-spec.md land in assets/source/shirts/flatlay/, they replace the drawing
  * and the same print box is used (the spec frames the photos to this geometry).
  */
 import sharp from "sharp";
