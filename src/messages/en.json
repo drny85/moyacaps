@@ -696,6 +696,17 @@
           "badPhotos": "Choose 1 to 4 image files.",
           "modelFailed": "Photo Autofill couldn't read the photos right now. Try again, or fill the form by hand.",
           "decode": "One of the photos couldn't be opened. Try a JPEG or PNG."
+        },
+        "progress": {
+          "title": "Reading your photos",
+          "body": "Photo Autofill is looking at your photos and filling the empty fields. This usually takes 5–15 seconds.",
+          "keepOpen": "Keep this page open.",
+          "elapsed": "{seconds}s",
+          "steps": {
+            "prepare": "Preparing {count, plural, one {# photo} other {# photos}}",
+            "read": "Reading them with AI",
+            "fill": "Filling the empty fields"
+          }
         }
       }
     },

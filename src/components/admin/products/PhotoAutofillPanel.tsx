@@ -8,11 +8,13 @@ import { AUTOFILL_MAX_PHOTOS, checkPhotos, downscalePhoto } from "@/lib/admin/ph
 import type { AutofillCatalogContext } from "@/lib/admin/photoAutofill/context";
 import type { AutofillOutcome } from "@/lib/admin/photoAutofill/merge";
 import type { AutofillProposal } from "@/lib/admin/photoAutofill/schema";
+import type { AutofillPhase } from "@/lib/admin/photoAutofill/progress";
+import { PhotoAutofillProgress } from "./PhotoAutofillProgress";
 import { sectionClass, sectionTitleClass } from "./editorFields";
 
 type Status =
   | { kind: "idle" }
-  | { kind: "working" }
+  | { kind: "working"; phase: AutofillPhase }
   | { kind: "error"; key: "forbidden" | "badPhotos" | "modelFailed" | "decode" }
   | { kind: "done" };
 
@@ -57,7 +59,7 @@ export function PhotoAutofillPanel({
 
   const run = async () => {
     if (!check.ok || working) return;
-    setStatus({ kind: "working" });
+    setStatus({ kind: "working", phase: "preparing" });
     let blobs: Blob[];
     try {
       blobs = await Promise.all(files.map(downscalePhoto));
@@ -65,6 +67,7 @@ export function PhotoAutofillPanel({
       setStatus({ kind: "error", key: "decode" });
       return;
     }
+    setStatus({ kind: "working", phase: "reading" });
     const data = new FormData();
     blobs.forEach((b, i) => data.append("photos", b, `photo-${i + 1}.jpg`));
     data.append("locale", locale);
@@ -83,6 +86,7 @@ export function PhotoAutofillPanel({
 
   return (
     <section className={sectionClass} aria-busy={working}>
+      {status.kind === "working" && <PhotoAutofillProgress phase={status.phase} previews={previews} />}
       <div>
         <h3 className={`${sectionTitleClass} flex items-center gap-1.5`}>
           <Sparkles className="w-4 h-4 text-violet-500" aria-hidden /> {t("title")}

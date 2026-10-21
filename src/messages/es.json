@@ -696,6 +696,17 @@
           "badPhotos": "Elige de 1 a 4 imágenes.",
           "modelFailed": "Photo Autofill no pudo leer las fotos ahora. Inténtalo de nuevo o llena el formulario a mano.",
           "decode": "No se pudo abrir una de las fotos. Prueba con JPEG o PNG."
+        },
+        "progress": {
+          "title": "Leyendo tus fotos",
+          "body": "Photo Autofill está viendo tus fotos y llenando los campos vacíos. Suele tardar de 5 a 15 segundos.",
+          "keepOpen": "No cierres esta página.",
+          "elapsed": "{seconds} s",
+          "steps": {
+            "prepare": "Preparando {count, plural, one {# foto} other {# fotos}}",
+            "read": "Leyéndolas con IA",
+            "fill": "Llenando los campos vacíos"
+          }
         }
       }
     },
