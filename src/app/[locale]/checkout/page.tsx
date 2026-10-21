@@ -126,7 +126,7 @@ export default function CheckoutPage() {
   }, [isLoaded, cart.length, convexVariants, hasUnreleasedDrop, locale, canceledReturn]);
 
   return (
-    <div className="min-h-[70vh] flex items-center justify-center px-4 sm:px-6 lg:px-8 py-12 sm:py-20">
+    <div translate="no" className="min-h-[70vh] flex items-center justify-center px-4 sm:px-6 lg:px-8 py-12 sm:py-20">
       <div className="w-full max-w-lg">
         {/* Loading User Identity */}
         {!isLoaded ? (

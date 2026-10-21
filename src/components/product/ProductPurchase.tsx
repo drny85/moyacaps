@@ -126,7 +126,8 @@ export function ProductPurchase({
     state.kind === "available" && state.available + state.inBag <= 3 ? state.available + state.inBag : null;
 
   return (
-    <div className="flex flex-col gap-6">
+    // Browser translation swaps these text nodes, and React then crashes updating them (Add to bag → "This page couldn't load")
+    <div className="flex flex-col gap-6" translate="no">
       {tee && product.colorways && product.colorways.length > 0 && (
         <fieldset>
           <legend className="mb-3 text-sm text-zinc-600 dark:text-zinc-400">
