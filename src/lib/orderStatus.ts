@@ -129,9 +129,12 @@ export const FULFILLMENT_TONES: Record<FulfillmentStatus, AdminTone> = {
 /** The admin desk tabs, in display order (convex/orders/deskFilters.ts). */
 export const ADMIN_DESK_TABS = [
   { id: "all", label: "All" },
-  { id: "needs_attention", label: "Needs packing" },
+  { id: "needs_packing", label: "Needs packing" },
   { id: "overdue", label: "Overdue" },
   { id: "awaiting_payment", label: "Awaiting payment" },
+  { id: "shipped", label: "Shipped" },
+  { id: "problems", label: "Problems" },
+  { id: "done", label: "Done" },
   { id: "label_purchased", label: "Label purchased" },
   { id: "in_transit", label: "In transit" },
   { id: "delivered", label: "Delivered" },

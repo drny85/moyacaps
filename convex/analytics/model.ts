@@ -15,6 +15,7 @@ import {
 } from "../orders/status";
 
 import { isLowStock } from "../catalog/stock";
+import { matchesDeskFilter } from "../orders/deskFilters";
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 /** Days on the Home chart; the 7-day and today windows are slices of it. */
@@ -81,6 +82,8 @@ export function computeAnalytics(
     number
   >;
   let cancelledCount = 0;
+  // The desk's Problems queue, counted by the same rule it lists by.
+  let problemsCount = 0;
 
   const variantSalesMap: Record<string, { name: string; units: number; revenue: number; image: string }> = {};
 
@@ -98,6 +101,8 @@ export function computeAnalytics(
       paymentStatusCounts[axes.paymentStatus] += 1;
       if (hasSettled(o)) fulfillmentStatusCounts[axes.fulfillmentStatus] += 1;
     }
+
+    if (matchesDeskFilter(o, "problems", now)) problemsCount += 1;
 
     if (countsAsSale(o)) {
       totalRevenue += o.total;
@@ -136,6 +141,7 @@ export function computeAnalytics(
     paymentStatusCounts,
     fulfillmentStatusCounts,
     cancelledCount,
+    problemsCount,
     windows: {
       today: sumWindow(dailySales.slice(-1)),
       d7: sumWindow(dailySales.slice(-7)),
@@ -195,6 +201,7 @@ export const analyticsValidator = v.object({
   paymentStatusCounts: v.record(v.string(), v.number()),
   fulfillmentStatusCounts: v.record(v.string(), v.number()),
   cancelledCount: v.number(),
+  problemsCount: v.number(),
   windows: v.object({ today: revenueCount, d7: revenueCount, d30: revenueCount }),
   topVariants: v.array(
     v.object({ variantId: v.string(), name: v.string(), units: v.number(), revenue: v.number(), image: v.string() })

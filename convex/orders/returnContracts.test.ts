@@ -205,6 +205,7 @@ describe("order reads match their return validators", () => {
     expect(await admin.query(api.orders.desk.getAllOrdersAdmin, { clientTime: NOW })).toHaveLength(2);
     expect(await admin.query(api.orders.desk.getAllOrdersAdmin, { clientTime: NOW, status: "overdue" })).toHaveLength(1);
     expect(await admin.query(api.orders.desk.getAllOrdersAdmin, { clientTime: NOW - 3 * DAY, status: "overdue" })).toHaveLength(0);
+    expect(await admin.query(api.orders.desk.getAllOrdersAdmin, { clientTime: NOW, since: NOW - DAY })).toHaveLength(1);
     expect(await admin.query(api.orders.desk.getOrderDetailAdmin, { orderNumber: "#rc-1" })).toMatchObject({ orderNumber: "GL-RC-1" });
     expect(await admin.query(api.orders.desk.getOrdersAttentionStats, { clientTime: NOW })).toMatchObject({ overduePaid: 1 });
     expect(await admin.query(api.analytics.functions.getAnalyticsAdmin, { clientTime: NOW, tzOffsetMinutes: 0 })).toMatchObject({ totalRevenue: 128 });

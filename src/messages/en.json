@@ -265,41 +265,37 @@
       "toggle": "Toggle admin navigation"
     },
     "orders": {
-      "title": "Orders & Fulfillment Desk",
-      "subtitle": "Inspect orders, process shipping dispatches, and track customer shipments.",
-      "searchPlaceholder": "Search by Order #, customer name, email, tracking, or colorway...",
-      "filterStatus": "Status",
-      "filterPayment": "Payment Method",
-      "allStatuses": "All Statuses",
-      "allPayments": "All Payments",
-      "dispatchTitle": "Dispatch Order & Assign Courier",
-      "dispatchDesc": "Assign shipping courier and tracking number for delivery.",
-      "carrierLabel": "Courier / Carrier",
-      "trackingLabel": "Tracking Number",
-      "adminNotesLabel": "Internal Fulfillment Notes",
-      "dispatchBtn": "Dispatch Order",
-      "dispatchAndNotify": "Dispatch & Notify via WhatsApp",
-      "markDelivered": "Mark Delivered",
-      "deliverTitle": "Confirm Package Delivery",
-      "deliverDesc": "Please confirm that courier tracking or customer confirmation indicates this shipment has been successfully delivered.",
-      "confirmDeliverBtn": "Confirm Delivery Completed",
-      "revertTitle": "Revert Status to Dispatched",
-      "revertDesc": "Was this order marked delivered by mistake? Reverting will reset the status back to Dispatched without modifying inventory.",
-      "revertBtn": "Revert to Dispatched",
-      "editAddressTitle": "Edit Recipient & Shipping Details",
-      "editAddressDesc": "Update customer delivery address and courier contact details before package dispatch.",
-      "saveAddressBtn": "Save Shipping Address",
-      "cancelOrder": "Cancel & Restock",
-      "cancelConfirmDesc": "Are you sure? This will cancel the order and automatically restore the ordered units to inventory.",
-      "stripeRefundLabel": "Issue full refund on Stripe immediately",
-      "stripeRefundDesc": "Triggers automated refund via Stripe API to the original payment method.",
-      "cancelReasonLabel": "Reason for cancellation / internal note",
-      "trackCarrierBtn": "Live Courier Tracking",
-      "pingWhatsApp": "Message on WhatsApp",
-      "orderDetail": "Order Details",
-      "shippingTo": "Shipping Address",
-      "editShippingBtn": "Edit Address",
-      "noOrdersFound": "No orders found matching this filter."
+      "title": "Orders",
+      "searchPlaceholder": "Search order #, name, email, tracking…",
+      "guest": "Guest",
+      "items": "{count, plural, one {# item} other {# items}}",
+      "age": {
+        "m": "{count}m",
+        "h": "{count}h",
+        "d": "{count}d"
+      },
+      "buyLabel": "Buy label",
+      "reship": "Reship",
+      "addressAndLabel": "Address & label",
+      "queue": {
+        "label": "Queue",
+        "needs_packing": "Needs packing",
+        "overdue": "Overdue",
+        "awaiting_payment": "Awaiting payment",
+        "shipped": "Shipped",
+        "problems": "Problems",
+        "done": "Done",
+        "all": "All"
+      },
+      "range": {
+        "label": "Range",
+        "today": "Today",
+        "7d": "7d",
+        "30d": "30d",
+        "all": "All"
+      },
+      "empty": "No orders in this queue",
+      "clearFilters": "Clear filters"
     },
     "settings": {
       "title": "Settings",
@@ -771,7 +767,8 @@
     "common": {
       "queryFailed": "This page could not load. Check your connection and try again.",
       "retry": "Retry",
-      "showingLatest": "Showing the latest {count}"
+      "showingLatest": "Showing the latest {count}",
+      "dismiss": "Dismiss"
     }
   },
   "track": {

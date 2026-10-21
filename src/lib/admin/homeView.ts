@@ -18,8 +18,8 @@ export type AnalyticsInput = {
   dailySales: DaySales[];
   lowStock: LowStockInput[];
   topVariants: TopVariantInput[];
-  fulfillmentStatusCounts: Record<string, number>;
-  paymentStatusCounts: Record<string, number>;
+  /** The desk's Problems queue size, counted server-side by the desk's own rule. */
+  problemsCount: number;
 };
 export type AttentionInput = { totalActionRequired: number; overduePaid: number; lowStockCount: number };
 
@@ -50,20 +50,11 @@ export function formatUsd(amount: number, locale: "en" | "es"): string {
   return new Intl.NumberFormat(locale, { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(amount);
 }
 
-/** Problems = Orders the carrier or the bank bounced: exceptions, returns and disputes. */
-function problemsCount(a: AnalyticsInput): number {
-  return (
-    (a.fulfillmentStatusCounts.delivery_exception ?? 0) +
-    (a.fulfillmentStatusCounts.returned ?? 0) +
-    (a.paymentStatusCounts.disputed ?? 0)
-  );
-}
-
 export function toHomeVM(analytics: AnalyticsInput, attention: AttentionInput, locale: "en" | "es"): HomeVM {
   const counts: Record<AttentionId, number> = {
     needs_packing: attention.totalActionRequired,
     overdue: attention.overduePaid,
-    problems: problemsCount(analytics),
+    problems: analytics.problemsCount,
     // The same rows the list shows (Caps and tee SKUs), so the pill and the list agree.
     low_stock: analytics.lowStock.length,
   };

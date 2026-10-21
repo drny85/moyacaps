@@ -15,8 +15,7 @@ const analytics: AnalyticsInput = {
     { variantId: "0880-black", nameEn: "0880 Black", nameEs: "0880 Negro", stock: 0, image: "/b.png" },
   ],
   topVariants: [{ variantId: "boxing", name: "Boxing Gloves", units: 14, revenue: 840, image: "/x.png" }],
-  fulfillmentStatusCounts: { delivery_exception: 1, returned: 2 },
-  paymentStatusCounts: { disputed: 1 },
+  problemsCount: 4,
 };
 const attention: AttentionInput = { totalActionRequired: 3, overduePaid: 1, lowStockCount: 2 };
 
@@ -39,7 +38,7 @@ describe("toHomeVM", () => {
   });
 
   it("greys out a queue with nothing in it", () => {
-    const quiet = toHomeVM({ ...analytics, fulfillmentStatusCounts: {}, paymentStatusCounts: {} }, { ...attention, overduePaid: 0 }, "en");
+    const quiet = toHomeVM({ ...analytics, problemsCount: 0 }, { ...attention, overduePaid: 0 }, "en");
     expect(quiet.attention.map((a) => a.tone)).toEqual(["amber", "zinc", "zinc", "amber"]);
   });
 
