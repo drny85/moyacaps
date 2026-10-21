@@ -16,6 +16,12 @@ export const DEFAULT_TAX_CODE: Record<Category, string> = {
   apparel: "txcd_30011000",
 };
 
+/** The price a new Product starts at; the Administrator can change it before saving. */
+export const DEFAULT_PRICE_USD: Record<Category, number> = {
+  headwear: 120,
+  apparel: 80,
+};
+
 export type FieldError = {
   field: string;
   code: "required" | "format" | "range" | "too_long" | "mismatch" | "taken";
