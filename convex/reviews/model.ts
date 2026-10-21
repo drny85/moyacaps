@@ -88,8 +88,13 @@ export function statsDelta(prev: CountedShape | null, next: CountedShape | null)
   };
 }
 
+/** Average rating to one decimal; count must be above zero. */
+export function roundedAverage(stats: { count: number; ratingSum: number }): number {
+  return Math.round((stats.ratingSum / stats.count) * 10) / 10;
+}
+
 /** Average and count for a product card, or null while there are too few reviews to show. */
 export function cardRating(stats: { count: number; ratingSum: number }): { average: number; count: number } | null {
   if (stats.count < CARD_RATING_MIN_COUNT) return null;
-  return { average: Math.round((stats.ratingSum / stats.count) * 10) / 10, count: stats.count };
+  return { average: roundedAverage(stats), count: stats.count };
 }
