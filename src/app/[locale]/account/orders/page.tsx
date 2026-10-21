@@ -192,7 +192,7 @@ export default function AccountOrdersPage() {
             </div>
           </div>
           <Link
-            href="/admin/analytics"
+            href="/admin"
             className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-moya-red hover:bg-rose-600 text-white font-display font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-moya-red/30 transition-all hover:scale-105 active:scale-95 shrink-0"
           >
             <span>Open Admin Dashboard</span>

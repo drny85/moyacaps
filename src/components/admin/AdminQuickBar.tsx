@@ -10,7 +10,8 @@ export function AdminQuickBar() {
   const { user, isSignedIn } = useSafeUser();
   const { isAdmin } = useIsAdmin();
   const pathname = usePathname();
-  const [minimized, setMinimized] = useState(false);
+  // Quiet by default (plan 0009 D23): a small pill that opens the admin; expanding is per click.
+  const [minimized, setMinimized] = useState(true);
 
   // Do not render on admin console pages or if not authenticated admin
   if (pathname.startsWith("/admin") || !isSignedIn || !isAdmin) {
@@ -53,7 +54,7 @@ export function AdminQuickBar() {
 
         <div className="flex items-center gap-1.5 shrink-0">
           <Link
-            href="/admin/analytics"
+            href="/admin"
             className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-500 hover:to-rose-600 text-white font-display font-bold text-xs flex items-center gap-1.5 shadow-md shadow-red-600/30 transition-all hover:scale-105 active:scale-95"
           >
             <span>Dashboard</span>
