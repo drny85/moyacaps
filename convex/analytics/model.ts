@@ -45,13 +45,17 @@ export type LowStockRow = {
 function lowStockRows(variants: Doc<"variants">[], skus: Doc<"skus">[]): LowStockRow[] {
   const rows: LowStockRow[] = [];
   for (const v of variants) {
-    const base = { variantId: v.variantId, nameEn: v.nameEn, nameEs: v.nameEs, image: v.catalogShot ?? v.image };
+    const base = { variantId: v.variantId, nameEn: v.nameEn, nameEs: v.nameEs };
     if (v.category === "apparel") {
+      // A tee's Catalog Shot is per Apparel Colorway; fall back to its Lifestyle Shot, then the variant image.
       for (const s of skus) {
-        if (s.variantId === v.variantId && isLowStock(s.stock)) rows.push({ ...base, colorway: s.colorway, size: s.size, stock: s.stock });
+        if (s.variantId !== v.variantId || !isLowStock(s.stock)) continue;
+        const cw = v.colorways?.find((c) => c.id === s.colorway);
+        const image = cw?.catalogShot || cw?.lifestyleImage || v.image;
+        rows.push({ ...base, colorway: s.colorway, size: s.size, stock: s.stock, image });
       }
     } else if (isLowStock(v.stock)) {
-      rows.push({ ...base, stock: v.stock });
+      rows.push({ ...base, stock: v.stock, image: v.catalogShot || v.image });
     }
   }
   return rows.sort((a, b) => a.stock - b.stock);

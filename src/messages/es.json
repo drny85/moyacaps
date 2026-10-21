@@ -730,6 +730,41 @@
       "confirmBody": "{count, plural, =0 {Ningún producto visible se verá afectado.} one {# producto visible desaparecerá de la tienda.} other {# productos visibles desaparecerán de la tienda.}} Los carritos que los tengan los mostrarán como no disponibles.",
       "cancel": "Cancelar",
       "confirm": "Sí, cambiar"
+    },
+    "home": {
+      "title": "Inicio",
+      "attention": {
+        "needs_packing": "Por empacar",
+        "overdue": "Atrasadas",
+        "problems": "Problemas",
+        "low_stock": "Poco stock"
+      },
+      "tiles": {
+        "today": "Hoy",
+        "d7": "Últimos 7 días",
+        "d30": "Últimos 30 días",
+        "orders": "{count, plural, =0 {sin órdenes pagadas} one {# orden pagada} other {# órdenes pagadas}}"
+      },
+      "chart": {
+        "title": "Ingresos, últimos 30 días",
+        "subtitle": "Órdenes pagadas por día, en tu hora local."
+      },
+      "lowStock": {
+        "title": "Poco stock",
+        "empty": "Todos los Productos y SKUs están por encima del mínimo.",
+        "left": "{count, plural, =0 {Agotado} one {Queda #} other {Quedan #}}",
+        "viewAll": "Ver los {count} en Productos"
+      },
+      "bestSellers": {
+        "title": "Más vendidos",
+        "empty": "Sin órdenes pagadas en los últimos 30 días.",
+        "units": "{count, plural, one {# unidad} other {# unidades}}"
+      }
+    },
+    "common": {
+      "queryFailed": "Esta página no pudo cargar. Revisa tu conexión e inténtalo de nuevo.",
+      "retry": "Reintentar",
+      "showingLatest": "Mostrando las últimas {count}"
     }
   },
   "track": {

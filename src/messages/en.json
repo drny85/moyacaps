@@ -730,6 +730,41 @@
       "confirmBody": "{count, plural, =0 {No listed products will be affected.} one {# listed product will disappear from the store.} other {# listed products will disappear from the store.}} Carts holding them will show them as unavailable.",
       "cancel": "Cancel",
       "confirm": "Yes, change it"
+    },
+    "home": {
+      "title": "Home",
+      "attention": {
+        "needs_packing": "Needs packing",
+        "overdue": "Overdue",
+        "problems": "Problems",
+        "low_stock": "Low stock"
+      },
+      "tiles": {
+        "today": "Today",
+        "d7": "Last 7 days",
+        "d30": "Last 30 days",
+        "orders": "{count, plural, =0 {no paid orders} one {# paid order} other {# paid orders}}"
+      },
+      "chart": {
+        "title": "Revenue, last 30 days",
+        "subtitle": "Paid orders by day, in your local time."
+      },
+      "lowStock": {
+        "title": "Low stock",
+        "empty": "Every Product and SKU is above the low-stock line.",
+        "left": "{count, plural, =0 {Sold out} one {# left} other {# left}}",
+        "viewAll": "View all {count} in Products"
+      },
+      "bestSellers": {
+        "title": "Best sellers",
+        "empty": "No paid orders in the last 30 days.",
+        "units": "{count, plural, one {# unit} other {# units}}"
+      }
+    },
+    "common": {
+      "queryFailed": "This page could not load. Check your connection and try again.",
+      "retry": "Retry",
+      "showingLatest": "Showing the latest {count}"
     }
   },
   "track": {

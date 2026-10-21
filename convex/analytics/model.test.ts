@@ -112,10 +112,11 @@ describe("computeAnalytics", () => {
   });
 
   it("tees list SKUs, never the variant", () => {
-    const tee = { ...variant("tee", 4), category: "apparel", catalogShot: "/tee-shot.png" } as Doc<"variants">;
+    const colorway = { id: "black", nameEn: "Black", nameEs: "Negro", hex: "#000", borderHex: "#000", lifestyleImage: "/black-life.png", catalogShot: "/black-shot.png" };
+    const tee = { ...variant("tee", 4), category: "apparel", image: "", colorways: [colorway] } as Doc<"variants">;
     const low = computeAnalytics([], [tee, variant("cap", 3)], [sku("tee", "black", "M", 2), sku("tee", "black", "L", 9)], NOW, TZ).lowStock;
     expect(low).toEqual([
-      { variantId: "tee", nameEn: "tee", nameEs: "tee", colorway: "black", size: "M", stock: 2, image: "/tee-shot.png" },
+      { variantId: "tee", nameEn: "tee", nameEs: "tee", colorway: "black", size: "M", stock: 2, image: "/black-shot.png" },
       { variantId: "cap", nameEn: "cap", nameEs: "cap", stock: 3, image: "/cap.png" },
     ]);
   });
