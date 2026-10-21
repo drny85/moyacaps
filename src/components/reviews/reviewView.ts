@@ -1,4 +1,5 @@
-import { CARD_RATING_MIN_COUNT } from "../../../convex/reviews/model";
+import { ConvexError } from "convex/values";
+import { CARD_RATING_MIN_COUNT, REVIEW_ERRORS } from "../../../convex/reviews/model";
 
 export type ColorwayNames = { id: string; nameEn: string; nameEs: string };
 export type RatingSummary = { average: number; count: number };
@@ -23,12 +24,38 @@ export function shouldShowCardRating(rating: RatingSummary | undefined | null): 
   return !!rating && rating.count >= CARD_RATING_MIN_COUNT;
 }
 
-/** The "Write a review" button: only a signed-in Customer with a delivered line, and no review yet. */
-export function showWriteReview(state: { canReview: boolean; review: unknown } | undefined | null): boolean {
-  return !!state && state.canReview && !state.review;
-}
-
 /** Which product the `?review=` deep link opens: the first not yet reviewed, or none. */
 export function deepLinkTarget(products: readonly { variantId: string; reviewed: boolean }[]): string | null {
   return products.find((p) => !p.reviewed)?.variantId ?? null;
+}
+
+export type ReviewFormMode = "create" | "edit" | "readOnly";
+
+/**
+ * How the review form opens. Editing re-checks eligibility on the server (ADR 0028), so a
+ * Customer whose delivered line is gone (refunded, cancelled) can only view and delete.
+ */
+export function reviewFormMode({ canReview, hasReview }: { canReview: boolean; hasReview: boolean }): ReviewFormMode | null {
+  if (hasReview) return canReview ? "edit" : "readOnly";
+  return canReview ? "create" : null;
+}
+
+/** Reviews message keys for the known server errors. */
+const ERROR_KEYS: Record<string, "errorSignIn" | "errorAccount" | "errorNotEligible"> = {
+  [REVIEW_ERRORS.signIn]: "errorSignIn",
+  [REVIEW_ERRORS.signInToManage]: "errorSignIn",
+  [REVIEW_ERRORS.accountDeleted]: "errorAccount",
+  [REVIEW_ERRORS.notEligible]: "errorNotEligible",
+};
+
+/**
+ * What to show for a failed save or delete: a localized message for a known server error, the
+ * server's own text for any other ConvexError string, else the generic "error" message.
+ */
+export function reviewErrorKey(err: unknown): { key: "error" | "errorSignIn" | "errorAccount" | "errorNotEligible" } | { text: string } {
+  if (err instanceof ConvexError && typeof err.data === "string") {
+    const key = ERROR_KEYS[err.data];
+    return key ? { key } : { text: err.data };
+  }
+  return { key: "error" };
 }

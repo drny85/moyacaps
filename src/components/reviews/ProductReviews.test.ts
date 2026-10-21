@@ -5,7 +5,15 @@ import { NextIntlClientProvider } from "next-intl";
 import en from "../../messages/en.json";
 import { ReviewList, type PublicReview } from "./ReviewList";
 import { StarRating } from "./StarRating";
-import { boughtNote, deepLinkTarget, shouldShowCardRating, showWriteReview } from "./reviewView";
+import { ConvexError } from "convex/values";
+import { REVIEW_ERRORS } from "../../../convex/reviews/model";
+import {
+  boughtNote,
+  deepLinkTarget,
+  reviewErrorKey,
+  reviewFormMode,
+  shouldShowCardRating,
+} from "./reviewView";
 
 const colorways = [{ id: "black", nameEn: "Black", nameEs: "Negro" }];
 
@@ -57,14 +65,6 @@ describe("boughtNote", () => {
   });
 });
 
-describe("showWriteReview", () => {
-  it("hides Write a review when canReview is false, signed out, or loading", () => {
-    expect(showWriteReview({ canReview: false, review: null })).toBe(false);
-    expect(showWriteReview(undefined)).toBe(false);
-    expect(showWriteReview({ canReview: true, review: null })).toBe(true);
-  });
-});
-
 describe("card rating", () => {
   it("renders no stars without a rating", () => {
     expect(shouldShowCardRating(undefined)).toBe(false);
@@ -84,5 +84,32 @@ describe("deepLinkTarget", () => {
     expect(deepLinkTarget([{ variantId: "a", reviewed: true }, { variantId: "b", reviewed: false }, { variantId: "c", reviewed: false }])).toBe("b");
     expect(deepLinkTarget([{ variantId: "a", reviewed: true }])).toBeNull();
     expect(deepLinkTarget([])).toBeNull();
+  });
+});
+
+describe("reviewFormMode", () => {
+  it("opens an existing review read-only once the Customer is no longer eligible", () => {
+    expect(reviewFormMode({ canReview: true, hasReview: false })).toBe("create");
+    expect(reviewFormMode({ canReview: true, hasReview: true })).toBe("edit");
+    expect(reviewFormMode({ canReview: false, hasReview: true })).toBe("readOnly");
+    expect(reviewFormMode({ canReview: false, hasReview: false })).toBeNull();
+  });
+});
+
+describe("reviewErrorKey", () => {
+  it("maps known server errors to localized keys, else shows the server text or the generic error", () => {
+    expect(reviewErrorKey(new ConvexError(REVIEW_ERRORS.notEligible))).toEqual({ key: "errorNotEligible" });
+    expect(reviewErrorKey(new ConvexError(REVIEW_ERRORS.accountDeleted))).toEqual({ key: "errorAccount" });
+    expect(reviewErrorKey(new ConvexError(REVIEW_ERRORS.signIn))).toEqual({ key: "errorSignIn" });
+    expect(reviewErrorKey(new ConvexError(REVIEW_ERRORS.signInToManage))).toEqual({ key: "errorSignIn" });
+    expect(reviewErrorKey(new ConvexError("Rating must be 1 to 5."))).toEqual({ text: "Rating must be 1 to 5." });
+    expect(reviewErrorKey(new ConvexError({ code: 1 }))).toEqual({ key: "error" });
+    expect(reviewErrorKey(new Error("network"))).toEqual({ key: "error" });
+  });
+
+  it("every mapped key exists in the Reviews messages", () => {
+    for (const key of ["error", "errorNotEligible", "errorAccount", "errorSignIn", "readOnlyNote", "viewReview"]) {
+      expect(en.Reviews).toHaveProperty(key);
+    }
   });
 });

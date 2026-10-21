@@ -1031,8 +1031,8 @@
       "dialog": {
         "rejectTitle": "Reject this review?",
         "unpublishTitle": "Unpublish this review?",
-        "rejectBody": "It will not appear on the storefront. The reason is for your own records.",
-        "unpublishBody": "It will leave the storefront and move to Rejected. The reason is for your own records.",
+        "rejectBody": "It will not appear on the storefront. The customer will see this reason.",
+        "unpublishBody": "It will leave the storefront and move to Rejected. The customer will see this reason.",
         "reasonLabel": "Reason (optional)",
         "counter": "{count} / {max}"
       },
@@ -1679,6 +1679,11 @@
     "error": "Could not save your review. Try again.",
     "reviewedNote": "Editing a published review sends it back for review.",
     "charsLeft": "{count} characters left",
-    "verifiedBuyer": "Verified Buyer"
+    "verifiedBuyer": "Verified Buyer",
+    "viewReview": "View your review",
+    "readOnlyNote": "You can edit a review only while you have a delivered purchase of this product. You can still delete it.",
+    "errorSignIn": "Sign in to review products.",
+    "errorAccount": "This account cannot post reviews.",
+    "errorNotEligible": "You can review a product once your order has been delivered."
   }
 }

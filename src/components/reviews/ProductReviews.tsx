@@ -8,7 +8,7 @@ import { useSafeConvexAuth } from "@/lib/useSafeUser";
 import { ReviewForm } from "./ReviewForm";
 import { ReviewList } from "./ReviewList";
 import { StarRating } from "./StarRating";
-import { showWriteReview, type ColorwayNames } from "./reviewView";
+import { reviewFormMode, type ColorwayNames } from "./reviewView";
 
 const PAGE_SIZE = 10;
 
@@ -38,11 +38,10 @@ export function ProductReviews({
   const mine = useQuery(api.reviews.customer.getMyReviewState, isAuthenticated ? { variantId } : "skip");
   const [formOpen, setFormOpen] = useState(false);
 
-  const canWrite = showWriteReview(mine);
-  const canEdit = !!mine?.review;
+  const mode = mine ? reviewFormMode({ canReview: mine.canReview, hasReview: !!mine.review }) : null;
   const empty = status !== "LoadingFirstPage" && results.length === 0;
   // Nothing to show and nothing to do: keep the page free of an empty section
-  if (empty && !canWrite && !canEdit) return null;
+  if (empty && !mode) return null;
 
   return (
     <section className="mt-16 lg:mt-24" aria-labelledby="reviews-heading">
@@ -58,13 +57,13 @@ export function ProductReviews({
             </p>
           )}
         </div>
-        {(canWrite || canEdit) && (
+        {mode && (
           <button
             type="button"
             onClick={() => setFormOpen(true)}
             className="rounded-xl bg-zinc-900 px-5 py-2.5 font-display text-sm font-bold text-white transition-colors hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-moya-red dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100"
           >
-            {canEdit ? t("editReview") : t("writeReview")}
+            {mode === "create" ? t("writeReview") : mode === "edit" ? t("editReview") : t("viewReview")}
           </button>
         )}
       </div>
@@ -86,8 +85,14 @@ export function ProductReviews({
         </div>
       )}
 
-      {formOpen && (
-        <ReviewForm variantId={variantId} productName={productName} existing={mine?.review ?? null} onClose={() => setFormOpen(false)} />
+      {formOpen && mode && (
+        <ReviewForm
+          variantId={variantId}
+          productName={productName}
+          existing={mine?.review ?? null}
+          mode={mode}
+          onClose={() => setFormOpen(false)}
+        />
       )}
     </section>
   );

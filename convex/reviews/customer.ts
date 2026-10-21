@@ -1,7 +1,7 @@
 /** Signed-in Customer review functions (ADR 0028): submit/edit, delete, and read own review state. */
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "../_generated/server";
-import { normalizeReviewInput, reviewableLines, reviewerDisplayName } from "./model";
+import { normalizeReviewInput, REVIEW_ERRORS, reviewableLines, reviewerDisplayName } from "./model";
 import { applyStatsChange, findReviewableLine, loadRefunds } from "./shared";
 import { myReviewValidator, reviewLocaleValidator } from "./validators";
 
@@ -32,7 +32,7 @@ export const getMyReviewableItems = query({
   returns: v.array(v.object({ variantId: v.string(), lineIndex: v.number(), reviewed: v.boolean() })),
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new ConvexError("Sign in to review products.");
+    if (!identity) throw new ConvexError(REVIEW_ERRORS.signIn);
     const order = await ctx.db.get(args.orderId);
     if (!order || order.clerkUserId !== identity.subject) throw new ConvexError("Order not found.");
 
@@ -66,18 +66,18 @@ export const submitReview = mutation({
   returns: v.id("product_reviews"),
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new ConvexError("Sign in to review products.");
+    if (!identity) throw new ConvexError(REVIEW_ERRORS.signIn);
     const clerkUserId = identity.subject;
 
     const user = await ctx.db
       .query("users")
       .withIndex("by_clerkId", (q) => q.eq("clerkId", clerkUserId))
       .unique();
-    if (user?.deletedAt) throw new ConvexError("This account cannot post reviews.");
+    if (user?.deletedAt) throw new ConvexError(REVIEW_ERRORS.accountDeleted);
 
     const input = normalizeReviewInput(args);
     const eligible = await findReviewableLine(ctx, clerkUserId, args.variantId);
-    if (!eligible) throw new ConvexError("You can review a product once your order has been delivered.");
+    if (!eligible) throw new ConvexError(REVIEW_ERRORS.notEligible);
 
     const now = Date.now();
     const fields = {
@@ -126,7 +126,7 @@ export const deleteMyReview = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new ConvexError("Sign in to manage your reviews.");
+    if (!identity) throw new ConvexError(REVIEW_ERRORS.signInToManage);
     const prev = await ctx.db
       .query("product_reviews")
       .withIndex("by_clerkUserId_and_variantId", (q) =>

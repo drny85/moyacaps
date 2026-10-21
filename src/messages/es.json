@@ -1031,8 +1031,8 @@
       "dialog": {
         "rejectTitle": "¿Rechazar esta reseña?",
         "unpublishTitle": "¿Despublicar esta reseña?",
-        "rejectBody": "No aparecerá en la tienda. El motivo es solo para tu registro.",
-        "unpublishBody": "Saldrá de la tienda y pasará a Rechazadas. El motivo es solo para tu registro.",
+        "rejectBody": "No aparecerá en la tienda. El cliente verá este motivo.",
+        "unpublishBody": "Saldrá de la tienda y pasará a Rechazadas. El cliente verá este motivo.",
         "reasonLabel": "Motivo (opcional)",
         "counter": "{count} / {max}"
       },
@@ -1679,6 +1679,11 @@
     "error": "No se pudo guardar tu reseña. Inténtalo de nuevo.",
     "reviewedNote": "Editar una reseña publicada la envía de nuevo a revisión.",
     "charsLeft": "Quedan {count} caracteres",
-    "verifiedBuyer": "Compra verificada"
+    "verifiedBuyer": "Compra verificada",
+    "viewReview": "Ver tu reseña",
+    "readOnlyNote": "Solo puedes editar una reseña mientras tengas una compra entregada de este producto. Aún puedes eliminarla.",
+    "errorSignIn": "Inicia sesión para reseñar productos.",
+    "errorAccount": "Esta cuenta no puede publicar reseñas.",
+    "errorNotEligible": "Podrás reseñar un producto cuando tu pedido haya sido entregado."
   }
 }

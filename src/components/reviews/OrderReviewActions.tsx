@@ -8,7 +8,7 @@ import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
 import { useSafeConvexAuth } from "@/lib/useSafeUser";
 import { ReviewForm } from "./ReviewForm";
-import { deepLinkTarget } from "./reviewView";
+import { deepLinkTarget, reviewFormMode } from "./reviewView";
 
 type OrderLine = { variantId?: string; name: string };
 
@@ -74,5 +74,9 @@ export function OrderReviewActions({
 function OpenForm({ variantId, productName, onClose }: { variantId: string; productName: string; onClose: () => void }) {
   const state = useQuery(api.reviews.customer.getMyReviewState, { variantId });
   if (state === undefined) return null;
-  return <ReviewForm variantId={variantId} productName={productName} existing={state.review} onClose={onClose} />;
+  // This page lists only reviewable lines, so this is normally create or edit; the same rule
+  // as the product page still applies if eligibility changed since the list loaded.
+  const mode = reviewFormMode({ canReview: state.canReview, hasReview: state.review !== null });
+  if (!mode) return null;
+  return <ReviewForm variantId={variantId} productName={productName} existing={state.review} mode={mode} onClose={onClose} />;
 }

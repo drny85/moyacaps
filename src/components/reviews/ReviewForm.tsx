@@ -8,7 +8,8 @@ import { api } from "@convex/_generated/api";
 import { REVIEW_BODY_MAX, REVIEW_TITLE_MAX } from "../../../convex/reviews/model";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
-import { StarInput } from "./StarRating";
+import { StarInput, StarRating } from "./StarRating";
+import { reviewErrorKey, type ReviewFormMode } from "./reviewView";
 
 export type MyReview = {
   status: "pending" | "published" | "rejected";
@@ -21,16 +22,22 @@ export type MyReview = {
 const FIELD =
   "w-full rounded-xl border border-black/[0.12] bg-white px-3.5 py-2.5 text-sm text-zinc-900 outline-none focus-visible:ring-2 focus-visible:ring-moya-red dark:border-white/[0.14] dark:bg-zinc-900 dark:text-white";
 
-/** Modal to write, edit or delete the signed-in Customer's review of one Product. */
+/**
+ * Modal to write, edit or delete the signed-in Customer's review of one Product. In "readOnly"
+ * mode (a review exists but the Customer is no longer eligible) it shows the review and offers
+ * only Delete, since the server would refuse an edit.
+ */
 export function ReviewForm({
   variantId,
   productName,
   existing,
+  mode,
   onClose,
 }: {
   variantId: string;
   productName: string;
   existing: MyReview | null;
+  mode: ReviewFormMode;
   onClose: () => void;
 }) {
   const t = useTranslations("Reviews");
@@ -60,8 +67,9 @@ export function ReviewForm({
     try {
       await action();
       onClose();
-    } catch {
-      setError(t("error"));
+    } catch (err) {
+      const message = reviewErrorKey(err);
+      setError("text" in message ? message.text : t(message.key));
       setBusy(false);
     }
   }
@@ -75,6 +83,22 @@ export function ReviewForm({
   const onDelete = () => {
     if (window.confirm(t("deleteConfirm"))) void run(() => remove({ variantId }));
   };
+
+  const errorLine = error && (
+    <p role="alert" className="text-sm text-rose-600 dark:text-rose-400">
+      {error}
+    </p>
+  );
+  const deleteButton = existing && (
+    <button
+      type="button"
+      onClick={onDelete}
+      disabled={busy}
+      className="text-sm font-medium text-rose-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-moya-red disabled:opacity-60 dark:text-rose-400"
+    >
+      {t("delete")}
+    </button>
+  );
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-0 backdrop-blur-sm sm:items-center sm:p-4">
@@ -116,65 +140,65 @@ export function ReviewForm({
                 ? existing.rejectReason
                   ? t("statusRejectedReason", { reason: existing.rejectReason })
                   : t("statusRejected")
-                : `${t("statusPublished")}. ${t("reviewedNote")}`}
+                : mode === "readOnly"
+                  ? t("statusPublished")
+                  : `${t("statusPublished")}. ${t("reviewedNote")}`}
           </p>
         )}
 
-        <form onSubmit={onSubmit} className="flex flex-col gap-4">
-          <StarInput
-            name={`${id}-rating`}
-            value={rating}
-            onChange={setRating}
-            legend={t("ratingLabel")}
-            optionLabel={(n) => t("starCount", { count: n })}
-          />
-          <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-900 dark:text-white">
-            {t("titleLabel")}
-            <input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              maxLength={REVIEW_TITLE_MAX}
-              className={FIELD}
-            />
-          </label>
-          <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-900 dark:text-white">
-            {t("bodyLabel")}
-            <textarea
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              maxLength={REVIEW_BODY_MAX}
-              rows={5}
-              className={FIELD}
-            />
-            <span className="text-xs font-normal text-zinc-500">{t("charsLeft", { count: REVIEW_BODY_MAX - body.length })}</span>
-          </label>
-
-          {error && (
-            <p role="alert" className="text-sm text-rose-600 dark:text-rose-400">
-              {error}
-            </p>
-          )}
-
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <button
-              type="submit"
-              disabled={busy}
-              className="rounded-xl bg-zinc-900 px-5 py-2.5 font-display text-sm font-bold text-white transition-colors hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-moya-red disabled:opacity-60 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100"
-            >
-              {busy ? t("saving") : existing ? t("update") : t("submit")}
-            </button>
-            {existing && (
-              <button
-                type="button"
-                onClick={onDelete}
-                disabled={busy}
-                className="text-sm font-medium text-rose-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-moya-red disabled:opacity-60 dark:text-rose-400"
-              >
-                {t("delete")}
-              </button>
-            )}
+        {mode === "readOnly" && existing ? (
+          <div className="flex flex-col gap-4">
+            <StarRating value={existing.rating} label={t("starsOf", { rating: existing.rating })} />
+            {existing.title && <p className="font-display text-sm font-bold text-zinc-900 dark:text-white">{existing.title}</p>}
+            {existing.body && <p className="whitespace-pre-line text-sm text-zinc-700 dark:text-zinc-300">{existing.body}</p>}
+            <p className="text-sm text-zinc-500">{t("readOnlyNote")}</p>
+            {errorLine}
+            <div>{deleteButton}</div>
           </div>
-        </form>
+        ) : (
+          <form onSubmit={onSubmit} className="flex flex-col gap-4">
+            <StarInput
+              name={`${id}-rating`}
+              value={rating}
+              onChange={setRating}
+              legend={t("ratingLabel")}
+              optionLabel={(n) => t("starCount", { count: n })}
+            />
+            <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-900 dark:text-white">
+              {t("titleLabel")}
+              <input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                maxLength={REVIEW_TITLE_MAX}
+                className={FIELD}
+              />
+            </label>
+            <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-900 dark:text-white">
+              {t("bodyLabel")}
+              <textarea
+                value={body}
+                onChange={(e) => setBody(e.target.value)}
+                maxLength={REVIEW_BODY_MAX}
+                rows={5}
+                className={FIELD}
+              />
+              <span className="text-xs font-normal text-zinc-500">{t("charsLeft", { count: REVIEW_BODY_MAX - body.length })}</span>
+            </label>
+
+            {errorLine}
+
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <button
+                type="submit"
+                disabled={busy}
+                className="rounded-xl bg-zinc-900 px-5 py-2.5 font-display text-sm font-bold text-white transition-colors hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-moya-red disabled:opacity-60 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100"
+              >
+                {busy ? t("saving") : existing ? t("update") : t("submit")}
+              </button>
+              {deleteButton}
+            </div>
+          </form>
+        )}
       </div>
     </div>
   );

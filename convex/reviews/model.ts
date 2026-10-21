@@ -18,6 +18,14 @@ export const REVIEW_INVITE_UNSUBSCRIBE_PATH = "/review-invites/unsubscribe";
 /** How long after delivery a Customer is invited to review. */
 export const REVIEW_INVITE_DELAY_MS = 7 * 24 * 60 * 60 * 1000;
 
+/** Customer-facing ConvexError messages; the storefront maps each to localized copy (reviewView.ts). */
+export const REVIEW_ERRORS = {
+  signIn: "Sign in to review products.",
+  signInToManage: "Sign in to manage your reviews.",
+  accountDeleted: "This account cannot post reviews.",
+  notEligible: "You can review a product once your order has been delivered.",
+} as const;
+
 function trimmedOrUndefined(value: string | undefined, max: number, label: string): string | undefined {
   const trimmed = value?.trim();
   if (!trimmed) return undefined;
