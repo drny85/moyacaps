@@ -5,6 +5,8 @@ import { useTranslations } from "next-intl";
 import { AnimatePresence, m } from "framer-motion";
 import { useReducedMotionSafe } from "@/hooks/useMotionPrefs";
 import { SlidersHorizontal, X } from "lucide-react";
+import { useQuery } from "convex/react";
+import { api } from "@convex/_generated/api";
 import { useUrlQuery } from "@/components/routing/useUrlQuery";
 import { useCapVariants } from "@/hooks/useCapVariants";
 import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
@@ -42,6 +44,7 @@ export function ShopView({ initialQuery = "" }: { initialQuery?: string }) {
   const [query, setQuery, querySync] = useUrlQuery(initialQuery);
   const reduceMotion = useReducedMotionSafe();
   const { caps: products } = useCapVariants();
+  const cardRatings = useQuery(api.reviews.public.getCardRatings, {});
   const [now] = useState(() => Date.now());
 
   const state = useMemo(() => parseShopState(new URLSearchParams(query)), [query]);
@@ -198,7 +201,7 @@ export function ShopView({ initialQuery = "" }: { initialQuery?: string }) {
                       exit={reduceMotion ? { opacity: 0, transition: { duration: 0 } } : { opacity: 0, scale: 0.97 }}
                       transition={{ duration: DURATION.fast, ease: EASE.out }}
                     >
-                      <ProductCard key={`${item.product.id}-${item.colorway ?? ""}`} item={item} now={now} priority={i < 2} defer={i >= 4} />
+                      <ProductCard key={`${item.product.id}-${item.colorway ?? ""}`} item={item} now={now} priority={i < 2} defer={i >= 4} rating={cardRatings?.[item.product.id]} />
                     </m.li>
                   ))}
                 </AnimatePresence>

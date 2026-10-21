@@ -6,6 +6,8 @@ import { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Link } from "@/i18n/routing";
 import type { CapVariant } from "@/data/caps";
+import { StarRating } from "@/components/reviews/StarRating";
+import { shouldShowCardRating, type RatingSummary } from "@/components/reviews/reviewView";
 import { isPurchasable, isTee, type ShopItem } from "@/lib/shop";
 
 /**
@@ -18,15 +20,19 @@ export function ProductCard({
   now,
   priority = false,
   defer = false,
+  rating,
 }: {
   item: ShopItem;
   now: number;
   priority?: boolean;
   /** Below the first viewport: load the photo after first load settles (ADR 0020) */
   defer?: boolean;
+  /** Review average and count; shown only with enough reviews behind it */
+  rating?: RatingSummary;
 }) {
   const Photo = defer && !priority ? DeferredImage : Image;
   const t = useTranslations("shop");
+  const tReviews = useTranslations("Reviews");
   const locale = useLocale();
   const { product } = item;
   const tee = isTee(product);
@@ -92,6 +98,13 @@ export function ProductCard({
             ? t("trucker")
             : t("snapback")}
       </p>
+
+      {shouldShowCardRating(rating) && (
+        <p className="mt-1 flex items-center gap-1.5 px-0.5 text-[12px] text-zinc-500 dark:text-zinc-400">
+          <StarRating value={rating.average} size={13} label={tReviews("starsOf", { rating: rating.average })} />
+          <span aria-hidden>({rating.count})</span>
+        </p>
+      )}
 
       {tee && product.colorways && product.colorways.length > 1 && (
         <div className="mt-2 flex gap-1.5 px-0.5" role="radiogroup" aria-label={t("colorwaysOf", { name })}>

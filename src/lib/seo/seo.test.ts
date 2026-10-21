@@ -68,6 +68,53 @@ describe("structured data", () => {
     expect((productJsonLd(tee, "en", BASE, NOW) as any).offers).not.toHaveProperty("shippingDetails");
   });
 
+  describe("review ratings", () => {
+    const review = (over: Record<string, unknown> = {}) =>
+      ({
+        _id: "r1", _creationTime: 0, variantId: cap.id, rating: 5, locale: "en", displayName: "Ana M.",
+        publishedAt: Date.UTC(2026, 9, 15, 23, 30), ...over,
+      }) as any;
+
+    it("omits aggregateRating and review without reviews", () => {
+      const ld = productJsonLd(cap, "en", BASE, NOW) as any;
+      expect(ld).not.toHaveProperty("aggregateRating");
+      expect(ld).not.toHaveProperty("review");
+      const zero = productJsonLd(cap, "en", BASE, NOW, undefined, { summary: { average: 0, count: 0 }, latest: [] }) as any;
+      expect(zero).not.toHaveProperty("aggregateRating");
+      expect(zero).not.toHaveProperty("review");
+    });
+
+    it("adds aggregateRating and review items", () => {
+      const ld = productJsonLd(cap, "en", BASE, NOW, undefined, {
+        summary: { average: 4.7, count: 3 },
+        latest: [review({ title: "Great", body: "Love it" }), review({ _id: "r2", rating: 4, displayName: "Bo" })],
+      }) as any;
+      expect(ld.aggregateRating).toEqual({ "@type": "AggregateRating", ratingValue: 4.7, reviewCount: 3, bestRating: 5, worstRating: 1 });
+      expect(ld.review).toHaveLength(2);
+      expect(ld.review[0]).toEqual({
+        "@type": "Review",
+        author: { "@type": "Person", name: "Ana M." },
+        reviewRating: { "@type": "Rating", ratingValue: 5, bestRating: 5, worstRating: 1 },
+        datePublished: "2026-10-15",
+        name: "Great",
+        reviewBody: "Love it",
+      });
+      expect(ld.review[1].reviewRating.ratingValue).toBe(4);
+      expect(ld.review[1]).not.toHaveProperty("name");
+      expect(ld.review[1]).not.toHaveProperty("reviewBody");
+    });
+
+    it("keeps a </script> review body from breaking out of the tag", () => {
+      const ld = productJsonLd(cap, "en", BASE, NOW, undefined, {
+        summary: { average: 1, count: 1 },
+        latest: [review({ body: "</script><script>alert(1)</script>" })],
+      });
+      const out = serializeJsonLd(ld);
+      expect(out).not.toContain("</script>");
+      expect(out).toContain("\\u003c/script>");
+    });
+  });
+
   it("states the final-sale return policy on every offer and the organization, linking the page", () => {
     const policy = returnPolicyJsonLd("es", BASE) as any;
     expect(policy).toEqual({

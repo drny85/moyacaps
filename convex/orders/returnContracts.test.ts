@@ -213,6 +213,25 @@ describe("order reads match their return validators", () => {
     expect(await admin.query(api.users.functions.getUserByClerkId, { clerkId: "user_cust" })).toMatchObject({ email: "ana@example.com" });
   });
 
+  it("review reads match their return validators", async () => {
+    const t = await seeded();
+    const admin = asAdmin(t);
+    const reviewId = await t.run(async (ctx) => {
+      const now = Date.now();
+      const row = { variantId: "negro-rojo", clerkUserId: "user_cust", rating: 5, locale: "en" as const, displayName: "Ana C.", createdAt: now, updatedAt: now };
+      const orderId = (await ctx.db.query("orders").first())!._id;
+      await ctx.db.insert("product_review_stats", { variantId: "negro-rojo", count: 3, ratingSum: 14 });
+      return await ctx.db.insert("product_reviews", { ...row, orderId, status: "pending" });
+    });
+    await admin.mutation(api.reviews.admin.publishReview, { reviewId });
+    const paginationOpts = { numItems: 5, cursor: null };
+    expect((await t.query(api.reviews.public.getProductReviews, { variantId: "negro-rojo", paginationOpts })).page).toHaveLength(1);
+    expect(await t.query(api.reviews.public.getRatingSummary, { variantId: "negro-rojo" })).toMatchObject({ count: 4 });
+    expect(await t.query(api.reviews.public.getCardRatings, {})).toHaveProperty("negro-rojo");
+    expect((await admin.query(api.reviews.admin.listReviewsAdmin, { status: "published", paginationOpts })).page).toMatchObject([{ productName: "Black / Red" }]);
+    expect(await admin.query(api.reviews.admin.getPendingReviewCount, {})).toBe(0);
+  });
+
   it("internal lookups", async () => {
     const t = await seeded();
     expect(await t.query(internal.orders.functions.getOrderByNumberInternal, { orderNumber: "GL-RC-1" })).toMatchObject({ paymentStatus: "paid" });

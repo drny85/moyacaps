@@ -18,6 +18,7 @@ import { useStoreSettings } from "@/hooks/useStoreSettings";
 import { ProductGallery } from "@/components/product/ProductGallery";
 import { ProductPurchase } from "@/components/product/ProductPurchase";
 import { ProductCard } from "@/components/catalog/ProductCard";
+import { ProductReviews } from "@/components/reviews/ProductReviews";
 
 export type ProductWithSkus = Doc<"variants"> & { skus: SkuStock[] };
 
@@ -178,6 +179,8 @@ export function ProductView({ initial }: { initial: ProductWithSkus }) {
           </div>
         </div>
       </div>
+
+      <ProductReviews variantId={product.id} productName={name} colorways={product.colorways} />
 
       {related.length > 0 && (
         <section className="mt-16 lg:mt-24" aria-labelledby="related-heading">

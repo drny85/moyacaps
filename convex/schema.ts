@@ -9,6 +9,7 @@ import {
   refundStatusValidator,
   returnReasonValidator,
 } from "./payments/refundModel";
+import { reviewLocaleValidator, reviewStatusValidator } from "./reviews/validators";
 import { v } from "convex/values";
 
 export default defineSchema({
@@ -321,4 +322,51 @@ export default defineSchema({
     .index("by_variantId_and_role_and_order", ["variantId", "role", "order"])
     .index("by_storageId", ["storageId"])
     .index("by_sha256", ["sha256"]),
+  // Product Reviews (ADR 0028): one per Customer per variant; only published, unhidden ones count in stats.
+  product_reviews: defineTable({
+    variantId: v.string(),
+    clerkUserId: v.string(),
+    orderId: v.id("orders"),
+    rating: v.number(),
+    title: v.optional(v.string()),
+    body: v.optional(v.string()),
+    locale: reviewLocaleValidator,
+    displayName: v.string(),
+    boughtColorway: v.optional(v.string()),
+    boughtSize: v.optional(v.string()),
+    status: reviewStatusValidator,
+    rejectReason: v.optional(v.string()),
+    hiddenAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    publishedAt: v.optional(v.number()),
+  })
+    .index("by_clerkUserId_and_variantId", ["clerkUserId", "variantId"])
+    .index("by_variantId_and_status_and_publishedAt", ["variantId", "status", "publishedAt"])
+    .index("by_status_and_updatedAt", ["status", "updatedAt"])
+    .index("by_clerkUserId", ["clerkUserId"]),
+  // Running totals per variant so the average never needs a scan.
+  product_review_stats: defineTable({
+    variantId: v.string(),
+    count: v.number(),
+    ratingSum: v.number(),
+  }).index("by_variantId", ["variantId"]),
+  // One scheduled review-invite email per Order.
+  review_invites: defineTable({
+    orderId: v.id("orders"),
+    email: v.string(),
+    sendAt: v.number(),
+    sentAt: v.optional(v.number()),
+    skippedReason: v.optional(v.string()),
+    unsubscribeToken: v.string(),
+    jobId: v.optional(v.id("_scheduled_functions")),
+  })
+    .index("by_orderId", ["orderId"])
+    .index("by_unsubscribeToken", ["unsubscribeToken"]),
+  // Emails that opted out of a kind of marketing-style email; email is normalized.
+  email_optouts: defineTable({
+    email: v.string(),
+    kind: v.literal("review_invite"),
+    createdAt: v.number(),
+  }).index("by_email_and_kind", ["email", "kind"]),
 });

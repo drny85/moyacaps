@@ -9,6 +9,8 @@ import {
   manualMoveEmail,
   moneyTakenAlert,
   receiptCopy,
+  reviewInviteCopy,
+  reviewInviteIdempotencyKey,
   refundIssuedNotice,
   refundProblemAlert,
   unlinkedDisputeAlert,
@@ -137,5 +139,14 @@ describe("Administrator alerts", () => {
     expect(alert.orderNumber).toBeUndefined();
     expect(alert.subject).toContain("dp_1");
     expect(alert.idempotencyKey).toBe("dispute-unlinked-dp_1-needs_response");
+  });
+});
+
+describe("review invite copy", () => {
+  it("reviewInviteCopy subject mentions the order number", () => {
+    const copy = reviewInviteCopy("GL-42");
+    expect(copy.subject).toContain("#GL-42");
+    expect(copy.body).toContain("GL-42");
+    expect(reviewInviteIdempotencyKey("GL-42")).toBe("customer-review-invite-GL-42");
   });
 });

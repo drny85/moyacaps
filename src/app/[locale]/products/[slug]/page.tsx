@@ -43,6 +43,20 @@ async function getShipping() {
   }
 }
 
+/** Rating summary plus latest reviews for the Product's structured data; none (or a failed read) omits the markup. */
+async function getReviews(slug: string) {
+  try {
+    const [summary, latest] = await Promise.all([
+      queryForStaticRender(api.reviews.public.getRatingSummary, { variantId: slug }),
+      queryForStaticRender(api.reviews.public.getProductReviews, { variantId: slug, paginationOpts: { numItems: 5, cursor: null } }),
+    ]);
+    return summary ? { summary, latest: latest.page } : undefined;
+  } catch (error) {
+    unstable_rethrow(error);
+    return undefined;
+  }
+}
+
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { locale, slug } = await params;
   const doc = await getProduct(slug);
@@ -83,12 +97,12 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
 export default async function ProductPage({ params }: { params: Params }) {
   const { locale, slug } = await params;
   setRequestLocale(locale);
-  const [doc, shipping] = await Promise.all([getProduct(slug), getShipping()]);
+  const [doc, shipping, reviews] = await Promise.all([getProduct(slug), getShipping(), getReviews(slug)]);
   if (!doc) notFound();
 
   return (
     <main className="min-h-screen">
-      <ProductJsonLd cap={toCapVariant(doc)} locale={locale} shipping={shipping} />
+      <ProductJsonLd cap={toCapVariant(doc)} locale={locale} shipping={shipping} reviews={reviews} />
       <Suspense>
         <ProductView initial={doc} />
       </Suspense>

@@ -265,7 +265,9 @@
       "drops": "Drops",
       "settings": "Settings",
       "ordersBadge": "{count, plural, one {# order needs packing} other {# orders need packing}}",
-      "toggle": "Toggle admin navigation"
+      "toggle": "Toggle admin navigation",
+      "reviews": "Reviews",
+      "reviewsBadge": "{count, plural, one {# review awaiting moderation} other {# reviews awaiting moderation}}"
     },
     "orders": {
       "title": "Orders",
@@ -1000,6 +1002,41 @@
       "saved": "Saved. The homepage updates in a moment.",
       "error": "Couldn't save. That product may have been archived; pick another.",
       "fallbackHint": "The picked product is gone, so the tile shows the featured one."
+    },
+    "reviews": {
+      "title": "Reviews",
+      "tabs": {
+        "pending": "Pending",
+        "published": "Published",
+        "rejected": "Rejected"
+      },
+      "empty": {
+        "pending": "No reviews waiting for moderation.",
+        "published": "No published reviews yet.",
+        "rejected": "No rejected reviews."
+      },
+      "stars": "{rating} out of 5 stars",
+      "untitled": "No title",
+      "by": "By {name}",
+      "created": "Written {date}",
+      "updated": "Updated {date}",
+      "bought": "Bought: {item}",
+      "deletedAccount": "Deleted account",
+      "rejectReason": "Reason: {reason}",
+      "actions": {
+        "publish": "Publish",
+        "reject": "Reject",
+        "unpublish": "Unpublish"
+      },
+      "dialog": {
+        "rejectTitle": "Reject this review?",
+        "unpublishTitle": "Unpublish this review?",
+        "rejectBody": "It will not appear on the storefront. The customer will see this reason.",
+        "unpublishBody": "It will leave the storefront and move to Rejected. The customer will see this reason.",
+        "reasonLabel": "Reason (optional)",
+        "counter": "{count} / {max}"
+      },
+      "loadMore": "Load more"
     }
   },
   "track": {
@@ -1613,5 +1650,40 @@
     "body": "This page hit a snag. Reload to try again; your bag is saved. If you use your browser's translate feature, turning it off for this site can help.",
     "retry": "Try again",
     "home": "Back to the store"
+  },
+  "Reviews": {
+    "heading": "Reviews",
+    "summary": "{average} out of 5, {count, plural, one {# review} other {# reviews}}",
+    "noReviews": "No reviews yet.",
+    "writeReview": "Write a review",
+    "editReview": "Edit review",
+    "loadMore": "Show more reviews",
+    "bought": "Bought: {detail}",
+    "ratingLabel": "Rating",
+    "starsOf": "{rating} out of 5 stars",
+    "starCount": "{count, plural, one {# star} other {# stars}}",
+    "formTitle": "Your review",
+    "titleLabel": "Title (optional)",
+    "bodyLabel": "Review (optional)",
+    "submit": "Submit review",
+    "update": "Update review",
+    "saving": "Saving...",
+    "delete": "Delete review",
+    "deleteConfirm": "Delete your review? This cannot be undone.",
+    "close": "Close",
+    "statusPending": "Pending. We review every post before it goes live.",
+    "statusPublished": "Published",
+    "statusRejected": "Not published",
+    "statusRejectedReason": "Not published: {reason}",
+    "ratingRequired": "Choose a star rating.",
+    "error": "Could not save your review. Try again.",
+    "reviewedNote": "Editing a published review sends it back for review.",
+    "charsLeft": "{count} characters left",
+    "verifiedBuyer": "Verified Buyer",
+    "viewReview": "View your review",
+    "readOnlyNote": "You can edit a review only while you have a delivered purchase of this product. You can still delete it.",
+    "errorSignIn": "Sign in to review products.",
+    "errorAccount": "This account cannot post reviews.",
+    "errorNotEligible": "You can review a product once your order has been delivered."
   }
 }
