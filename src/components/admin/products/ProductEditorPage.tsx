@@ -16,6 +16,7 @@ import { ProductActionDialogs } from "./ProductActionDialogs";
 import { ProductHistory } from "./ProductHistory";
 import { ProductImagesPanel } from "./ProductImagesPanel";
 import { StaleValuesPanel } from "./StaleValuesPanel";
+import { PhotoAutofillPanel } from "./PhotoAutofillPanel";
 import { TeeOptionsEditor } from "./TeeOptionsEditor";
 import { TeeSkuStock } from "./TeeSkuStock";
 import { sectionClass, sectionTitleClass } from "./editorFields";
@@ -153,26 +154,29 @@ export function ProductEditorPage({ target }: { target: EditorTarget }) {
           {liveRow && !isNew ? (
             <ProductImagesPanel variantId={liveRow.variantId} colorways={liveRow.colorways} defaultColorway={liveRow.defaultColorway} locale={locale} />
           ) : (
-            <div className={`${sectionClass} flex flex-col justify-center gap-4 aspect-[4/5] max-h-[28rem]`}>
-              <div className="flex flex-col items-center text-center gap-2">
-                <ImagePlus className="w-10 h-10 text-zinc-400" />
-                <p className="text-zinc-600 dark:text-zinc-400">{tProducts("imagesAfterCreate")}</p>
+            <>
+              {isNew && <PhotoAutofillPanel onProposal={editor.applyAutofillProposal} />}
+              <div className={`${sectionClass} flex flex-col justify-center gap-4 aspect-[4/5] max-h-[28rem]`}>
+                <div className="flex flex-col items-center text-center gap-2">
+                  <ImagePlus className="w-10 h-10 text-zinc-400" />
+                  <p className="text-zinc-600 dark:text-zinc-400">{tProducts("imagesAfterCreate")}</p>
+                </div>
+                <ol className="space-y-2 text-xs max-w-xs mx-auto w-full">
+                  {(["details", "create", "images", "publish"] as const).map((step, i) => (
+                    <li key={step} className="flex items-start gap-2.5">
+                      <span className={`w-5 h-5 rounded-full shrink-0 flex items-center justify-center text-[10px] font-mono font-bold ${i === 0 ? "bg-moya-red text-white" : "bg-zinc-200 dark:bg-white/10 text-zinc-600 dark:text-zinc-400"}`}>{i + 1}</span>
+                      <span className={i === 0 ? "text-zinc-900 dark:text-white font-semibold" : "text-zinc-500"}>{tProducts(`form.steps.${step}`)}</span>
+                    </li>
+                  ))}
+                </ol>
               </div>
-              <ol className="space-y-2 text-xs max-w-xs mx-auto w-full">
-                {(["details", "create", "images", "publish"] as const).map((step, i) => (
-                  <li key={step} className="flex items-start gap-2.5">
-                    <span className={`w-5 h-5 rounded-full shrink-0 flex items-center justify-center text-[10px] font-mono font-bold ${i === 0 ? "bg-moya-red text-white" : "bg-zinc-200 dark:bg-white/10 text-zinc-600 dark:text-zinc-400"}`}>{i + 1}</span>
-                    <span className={i === 0 ? "text-zinc-900 dark:text-white font-semibold" : "text-zinc-500"}>{tProducts(`form.steps.${step}`)}</span>
-                  </li>
-                ))}
-              </ol>
-            </div>
+            </>
           )}
         </fieldset>
 
         <form id={FORM_ID} onSubmit={onSubmit} noValidate className="min-w-0">
           <fieldset disabled={isArchived || editor.saving} className="space-y-4 min-w-0">
-            <DetailsSection form={form} feedback={feedback} isNew={isNew} onChange={editor.update} onCategory={editor.setCategory} onNameEn={editor.setNameEn} />
+            <DetailsSection form={form} feedback={feedback} isNew={isNew} onChange={editor.update} onCategory={editor.setCategory} onNameEn={editor.setNameEn} aiFilled={editor.aiFilled} />
             <PricingStockSection
               form={form}
               feedback={feedback}
@@ -199,6 +203,7 @@ export function ProductEditorPage({ target }: { target: EditorTarget }) {
             />
             {form.category === "apparel" && (
               <TeeOptionsEditor
+                aiFilled={editor.aiFilled}
                 form={form}
                 feedback={feedback}
                 savedColorwayIds={editor.savedColorwayIds}

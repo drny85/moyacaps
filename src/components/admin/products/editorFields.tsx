@@ -23,12 +23,27 @@ export function FieldErrorText({ error }: { error?: FieldError }) {
   return <p className="mt-1 text-[11px] text-red-600 dark:text-red-400">{t(error.code)}</p>;
 }
 
+/** Marks a field Photo Autofill filled, until its value changes. */
+export function AiPill() {
+  const t = useTranslations("admin.products.autofill");
+  return (
+    <span
+      title={t("pillLabel")}
+      aria-label={t("pillLabel")}
+      className="ml-1.5 inline-flex items-center px-1.5 py-px rounded-full text-[9px] font-mono font-bold tracking-wide bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300 align-middle"
+    >
+      {t("pill")}
+    </span>
+  );
+}
+
 export function Field({
   label,
   error,
   hint,
   required,
   action,
+  ai,
   children,
 }: {
   label: string;
@@ -38,6 +53,8 @@ export function Field({
   required?: boolean;
   /** A small control on the label row, e.g. "Copy from English". */
   action?: React.ReactNode;
+  /** Shows the Photo Autofill marker. */
+  ai?: boolean;
   children: React.ReactNode;
 }) {
   return (
@@ -47,6 +64,7 @@ export function Field({
           <span>
             {label}
             {required && <span className="text-moya-red ml-0.5" aria-hidden>*</span>}
+            {ai && <AiPill />}
           </span>
           {action}
         </span>
@@ -94,6 +112,7 @@ export function TextField({
   required,
   maxLength,
   action,
+  ai,
   type = "text",
   inputMode,
 }: {
@@ -111,9 +130,10 @@ export function TextField({
   action?: React.ReactNode;
   type?: "text" | "number";
   inputMode?: "decimal" | "numeric";
+  ai?: boolean;
 }) {
   return (
-    <Field label={label} error={error} hint={hint} required={required} action={action}>
+    <Field label={label} error={error} hint={hint} required={required} action={action} ai={ai}>
       <input
         type={type}
         inputMode={inputMode}
@@ -137,6 +157,7 @@ export function TextAreaField({
   placeholder,
   maxLength,
   action,
+  ai,
 }: {
   label: string;
   value: string;
@@ -146,9 +167,10 @@ export function TextAreaField({
   placeholder?: string;
   maxLength?: number;
   action?: React.ReactNode;
+  ai?: boolean;
 }) {
   return (
-    <Field label={label} error={error} hint={hint} action={action}>
+    <Field label={label} error={error} hint={hint} action={action} ai={ai}>
       <textarea rows={3} value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} className={`${inputClass} mt-1`} />
       {maxLength !== undefined && <Counter value={value} max={maxLength} />}
     </Field>
@@ -161,16 +183,21 @@ export function HexField({
   onChange,
   error,
   hint,
+  ai,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   error?: FieldError;
   hint?: string;
+  ai?: boolean;
 }) {
   return (
     <div>
-      <span className={labelClass}>{label}</span>
+      <span className={labelClass}>
+        {label}
+        {ai && <AiPill />}
+      </span>
       <div className="flex items-center gap-2">
         <input
           type="color"

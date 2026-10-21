@@ -11,6 +11,10 @@ import { editorFeedback, NO_FEEDBACK, splitFieldErrors } from "@/lib/admin/edito
 import type { EditorFeedback } from "@/lib/admin/editorErrors";
 import { canSave, editorReducer, initialEditorState, reapplyField } from "@/lib/admin/editorSession";
 import type { EditorState } from "@/lib/admin/editorSession";
+import { aiFilledFields, applyAutofill } from "@/lib/admin/photoAutofill/merge";
+import type { AutofillFilled, AutofillOutcome } from "@/lib/admin/photoAutofill/merge";
+import type { AutofillCatalogContext } from "@/lib/admin/photoAutofill/context";
+import type { AutofillProposal } from "@/lib/admin/photoAutofill/schema";
 import type { EditorDropLink } from "./useProductActions";
 
 export type StockChange = { current: number; next: number };
@@ -40,6 +44,9 @@ export function useProductEditor(target: EditorTarget, rows: ResolvedVariant[] |
   const [saving, setSaving] = useState(false);
   const [pendingStock, setPendingStock] = useState<StockChange | null>(null);
   const [restoring, setRestoring] = useState(false);
+  // Photo Autofill: the values it put in the form, and whether the Administrator picked the category in the form.
+  const [autofilled, setAutofilled] = useState<AutofillFilled>({});
+  const [categoryTouched, setCategoryTouched] = useState(false);
 
   const targetRow = target.mode === "edit" ? rows?.find((r) => r.variantId === target.variantId) : undefined;
   const liveRow = session?.mode === "edit" ? rows?.find((r) => r.variantId === session.variantId) : undefined;
@@ -66,8 +73,28 @@ export function useProductEditor(target: EditorTarget, rows: ResolvedVariant[] |
 
   const edit = useCallback((fn: (f: ProductFormState) => ProductFormState) => dispatch({ type: "edit", fn }), []);
   const update = useCallback((changes: Partial<ProductFormState>) => edit((f) => ({ ...f, ...changes })), [edit]);
-  const setCategory = useCallback((category: Category) => edit((f) => withCategory(f, category)), [edit]);
+  const setCategory = useCallback(
+    (category: Category) => {
+      setCategoryTouched(true);
+      edit((f) => withCategory(f, category));
+    },
+    [edit]
+  );
   const setNameEn = useCallback((nameEn: string) => edit((f) => withNameEn(f, nameEn, isNew)), [edit, isNew]);
+
+  /** Fill the empty fields from a Photo Autofill proposal; nothing is saved. */
+  const applyAutofillProposal = useCallback(
+    (proposal: AutofillProposal, ctx: AutofillCatalogContext): AutofillOutcome => {
+      const outcome = applyAutofill(form, proposal, ctx, categoryTouched);
+      if (outcome.kind === "applied") {
+        edit(() => outcome.form);
+        setAutofilled((prev) => ({ ...prev, ...outcome.filled }));
+      }
+      return outcome;
+    },
+    [form, categoryTouched, edit]
+  );
+  const aiFilled = useMemo(() => aiFilledFields(form, autofilled), [form, autofilled]);
 
   const reloadLatest = useCallback(() => {
     if (!liveRow) return;
@@ -196,6 +223,8 @@ export function useProductEditor(target: EditorTarget, rows: ResolvedVariant[] |
     edit,
     setCategory,
     setNameEn,
+    applyAutofillProposal,
+    aiFilled,
     reloadLatest,
     reapply,
     dismissUnsaved: () => dispatch({ type: "dismissUnsaved" }),

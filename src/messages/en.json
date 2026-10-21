@@ -677,6 +677,26 @@
           "images": "Add a Catalog Shot here",
           "publish": "Turn on Visible on the store"
         }
+      },
+      "autofill": {
+        "title": "Fill from photos",
+        "hint": "Up to 4 photos of one Cap or Heavyweight Tee. We fill empty fields; you review and save. Photos are not kept.",
+        "drop": "Choose photos or drop them here",
+        "run": "Fill the form",
+        "working": "Reading your photos…",
+        "remove": "Remove photo",
+        "clear": "Clear photos",
+        "pill": "AI",
+        "pillLabel": "Filled by Photo Autofill",
+        "done": "Filled {count, plural, =0 {no empty fields} one {# field} other {# fields}}. Check each value before saving.",
+        "categoryConflict": "The photos look like {category}, but you chose a different category. Your choice was kept.",
+        "unrecognized": "These photos don't look like a Cap or a Heavyweight Tee. Nothing was filled.",
+        "errors": {
+          "forbidden": "Only an Administrator can use Photo Autofill.",
+          "badPhotos": "Choose 1 to 4 image files.",
+          "modelFailed": "Photo Autofill couldn't read the photos right now. Try again, or fill the form by hand.",
+          "decode": "One of the photos couldn't be opened. Try a JPEG or PNG."
+        }
       }
     },
     "drops": {
