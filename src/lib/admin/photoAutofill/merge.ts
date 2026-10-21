@@ -45,6 +45,8 @@ export type AutofillOutcome =
     };
 
 const SLUG_MIN = 3;
+/** The model's note is shown as is; keep a rambling one from flooding the panel. */
+const NOTE_MAX = 300;
 
 function categoryFor(recognized: "cap" | "tee"): Category {
   return recognized === "tee" ? "apparel" : "headwear";
@@ -74,9 +76,12 @@ function trimSlug(slug: string, max: number): string {
   return slug.slice(0, max).replace(/-+$/, "");
 }
 
-/** The proposal's slug, or one from the name, made free by a numeric suffix. Empty when unusable. */
+/**
+ * A slug from the English name (so it keeps following later name edits, like a typed one),
+ * else the proposal's, made free by a numeric suffix. Empty when unusable.
+ */
 function freeSlug(proposed: string, nameEn: string, taken: readonly string[]): string {
-  const base = trimSlug(slugify(proposed) || slugify(suggestVariantId(nameEn)), PRODUCT_LIMITS.slug);
+  const base = trimSlug(slugify(suggestVariantId(nameEn)) || slugify(proposed), PRODUCT_LIMITS.slug);
   if (base.length < SLUG_MIN) return "";
   const used = new Set(taken);
   if (!used.has(base)) return base;
@@ -113,7 +118,8 @@ export function applyAutofill(
   ctx: AutofillCatalogContext,
   categoryTouched: boolean
 ): AutofillOutcome {
-  if (proposal.recognized === "other") return { kind: "unrecognized", note: proposal.note };
+  const note = clip(proposal.note, NOTE_MAX);
+  if (proposal.recognized === "other") return { kind: "unrecognized", note };
 
   const filled: AutofillFilled = {};
   let form = current;
@@ -158,7 +164,7 @@ export function applyAutofill(
     }
   }
 
-  return { kind: "applied", form, filled, note: proposal.note.trim(), categoryConflict };
+  return { kind: "applied", form, filled, note, categoryConflict };
 }
 
 function sameValue(a: unknown, b: unknown): boolean {

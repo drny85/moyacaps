@@ -47,15 +47,22 @@ function deps(overrides: Partial<AutofillDeps> = {}): AutofillDeps {
 const photo = (bytes = 1000) => ({ data: new Uint8Array(bytes), mediaType: "image/jpeg" });
 
 describe("runPhotoAutofill", () => {
-  it("refuses a non-admin before loading the catalog or calling the model", async () => {
+  it("refuses a non-admin before reading the photos, loading the catalog or calling the model", async () => {
     const { model, doGenerate } = mockModel();
     const loadRows = vi.fn(async () => []);
-    expect(await runPhotoAutofill(deps({ isAdmin: async () => false, model, loadRows }), [photo()], "en")).toEqual({
+    const loadPhotos = vi.fn(async () => [photo()]);
+    expect(await runPhotoAutofill(deps({ isAdmin: async () => false, model, loadRows }), loadPhotos, "en")).toEqual({
       ok: false,
       error: "forbidden",
     });
+    expect(loadPhotos).not.toHaveBeenCalled();
     expect(loadRows).not.toHaveBeenCalled();
     expect(doGenerate).not.toHaveBeenCalled();
+  });
+
+  it("caps each photo at 1 MB so four fit under the request limit", async () => {
+    expect(await runPhotoAutofill(deps(), [photo(1024 * 1024 + 1)], "en")).toEqual({ ok: false, error: "bad_photos" });
+    expect((await runPhotoAutofill(deps(), [photo(1024 * 1024)], "en")).ok).toBe(true);
   });
 
   it("rejects zero photos, five photos and an oversized photo", async () => {

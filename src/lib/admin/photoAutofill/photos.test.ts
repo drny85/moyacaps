@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checkPhotos, fitWithin, paintForJpeg } from "./photos";
+import { AUTOFILL_MAX_UPLOAD_BYTES, checkPhotos, decodeOptions, fitWithin, jpegQualities, paintForJpeg } from "./photos";
 
 const jpeg = { type: "image/jpeg" };
 
@@ -43,5 +43,31 @@ describe("paintForJpeg", () => {
     };
     paintForJpeg(ctx, {} as CanvasImageSource, 100, 80);
     expect(calls).toEqual(["fill:#ffffff", "rect:0,0,100,80", "draw:0,0,100,80"]);
+  });
+});
+
+describe("checkPhotos without a MIME type", () => {
+  it("accepts an image by its extension when the browser gives no type", () => {
+    expect(checkPhotos([{ type: "", name: "IMG_0042.HEIC" }])).toEqual({ ok: true });
+    expect(checkPhotos([{ type: "", name: "cap.jpeg" }])).toEqual({ ok: true });
+  });
+  it("still rejects a typeless file that is not an image", () => {
+    expect(checkPhotos([{ type: "", name: "notes.txt" }])).toEqual({ ok: false, reason: "not_image" });
+  });
+});
+
+describe("decodeOptions", () => {
+  it("decodes a large phone photo already shrunk, so the full bitmap never sits in memory", () => {
+    expect(decodeOptions(8 * 1024 * 1024)).toEqual({ resizeWidth: 1568, resizeQuality: "high" });
+  });
+  it("decodes a small file as is, so it is never upscaled", () => {
+    expect(decodeOptions(500 * 1024)).toBeUndefined();
+  });
+});
+
+describe("jpegQualities", () => {
+  it("steps quality down until the upload fits", () => {
+    expect(jpegQualities).toEqual([0.85, 0.7, 0.55]);
+    expect(AUTOFILL_MAX_UPLOAD_BYTES).toBe(1024 * 1024);
   });
 });

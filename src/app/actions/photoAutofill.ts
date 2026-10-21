@@ -11,12 +11,14 @@ const DEFAULT_MODEL = "google/gemini-2.5-flash";
 /** Photo Autofill (ADR 0027). FormData: `photos` (downscaled JPEG blobs) and `locale` ("en" | "es"). */
 export async function photoAutofill(formData: FormData): Promise<AutofillResponse> {
   const token = (await (await auth()).getToken({ template: "convex" })) ?? undefined;
-  const photos: AutofillPhoto[] = await Promise.all(
-    formData
-      .getAll("photos")
-      .filter((p): p is File => p instanceof Blob)
-      .map(async (p) => ({ data: new Uint8Array(await p.arrayBuffer()), mediaType: p.type }))
-  );
+  // Read only after the admin check (runPhotoAutofill calls this lazily).
+  const loadPhotos = (): Promise<AutofillPhoto[]> =>
+    Promise.all(
+      formData
+        .getAll("photos")
+        .filter((p): p is File => p instanceof Blob)
+        .map(async (p) => ({ data: new Uint8Array(await p.arrayBuffer()), mediaType: p.type }))
+    );
   const locale = formData.get("locale") === "es" ? "es" : "en";
 
   return runPhotoAutofill(
@@ -25,7 +27,7 @@ export async function photoAutofill(formData: FormData): Promise<AutofillRespons
       loadRows: async () => (await fetchQuery(api.catalog.admin.getAllProductsAdmin, { includeArchived: true }, { token })).variants,
       model: process.env.PRODUCT_AUTOFILL_MODEL || DEFAULT_MODEL,
     },
-    photos,
+    loadPhotos,
     locale
   );
 }

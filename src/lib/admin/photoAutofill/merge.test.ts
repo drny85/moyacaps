@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { emptyForm, validateForm } from "../productForm";
+import { emptyForm, validateForm, withNameEn } from "../productForm";
 import { aiFilledFields, applyAutofill } from "./merge";
 import type { AutofillCatalogContext } from "./context";
 import type { AutofillProposal } from "./schema";
@@ -112,8 +112,21 @@ describe("applyAutofill", () => {
 
   it("suffixes a taken slug", () => {
     const taken = { ...ctx, takenSlugs: ["black-cap", "black-cap-2"] };
-    const { form } = applied(applyAutofill(emptyForm("headwear"), { ...capProposal, slug: "Black Cap" }, taken, false));
+    const { form } = applied(applyAutofill(emptyForm("headwear"), { ...capProposal, nameEn: "Black Cap" }, taken, false));
     expect(form.variantId).toBe("black-cap-3");
+  });
+
+  it("derives the slug from the English name so it keeps following later name edits", () => {
+    const { form } = applied(applyAutofill(emptyForm("headwear"), { ...capProposal, slug: "something-else" }, ctx, false));
+    expect(form.variantId).toBe("gold-clover-trucker");
+    expect(withNameEn(form, "Gold Clover Snap", true).variantId).toBe("gold-clover-snap");
+  });
+
+  it("caps the model's note at 300 characters", () => {
+    const out = applied(applyAutofill(emptyForm("headwear"), { ...capProposal, note: "n".repeat(900) }, ctx, false));
+    expect(out.note).toHaveLength(300);
+    const other = applyAutofill(emptyForm("headwear"), { ...capProposal, recognized: "other", note: "n".repeat(900) }, ctx, false);
+    expect(other.kind === "unrecognized" && other.note).toHaveLength(300);
   });
 
   it("derives the slug from the English name when the proposal has none", () => {

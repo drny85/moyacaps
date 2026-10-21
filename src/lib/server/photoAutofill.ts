@@ -1,7 +1,7 @@
 import "server-only";
 import { generateText, Output, type LanguageModel } from "ai";
 import { catalogContextFrom, type AutofillCatalogContext, type ContextRow } from "../admin/photoAutofill/context";
-import { checkPhotos } from "../admin/photoAutofill/photos";
+import { AUTOFILL_MAX_UPLOAD_BYTES, checkPhotos } from "../admin/photoAutofill/photos";
 import { buildAutofillSystemPrompt } from "../admin/photoAutofill/prompt";
 import { autofillProposalSchema, type AutofillProposal } from "../admin/photoAutofill/schema";
 
@@ -19,13 +19,17 @@ export type AutofillResponse =
 
 export type AutofillPhoto = { data: Uint8Array; mediaType: string };
 
-/** A downscaled photo is ~300 KB; anything far above it skipped the browser downscale. */
-export const AUTOFILL_MAX_PHOTO_BYTES = 1.5 * 1024 * 1024;
 const MODEL_TIMEOUT_MS = 60_000;
 
-export async function runPhotoAutofill(deps: AutofillDeps, photos: AutofillPhoto[], locale: "en" | "es"): Promise<AutofillResponse> {
+/** `photos` may be lazy so an unauthorized caller's upload is never read into memory. */
+export async function runPhotoAutofill(
+  deps: AutofillDeps,
+  photosOrLoad: AutofillPhoto[] | (() => Promise<AutofillPhoto[]>),
+  locale: "en" | "es"
+): Promise<AutofillResponse> {
   if (!(await deps.isAdmin())) return { ok: false, error: "forbidden" };
-  if (!checkPhotos(photos.map((p) => ({ type: p.mediaType }))).ok || photos.some((p) => p.data.byteLength > AUTOFILL_MAX_PHOTO_BYTES)) {
+  const photos = typeof photosOrLoad === "function" ? await photosOrLoad() : photosOrLoad;
+  if (!checkPhotos(photos.map((p) => ({ type: p.mediaType }))).ok || photos.some((p) => p.data.byteLength > AUTOFILL_MAX_UPLOAD_BYTES)) {
     return { ok: false, error: "bad_photos" };
   }
 
