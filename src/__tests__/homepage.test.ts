@@ -73,9 +73,19 @@ describe("categoryEntries", () => {
   });
 
   it("honours a preferred lead product and drops empty categories", () => {
-    const entries = categoryEntries([cap("c1"), cap("c2", { isFeatured: true })], { caps: "c1" });
+    const entries = categoryEntries([cap("c1"), cap("c2", { isFeatured: true })], { headwear: "c1" });
     expect(entries).toHaveLength(1);
     expect(entries[0].image).toBe("/catalog/caps/c1.webp");
+  });
+
+  it("uses the tee picked for the tee tile", () => {
+    const entries = categoryEntries([cap("c1"), tee("t1"), tee("t2")], { headwear: "c1", apparel: "t2" });
+    expect(entries[1].image).toBe("/catalog/tees/t2/crisp-white.webp");
+  });
+
+  it("falls back to the featured product when the picked one is no longer listed", () => {
+    const entries = categoryEntries([cap("c1"), cap("c2", { isFeatured: true })], { headwear: "archived-cap" });
+    expect(entries[0].image).toBe("/catalog/caps/c2.webp");
   });
 });
 

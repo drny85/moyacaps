@@ -946,6 +946,21 @@
         "cancelled": "Order cancelled.",
         "dispatched": "Marked in transit; the customer has been told."
       }
+    },
+    "homeTiles": {
+      "title": "Homepage tiles",
+      "subtitle": "The Product whose Catalog Shot each category tile shows under the hero. Changes reach the homepage within a minute.",
+      "label": {
+        "headwear": "Caps tile",
+        "apparel": "Tees tile"
+      },
+      "automatic": "Featured product (automatic)",
+      "loading": "Loading…",
+      "hidden": "not visible",
+      "saving": "Saving…",
+      "saved": "Saved. The homepage updates in a moment.",
+      "error": "Couldn't save. That product may have been archived; pick another.",
+      "fallbackHint": "The picked product is gone, so the tile shows the featured one."
     }
   },
   "track": {

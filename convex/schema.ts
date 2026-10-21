@@ -301,6 +301,8 @@ export default defineSchema({
     categoryLaunch: v.optional(
       v.object({ headwear: storedCategoryLaunchValidator, apparel: storedCategoryLaunchValidator })
     ),
+    // The Product each homepage category tile shows (variantId); absent means the built-in pick.
+    homeTiles: v.optional(v.object({ headwear: v.optional(v.string()), apparel: v.optional(v.string()) })),
     updatedAt: v.number(),
   }).index("by_key", ["key"]),
   // Admin-managed product photos in Convex storage (ADR 0021). Reads fall back to legacy string fields.

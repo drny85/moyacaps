@@ -4,6 +4,7 @@
  */
 import type { CapVariant } from "../data/caps";
 import { isPurchasable, isTee, type ShopItem } from "./shop";
+import type { HomeTiles } from "../../convex/settings/homeTilesModel";
 
 const toItem = (p: CapVariant): ShopItem => {
   if (isTee(p) && p.colorways?.length) {
@@ -44,12 +45,13 @@ export interface CategoryEntry {
 }
 
 /** The two entry tiles under the hero; a category with no products is left out. */
-export function categoryEntries(products: CapVariant[], preferred: { caps?: string; tees?: string } = {}): CategoryEntry[] {
+/** `preferred` is the Product picked for each tile (store settings); a pick no longer listed falls back to featured. */
+export function categoryEntries(products: CapVariant[], preferred: Partial<HomeTiles> = {}): CategoryEntry[] {
   const entries: CategoryEntry[] = [];
   for (const category of ["caps", "tees"] as const) {
     const list = products.filter((p) => (category === "tees" ? isTee(p) : !isTee(p)));
     if (list.length === 0) continue;
-    const lead = list.find((p) => p.id === preferred[category]) ?? list.find((p) => p.isFeatured) ?? list[0];
+    const lead = list.find((p) => p.id === preferred[category === "tees" ? "apparel" : "headwear"]) ?? list.find((p) => p.isFeatured) ?? list[0];
     entries.push({
       category,
       count: list.length,

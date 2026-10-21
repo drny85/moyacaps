@@ -23,6 +23,7 @@ import { toCapVariant } from "@/lib/toCapVariant";
 import { api } from "@convex/_generated/api";
 import type { CapVariant } from "@/data/caps";
 import { shouldSwallowSeedError } from "@/lib/selectCatalog";
+import { DEFAULT_HOME_TILES, type HomeTiles } from "@convex/settings/homeTilesModel";
 
 // Same interval as the product pages (ADR 0020) so the seeded catalog refreshes with them
 export const revalidate = 300;
@@ -53,6 +54,17 @@ async function loadLaunchSeed(): Promise<CategoryLaunches> {
   }
 }
 
+/** Homepage tile picks for the first render. Same error policy as the catalog seed. */
+async function loadHomeTilesSeed(): Promise<HomeTiles> {
+  try {
+    return await queryForStaticRender(api.settings.homeTiles.getHomeTiles, {});
+  } catch (error) {
+    if (!shouldSwallowSeedError(process.env.NEXT_PHASE)) throw error;
+    console.error("Home tiles seed fetch failed; rendering with the built-in picks", error);
+    return DEFAULT_HOME_TILES;
+  }
+}
+
 export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
 }
@@ -74,7 +86,7 @@ export default async function LocaleLayout({
 
   // Storefront copy only; auth-area segments add the rest (FullMessagesProvider, ADR 0018)
   const messages = pickNamespaces(await getMessages(), STOREFRONT_NAMESPACES);
-  const [catalogSeed, launchSeed] = await Promise.all([loadCatalogSeed(), loadLaunchSeed()]);
+  const [catalogSeed, launchSeed, homeTilesSeed] = await Promise.all([loadCatalogSeed(), loadLaunchSeed(), loadHomeTilesSeed()]);
 
   return (
     <HtmlDocument lang={locale}>
@@ -83,7 +95,7 @@ export default async function LocaleLayout({
         <ClerkClientProvider>
           <ConvexClientProvider>
             <UserSyncProvider>
-              <CatalogProvider seed={catalogSeed} launchSeed={launchSeed}>
+              <CatalogProvider seed={catalogSeed} launchSeed={launchSeed} homeTilesSeed={homeTilesSeed}>
                 <SmoothScrollProvider>
                   <MotionProvider>
                     <div className="flex min-h-screen flex-col pb-20 md:pb-0 print:pb-0 print:min-h-0">
