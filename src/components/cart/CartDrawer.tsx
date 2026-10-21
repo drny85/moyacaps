@@ -14,6 +14,7 @@ import { useStoreSettings } from "@/hooks/useStoreSettings";
 import { cartVariantIds } from "@/lib/cartVariantIds";
 import { findLineVariant, isUnreleasedDrop, lineOverStock, lineStock } from "@/lib/cartStock";
 import { useCardCheckout } from "@/hooks/useCardCheckout";
+import { usePageRestore } from "@/hooks/usePageRestore";
 import { Link } from "@/i18n/routing";
 
 export function CartDrawer() {
@@ -21,13 +22,20 @@ export function CartDrawer() {
   useLockBodyScroll(isCartOpen);
   const t = useTranslations("cart");
   const locale = useLocale();
-  const { startCheckout } = useCardCheckout();
+  const { startCheckout, abandonOpenCheckout } = useCardCheckout();
   // Only the cart's own products, hidden ones included so a line can show as unavailable.
   const convexVariants = useQuery(api.catalog.queries.getCartVariants, { variantIds: cartVariantIds(cart) });
 
   const [checkoutStep, setCheckoutStep] = useState<"idle" | "processing" | "success">("idle");
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [stockAdjustmentNotice, setStockAdjustmentNotice] = useState<string | null>(null);
+
+  // Back from Stripe restores this page as it was left: mid-redirect, still "processing".
+  // Reset the button and expire that session so its Checkout Hold frees the units (ADR 0024).
+  usePageRestore(() => {
+    setCheckoutStep("idle");
+    void abandonOpenCheckout();
+  });
 
   // Synchronize cart with live Convex database stock whenever drawer is opened or variants change
   useEffect(() => {
