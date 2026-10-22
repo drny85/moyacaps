@@ -230,7 +230,7 @@
     "statusCancelled": "Cancelled & Refunded",
     "statusRefunded": "Refunded",
     "statusPartiallyRefunded": "Partially Refunded",
-    "statusLabelPurchased": "Shipping Label Created",
+    "statusLabelPurchased": "Ready to Ship",
     "statusDeliveryException": "Delivery Issue",
     "statusReturned": "Returned to Sender",
     "statusPlaced": "Awaiting Payment",
@@ -288,7 +288,8 @@
         "shipped": "Shipped",
         "problems": "Problems",
         "done": "Done",
-        "all": "All"
+        "all": "All",
+        "ready_to_ship": "Ready to ship"
       },
       "range": {
         "label": "Range",
@@ -316,7 +317,34 @@
         "simulated": "Simulated",
         "uspsSiteWaiting": "{count, plural, one {# Ground Advantage package} other {# Ground Advantage packages}} can't be scheduled here (USPS limits its API to Priority and international).",
         "rideAlong": "Leave them out with the scheduled packages: the carrier collects them on the same stop.",
-        "uspsSiteLink": "Schedule on usps.com"
+        "uspsSiteLink": "Schedule on usps.com",
+        "markPickedUp": "{count, plural, one {Mark # picked up} other {Mark # picked up}}"
+      },
+      "handoff": {
+        "handedOff": "Handed off",
+        "flag": {
+          "not_handed_off": "Not handed off · 24h+",
+          "no_scan": "No carrier scan · 3d+"
+        },
+        "markAll": "{count, plural, one {Mark # handed off} other {Mark # handed off}}",
+        "title": "{count, plural, one {Hand off to the carrier} other {Hand off # packages}}",
+        "help": "Record when the package left you. The customer is told it shipped; carrier scans keep updating the order.",
+        "method": "How",
+        "methods": {
+          "dropped_off": "Dropped off",
+          "picked_up": "Picked up"
+        },
+        "when": "When",
+        "note": "Note (optional)",
+        "notePlaceholder": "e.g. Post office on 5th Ave",
+        "save": "{count, plural, one {Save Handoff} other {Save # Handoffs}}",
+        "cancel": "Cancel",
+        "badTime": "Enter a valid date and time.",
+        "noneSelected": "Choose at least one order.",
+        "marked": "{count, plural, one {# package marked handed off.} other {# packages marked handed off.}}",
+        "failed": "Could not save the Handoff. Try again.",
+        "edit": "Edit Handoff",
+        "remove": "Remove Handoff"
       }
     },
     "settings": {
@@ -911,7 +939,10 @@
         "scansMoveIt": "Carrier scans move it along. Mark it delivered only if a scan was missed.",
         "markDelivered": "Mark delivered",
         "awaitingPayment": "Waiting for payment.",
-        "holdExpires": "Waiting for payment · hold expires {when}"
+        "holdExpires": "Waiting for payment · hold expires {when}",
+        "readyToShip": "Ready to ship",
+        "handOffHint": "Record when the box leaves you: dropped off or picked up.",
+        "handOff": "Mark handed off"
       },
       "items": {
         "title": "Items to pack",
@@ -976,7 +1007,10 @@
         "deliverTitle": "Mark this order delivered?",
         "deliverBody": "Only when a carrier scan was missed or the package was handed over in person. The customer is emailed.",
         "revertTitle": "Revert to in transit?",
-        "revertBody": "Use this when the order was marked delivered by mistake. Inventory is not touched."
+        "revertBody": "Use this when the order was marked delivered by mistake. Inventory is not touched.",
+        "removeHandoffTitle": "Remove this Handoff?",
+        "removeHandoffBody": "Use this when it was recorded by mistake. The customer was already told it shipped and is not emailed again.",
+        "removeHandoff": "Remove Handoff"
       },
       "notes": {
         "title": "Notes",
@@ -1002,7 +1036,8 @@
         "delivered": "Marked delivered.",
         "reverted": "Back to in transit.",
         "cancelled": "Order cancelled.",
-        "dispatched": "Marked in transit; the customer has been told."
+        "dispatched": "Marked in transit; the customer has been told.",
+        "handoffRemoved": "Handoff removed."
       }
     },
     "homeTiles": {
@@ -1076,7 +1111,7 @@
     "statusCancelled": "Cancelled",
     "statusRefunded": "Refunded",
     "statusPartiallyRefunded": "Partially Refunded",
-    "statusLabelPurchased": "Shipping Label Created",
+    "statusLabelPurchased": "Ready to Ship",
     "statusDeliveryException": "Delivery Issue",
     "statusReturned": "Returned to Sender",
     "carrier": "Carrier",

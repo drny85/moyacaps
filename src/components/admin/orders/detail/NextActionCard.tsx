@@ -1,17 +1,18 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
-import { AlertTriangle, Clock, PackageCheck, Printer, RotateCcw } from "lucide-react";
+import { AlertTriangle, Clock, PackageCheck, Printer, RotateCcw, Truck } from "lucide-react";
 import type { NextAction } from "@/lib/admin/orderActions";
 import { primaryBtn } from "./Section";
 
 /** The one primary button on the page (D14), or why there is none. */
-export function NextActionCard({ action, busy, onBuyLabel, onReship, onMarkDelivered }: {
+export function NextActionCard({ action, busy, onBuyLabel, onReship, onMarkDelivered, onHandOff }: {
   action: NextAction;
   busy: boolean;
   onBuyLabel: () => void;
   onReship: () => void;
   onMarkDelivered: () => void;
+  onHandOff: () => void;
 }) {
   const t = useTranslations("admin.orderDetail.next");
   const locale = useLocale();
@@ -35,6 +36,12 @@ export function NextActionCard({ action, busy, onBuyLabel, onReship, onMarkDeliv
         <div>{label("")}<span className="text-sm font-display font-bold text-zinc-950 dark:text-white">{t("resolve")}</span>
           <a href="#refunds" className="block text-xs text-rose-600 dark:text-rose-400 hover:underline mt-0.5">{t("refundInstead")}</a></div>
         {action.reship && <button type="button" onClick={onReship} disabled={busy} className={primaryBtn}><RotateCcw className="w-4 h-4" /> {t("reship")}</button>}
+      </>);
+    case "hand_off":
+      return shell("amber", <>
+        <div>{label("")}<span className="text-sm font-display font-bold text-zinc-950 dark:text-white">{t("readyToShip")}</span>
+          <span className="block text-xs text-zinc-600 dark:text-zinc-400 mt-0.5">{t("handOffHint")}</span></div>
+        <button type="button" onClick={onHandOff} disabled={busy} className={primaryBtn}><Truck className="w-4 h-4" /> {t("handOff")}</button>
       </>);
     case "mark_delivered":
       return shell("zinc", <>

@@ -4,11 +4,14 @@
  */
 import { canChangeFulfillment, labelAction, statusAxes } from "../../../convex/orders/status";
 import type { StatusSource } from "../../../convex/orders/status";
+import { currentHandoff, isReadyToShip, type HandoffOrder } from "../../../convex/orders/handoff";
 
 export type NextAction =
   | { kind: "buy_label"; addressMissing: boolean }
   /** The carrier bounced it: Reship when a new label is allowed, or refund. */
   | { kind: "resolve_exception"; reship: boolean }
+  /** Ready to Ship and still with the Administrator: record the Handoff (ADR 0030). */
+  | { kind: "hand_off" }
   | { kind: "mark_delivered" }
   | { kind: "await_payment"; holdExpiresAt?: number }
   /** Nothing to do; `reason` explains a paid, unshipped Order that still cannot get a label. */
@@ -16,7 +19,7 @@ export type NextAction =
 
 export type ManualMove = "mark_delivered" | "revert";
 
-type ActionSource = StatusSource & { shippingAddress?: { line1: string }; checkoutHoldExpiresAt?: number };
+type ActionSource = HandoffOrder & { shippingAddress?: { line1: string }; checkoutHoldExpiresAt?: number };
 
 const BOUNCED = ["delivery_exception", "returned"] as const;
 const SHIPPED = ["label_purchased", "in_transit"] as const;
@@ -30,6 +33,7 @@ export function nextOrderAction(order: ActionSource): NextAction {
   const label = labelAction(order);
   if (label.action === "buy") return { kind: "buy_label", addressMissing: !order.shippingAddress?.line1 };
   if (includes(BOUNCED, axes.fulfillmentStatus)) return { kind: "resolve_exception", reship: label.action === "reship" };
+  if (isReadyToShip(order) && !currentHandoff(order)) return { kind: "hand_off" };
   if (includes(SHIPPED, axes.fulfillmentStatus) && canChangeFulfillment(order)) return { kind: "mark_delivered" };
   if (axes.fulfillmentStatus === "unfulfilled" && label.action === null) return { kind: "none", reason: label.reason };
   return { kind: "none" };

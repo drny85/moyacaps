@@ -7,6 +7,20 @@ import { v, type Infer } from "convex/values";
 import type { Doc } from "../_generated/dataModel";
 import { isCarrierTrackingNumber } from "./trackingNumber";
 
+/** How a Handoff happened (CONTEXT.md "Handoff"). */
+export const handoffMethodValidator = v.union(v.literal("picked_up"), v.literal("dropped_off"));
+export type HandoffMethod = Infer<typeof handoffMethodValidator>;
+
+/** The Administrator gave this label's package to the carrier (ADR 0030). */
+export const handoffValidator = v.object({
+  method: handoffMethodValidator,
+  at: v.number(),
+  note: v.optional(v.string()),
+  recordedAt: v.number(),
+  actor: v.string(),
+});
+export type Handoff = Infer<typeof handoffValidator>;
+
 export const shippingLabelValidator = v.object({
   carrier: v.string(),
   trackingNumber: v.string(),
@@ -17,6 +31,9 @@ export const shippingLabelValidator = v.object({
   cost: v.optional(v.number()),
   purchasedAt: v.number(),
   reship: v.boolean(),
+  handoff: v.optional(handoffValidator),
+  // When the Customer was told this package shipped (at the Handoff or the first scan).
+  shippedNoticeAt: v.optional(v.number()),
 });
 
 export type ShippingLabel = Infer<typeof shippingLabelValidator>;

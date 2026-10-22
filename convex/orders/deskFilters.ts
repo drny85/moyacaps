@@ -3,7 +3,8 @@
  * Fulfillment Status axes. Pure; the desk query narrows with an index, then applies
  * `matchesDeskFilter` as the source of truth. Covered by deskFilters.test.ts.
  */
-import { awaitsFulfillment, isCancelled, isExpiredCheckout, statusAxes, type StatusSource } from "./status";
+import { awaitsFulfillment, isCancelled, isExpiredCheckout, statusAxes } from "./status";
+import { currentHandoff, isReadyToShip, type HandoffOrder } from "./handoff";
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -15,8 +16,10 @@ export const DESK_FILTERS = [
   // Needs Packing, waiting more than 24 hours.
   "overdue",
   "awaiting_payment",
+  // Ready to Ship with no Handoff yet: boxes still with the Administrator (ADR 0030).
+  "ready_to_ship",
   // Queues (plan 0009 D11): groups of statuses the desk works from.
-  "shipped", // label_purchased + in_transit
+  "shipped", // handed-off Ready to Ship + in_transit
   "problems", // delivery_exception + returned + disputed, until refunded
   "done", // delivered + refunded (a partial refund alone is a money note, not a finished order)
   "label_purchased",
@@ -48,7 +51,7 @@ export function parseDeskFilter(value: string | undefined): DeskFilter {
 
 /** Whether an Order belongs in a desk tab. `now` drives the overdue tab. */
 export function matchesDeskFilter(
-  order: StatusSource & { createdAt?: number },
+  order: HandoffOrder & { createdAt?: number },
   filter: DeskFilter,
   now: number
 ): boolean {
@@ -68,8 +71,13 @@ export function matchesDeskFilter(
       return axes.paymentStatus === filter;
     case "cancelled":
       return isCancelled(order);
+    case "ready_to_ship":
+      return isReadyToShip(order) && !currentHandoff(order);
     case "shipped":
-      return axes.cancelledAt === undefined && (axes.fulfillmentStatus === "label_purchased" || axes.fulfillmentStatus === "in_transit");
+      return (
+        axes.cancelledAt === undefined &&
+        (axes.fulfillmentStatus === "in_transit" || (isReadyToShip(order) && currentHandoff(order) !== undefined))
+      );
     case "problems":
       // A full refund settles a return or exception: it moves to Done. A dispute is a problem until it closes.
       return (

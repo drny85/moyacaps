@@ -7,6 +7,7 @@ import { internalMutation, internalQuery, query, type QueryCtx } from "../_gener
 import type { Doc } from "../_generated/dataModel";
 import { requireAdmin } from "../lib/auth";
 import { groupPickupCandidates, pickupBlocksDate, pickupLocationValidator, type PickupCandidate } from "./pickupPlan";
+import { currentHandoff, isReadyToShip } from "../orders/handoff";
 
 /** Labelled Orders read per desk load; a busy day is a few dozen. */
 const WAITING_LIMIT = 100;
@@ -37,6 +38,8 @@ const pickupValidator = v.object({
   cancelByTime: v.optional(v.string()),
   timezone: v.optional(v.string()),
   simulated: v.boolean(),
+  // Its packages still Ready to Ship with no Handoff: "Mark picked up" covers these (ADR 0030).
+  awaitingHandoff: v.array(v.object({ orderId: v.id("orders"), orderNumber: v.string() })),
 });
 
 /** Pickups on or after `today`, soonest first. */
@@ -74,6 +77,14 @@ async function waitingPackages(ctx: QueryCtx, today: string): Promise<Candidate[
     }));
 }
 
+/** A pickup's packages the carrier has not scanned and nobody marked handed off yet. */
+async function awaitingHandoff(ctx: QueryCtx, pickup: Doc<"pickups">) {
+  const orders = await Promise.all(pickup.orderIds.map((id) => ctx.db.get(id)));
+  return orders
+    .filter((o): o is Doc<"orders"> => o !== null && isReadyToShip(o) && !currentHandoff(o))
+    .map((o) => ({ orderId: o._id, orderNumber: o.orderNumber }));
+}
+
 async function dateIsTaken(ctx: QueryCtx, pickupDate: string): Promise<boolean> {
   const rows = await ctx.db
     .query("pickups")
@@ -94,9 +105,10 @@ export const pickupDesk = query({
     await requireAdmin(ctx);
     const groups = groupPickupCandidates(await waitingPackages(ctx, args.today));
     const upcoming = (await upcomingPickups(ctx, args.today)).filter((p) => pickupBlocksDate(p.status));
+    const awaiting = await Promise.all(upcoming.map((p) => awaitingHandoff(ctx, p)));
     return {
       ...groups,
-      upcoming: upcoming.map((p) => ({
+      upcoming: upcoming.map((p, i) => ({
         _id: p._id,
         pickupDate: p.pickupDate,
         requestedStartTime: p.requestedStartTime,
@@ -109,6 +121,7 @@ export const pickupDesk = query({
         ...(p.cancelByTime !== undefined && { cancelByTime: p.cancelByTime }),
         ...(p.timezone !== undefined && { timezone: p.timezone }),
         simulated: p.simulated,
+        awaitingHandoff: awaiting[i],
       })),
     };
   },

@@ -1,6 +1,6 @@
 /** Orders desk filters (plan 0009 D11, D17): queue, range and search, kept in the URL. */
 
-export const QUEUES = ["needs_packing", "overdue", "awaiting_payment", "shipped", "problems", "done", "all"] as const;
+export const QUEUES = ["needs_packing", "overdue", "ready_to_ship", "awaiting_payment", "shipped", "problems", "done", "all"] as const;
 export type Queue = (typeof QUEUES)[number];
 
 export const RANGES = ["today", "7d", "30d", "all"] as const;

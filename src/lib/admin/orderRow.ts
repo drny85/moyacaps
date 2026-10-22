@@ -1,6 +1,8 @@
 /** One Orders-list card (plan 0009 D10): what the Administrator glances at, and the one thing they can do from it. */
 import { labelAction } from "../../../convex/orders/status";
 import type { FulfillmentStatus, PaymentStatus } from "../../../convex/orders/status";
+import { currentHandoff, handoffFlag, type HandoffFlag } from "../../../convex/orders/handoff";
+import type { ShippingLabel } from "../../../convex/orders/labels";
 import { formatUsd } from "./homeView";
 
 const MIN_MS = 60_000;
@@ -20,6 +22,7 @@ export type OrderRowInput = {
   cancelledAt?: number;
   items: Array<{ name: string; image: string; quantity: number }>;
   shippingAddress?: { line1: string };
+  labels?: ShippingLabel[];
 };
 
 export type OrderAge = { value: number; unit: "m" | "h" | "d" };
@@ -38,6 +41,10 @@ export type OrderRowVM = {
   overdue: boolean;
   quickAction: "buy" | "reship" | null;
   addressMissing: boolean;
+  /** Ready to Ship and already given to the carrier (ADR 0030). */
+  handedOff: boolean;
+  /** A forgotten box, or a handed-off one the carrier never scanned. */
+  handoffFlag: HandoffFlag | null;
 };
 
 export function orderAge(createdAt: number, now: number): OrderAge {
@@ -70,5 +77,7 @@ export function toOrderRow(order: OrderRowInput, now: number, locale: "en" | "es
     overdue: needsPacking(order) && order.createdAt < now - DAY_MS,
     quickAction: action,
     addressMissing: !order.shippingAddress?.line1,
+    handedOff: order.fulfillmentStatus === "label_purchased" && currentHandoff(order) !== undefined,
+    handoffFlag: handoffFlag(order, now),
   };
 }

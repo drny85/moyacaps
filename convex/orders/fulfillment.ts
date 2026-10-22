@@ -12,6 +12,8 @@ import { appendLabel } from "./labels";
 import { planTrackingUpdate } from "./tracking";
 import { scheduleReviewInvite } from "../reviews/invites";
 import { insertPaymentEvent } from "./paymentEvents";
+import { claimShippedNotice } from "./handoff";
+import { scheduleShippedEmail } from "./shippedNotice";
 
 /**
  * INTERNAL: Commits a purchased shipping label to an order: adds it to the label history,
@@ -176,6 +178,14 @@ export const handleTrackingWebhookInternal = internalMutation({
     }
 
     const plan = planTrackingUpdate(order, args, Date.now());
+
+    // The first scan that puts the package in transit tells the Customer it shipped, unless a
+    // Handoff already did (ADR 0030).
+    const shippedLabels = plan.fulfillmentStatus === "in_transit" ? claimShippedNotice(order, Date.now()) : null;
+    if (shippedLabels) {
+      plan.patch.labels = shippedLabels;
+      await scheduleShippedEmail(ctx, order, { carrier: order.carrier || args.carrier, trackingNumber: order.trackingNumber || cleanTrk });
+    }
 
     if (plan.event) {
       await insertPaymentEvent(ctx, {

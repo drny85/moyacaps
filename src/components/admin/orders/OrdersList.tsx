@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "convex/react";
-import { Check, RotateCw, Search, SearchX, X } from "lucide-react";
+import { Check, RotateCw, Search, SearchX, Truck, X } from "lucide-react";
 import { api } from "@convex/_generated/api";
 import { useRouter } from "@/i18n/routing";
 import { useMinuteClock } from "@/hooks/useMinuteClock";
@@ -17,6 +17,7 @@ import { EmptyState } from "@/components/admin/products/EmptyState";
 import { useAdminShortcuts } from "@/components/admin/products/useAdminShortcuts";
 import { OrderRow } from "./OrderRow";
 import { OrdersSkeleton } from "./OrdersSkeleton";
+import { HandoffDialog } from "./HandoffDialog";
 import { PickupCard } from "./PickupCard";
 import { QueueChips } from "./QueueChips";
 import { RangeChips } from "./RangeChips";
@@ -44,6 +45,8 @@ function ListBody() {
     limit: ORDERS_LIMIT,
   });
   const attention = useQuery(api.orders.desk.getOrdersAttentionStats, { clientTime });
+  const handoffs = useQuery(api.orders.handoffs.handoffAttention, { clientTime });
+  const [bulkHandoff, setBulkHandoff] = useState(false);
 
   const rows = useMemo(() => orders?.map((o) => toOrderRow(o, clientTime, locale)), [orders, clientTime, locale]);
   // The modal needs the full Order document, not the row.
@@ -77,11 +80,26 @@ function ListBody() {
       </div>
       <QueueChips
         value={filters.queue}
-        counts={{ needs_packing: attention?.totalActionRequired, overdue: attention?.overduePaid }}
+        counts={{
+          needs_packing: attention?.totalActionRequired,
+          overdue: attention?.overduePaid,
+          ready_to_ship: handoffs?.readyToShip,
+          shipped: handoffs?.noScan,
+        }}
+        hot={[...(handoffs?.notHandedOff ? (["ready_to_ship"] as const) : []), ...(handoffs?.noScan ? (["shipped"] as const) : [])]}
         onChange={(queue) => setFilters({ queue })}
       />
       {rangeApplies(filters) && <RangeChips value={filters.range} onChange={(range) => setFilters({ range })} />}
-      <PickupCard />
+      <PickupCard onSuccess={setSuccess} />
+      {filters.queue === "ready_to_ship" && rows && rows.length > 0 && (
+        <button
+          type="button"
+          onClick={() => setBulkHandoff(true)}
+          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-xs font-semibold"
+        >
+          <Truck className="w-3.5 h-3.5" /> {t("handoff.markAll", { count: rows.length })}
+        </button>
+      )}
 
       {success && (
         <p role="status" className="flex items-center justify-between gap-2 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-xs text-emerald-700 dark:text-emerald-300">
@@ -112,6 +130,13 @@ function ListBody() {
           )}
         </>
       )}
+
+      <HandoffDialog
+        open={bulkHandoff}
+        orders={(rows ?? []).map((r) => ({ id: r.id, orderNumber: r.orderNumber, customer: r.customer }))}
+        onClose={() => setBulkHandoff(false)}
+        onDone={setSuccess}
+      />
 
       <ShippingLabelModal
         order={label?.order ?? null}

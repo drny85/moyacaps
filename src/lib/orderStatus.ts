@@ -9,6 +9,10 @@ export type OrderLifecycle = {
   paymentStatus?: PaymentStatus;
   fulfillmentStatus?: FulfillmentStatus;
   cancelledAt?: number | null;
+  /** The current label's Handoff, as customer views carry it (ADR 0030). */
+  handoff?: { at: number } | null;
+  /** Full order documents carry it on the label history instead. */
+  labels?: Array<{ handoff?: { at: number } }> | null;
 };
 
 /** Every read hands the axes filled in; these defaults only cover a stale client cache. */
@@ -16,6 +20,9 @@ const payment = (o: OrderLifecycle): PaymentStatus => o.paymentStatus ?? "awaiti
 const fulfillment = (o: OrderLifecycle): FulfillmentStatus => o.fulfillmentStatus ?? "unfulfilled";
 
 export const isCancelledOrder = (o: OrderLifecycle): boolean => o.cancelledAt != null;
+
+/** The package left the Administrator: a Handoff was recorded on the current label. */
+const handedOff = (o: OrderLifecycle): boolean => Boolean(o.handoff ?? o.labels?.[o.labels.length - 1]?.handoff);
 
 /** An Expired Checkout (CONTEXT.md): cancelled before any money arrived. */
 export const isExpiredCheckout = (o: OrderLifecycle): boolean => isCancelledOrder(o) && payment(o) === "awaiting_payment";
@@ -67,13 +74,16 @@ export function customerBadges(o: OrderLifecycle): CustomerBadge[] {
   if (money === "awaiting_payment") return [...badges, "placed"];
 
   const pkg = fulfillment(o);
+  // A Ready to Ship package already handed to the carrier is on its way (ADR 0030).
+  if (pkg === "label_purchased" && handedOff(o)) return [...badges, "in_transit"];
   if (pkg !== "unfulfilled") return [...badges, pkg];
   return badges.length > 0 ? badges : ["paid"];
 }
 
 /**
  * Step on the four-step customer timeline (placed, paid, shipped, delivered), or null when
- * the timeline does not apply: cancelled, or refunded with nothing shipped.
+ * the timeline does not apply: cancelled, or refunded with nothing shipped. Shipped means a
+ * Handoff or a carrier scan, not just a bought label (ADR 0030).
  */
 export function trackingStep(o: OrderLifecycle): 1 | 2 | 3 | 4 | null {
   if (isCancelledOrder(o)) return null;
@@ -82,6 +92,7 @@ export function trackingStep(o: OrderLifecycle): 1 | 2 | 3 | 4 | null {
   if (payment(o) === "awaiting_payment") return 1;
   if (pkg === "delivered") return 4;
   if (pkg === "unfulfilled") return 2;
+  if (pkg === "label_purchased" && !handedOff(o)) return 2;
   return 3;
 }
 
@@ -96,7 +107,7 @@ export const PAYMENT_LABELS: Record<PaymentStatus, string> = {
 
 export const FULFILLMENT_LABELS: Record<FulfillmentStatus, string> = {
   unfulfilled: "Unfulfilled",
-  label_purchased: "Label purchased",
+  label_purchased: "Ready to ship",
   in_transit: "In transit",
   delivered: "Delivered",
   delivery_exception: "Delivery exception",
@@ -136,10 +147,11 @@ export const ADMIN_DESK_TABS = [
   { id: "needs_packing", label: "Needs packing" },
   { id: "overdue", label: "Overdue" },
   { id: "awaiting_payment", label: "Awaiting payment" },
+  { id: "ready_to_ship", label: "Ready to ship" },
   { id: "shipped", label: "Shipped" },
   { id: "problems", label: "Problems" },
   { id: "done", label: "Done" },
-  { id: "label_purchased", label: "Label purchased" },
+  { id: "label_purchased", label: "Ready to ship (all)" },
   { id: "in_transit", label: "In transit" },
   { id: "delivered", label: "Delivered" },
   { id: "delivery_exception", label: "Delivery exception" },
