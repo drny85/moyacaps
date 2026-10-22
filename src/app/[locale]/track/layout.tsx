@@ -1,5 +1,6 @@
 import { FullMessagesProvider } from "@/components/providers/FullMessagesProvider";
 import type { Metadata } from "next";
+import { setRequestLocale } from "next-intl/server";
 import { pageAlternates } from "@/lib/seo/site";
 
 export async function generateMetadata({
@@ -19,11 +20,14 @@ export async function generateMetadata({
   };
 }
 
-export default function TrackLayout({
+export default async function TrackLayout({
   children,
+  params,
 }: {
   children: React.ReactNode;
   params: Promise<{ locale: string }>;
 }) {
+  // Locale from the route, not request headers, so /track prerenders (ADR 0020)
+  setRequestLocale((await params).locale);
   return <FullMessagesProvider>{children}</FullMessagesProvider>;
 }
