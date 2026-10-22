@@ -18,7 +18,7 @@ The single `status` field is replaced by two: **Payment Status** (awaiting payme
 - A shipping label can be bought only for a paid, not cancelled, unfulfilled Order, and buying one never moves stock.
 - Restock on refund or return is an explicit per-line Administrator choice.
 - Tracking numbers come only from carrier labels.
-- A Checkout Hold is released only after Stripe reports the session expired; an hourly backstop expires sessions of Orders still awaiting payment after 45 minutes. A new Pay click or Stripe's back link expires the previous session at once.
+- A Checkout Hold is released only after Stripe reports the session expired; a backstop every 10 minutes expires sessions of Orders still awaiting payment 5 minutes after their hold ended, and logs each release as a warning, since every one means a lost or rejected webhook (a wrong signing secret once left holds to the backstop alone for over an hour). A new Pay click or Stripe's back link expires the previous session at once.
 - A disputed unfulfilled Order cannot get a label until the dispute closes.
 - Refunds are by line and quantity (line price plus its tax share, optional shipping); a free-amount Goodwill Refund never restocks.
 - Existing orders need a one-off migration from the old `status` to the two new fields.

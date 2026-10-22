@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  BACKSTOP_AFTER_MS,
+  BACKSTOP_GRACE_MS,
   backstopHoldExpiryCutoff,
   canReleaseCheckoutHold,
   CHECKOUT_SESSION_MS,
@@ -36,14 +36,15 @@ describe("Checkout Hold timing", () => {
     expect(stripeSessionExpiresAt(1_700_000_001_999)).toBe(1_700_000_001);
   });
 
-  it("the backstop is due 45 minutes after Pay, not before", () => {
-    expect(isBackstopDue(hold, PAY_AT + BACKSTOP_AFTER_MS - 1)).toBe(false);
-    expect(isBackstopDue(hold, PAY_AT + BACKSTOP_AFTER_MS)).toBe(true);
-    expect(hold.checkoutHoldExpiresAt <= backstopHoldExpiryCutoff(PAY_AT + BACKSTOP_AFTER_MS)).toBe(true);
+  it("the backstop is due 5 minutes after the hold ends, not before", () => {
+    const dueAt = hold.checkoutHoldExpiresAt + BACKSTOP_GRACE_MS;
+    expect(isBackstopDue(hold, dueAt - 1)).toBe(false);
+    expect(isBackstopDue(hold, dueAt)).toBe(true);
+    expect(hold.checkoutHoldExpiresAt <= backstopHoldExpiryCutoff(dueAt)).toBe(true);
   });
 
   it("the backstop ignores orders without a live hold", () => {
-    const later = PAY_AT + 10 * BACKSTOP_AFTER_MS;
+    const later = PAY_AT + 10 * CHECKOUT_SESSION_MS;
     expect(isBackstopDue(awaiting, later)).toBe(false);
     expect(isBackstopDue({ ...hold, paymentStatus: "paid" as const }, later)).toBe(false);
     expect(isBackstopDue({ ...hold, cancelledAt: PAY_AT }, later)).toBe(false);
