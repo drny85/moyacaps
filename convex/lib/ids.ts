@@ -19,3 +19,11 @@ export function randomDigitString(length: number): string {
   }
   return out;
 }
+
+/**
+ * A new Order number, `GL-<base36 time>-<8 random digits>`. The time part is guessable, so
+ * the random part carries the entropy (10^8 per millisecond) against enumeration (M4).
+ */
+export function generateOrderNumber(now: number): string {
+  return `GL-${now.toString(36).toUpperCase()}-${randomDigitString(8)}`;
+}

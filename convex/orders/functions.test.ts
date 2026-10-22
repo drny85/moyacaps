@@ -542,10 +542,16 @@ describe("Public query PII containment", () => {
     return lead;
   }
 
-  it("order-number lookup never exposes payment links or session ids", async () => {
+  it("order-number lookup shows strangers nothing, and its owner no payment links or PII", async () => {
     const tt = t();
     const lead = await seeded(tt);
-    const order: any = await tt.query(api.orders.functions.getOrderBySessionOrNumber, {
+    expect(await tt.query(api.orders.functions.getOrderBySessionOrNumber, { identifier: lead.orderNumber })).toBeNull();
+    expect(
+      await tt.withIdentity({ subject: "user_stranger" }).query(api.orders.functions.getOrderBySessionOrNumber, { identifier: lead.orderNumber })
+    ).toBeNull();
+
+    await tt.run(async (ctx) => ctx.db.patch(lead.orderId, { clerkUserId: "user_cust" }));
+    const order: any = await customer(tt).query(api.orders.functions.getOrderBySessionOrNumber, {
       identifier: lead.orderNumber,
     });
     expect(order).not.toBeNull();
@@ -554,6 +560,18 @@ describe("Public query PII containment", () => {
     expect(order.shippingAddress).toBeUndefined();
     expect(order.customerPhone).toBeUndefined();
     expect(order.adminNotes).toBeUndefined();
+    await drain(tt);
+  });
+
+  it("tracking shows owner PII to a matching email only once it is verified", async () => {
+    const tt = t();
+    const lead = await seeded(tt);
+    const lookup = (emailVerified: boolean) =>
+      tt
+        .withIdentity({ subject: "user_claimant", email: "secret@test.com", emailVerified })
+        .query(api.orders.functions.getOrderByOrderNumberAndEmail, { orderNumber: lead.orderNumber, email: "secret@test.com" });
+    expect(await lookup(false)).toMatchObject({ isGuestView: true, shippingAddress: { line1: "***" } });
+    expect(await lookup(true)).toMatchObject({ isGuestView: false, shippingAddress: { line1: "123 Secret St" } });
     await drain(tt);
   });
 

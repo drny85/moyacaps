@@ -6,7 +6,7 @@
 import { mutation, query, internalMutation, internalQuery } from "../_generated/server";
 import { v, ConvexError } from "convex/values";
 import { internal } from "../_generated/api";
-import { isAdminRow, isAllowlistedAdmin, requireAdmin } from "../lib/auth";
+import { isAdmin, isAdminRow, isAllowlistedAdmin, requireAdmin } from "../lib/auth";
 import { confirmationView, guestTrackingView, isUnpaidCheckout, orderHoldsStock, ownerTrackingView } from "./model";
 import { canEditShippingAddress, planCustomerCancellation, statusAxes, statusPatch } from "./status";
 import {
@@ -16,6 +16,7 @@ import {
   reservationValidator,
 } from "../payments/refundModel";
 import { carrierTrackingNumber } from "./trackingNumber";
+import { claimableEmail } from "./guestClaimModel";
 import { readLedger, reserveRefund } from "../payments/refundLedger";
 import {
   findOrderByTypedNumber,
@@ -106,9 +107,15 @@ export const getOrderBySessionOrNumber = query({
       return bySession ? confirmationView(bySession, true) : null;
     }
 
-    // Bare order-number lookups stay minimal: enumeration must not reveal PII.
+    // Order numbers are partly time-based and can be guessed, so a bare number only shows
+    // its owner or an Administrator anything; others look up by number and email (M4).
     const byNumber = await getOrderByNumber(ctx, args.identifier);
-    return byNumber ? confirmationView(byNumber, false) : null;
+    if (!byNumber) return null;
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+    const isOwner = Boolean(byNumber.clerkUserId) && byNumber.clerkUserId === identity.subject;
+    if (!isOwner && !(await isAdmin(ctx))) return null;
+    return confirmationView(byNumber, false);
   },
 });
 
@@ -291,19 +298,17 @@ export const getOrderByOrderNumberAndEmail = query({
     if (identity) {
       if (order.clerkUserId && identity.subject === order.clerkUserId) {
         isOwnerOrAdmin = true;
-      } else if (identity.email && orderEmail && identity.email.toLowerCase() === orderEmail) {
+      } else if (orderEmail && claimableEmail(identity.email, identity.emailVerified) === orderEmail) {
+        // Only a verified email proves the order is theirs (M5), as for guest claims.
         isOwnerOrAdmin = true;
       } else {
         const user = await ctx.db
           .query("users")
           .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
           .first();
+        // The users row's email is not known to be verified, so it does not prove ownership.
         if (isAdminRow(user) || isAllowlistedAdmin(identity)) {
           isOwnerOrAdmin = true;
-        } else if (user) {
-          if (user.email && orderEmail && user.email.toLowerCase() === orderEmail) {
-            isOwnerOrAdmin = true;
-          }
         }
       }
     }
