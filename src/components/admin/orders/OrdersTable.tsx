@@ -62,28 +62,28 @@ export function OrdersTable({
         <tbody className="divide-y divide-zinc-100 dark:divide-white/[0.05]">
           {rows.map((row) => (
             <tr key={row.id} onClick={() => router.push(row.href)} className="cursor-pointer hover:bg-zinc-50 dark:hover:bg-white/[0.03] transition-colors">
-              <td className="px-4 py-3 whitespace-nowrap">
+              <td className="px-4 py-4 whitespace-nowrap">
                 <Link href={row.href} onClick={(e) => e.stopPropagation()} className="font-mono font-bold text-zinc-900 dark:text-white hover:underline">
                   {row.orderNumber}
                 </Link>
               </td>
-              <td className="px-4 py-3 whitespace-nowrap">
+              <td className="px-4 py-4 whitespace-nowrap">
                 <div className="text-zinc-900 dark:text-white">{row.placedLabel}</div>
                 <div className={`inline-flex items-center gap-1 text-[10px] font-mono ${row.overdue ? "text-rose-500 font-bold" : "text-zinc-500 dark:text-zinc-400"}`}>
                   {row.overdue && <Clock className="w-3 h-3" />}
                   {t(`age.${row.age.unit}`, { count: row.age.value })}
                 </div>
               </td>
-              <td className="px-4 py-3 max-w-[14rem] truncate font-medium text-zinc-900 dark:text-white">{row.customer || t("guest")}</td>
-              <td className="px-4 py-3"><OrderTags row={row} packing={packing.get(row.id)} /></td>
-              <td className="px-4 py-3">
+              <td className="px-4 py-4 max-w-[14rem] truncate font-medium text-zinc-900 dark:text-white">{row.customer || t("guest")}</td>
+              <td className="px-4 py-4"><OrderTags row={row} packing={packing.get(row.id)} /></td>
+              <td className="px-4 py-4">
                 <div className="flex items-center gap-2 whitespace-nowrap text-zinc-600 dark:text-zinc-400">
                   <OrderThumbs thumbs={row.thumbs} />
                   {t("items", { count: row.itemCount })}
                 </div>
               </td>
-              <td className="px-4 py-3 text-right font-mono font-bold text-zinc-900 dark:text-white whitespace-nowrap">{row.totalLabel}</td>
-              <td className="px-4 py-3 text-right"><QuickAction row={row} onQuickAction={onQuickAction} /></td>
+              <td className="px-4 py-4 text-right font-mono font-bold text-zinc-900 dark:text-white whitespace-nowrap">{row.totalLabel}</td>
+              <td className="px-4 py-4 text-right"><QuickAction row={row} onQuickAction={onQuickAction} /></td>
             </tr>
           ))}
         </tbody>
