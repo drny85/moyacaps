@@ -16,6 +16,7 @@ import { actorEmail } from "./audit";
 import { getVariant } from "./inventory";
 import { countDropAlerts, listCatalogVariants, patchVariantAudited, requireActiveVariant, requireVariant, requireVersion, resolveProduct } from "./shared";
 import { adminDropRow, dropStatusValidator, dropSubscriberRow, variantWithSubscribers } from "./validators";
+import { enforceSignupRateLimit, normalizeContact, normalizeSignupName } from "../notifications/signups";
 
 /**
  * Most recent subscribers an admin list returns. Lists clamp at this size; export through
@@ -128,15 +129,16 @@ export const subscribeToDropAlert = mutation({
     contact: v.string(),
     channel: v.union(v.literal("whatsapp"), v.literal("email")),
     name: v.optional(v.string()),
+    // Deprecated and ignored: the sign-up's account comes from the auth token only.
     clerkUserId: v.optional(v.string()),
     locale: v.union(v.literal("en"), v.literal("es")),
   },
   returns: v.object({ success: v.boolean(), alreadySubscribed: v.boolean(), id: v.id("drop_alerts") }),
   handler: async (ctx, args) => {
-    const cleanContact = args.contact.trim().toLowerCase();
-    if (!cleanContact) {
-      throw new Error("Contact information is required");
-    }
+    const subject = (await ctx.auth.getUserIdentity())?.subject;
+    await enforceSignupRateLimit(ctx, subject);
+    const cleanContact = normalizeContact(args.channel, args.contact);
+    const name = normalizeSignupName(args.name);
 
     await requireVariant(ctx, args.variantId);
 
@@ -156,8 +158,8 @@ export const subscribeToDropAlert = mutation({
       variantId: args.variantId,
       contact: cleanContact,
       channel: args.channel,
-      name: args.name?.trim(),
-      clerkUserId: args.clerkUserId,
+      name,
+      clerkUserId: subject,
       locale: args.locale,
       createdAt: Date.now(),
       unsubscribeToken: generateUnsubscribeToken(),

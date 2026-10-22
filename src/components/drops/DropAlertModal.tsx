@@ -76,7 +76,6 @@ export function DropAlertModal() {
         contact: cleanContact,
         channel,
         name: name.trim() || undefined,
-        clerkUserId: user?.id,
         locale: locale === "es" ? "es" : "en",
       });
 

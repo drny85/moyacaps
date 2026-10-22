@@ -5,6 +5,7 @@
  * drifting from its validator. Behaviour is covered elsewhere (orders.test.ts, *Model.test.ts).
  */
 import { convexTest } from "convex-test";
+import rateLimiterTest from "@convex-dev/rate-limiter/test";
 import { describe, expect, it } from "vitest";
 import { api, internal } from "../_generated/api";
 import schema from "../schema";
@@ -16,6 +17,7 @@ const DAY = 24 * 60 * 60 * 1000;
 
 async function seeded() {
   const t = convexTest(schema, modules);
+  rateLimiterTest.register(t);
   await t.run(async (ctx) => {
     await ctx.db.insert("products", {
       nameEn: "0880",
@@ -186,7 +188,10 @@ describe("order reads match their return validators", () => {
   it("customer views", async () => {
     const t = await seeded();
     expect(await t.query(api.orders.functions.getOrderBySessionOrNumber, { identifier: "cs_test_rc" })).toMatchObject({ isGuestView: false });
-    expect(await t.query(api.orders.functions.getOrderBySessionOrNumber, { identifier: "GL-RC-1" })).toMatchObject({ isGuestView: true });
+    expect(await t.query(api.orders.functions.getOrderBySessionOrNumber, { identifier: "GL-RC-1" })).toBeNull();
+    expect(
+      await t.withIdentity({ subject: "user_cust" }).query(api.orders.functions.getOrderBySessionOrNumber, { identifier: "GL-RC-1" })
+    ).toMatchObject({ isGuestView: true });
     expect(
       await t.query(api.orders.functions.getOrderByOrderNumberAndEmail, { orderNumber: "rc-1", email: "ana@example.com" })
     ).toMatchObject({ isGuestView: true, shippingAddress: { line1: "***" } });
