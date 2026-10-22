@@ -24,7 +24,7 @@ vi.mock("next-intl/middleware", () => ({
 // routing.ts also builds next-intl navigation helpers, which need the Next runtime.
 vi.mock("./i18n/routing", async () => ({ routing: (await import("./i18n/config")).routing }));
 
-const { proxy } = await import("./proxy");
+const { proxy, config } = await import("./proxy");
 
 const request = (path: string) => new NextRequest(new URL(path, "http://localhost:3000"));
 const run = (path: string) => proxy(request(path), {} as NextFetchEvent) as Response;
@@ -64,5 +64,27 @@ describe("proxy", () => {
     run("/en/admin");
     expect(calls.clerk).toEqual([]);
     expect(calls.intl).toEqual(["/en/admin"]);
+  });
+});
+
+describe("proxy matcher", () => {
+  // Next compiles the matcher's group as a regular expression over the pathname.
+  const matches = (path: string) => new RegExp(`^${config.matcher[0]}$`).test(path);
+
+  it("runs on pages", () => {
+    expect(matches("/")).toBe(true);
+    expect(matches("/en/shop")).toBe(true);
+    expect(matches("/es/products/cap-1")).toBe(true);
+  });
+
+  it("skips route handlers under /api, so POSTs are not redirected to a locale path", () => {
+    expect(matches("/api/revalidate")).toBe(false);
+    expect(matches("/api/csp-report")).toBe(false);
+  });
+
+  it("skips static assets and sitemaps", () => {
+    expect(matches("/_next/static/chunk.js")).toBe(false);
+    expect(matches("/sitemap.xml")).toBe(false);
+    expect(matches("/robots.txt")).toBe(false);
   });
 });
