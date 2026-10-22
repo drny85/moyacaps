@@ -11,7 +11,7 @@ import { requireAdmin } from "../lib/auth";
 import { attentionStatsValidator, computeAttentionStats } from "../analytics/model";
 import { listCatalogVariants } from "../catalog/shared";
 import { matchesDeskFilter, parseDeskFilter, type DeskFilter } from "./deskFilters";
-import { matchesOrderSearch, orderHoldsStock } from "./model";
+import { exactOrderSearchKeys, matchesOrderSearch, orderHoldsStock } from "./model";
 import {
   cancellationReleaseLines,
   cancellationRequestId,
@@ -19,7 +19,7 @@ import {
   reservationValidator,
 } from "../payments/refundModel";
 import { readLedger, reserveRefund } from "../payments/refundLedger";
-import { findOrderByTypedNumber, hasEmail, releaseStock, scheduleSessionExpiry } from "./shared";
+import { findOrderByTypedNumber, getOrderByNumber, hasEmail, releaseStock, scheduleSessionExpiry } from "./shared";
 import { carrierTrackingNumber } from "./trackingNumber";
 import { scheduleReviewInvite } from "../reviews/invites";
 import { normalizeEmail } from "./guestClaimModel";
@@ -101,6 +101,31 @@ async function newestWithoutExpiredCheckouts(ctx: QueryCtx, limit: number): Prom
     if (orders.length >= limit || ++scanned >= ALL_TAB_MAX_SCAN) break;
   }
   return orders;
+}
+
+/** Orders a search names exactly: number, customer email (newest 50) or tracking number. */
+async function findOrdersByExactSearch(ctx: QueryCtx, search: string): Promise<Order[]> {
+  const keys = exactOrderSearchKeys(search);
+  const byNumber = await Promise.all(keys.orderNumbers.map((n) => getOrderByNumber(ctx, n)));
+  const byEmail = keys.email
+    ? await ctx.db
+        .query("orders")
+        .withIndex("by_customerEmail", (q) => q.eq("customerEmail", keys.email))
+        .order("desc")
+        .take(50)
+    : [];
+  const byTracking = await Promise.all(
+    keys.trackingNumbers.map((n) =>
+      ctx.db
+        .query("orders")
+        .withIndex("by_trackingNumber", (q) => q.eq("trackingNumber", n))
+        .take(10)
+    )
+  );
+  const seen = new Set<string>();
+  return [...byNumber.filter((o): o is Order => o !== null), ...byEmail, ...byTracking.flat()].filter((o) =>
+    seen.has(o._id) ? false : (seen.add(o._id), true)
+  );
 }
 
 /** Index read that narrows to a desk tab; `matchesDeskFilter` decides membership. */
@@ -191,7 +216,11 @@ export const getAllOrdersAdmin = query({
 
     if (args.search && args.search.trim() !== "") {
       const search = args.search;
-      orders = orders.filter((o) => matchesOrderSearch(o, search));
+      const inWindow = (o: Order) => matchesDeskFilter(o, filter, args.clientTime) && (since === undefined || o.createdAt >= since);
+      // Exact index hits first (any age), then substring matches among the recent window.
+      const exact = (await findOrdersByExactSearch(ctx, search)).filter(inWindow);
+      const exactIds = new Set(exact.map((o) => o._id));
+      orders = [...exact, ...orders.filter((o) => !exactIds.has(o._id) && matchesOrderSearch(o, search))];
     }
 
     return orders;
