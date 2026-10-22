@@ -1,5 +1,6 @@
 /// <reference types="vite/client" />
 import { convexTest } from "convex-test";
+import aggregateTest from "@convex-dev/aggregate/test";
 import { describe, expect, it } from "vitest";
 import { api, internal } from "../_generated/api";
 import schema from "../schema";
@@ -25,6 +26,7 @@ const cap = {
 /** A visible cap, a hidden draft and an archived product. */
 async function setup() {
   const t = convexTest(schema, modules);
+  aggregateTest.register(t, "dropAlertStats");
   await t.run(async (ctx) => {
     await ctx.db.insert("variants", cap);
     await ctx.db.insert("variants", { ...cap, variantId: "draft", isAvailable: false, descriptionEn: "Secret copy" });

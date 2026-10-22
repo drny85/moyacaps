@@ -1,5 +1,6 @@
 /// <reference types="vite/client" />
 import { convexTest } from "convex-test";
+import aggregateTest from "@convex-dev/aggregate/test";
 import { ConvexError } from "convex/values";
 import { describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
@@ -25,6 +26,7 @@ const cap = {
 
 function setup() {
   const t = convexTest(schema, modules);
+  aggregateTest.register(t, "dropAlertStats");
   const admin = t.withIdentity({ subject: "user_admin", email: PRIMARY_ADMIN_EMAIL, emailVerified: true });
   /** Create the cap, then give it an image and show it, as an Administrator would after attaching its Catalog Shot. */
   const createShown = async () => {

@@ -1,5 +1,6 @@
 /// <reference types="vite/client" />
 import { convexTest } from "convex-test";
+import aggregateTest from "@convex-dev/aggregate/test";
 import rateLimiterTest from "@convex-dev/rate-limiter/test";
 import { describe, expect, it } from "vitest";
 import { api, internal } from "../_generated/api";
@@ -13,6 +14,7 @@ const modules = import.meta.glob("/convex/**/*.ts");
 function setup() {
   const t = convexTest(schema, modules);
   rateLimiterTest.register(t);
+  aggregateTest.register(t, "dropAlertStats");
   const admin = t.withIdentity({ subject: "user_admin", email: PRIMARY_ADMIN_EMAIL, emailVerified: true });
   return { t, admin };
 }
@@ -70,6 +72,74 @@ describe("alert sign-up abuse limits", () => {
       ["guest@example.com", undefined],
       ["real@example.com", "user_real"],
     ]);
+  });
+});
+
+describe("Drop Radar subscriber counts", () => {
+  async function seedDrop(t: T) {
+    await t.run(async (ctx) => {
+      await ctx.db.insert("variants", {
+        variantId: "radar-cap",
+        isAvailable: true,
+        nameEn: "Radar Cap",
+        nameEs: "Gorra Radar",
+        silhouette: "snapback",
+        primaryHex: "#000000",
+        secondaryHex: "#ffffff",
+        image: "/img.png",
+        stock: 5,
+        priceUsd: 50,
+        isFeatured: false,
+        category: "headwear",
+        isDrop: true,
+        dropStatus: "scheduled",
+        dropDate: Date.now() + 86_400_000,
+      });
+    });
+  }
+  const radarCount = async (t: T) =>
+    (await t.query(api.catalog.drops.getUpcomingDrops, { clientTime: Date.now() })).find((d) => d.variantId === "radar-cap")
+      ?.subscribersCount;
+
+  it("follow sign-ups and unsubscribes through the trigger, and ignore category waitlist rows", async () => {
+    const { t, admin } = setup();
+    await seedDrop(t);
+    await teesComingSoon(admin);
+    const subscribe = (contact: string) =>
+      t.mutation(api.catalog.drops.subscribeToDropAlert, { variantId: "radar-cap", contact, channel: "email", locale: "en" });
+
+    expect(await radarCount(t)).toBe(0);
+    await subscribe("a@example.com");
+    await subscribe("b@example.com");
+    await subscribe("a@example.com"); // already subscribed: no new row
+    await signUp(t, "waitlist@example.com");
+    expect(await radarCount(t)).toBe(2);
+
+    const [row] = (await alerts(t)).filter((a) => a.contact === "a@example.com");
+    await t.mutation(api.notifications.launchAlerts.unsubscribe, { token: row.unsubscribeToken! });
+    expect(await radarCount(t)).toBe(1);
+  });
+
+  it("the backfill counts rows written before the aggregate existed, once", async () => {
+    const { t } = setup();
+    await seedDrop(t);
+    await t.run(async (ctx) => {
+      for (const contact of ["x@example.com", "y@example.com", "z@example.com"]) {
+        await ctx.db.insert("drop_alerts", { variantId: "radar-cap", contact, channel: "email", locale: "en", createdAt: 1 });
+      }
+      await ctx.db.insert("drop_alerts", {
+        variantId: "radar-cap",
+        contact: "gone@example.com",
+        channel: "email",
+        locale: "en",
+        createdAt: 1,
+        unsubscribedAt: 2,
+      });
+    });
+    expect(await radarCount(t)).toBe(0);
+    await t.mutation(internal.catalog.migrations.backfillDropAlertStats, {});
+    await t.mutation(internal.catalog.migrations.backfillDropAlertStats, {});
+    expect(await radarCount(t)).toBe(3);
   });
 });
 

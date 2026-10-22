@@ -20,6 +20,7 @@ async function seeded() {
   const t = convexTest(schema, modules);
   rateLimiterTest.register(t);
   aggregateTest.register(t, "orderStats");
+  aggregateTest.register(t, "dropAlertStats");
   await t.run(async (ctx) => {
     await ctx.db.insert("products", {
       nameEn: "0880",
@@ -123,6 +124,8 @@ async function seeded() {
       createdAt: NOW,
     });
   });
+  // Seeded with raw inserts, which skip triggers: count them the way the deploy backfill does.
+  await t.mutation(internal.catalog.migrations.backfillDropAlertStats, {});
   return t;
 }
 
