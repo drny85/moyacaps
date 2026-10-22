@@ -6,7 +6,7 @@ import { useLocale } from "next-intl";
 import { api } from "../../convex/_generated/api";
 import { useStore } from "@/store/useStore";
 import { useSafeUser } from "@/lib/useSafeUser";
-import { cartCheckoutLines, openCheckoutAfterRelease } from "@/lib/openCheckout";
+import { cartCheckoutLines, openCheckoutAfterRelease, rememberStripeTab } from "@/lib/openCheckout";
 import { getCheckoutPass } from "@/app/actions/checkoutPass";
 
 /** Checkout Sessions being expired right now, so one is never expired twice at once. */
@@ -42,6 +42,8 @@ export function useCardCheckout() {
       ...(checkoutPass ? { checkoutPass } : {}),
     });
     setOpenCheckout({ orderNumber: result.orderNumber, sessionId: result.sessionId });
+    // This tab is the one going to Stripe: only it may release the hold on its way back.
+    rememberStripeTab(window.sessionStorage, result.sessionId);
     return result;
   }, [locale, user, createCheckoutSession]);
 
@@ -59,7 +61,9 @@ export function useCardCheckout() {
       releasing.delete(openCheckout.sessionId);
       // Forgotten only now: until the units are back in stock, the cart counts the hold as its own.
       const { openCheckout: current, setOpenCheckout } = useStore.getState();
-      setOpenCheckout(openCheckoutAfterRelease(current, openCheckout));
+      const next = openCheckoutAfterRelease(current, openCheckout);
+      setOpenCheckout(next);
+      if (!next) rememberStripeTab(window.sessionStorage, null);
     }
   }, [abandonCheckoutSession]);
 

@@ -27,18 +27,23 @@ describe("isCanceledCheckoutReturn", () => {
 describe("checkoutToReleaseOnLoad", () => {
   const open = { orderNumber: "GL-1", sessionId: "cs_A" };
 
-  it("releases the open checkout on any return to the store (a reload, or Back from Stripe)", () => {
-    expect(checkoutToReleaseOnLoad(open, "/en/products/good-luck-black")).toEqual(open);
-    expect(checkoutToReleaseOnLoad(open, "/es")).toEqual(open);
+  it("releases the open checkout when this tab comes back from Stripe (Back, a reload)", () => {
+    expect(checkoutToReleaseOnLoad(open, "/en/products/good-luck-black", "cs_A")).toEqual(open);
+    expect(checkoutToReleaseOnLoad(open, "/es", "cs_A")).toEqual(open);
+  });
+
+  it("never from another tab: the shopper may still be paying in the tab that went to Stripe", () => {
+    expect(checkoutToReleaseOnLoad(open, "/en", null)).toBeNull();
+    expect(checkoutToReleaseOnLoad(open, "/en", "cs_OLD")).toBeNull();
   });
 
   it("never on the success page, where the checkout was just paid", () => {
-    expect(checkoutToReleaseOnLoad(open, "/en/checkout/success")).toBeNull();
-    expect(checkoutToReleaseOnLoad(open, "/checkout/success")).toBeNull();
+    expect(checkoutToReleaseOnLoad(open, "/en/checkout/success", "cs_A")).toBeNull();
+    expect(checkoutToReleaseOnLoad(open, "/checkout/success", "cs_A")).toBeNull();
   });
 
   it("has nothing to release without an open checkout", () => {
-    expect(checkoutToReleaseOnLoad(null, "/en")).toBeNull();
+    expect(checkoutToReleaseOnLoad(null, "/en", "cs_A")).toBeNull();
   });
 });
 

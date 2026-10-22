@@ -23,13 +23,42 @@ export function isCanceledCheckoutReturn(params: { get(name: string): string | n
   return value === "1" || value === "true";
 }
 
+/** The `sessionStorage` key naming the Checkout Session this tab left for Stripe. */
+const STRIPE_TAB_KEY = "moyacaps-stripe-tab";
+
+type TabStorage = Pick<Storage, "getItem" | "setItem" | "removeItem">;
+
+/** Marks this tab as the one that went to Stripe for `sessionId` (per tab: other tabs never see it). */
+export function rememberStripeTab(storage: TabStorage, sessionId: string | null): void {
+  try {
+    if (sessionId) storage.setItem(STRIPE_TAB_KEY, sessionId);
+    else storage.removeItem(STRIPE_TAB_KEY);
+  } catch {
+    // Storage blocked (private mode): the hold then ends at its own 30-minute expiry.
+  }
+}
+
+/** The Checkout Session this tab left for Stripe, if any. */
+export function stripeTabSession(storage: TabStorage): string | null {
+  try {
+    return storage.getItem(STRIPE_TAB_KEY);
+  } catch {
+    return null;
+  }
+}
+
 /**
- * The open checkout to release when a store page loads: any return to the store means the
- * shopper left Stripe without paying (Back, a reload, a new tab), so its Checkout Hold should
- * not keep units out of stock for 30 minutes. Never on the success page, which clears it.
+ * The open checkout to release when a store page loads: this tab went to Stripe for it and is
+ * back without paying (Back, a reload), so its Checkout Hold should not keep units out of stock
+ * for 30 minutes. Never from another tab, where the shopper may still be paying, and never on
+ * the success page, which clears it. `leftFromThisTab` is `stripeTabSession(sessionStorage)`.
  */
-export function checkoutToReleaseOnLoad(openCheckout: OpenCheckout | null, pathname: string): OpenCheckout | null {
-  if (!openCheckout) return null;
+export function checkoutToReleaseOnLoad(
+  openCheckout: OpenCheckout | null,
+  pathname: string,
+  leftFromThisTab: string | null
+): OpenCheckout | null {
+  if (!openCheckout || leftFromThisTab !== openCheckout.sessionId) return null;
   return /(^|\/)checkout\/success\/?$/.test(pathname) ? null : openCheckout;
 }
 
