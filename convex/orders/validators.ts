@@ -77,7 +77,14 @@ export const confirmationViewValidator = viewFields.extend({
   isGuestView: v.boolean(),
 });
 
-const reservationFields = orderDoc.pick("paymentUrl", "paymentLinkSentAt", "reservationExpiresAt").fields;
+/** orderModel.accountOrderView */
+export const accountOrderViewValidator = viewFields.extend({
+  items: v.array(orderItemValidator),
+  shippingAddress: v.optional(shippingAddressValidator),
+  customerPhone: v.optional(v.string()),
+});
+
+const reservationFields =orderDoc.pick("paymentUrl", "paymentLinkSentAt", "reservationExpiresAt").fields;
 
 /** orderModel.guestTrackingView */
 export const guestTrackingViewValidator = viewFields.extend({

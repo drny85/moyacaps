@@ -636,6 +636,59 @@ describe("Public query PII containment", () => {
     await drain(tt);
   });
 
+  it("account history gives a Customer their own Orders without the admin-only fields", async () => {
+    const tt = t();
+    const lead = await seeded(tt);
+    await tt.run(async (ctx) =>
+      ctx.db.patch(lead.orderId, {
+        customerPhone: "+15550001111",
+        adminNotes: "Chargeback risk, check ID",
+        webhookEventIds: ["evt_secret"],
+        stripeCustomerId: "cus_secret",
+        stripeSessionIds: ["cs_test_demo1"],
+        manualStatusOverride: true,
+      })
+    );
+
+    const [order]: any[] = await customer(tt).query(api.orders.functions.getOrdersByClerkId, { clerkUserId: "user_cust" });
+    // What the account page reads: its own address and phone, the line items, money and status.
+    expect(order).toMatchObject({
+      orderNumber: lead.orderNumber,
+      shippingAddress: { line1: "123 Secret St" },
+      customerPhone: "+15550001111",
+      items: [{ variantId: "V1", quantity: 1 }],
+      total: 100,
+      paymentStatus: "paid",
+    });
+    for (const field of [
+      "adminNotes",
+      "webhookEventIds",
+      "stripeCustomerId",
+      "stripeSessionId",
+      "stripeSessionIds",
+      "manualStatusOverride",
+      "paymentUrl",
+      "clerkUserId",
+    ]) {
+      expect(order, field).not.toHaveProperty(field);
+    }
+    await drain(tt);
+  });
+
+  it("an Administrator reading a Customer's history gets the same safe view; a stranger is refused", async () => {
+    const tt = t();
+    const lead = await seeded(tt);
+    await tt.run(async (ctx) => ctx.db.patch(lead.orderId, { adminNotes: "internal" }));
+
+    const [order]: any[] = await admin(tt).query(api.orders.functions.getOrdersByClerkId, { clerkUserId: "user_cust" });
+    expect(order.orderNumber).toBe(lead.orderNumber);
+    expect(order).not.toHaveProperty("adminNotes");
+    await expect(
+      tt.withIdentity({ subject: "user_stranger" }).query(api.orders.functions.getOrdersByClerkId, { clerkUserId: "user_cust" })
+    ).rejects.toThrow();
+    await drain(tt);
+  });
+
   it("email-gated tracking masks street/zip for unauthenticated guests", async () => {
     const tt = t();
     const lead = await seeded(tt);
