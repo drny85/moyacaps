@@ -19,6 +19,7 @@ const candidateValidator = v.object({
   carrier: v.optional(v.string()),
   serviceLevel: v.optional(v.string()),
   transactionId: v.optional(v.string()),
+  rateId: v.optional(v.string()),
 });
 
 type Candidate = PickupCandidate & { orderId: Doc<"orders">["_id"] };
@@ -69,6 +70,7 @@ async function waitingPackages(ctx: QueryCtx, today: string): Promise<Candidate[
       ...((o.shippingCarrier ?? o.carrier) !== undefined && { carrier: o.shippingCarrier ?? o.carrier }),
       ...(o.shippingServiceLevel !== undefined && { serviceLevel: o.shippingServiceLevel }),
       ...(o.shippingTransactionId !== undefined && { transactionId: o.shippingTransactionId }),
+      ...(o.shippingRateId !== undefined && { rateId: o.shippingRateId }),
     }));
 }
 

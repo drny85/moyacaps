@@ -7,13 +7,29 @@ import type { Shippo } from "shippo";
 import { requireAdminInAction } from "../lib/auth";
 import { parseShipFrom, shipFromMissingMessage } from "./shipFrom";
 import { currentShippoPolicy, getShippoClient } from "./shippoClient";
-import { pickupAddress, pickupLocationValidator, planPickupMode, planPickupRequest } from "./pickupPlan";
+import {
+  carrierWallClock,
+  pickupAddress,
+  pickupFailureMessage,
+  pickupLocationValidator,
+  planPickupMode,
+  planPickupRequest,
+} from "./pickupPlan";
 
 /**
- * The USPS carrier account to schedule on: SHIPPO_USPS_CARRIER_ACCOUNT when set, otherwise the
- * first active USPS account on the Shippo key (Shippo's own USPS account for most stores).
+ * The USPS carrier account to schedule on: the one a waiting label was bought with (read from
+ * its Shippo rate), so the pickup and its labels match. Without a readable rate:
+ * SHIPPO_USPS_CARRIER_ACCOUNT when set, otherwise the first active USPS account on the key.
  */
-async function uspsCarrierAccount(shippo: Shippo): Promise<string> {
+async function uspsCarrierAccount(shippo: Shippo, rateIds: string[]): Promise<string> {
+  for (const rateId of rateIds) {
+    try {
+      const rate = await shippo.rates.get(rateId);
+      if (rate.carrierAccount) return rate.carrierAccount;
+    } catch (err: any) {
+      console.warn(`[Shippo] Could not read rate ${rateId} for its carrier account:`, err?.message || err);
+    }
+  }
   const configured = process.env.SHIPPO_USPS_CARRIER_ACCOUNT?.trim();
   if (configured) return configured;
   const list = await shippo.carrierAccounts.list({ carrier: "usps" });
@@ -83,21 +99,24 @@ export const schedulePickup = action({
       const parsed = parseShipFrom(process.env);
       if (!parsed.ok) throw new ConvexError(shipFromMissingMessage(parsed.missing));
       try {
+        const rateIds = context.api.flatMap((c) => (c.rateId ? [c.rateId] : []));
         const pickup = await shippo.pickups.create({
-          carrierAccount: await uspsCarrierAccount(shippo),
+          carrierAccount: await uspsCarrierAccount(shippo, rateIds),
           location: {
             address: pickupAddress(parsed.address),
             buildingLocationType: args.location,
             ...(instructions && { instructions }),
           },
           transactions: transactionIds,
-          requestedStartTime: new Date(args.requestedStartTime),
-          requestedEndTime: new Date(args.requestedEndTime),
+          // Shippo reads these as the pickup address's local clock (./pickupPlan carrierWallClock).
+          requestedStartTime: carrierWallClock(args.requestedStartTime),
+          requestedEndTime: carrierWallClock(args.requestedEndTime),
           metadata: `moyacaps ${args.pickupDate}`,
         });
         if (pickup.status === "ERROR") {
-          const reason = (pickup.messages ?? []).join(" ") || "USPS refused the pickup request.";
-          throw new ConvexError(`USPS pickup failed: ${reason}`);
+          throw new ConvexError(
+            pickupFailureMessage(JSON.stringify({ object_id: pickup.objectId, messages: pickup.messages ?? [] }))
+          );
         }
         result = {
           status: pickup.status ?? "PENDING",
@@ -111,7 +130,8 @@ export const schedulePickup = action({
       } catch (err: any) {
         if (err instanceof ConvexError) throw err;
         console.error("[Shippo] Pickup request failed:", err?.message || err);
-        throw new ConvexError(`USPS pickup request failed: ${err?.message || String(err)}`);
+        // Shippo answers a refused pickup with HTTP 400 and the pickup object as the body.
+        throw new ConvexError(pickupFailureMessage(typeof err?.body === "string" ? err.body : undefined));
       }
     } else {
       // Simulated pickup (development only, SHIPPO_ALLOW_SIMULATION=true).

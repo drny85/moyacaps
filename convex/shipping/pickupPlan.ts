@@ -8,6 +8,7 @@
  */
 import { v } from "convex/values";
 import type { ShipFromAddress } from "./shipFrom";
+import { STORE_TIME_ZONE } from "../lib/storeTime";
 import { isSimulatedRate, type ShippoPolicy } from "./shippoMode";
 
 /** USPS's own scheduler, which takes every service including Ground Advantage. */
@@ -56,6 +57,8 @@ export type PickupCandidate = {
   carrier?: string;
   serviceLevel?: string;
   transactionId?: string;
+  /** The label's Shippo rate: names the USPS carrier account the pickup must use. */
+  rateId?: string;
 };
 
 /**
@@ -108,6 +111,53 @@ export function pickupAddress(address: ShipFromAddress): ShipFromAddress {
     ...(address.street2 !== undefined && { street2: clean(address.street2) }),
     city: clean(address.city),
   };
+}
+
+const wallClockFormat = (timeZone: string) =>
+  new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    hourCycle: "h23",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+
+/**
+ * The pickup window as Shippo reads it. Shippo takes `requested_start_time` as the wall-clock
+ * time at the pickup address and converts it to UTC itself, so sending the true instant shifts
+ * the window by the zone offset (9 AM ET reached USPS as 1 PM). This returns a Date whose UTC
+ * fields are the store's local clock at `ms`.
+ */
+export function carrierWallClock(ms: number, timeZone: string = STORE_TIME_ZONE): Date {
+  const parts = Object.fromEntries(wallClockFormat(timeZone).formatToParts(ms).map((p) => [p.type, p.value]));
+  return new Date(
+    Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day), Number(parts.hour), Number(parts.minute), Number(parts.second))
+  );
+}
+
+/**
+ * A short message for a pickup Shippo refused. Shippo answers with the whole pickup object;
+ * only its messages and its object ID (which Shippo support asks for) are useful.
+ */
+export function pickupFailureMessage(body: string | undefined): string {
+  let messages: string[] = [];
+  let objectId: string | undefined;
+  try {
+    const parsed = JSON.parse(body ?? "") as { messages?: unknown; object_id?: unknown; detail?: unknown };
+    if (Array.isArray(parsed.messages)) {
+      messages = parsed.messages.map((m) => (typeof m === "string" ? m : (m as { text?: string })?.text ?? "")).filter(Boolean);
+    } else if (typeof parsed.detail === "string") {
+      messages = [parsed.detail];
+    }
+    if (typeof parsed.object_id === "string") objectId = parsed.object_id;
+  } catch {
+    // Not JSON: keep the generic message.
+  }
+  const reason = messages.join(" ") || "USPS refused the pickup request.";
+  return objectId ? `USPS pickup failed: ${reason} Shippo pickup ID ${objectId} (give it to Shippo support).` : `USPS pickup failed: ${reason}`;
 }
 
 /** Whether a recorded pickup with this Shippo status uses up its day. */

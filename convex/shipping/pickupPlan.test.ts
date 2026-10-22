@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  carrierWallClock,
   groupPickupCandidates,
+  pickupFailureMessage,
   isPickupDay,
   nextPickupDate,
   pickupAddress,
@@ -162,5 +164,29 @@ describe("planPickupMode", () => {
     expect(planPickupMode(shippoPolicy({ allowSimulation: "true" }), ["tx_1"])).toEqual({ ok: true, simulated: true });
     expect(planPickupMode(live, ["sim_tx_1"]).ok).toBe(false);
     expect(planPickupMode(none, ["tx_1"]).ok).toBe(false);
+  });
+});
+
+describe("carrierWallClock", () => {
+  it("sends the store's local clock, not the UTC instant", () => {
+    // 9:00 AM EDT on Oct 23 is 13:00Z; Shippo must receive 09:00.
+    expect(carrierWallClock(Date.UTC(2026, 9, 23, 13, 0)).toISOString()).toBe("2026-10-23T09:00:00.000Z");
+    // 5:00 PM EST in winter is 22:00Z.
+    expect(carrierWallClock(Date.UTC(2026, 11, 1, 22, 0)).toISOString()).toBe("2026-12-01T17:00:00.000Z");
+    expect(carrierWallClock(Date.UTC(2026, 9, 23, 16, 30), "America/Los_Angeles").toISOString()).toBe("2026-10-23T09:30:00.000Z");
+  });
+});
+
+describe("pickupFailureMessage", () => {
+  it("keeps Shippo's messages and the pickup object ID", () => {
+    const body = JSON.stringify({ object_id: "a4d9b39b", status: "ERROR", messages: ["There is an error from the carrier."] });
+    expect(pickupFailureMessage(body)).toBe(
+      "USPS pickup failed: There is an error from the carrier. Shippo pickup ID a4d9b39b (give it to Shippo support)."
+    );
+  });
+
+  it("falls back to a generic line for a body that is not JSON", () => {
+    expect(pickupFailureMessage("<html>")).toBe("USPS pickup failed: USPS refused the pickup request.");
+    expect(pickupFailureMessage(undefined)).toBe("USPS pickup failed: USPS refused the pickup request.");
   });
 });
