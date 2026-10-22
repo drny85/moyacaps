@@ -40,6 +40,7 @@ import {
   statusPatch,
 } from "./status";
 import { orderDoc, shippingAddressValidator, successResult } from "./validators";
+import { DEFAULT_DESK_SORT, DESK_WINDOW, deskSortValidator, inDateWindow, pageOf, sortOrders } from "./deskPage";
 import { insertPaymentEvent } from "./paymentEvents";
 
 type Order = Doc<"orders">;
@@ -96,11 +97,20 @@ const byPayment = async (ctx: QueryCtx, paymentStatus: PaymentStatus, limit: num
 /** Most Orders the All tab scans past Expired Checkouts before it stops short of `limit`. */
 const ALL_TAB_MAX_SCAN = 2000;
 
-/** The All tab, newest first: skips Expired Checkouts so abandoned carts never crowd out real Orders. */
-async function newestWithoutExpiredCheckouts(ctx: QueryCtx, limit: number): Promise<Order[]> {
+type DateBounds = { since?: number; until?: number };
+
+/**
+ * The All tab, newest first: skips Expired Checkouts so abandoned carts never crowd out real
+ * Orders. Date bounds narrow the index read itself, so an old custom range still finds its Orders.
+ */
+async function newestWithoutExpiredCheckouts(ctx: QueryCtx, limit: number, { since, until }: DateBounds = {}): Promise<Order[]> {
   const orders: Order[] = [];
   let scanned = 0;
-  for await (const order of ctx.db.query("orders").withIndex("by_createdAt").order("desc")) {
+  const range = ctx.db.query("orders").withIndex("by_createdAt", (q) => {
+    const from = since === undefined ? q : q.gte("createdAt", since);
+    return until === undefined ? from : from.lt("createdAt", until);
+  });
+  for await (const order of range.order("desc")) {
     if (!isExpiredCheckout(order)) orders.push(order);
     if (orders.length >= limit || ++scanned >= ALL_TAB_MAX_SCAN) break;
   }
@@ -133,10 +143,10 @@ async function findOrdersByExactSearch(ctx: QueryCtx, search: string): Promise<O
 }
 
 /** Index read that narrows to a desk tab; `matchesDeskFilter` decides membership. */
-async function readDeskFilter(ctx: QueryCtx, filter: DeskFilter, limit: number): Promise<Order[]> {
+async function readDeskFilter(ctx: QueryCtx, filter: DeskFilter, limit: number, bounds?: DateBounds): Promise<Order[]> {
   switch (filter) {
     case "all":
-      return await newestWithoutExpiredCheckouts(ctx, limit);
+      return await newestWithoutExpiredCheckouts(ctx, limit, bounds);
     case "needs_packing":
     case "overdue":
       return await packingQueue(ctx, limit);
@@ -230,6 +240,53 @@ export const getAllOrdersAdmin = query({
     }
 
     return orders;
+  },
+});
+
+/**
+ * The Orders desk table (plan 0013): one sorted page of a desk tab. Reads the tab and date window
+ * (at most DESK_WINDOW Orders; `capped` says the read hit that limit), keeps search matches, sorts
+ * by `sort` and returns page `page` (1-based, clamped). `since` is inclusive, `until` exclusive.
+ * A search looks through the same read plus exact number, email and tracking hits of any age.
+ */
+export const getOrdersDeskPage = query({
+  args: {
+    clientTime: v.number(),
+    status: v.optional(v.string()),
+    search: v.optional(v.string()),
+    since: v.optional(v.number()),
+    until: v.optional(v.number()),
+    sort: v.optional(deskSortValidator),
+    page: v.optional(v.number()),
+  },
+  returns: v.object({
+    rows: v.array(orderDoc),
+    total: v.number(),
+    page: v.number(),
+    pageCount: v.number(),
+    capped: v.boolean(),
+  }),
+  handler: async (ctx, args) => {
+    const empty = { rows: [], total: 0, page: 1, pageCount: 1, capped: false };
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return empty;
+    }
+    await requireAdmin(ctx);
+
+    const filter = parseDeskFilter(args.status);
+    const read = await readDeskFilter(ctx, filter, DESK_WINDOW, { since: args.since, until: args.until });
+    const inWindow = (o: Order) => matchesDeskFilter(o, filter, args.clientTime) && inDateWindow(o.createdAt, args.since, args.until);
+    let orders = read.filter(inWindow);
+
+    const search = args.search?.trim() ?? "";
+    if (search !== "") {
+      const exact = (await findOrdersByExactSearch(ctx, search)).filter(inWindow);
+      const exactIds = new Set(exact.map((o) => o._id));
+      orders = [...exact, ...orders.filter((o) => !exactIds.has(o._id) && matchesOrderSearch(o, search))];
+    }
+
+    return { ...pageOf(sortOrders(orders, args.sort ?? DEFAULT_DESK_SORT), args.page ?? 1), capped: read.length >= DESK_WINDOW };
   },
 });
 

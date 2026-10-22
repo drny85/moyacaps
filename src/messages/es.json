@@ -309,7 +309,12 @@
         "today": "Hoy",
         "7d": "7d",
         "30d": "30d",
-        "all": "Todas"
+        "all": "Todas",
+        "custom": "Personalizado",
+        "from": "Desde",
+        "to": "Hasta",
+        "workingHint": "Las colas de trabajo muestran todas las órdenes, sin importar su antigüedad.",
+        "searchHint": "La búsqueda revisa todas las fechas."
       },
       "empty": "No hay órdenes en esta cola",
       "clearFilters": "Quitar filtros",
@@ -361,7 +366,30 @@
         "edit": "Editar entrega",
         "remove": "Quitar entrega"
       },
-      "packing": "{checked}/{total} revisadas"
+      "packing": "{checked}/{total} revisadas",
+      "sort": {
+        "label": "Ordenar",
+        "placed_desc": "Más recientes",
+        "placed_asc": "Más antiguas",
+        "total_desc": "Mayor total",
+        "total_asc": "Menor total"
+      },
+      "columns": {
+        "order": "Orden",
+        "placed": "Fecha",
+        "customer": "Cliente",
+        "status": "Estado",
+        "items": "Artículos",
+        "total": "Total",
+        "action": "Acción"
+      },
+      "pager": {
+        "label": "Páginas",
+        "range": "{first}–{last} de {total}",
+        "prev": "Anterior",
+        "next": "Siguiente"
+      },
+      "capped": "Mostrando las {count} órdenes más recientes de este rango. Acorta las fechas para ver las anteriores."
     },
     "settings": {
       "title": "Ajustes",

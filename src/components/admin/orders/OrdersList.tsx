@@ -8,7 +8,8 @@ import { Check, RotateCw, Search, SearchX, Truck, X } from "lucide-react";
 import { api } from "@convex/_generated/api";
 import { useRouter } from "@/i18n/routing";
 import { useMinuteClock } from "@/hooks/useMinuteClock";
-import { ORDERS_LIMIT, effectiveSince, hasActiveFilters, legacyOrderParamHref, rangeApplies } from "@/lib/admin/orderFilters";
+import { dateWindow, hasActiveFilters, isHistoryQueue, legacyOrderParamHref } from "@/lib/admin/orderFilters";
+import { DESK_WINDOW, ORDERS_PAGE_SIZE } from "@convex/orders/deskPage";
 import { toOrderRow } from "@/lib/admin/orderRow";
 import type { OrderRowVM } from "@/lib/admin/orderRow";
 import { QueryErrorBoundary } from "@/components/admin/QueryErrorBoundary";
@@ -16,6 +17,9 @@ import { ShippingLabelModal } from "@/components/admin/ShippingLabelModal";
 import { EmptyState } from "@/components/admin/products/EmptyState";
 import { useAdminShortcuts } from "@/components/admin/products/useAdminShortcuts";
 import { OrderRow } from "./OrderRow";
+import { OrdersTable } from "./OrdersTable";
+import { Pager } from "./Pager";
+import { SortSelect } from "./SortSelect";
 import { OrdersSkeleton } from "./OrdersSkeleton";
 import { HandoffDialog } from "./HandoffDialog";
 import { PackingConfirmDialog } from "./PackingConfirmDialog";
@@ -24,7 +28,7 @@ import { QueueChips } from "./QueueChips";
 import { RangeChips } from "./RangeChips";
 import { useOrderFilters } from "./useOrderFilters";
 
-type OrderDoc = NonNullable<ReturnType<typeof useQuery<typeof api.orders.desk.getAllOrdersAdmin>>>[number];
+type OrderDoc = NonNullable<ReturnType<typeof useQuery<typeof api.orders.desk.getOrdersDeskPage>>>["rows"][number];
 /** A snapshot: once a label is bought the Order leaves this queue, but the modal must stay up to print. */
 type LabelTarget = { order: OrderDoc; reship: boolean } | null;
 
@@ -38,13 +42,16 @@ function ListBody() {
   const searchRef = useRef<HTMLInputElement>(null);
   useAdminShortcuts({ "/": () => searchRef.current?.focus() });
 
-  const orders = useQuery(api.orders.desk.getAllOrdersAdmin, {
+  // One sorted page of the queue (plan 0013); the dates apply only to History Queues without a search.
+  const deskPage = useQuery(api.orders.desk.getOrdersDeskPage, {
     clientTime,
     status: filters.queue,
     search: filters.q,
-    since: effectiveSince(filters, clientTime, tzOffsetMinutes),
-    limit: ORDERS_LIMIT,
+    ...dateWindow(filters, clientTime, tzOffsetMinutes),
+    sort: filters.sort,
+    page: filters.page,
   });
+  const orders = deskPage?.rows;
   const attention = useQuery(api.orders.desk.getOrdersAttentionStats, { clientTime });
   const handoffs = useQuery(api.orders.handoffs.handoffAttention, { clientTime });
   const [bulkHandoff, setBulkHandoff] = useState(false);
@@ -104,7 +111,19 @@ function ListBody() {
         hot={[...(handoffs?.notHandedOff ? (["ready_to_ship"] as const) : []), ...(handoffs?.noScan ? (["shipped"] as const) : [])]}
         onChange={(queue) => setFilters({ queue })}
       />
-      {rangeApplies(filters) && <RangeChips value={filters.range} onChange={(range) => setFilters({ range })} />}
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <RangeChips
+          value={filters.range}
+          from={filters.from}
+          to={filters.to}
+          disabledHint={!isHistoryQueue(filters.queue) ? t("range.workingHint") : filters.q !== "" ? t("range.searchHint") : null}
+          onChange={(range) => setFilters({ range })}
+          onDates={(dates) => setFilters(dates)}
+        />
+        <div className="lg:hidden">
+          <SortSelect value={filters.sort} onChange={(sort) => setFilters({ sort })} />
+        </div>
+      </div>
       <PickupCard onSuccess={setSuccess} />
       {filters.queue === "ready_to_ship" && rows && rows.length > 0 && (
         <button
@@ -135,13 +154,30 @@ function ListBody() {
         </EmptyState>
       ) : (
         <>
-          <ul className="space-y-2.5">
+          {deskPage?.capped && (
+            <p role="status" className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-700 dark:text-amber-300">
+              {t("capped", { count: DESK_WINDOW })}
+            </p>
+          )}
+          <ul className="space-y-2.5 lg:hidden">
             {rows.map((row) => (
               <OrderRow key={row.id} row={row} packing={progressById.get(row.id)} onQuickAction={openLabel} />
             ))}
           </ul>
-          {rows.length >= ORDERS_LIMIT && (
-            <p className="text-center text-[11px] font-mono text-zinc-500 dark:text-zinc-400">{tCommon("showingLatest", { count: ORDERS_LIMIT })}</p>
+          <div className="hidden lg:block">
+            <OrdersTable rows={rows} packing={progressById} sort={filters.sort} onSort={(sort) => setFilters({ sort })} onQuickAction={openLabel} />
+          </div>
+          {deskPage && (
+            <Pager
+              page={deskPage.page}
+              pageCount={deskPage.pageCount}
+              pageSize={ORDERS_PAGE_SIZE}
+              total={deskPage.total}
+              onPage={(page) => {
+                setFilters({ page });
+                window.scrollTo({ top: 0 });
+              }}
+            />
           )}
         </>
       )}

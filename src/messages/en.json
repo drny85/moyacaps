@@ -309,7 +309,12 @@
         "today": "Today",
         "7d": "7d",
         "30d": "30d",
-        "all": "All"
+        "all": "All",
+        "custom": "Custom",
+        "from": "From",
+        "to": "To",
+        "workingHint": "Working queues show every order, whatever its age.",
+        "searchHint": "Search looks through all dates."
       },
       "empty": "No orders in this queue",
       "clearFilters": "Clear filters",
@@ -361,7 +366,30 @@
         "edit": "Edit Handoff",
         "remove": "Remove Handoff"
       },
-      "packing": "{checked}/{total} checked"
+      "packing": "{checked}/{total} checked",
+      "sort": {
+        "label": "Sort",
+        "placed_desc": "Newest first",
+        "placed_asc": "Oldest first",
+        "total_desc": "Highest total",
+        "total_asc": "Lowest total"
+      },
+      "columns": {
+        "order": "Order",
+        "placed": "Placed",
+        "customer": "Customer",
+        "status": "Status",
+        "items": "Items",
+        "total": "Total",
+        "action": "Action"
+      },
+      "pager": {
+        "label": "Pages",
+        "range": "{first}–{last} of {total}",
+        "prev": "Previous",
+        "next": "Next"
+      },
+      "capped": "Showing the newest {count} orders in this range. Narrow the dates to see older ones."
     },
     "settings": {
       "title": "Settings",

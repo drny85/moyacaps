@@ -41,6 +41,8 @@ export type OrderRowVM = {
   overdue: boolean;
   quickAction: "buy" | "reship" | null;
   addressMissing: boolean;
+  /** When it was placed, in the Administrator's locale (the table's Placed column). */
+  placedLabel: string;
   /** Ready to Ship and already given to the carrier (ADR 0030). */
   handedOff: boolean;
   /** A forgotten box, or a handed-off one the carrier never scanned. */
@@ -74,6 +76,7 @@ export function toOrderRow(order: OrderRowInput, now: number, locale: "en" | "es
     thumbs: order.items.map((item) => item.image).filter(Boolean).slice(0, THUMBS),
     lifecycle: { paymentStatus: order.paymentStatus, fulfillmentStatus: order.fulfillmentStatus, cancelledAt: order.cancelledAt },
     age: orderAge(order.createdAt, now),
+    placedLabel: new Date(order.createdAt).toLocaleString(locale, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }),
     overdue: needsPacking(order) && order.createdAt < now - DAY_MS,
     quickAction: action,
     addressMissing: !order.shippingAddress?.line1,

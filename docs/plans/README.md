@@ -15,6 +15,7 @@ This directory houses technical design documents, architectural blueprints, and 
 | **0010** | **Photo Autofill** | Implemented | `feat/photo-autofill` | [`0010-photo-autofill.md`](./0010-photo-autofill.md) |
 | **0011** | **Product Reviews** | Implemented | `feat/product-reviews` | [`0011-product-reviews.md`](./0011-product-reviews.md) |
 | **0012** | **Packing Checklist** | Implemented | `feat/packing-checklist` | [`0012-packing-checklist.md`](./0012-packing-checklist.md) |
+| **0013** | **Orders Table: Sort, Filter, Paginate** | Implemented | `feat/orders-table` | [`0013-orders-table.md`](./0013-orders-table.md) |
 
 ---
 
