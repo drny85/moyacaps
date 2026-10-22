@@ -28,8 +28,8 @@ export type UserUpsert = {
 
 // SECURITY: admin is granted ONLY by the allowlist. Clerk publicMetadata is
 // client-writable, so it must NEVER confer admin rights.
-export function roleFor(email: string, clerkId: string): UserUpsert["role"] {
-  return isAllowlistedAdmin({ subject: clerkId, email }) ? "admin" : "customer";
+export function roleFor(email: string, clerkId: string, emailVerified: boolean | undefined): UserUpsert["role"] {
+  return isAllowlistedAdmin({ subject: clerkId, email, emailVerified }) ? "admin" : "customer";
 }
 
 function primaryOf<T extends { id: string }>(items: T[] | undefined, primaryId?: string | null) {
@@ -42,12 +42,13 @@ export function toUserUpsert(user: ClerkUserJSON): UserUpsert {
   const name = [user.first_name, user.last_name].filter(Boolean).join(" ") || undefined;
   const phone = primaryOf(user.phone_numbers, user.primary_phone_number_id)?.phone_number || undefined;
 
+  const emailVerified = primaryEmail?.verification?.status === "verified";
   return {
     clerkId: user.id,
     email,
-    emailVerified: primaryEmail?.verification?.status === "verified",
+    emailVerified,
     name,
-    role: roleFor(email, user.id),
+    role: roleFor(email, user.id, emailVerified),
     imageUrl: user.image_url || undefined,
     phone,
   };

@@ -29,7 +29,7 @@ const LATER = DROP_DATE + 3_600_000;
 
 function setup() {
   const t = convexTest(schema, modules);
-  const admin = t.withIdentity({ subject: "user_admin", email: PRIMARY_ADMIN_EMAIL });
+  const admin = t.withIdentity({ subject: "user_admin", email: PRIMARY_ADMIN_EMAIL, emailVerified: true });
   const row = () =>
     t.run((ctx) =>
       ctx.db

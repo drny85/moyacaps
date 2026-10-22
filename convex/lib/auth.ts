@@ -12,19 +12,20 @@ import { internal } from "../_generated/api";
  * with `bun run set-admin` (users/functions:setUserRole).
  *
  * SECURITY: never read a "role" from the token or Clerk publicMetadata. Both can be
- * written from the client and must not confer privileges.
+ * written from the client and must not confer privileges. The email match needs a
+ * verified email, so an unverified address that merely claims the admin email gets nothing.
  */
 export const PRIMARY_ADMIN_EMAIL = "drny85@gmail.com";
 export const PRIMARY_ADMIN_CLERK_ID = "user_3JSsegPcMNMPs5hqmqnpuy8ri6o";
 
-type AdminIdentity = Pick<UserIdentity, "subject" | "email">;
+type AdminIdentity = Pick<UserIdentity, "subject" | "email" | "emailVerified">;
 type AdminUserRow = Pick<Doc<"users">, "role" | "deletedAt"> | null | undefined;
 
 /** Bootstrap admin: always an Administrator, even before a users row exists. */
 export function isAllowlistedAdmin(identity: AdminIdentity): boolean {
   return (
     identity.subject === PRIMARY_ADMIN_CLERK_ID ||
-    identity.email?.trim().toLowerCase() === PRIMARY_ADMIN_EMAIL
+    (identity.emailVerified === true && identity.email?.trim().toLowerCase() === PRIMARY_ADMIN_EMAIL)
   );
 }
 

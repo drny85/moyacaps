@@ -9,7 +9,7 @@ const modules = import.meta.glob("/convex/**/*.ts");
 const t = () => convexTest(schema, modules);
 type T = ReturnType<typeof t>;
 
-const admin = (tt: T) => tt.withIdentity({ subject: "user_admin", email: PRIMARY_ADMIN_EMAIL });
+const admin = (tt: T) => tt.withIdentity({ subject: "user_admin", email: PRIMARY_ADMIN_EMAIL, emailVerified: true });
 
 // Each case sets its own Shippo environment; nothing here reaches the Shippo API.
 const savedEnv = { key: process.env.SHIPPO_API_KEY, allow: process.env.SHIPPO_ALLOW_SIMULATION };

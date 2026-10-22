@@ -13,7 +13,7 @@ const modules = import.meta.glob("/convex/**/*.ts");
 const t = () => convexTest(schema, modules);
 type T = ReturnType<typeof t>;
 
-const admin = (t: T) => t.withIdentity({ subject: "user_admin", email: PRIMARY_ADMIN_EMAIL });
+const admin = (t: T) => t.withIdentity({ subject: "user_admin", email: PRIMARY_ADMIN_EMAIL, emailVerified: true });
 const customer = (t: T) => t.withIdentity({ subject: "user_cust" });
 
 // Run due scheduled jobs (0ms email dispatches) while the environment is alive

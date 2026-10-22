@@ -10,10 +10,15 @@ import {
 } from "./auth";
 
 describe("isAllowlistedAdmin", () => {
-  it("matches the Clerk ID or the email, case-insensitively", () => {
+  it("matches the Clerk ID or the verified email, case-insensitively", () => {
     expect(isAllowlistedAdmin({ subject: PRIMARY_ADMIN_CLERK_ID })).toBe(true);
-    expect(isAllowlistedAdmin({ subject: "user_x", email: PRIMARY_ADMIN_EMAIL.toUpperCase() })).toBe(true);
-    expect(isAllowlistedAdmin({ subject: "user_x", email: "someone@example.com" })).toBe(false);
+    expect(isAllowlistedAdmin({ subject: "user_x", email: PRIMARY_ADMIN_EMAIL.toUpperCase(), emailVerified: true })).toBe(true);
+    expect(isAllowlistedAdmin({ subject: "user_x", email: "someone@example.com", emailVerified: true })).toBe(false);
+  });
+
+  it("does not match the admin email until it is verified", () => {
+    expect(isAllowlistedAdmin({ subject: "user_x", email: PRIMARY_ADMIN_EMAIL })).toBe(false);
+    expect(isAllowlistedAdmin({ subject: "user_x", email: PRIMARY_ADMIN_EMAIL, emailVerified: false })).toBe(false);
   });
 
   it("does not match a Clerk ID that only contains the admin ID", () => {

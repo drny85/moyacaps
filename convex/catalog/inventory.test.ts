@@ -10,7 +10,7 @@ const modules = import.meta.glob("/convex/**/*.ts");
 const t = () => convexTest(schema, modules);
 type T = ReturnType<typeof t>;
 
-const admin = (tt: T) => tt.withIdentity({ subject: "user_admin", email: PRIMARY_ADMIN_EMAIL });
+const admin = (tt: T) => tt.withIdentity({ subject: "user_admin", email: PRIMARY_ADMIN_EMAIL, emailVerified: true });
 
 async function drain(tt: T) {
   await tt.finishAllScheduledFunctions(() => {});
