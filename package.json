@@ -26,7 +26,6 @@
     "@convex-dev/rate-limiter": "^0.4.2",
     "@convex-dev/resend": "^0.2.9",
     "@hookform/resolvers": "^5.9.2",
-    "@imgly/background-removal-node": "^1.4.5",
     "@mediapipe/tasks-vision": "1.0.1",
     "@radix-ui/react-label": "^2.1.17",
     "@radix-ui/react-slot": "^1.5.0",
@@ -56,6 +55,7 @@
   },
   "devDependencies": {
     "@edge-runtime/vm": "^5.0.0",
+    "@imgly/background-removal-node": "^1.4.5",
     "@types/canvas-confetti": "^1.9.0",
     "@types/node": "^22.20.5",
     "@types/react": "^19.3.0",
