@@ -14,7 +14,7 @@ export type NextAction =
   | { kind: "hand_off" }
   | { kind: "mark_delivered" }
   | { kind: "await_payment"; holdExpiresAt?: number }
-  /** Nothing to do; `reason` explains a paid, unshipped Order that still cannot get a label. */
+  /** Nothing to do; `reason` explains a fully refunded Order, or a paid, unshipped one that still cannot get a label. */
   | { kind: "none"; reason?: string };
 
 export type ManualMove = "mark_delivered" | "revert";
@@ -29,12 +29,15 @@ export function nextOrderAction(order: ActionSource): NextAction {
   const axes = statusAxes(order);
   if (axes.cancelledAt !== undefined) return { kind: "none" };
   if (axes.paymentStatus === "awaiting_payment") return { kind: "await_payment", holdExpiresAt: order.checkoutHoldExpiresAt };
+  // A fully refunded Order is done: no label, hand-off or delivery is offered past this point.
+  const manualBlock = manualFulfillmentBlock(order);
+  if (manualBlock) return { kind: "none", reason: manualBlock };
 
   const label = labelAction(order);
   if (label.action === "buy") return { kind: "buy_label", addressMissing: !order.shippingAddress?.line1 };
   if (includes(BOUNCED, axes.fulfillmentStatus)) return { kind: "resolve_exception", reship: label.action === "reship" };
   if (isReadyToShip(order) && !currentHandoff(order)) return { kind: "hand_off" };
-  if (includes(SHIPPED, axes.fulfillmentStatus) && !manualFulfillmentBlock(order)) return { kind: "mark_delivered" };
+  if (includes(SHIPPED, axes.fulfillmentStatus)) return { kind: "mark_delivered" };
   if (axes.fulfillmentStatus === "unfulfilled" && label.action === null) return { kind: "none", reason: label.reason };
   return { kind: "none" };
 }
