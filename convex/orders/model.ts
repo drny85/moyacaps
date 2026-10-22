@@ -179,6 +179,16 @@ export function holdDemand(lines: HoldLine[]): Array<{ key: string; line: HoldLi
   return [...byKey.values()];
 }
 
+/**
+ * Units an Order's Checkout Hold still takes from each stock pool (by `stockKey`), or an empty
+ * map once the hold has ended. The cart that made the hold counts them as its own stock, so a
+ * Pay click never trims that cart to what is left for everyone else.
+ */
+export function heldUnits(order: StatusSource & Pick<Partial<Order>, "checkoutHoldExpiresAt"> & { items: HoldLine[] }): Map<string, number> {
+  if (!isCheckoutHoldActive(order)) return new Map();
+  return new Map(holdDemand(order.items).map(({ key, quantity }) => [key, quantity]));
+}
+
 export type HoldPlan = { ok: true } | { ok: false; line: HoldLine; available: number };
 
 /**

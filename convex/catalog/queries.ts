@@ -3,6 +3,8 @@
  * stock check used by checkout actions.
  */
 import { query, internalQuery } from "../_generated/server";
+import type { QueryCtx } from "../_generated/server";
+import { heldUnits, stockKey } from "../orders/model";
 import { v } from "convex/values";
 import { isAdmin } from "../lib/auth";
 import { cartVariant, lineStockResult, productPage, resolvedVariant } from "./validators";
@@ -40,24 +42,47 @@ export const MAX_CART_VARIANT_IDS = 50;
  * Only the first `MAX_CART_VARIANT_IDS` distinct ids are read.
  */
 export const getCartVariants = query({
-  args: { variantIds: v.array(v.string()) },
+  args: {
+    variantIds: v.array(v.string()),
+    // The cart's open Checkout Session (ADR 0024): the units its hold took count as this cart's stock.
+    openCheckoutSessionId: v.optional(v.string()),
+  },
   returns: v.array(cartVariant),
   handler: async (ctx, args) => {
     const wanted = [...new Set(args.variantIds)].slice(0, MAX_CART_VARIANT_IDS);
     const launches = await getCategoryLaunches(ctx);
+    const held = await ownHeldUnits(ctx, args.openCheckoutSessionId);
+    const heldFor = (line: { variantId: string; colorway?: string; size?: string }) => held.get(stockKey(line)) ?? 0;
     const out = [];
     for (const variantId of wanted) {
       const variant = await getVariant(ctx, variantId);
       if (!variant || variant.archivedAt !== undefined) continue;
       const skus = hasSkus(variant)
-        ? (await listSkus(ctx, variant.variantId)).map((s) => ({ colorway: s.colorway, size: s.size, stock: s.stock }))
+        ? (await listSkus(ctx, variant.variantId)).map((s) => ({
+            colorway: s.colorway,
+            size: s.size,
+            stock: s.stock + heldFor({ variantId, colorway: s.colorway, size: s.size }),
+          }))
         : null;
+      const product = await resolveProduct(ctx, variant);
+      // A tee's stock is the sum of its SKUs; a cap's is its own pool.
+      const stock = skus ? skus.reduce((sum, s) => sum + s.stock, 0) : product.stock + heldFor({ variantId });
       // `isAvailable` here is "can a Customer buy it now", so a gated category reads as unavailable.
-      out.push({ ...(await resolveProduct(ctx, variant)), isAvailable: isCustomerVisible(variant, launches), skus });
+      out.push({ ...product, stock, isAvailable: isCustomerVisible(variant, launches), skus });
     }
     return out;
   },
 });
+
+/** Units the open Checkout Session's hold still takes, by stock pool; empty without one. */
+async function ownHeldUnits(ctx: QueryCtx, sessionId: string | undefined): Promise<Map<string, number>> {
+  if (!sessionId) return new Map();
+  const order = await ctx.db
+    .query("orders")
+    .withIndex("by_stripeSessionId", (q) => q.eq("stripeSessionId", sessionId))
+    .first();
+  return order ? heldUnits(order) : new Map();
+}
 
 export const getVariantById = query({
   args: {

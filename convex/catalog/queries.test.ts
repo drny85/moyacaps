@@ -97,6 +97,71 @@ describe("getCartVariants", () => {
     expect(rows.find((r) => r.variantId === "oro-negro")?.skus).toBeNull();
   });
 
+  describe("the cart's own Checkout Hold counts as its stock", () => {
+    /** A tee with 1 unit of M left, and an Order on session `cs_A` holding 2 caps and 1 tee M. */
+    async function withHold(over: { cancelledAt?: number; paymentStatus?: "awaiting_payment" | "paid" } = {}) {
+      const t = await setup();
+      await t.run(async (ctx) => {
+        await ctx.db.insert("variants", {
+          ...cap,
+          variantId: "tee",
+          category: "apparel",
+          silhouette: "tee",
+          stock: 1,
+          colorways: [
+            { id: "washed-black", nameEn: "Washed Black", nameEs: "Negro Lavado", hex: "#222222", borderHex: "#000000", lifestyleImage: "/t.jpg", catalogShot: "/t.webp" },
+          ],
+          sizes: ["M"],
+        });
+        await ctx.db.insert("skus", { variantId: "tee", colorway: "washed-black", size: "M", stock: 1 });
+        await ctx.db.insert("orders", {
+          orderNumber: "GL-HOLD",
+          items: [
+            { variantId: "oro-negro", name: "Gold / Black", quantity: 2, price: 45, image: "/c.png" },
+            { variantId: "tee", name: "Tee", quantity: 1, price: 40, image: "/t.png", colorway: "washed-black", size: "M" },
+          ],
+          currency: "USD",
+          total: 130,
+          paymentStatus: over.paymentStatus ?? "awaiting_payment",
+          fulfillmentStatus: "unfulfilled",
+          paymentMethod: "stripe",
+          stripeSessionId: "cs_A",
+          checkoutHoldExpiresAt: Date.now() + 30 * 60 * 1000,
+          ...(over.cancelledAt !== undefined && { cancelledAt: over.cancelledAt }),
+          createdAt: Date.now(),
+        });
+      });
+      return t;
+    }
+
+    const stockOf = async (t: Awaited<ReturnType<typeof setup>>, openCheckoutSessionId?: string) => {
+      const rows = await t.query(api.catalog.queries.getCartVariants, {
+        variantIds: ["oro-negro", "tee"],
+        ...(openCheckoutSessionId !== undefined && { openCheckoutSessionId }),
+      });
+      return {
+        cap: rows.find((r) => r.variantId === "oro-negro")?.stock,
+        teeM: rows.find((r) => r.variantId === "tee")?.skus?.find((s) => s.size === "M")?.stock,
+      };
+    };
+
+    it("adds the units its open checkout holds back to the stock it sees", async () => {
+      const t = await withHold();
+      expect(await stockOf(t, "cs_A")).toEqual({ cap: 12, teeM: 2 });
+    });
+
+    it("never counts another cart's hold", async () => {
+      const t = await withHold();
+      expect(await stockOf(t)).toEqual({ cap: 10, teeM: 1 });
+      expect(await stockOf(t, "cs_B")).toEqual({ cap: 10, teeM: 1 });
+    });
+
+    it("adds nothing once the hold has ended (released or paid)", async () => {
+      expect(await stockOf(await withHold({ cancelledAt: 1 }), "cs_A")).toEqual({ cap: 10, teeM: 1 });
+      expect(await stockOf(await withHold({ paymentStatus: "paid" }), "cs_A")).toEqual({ cap: 10, teeM: 1 });
+    });
+  });
+
   it("reads at most 50 ids", async () => {
     const t = await setup();
     const many = [...Array.from({ length: 50 }, (_, i) => `x-${i}`), "oro-negro"];

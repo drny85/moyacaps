@@ -25,7 +25,12 @@ export function CartDrawer() {
   const locale = useLocale();
   const { startCheckout, abandonOpenCheckout } = useCardCheckout();
   // Only the cart's own products, hidden ones included so a line can show as unavailable.
-  const convexVariants = useQuery(api.catalog.queries.getCartVariants, { variantIds: cartVariantIds(cart) });
+  // With the open checkout's session, the units its hold took still count as this cart's stock.
+  const openCheckoutSessionId = useStore((s) => s.openCheckout?.sessionId);
+  const convexVariants = useQuery(api.catalog.queries.getCartVariants, {
+    variantIds: cartVariantIds(cart),
+    ...(openCheckoutSessionId && { openCheckoutSessionId }),
+  });
 
   const [checkoutStep, setCheckoutStep] = useState<"idle" | "processing" | "success">("idle");
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
@@ -39,8 +44,9 @@ export function CartDrawer() {
   });
 
   // Synchronize cart with live Convex database stock whenever drawer is opened or variants change
+  // Not mid-Pay: the hold lands in stock before the cart learns its session, so it would read as sold out.
   useEffect(() => {
-    if (isCartOpen && convexVariants && convexVariants.length > 0) {
+    if (isCartOpen && checkoutStep !== "processing" && convexVariants && convexVariants.length > 0) {
       const result = clampCartToStock(convexVariants);
       if (result.adjusted) {
         setStockAdjustmentNotice(
@@ -48,7 +54,7 @@ export function CartDrawer() {
         );
       }
     }
-  }, [isCartOpen, convexVariants, clampCartToStock, t]);
+  }, [isCartOpen, checkoutStep, convexVariants, clampCartToStock, t]);
 
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
 
