@@ -42,6 +42,9 @@ export function useOrderDetail(orderNumber: string) {
   const updateShippingAddress = useMutation(api.orders.desk.updateShippingAddressAdmin);
   const cancelAndRefund = useAction(api.payments.refunds.cancelAndRefundOrderAdmin);
   const clearHandoff = useMutation(api.orders.handoffs.clearHandoff);
+  const checkUnit = useMutation(api.orders.packingChecklist.checkUnit);
+  const checklist = useQuery(api.orders.packingChecklist.getPackingChecklistAdmin, order ? { orderId: order._id } : "skip");
+  const [pendingLine, setPendingLine] = useState<number | null>(null);
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -148,11 +151,31 @@ export function useOrderDetail(orderNumber: string) {
     [order, run, t, updateShippingAddress, updateOrderFulfillment, updateFulfillmentStatus, cancelAndRefund, clearHandoff]
   );
 
+  // A tick saves on its own, with no toast: the count changing is the feedback.
+  const check = useCallback(
+    async (lineIndex: number, delta: 1 | -1) => {
+      if (!order) return;
+      setPendingLine(lineIndex);
+      setError(null);
+      try {
+        await checkUnit({ orderId: order._id, lineIndex, delta });
+      } catch (err) {
+        setError(errorMessage(err, tCommon("actionFailed")));
+      } finally {
+        setPendingLine(null);
+      }
+    },
+    [order, checkUnit, tCommon]
+  );
+
   return {
     order,
     vm,
     nextAction,
     manualMoves,
+    checklist,
+    pendingLine,
+    check,
     busy,
     error,
     success,

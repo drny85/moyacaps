@@ -18,6 +18,7 @@ import { useAdminShortcuts } from "@/components/admin/products/useAdminShortcuts
 import { OrderRow } from "./OrderRow";
 import { OrdersSkeleton } from "./OrdersSkeleton";
 import { HandoffDialog } from "./HandoffDialog";
+import { PackingConfirmDialog } from "./PackingConfirmDialog";
 import { PickupCard } from "./PickupCard";
 import { QueueChips } from "./QueueChips";
 import { RangeChips } from "./RangeChips";
@@ -51,9 +52,23 @@ function ListBody() {
   const rows = useMemo(() => orders?.map((o) => toOrderRow(o, clientTime, locale)), [orders, clientTime, locale]);
   // The modal needs the full Order document, not the row.
   const byId = useMemo(() => new Map(orders?.map((o) => [o._id as string, o])), [orders]);
+  // Packing Checklist progress for the rows that can get a label (plan 0012).
+  const labelRowIds = useMemo(() => {
+    const ids = new Set(rows?.filter((r) => r.quickAction).map((r) => r.id));
+    return (orders ?? []).filter((o) => ids.has(o._id)).map((o) => o._id);
+  }, [orders, rows]);
+  const progress = useQuery(api.orders.packingChecklist.packingProgressAdmin, labelRowIds.length > 0 ? { orderIds: labelRowIds } : "skip");
+  const progressById = useMemo(() => new Map(progress?.map((p) => [p.orderId as string, p])), [progress]);
+  const [confirmLabel, setConfirmLabel] = useState<{ target: NonNullable<LabelTarget>; uncheckedUnits: number; totalUnits: number } | null>(null);
   const openLabel = (row: OrderRowVM) => {
     const order = byId.get(row.id);
-    if (order) setLabel({ order, reship: row.quickAction === "reship" });
+    if (!order) return;
+    const target = { order, reship: row.quickAction === "reship" };
+    const packing = progressById.get(row.id);
+    // Not complete: ask first, never block.
+    if (packing && !packing.complete) {
+      setConfirmLabel({ target, uncheckedUnits: packing.totalUnits - packing.checkedUnits, totalUnits: packing.totalUnits });
+    } else setLabel(target);
   };
 
   const [label, setLabel] = useState<LabelTarget>(null);
@@ -122,7 +137,7 @@ function ListBody() {
         <>
           <ul className="space-y-2.5">
             {rows.map((row) => (
-              <OrderRow key={row.id} row={row} onQuickAction={openLabel} />
+              <OrderRow key={row.id} row={row} packing={progressById.get(row.id)} onQuickAction={openLabel} />
             ))}
           </ul>
           {rows.length >= ORDERS_LIMIT && (
@@ -136,6 +151,17 @@ function ListBody() {
         orders={(rows ?? []).map((r) => ({ id: r.id, orderNumber: r.orderNumber, customer: r.customer }))}
         onClose={() => setBulkHandoff(false)}
         onDone={setSuccess}
+      />
+
+      <PackingConfirmDialog
+        open={confirmLabel !== null}
+        uncheckedUnits={confirmLabel?.uncheckedUnits ?? 0}
+        totalUnits={confirmLabel?.totalUnits ?? 0}
+        onClose={() => setConfirmLabel(null)}
+        onConfirm={() => {
+          if (confirmLabel) setLabel(confirmLabel.target);
+          setConfirmLabel(null);
+        }}
       />
 
       <ShippingLabelModal

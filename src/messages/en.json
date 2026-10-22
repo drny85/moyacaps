@@ -346,7 +346,8 @@
         "failed": "Could not save the Handoff. Try again.",
         "edit": "Edit Handoff",
         "remove": "Remove Handoff"
-      }
+      },
+      "packing": "{checked}/{total} checked"
     },
     "settings": {
       "title": "Settings",
@@ -949,7 +950,13 @@
         "title": "Items to pack",
         "units": "{count, plural, one {# unit} other {# units}}",
         "each": "{price} each",
-        "tapHint": "Tap an item to see it big."
+        "tapHint": "Tap the count to Check a unit as it goes in the box. Tap an item to see it big.",
+        "progress": "{checked}/{total} checked",
+        "checkOne": "Check one unit",
+        "uncheckOne": "Undo one Checked unit",
+        "refunded": "Refunded: nothing to pack",
+        "takeOut": "{count, plural, one {# refunded: take it out of the box} other {# refunded: take them out of the box}}",
+        "locked": "Label bought: the checklist is kept as it was packed."
       },
       "packing": {
         "title": "Packing sheet",
@@ -1094,6 +1101,12 @@
         "counter": "{count} / {max}"
       },
       "loadMore": "Load more"
+    },
+    "packingConfirm": {
+      "title": "Packing Checklist not done",
+      "unchecked": "{count, plural, one {# of {total} units is} other {# of {total} units are}} not Checked yet. Buy the label anyway?",
+      "overflow": "A refunded unit is still Checked: take it out of the box. Buy the label anyway?",
+      "confirm": "Buy label anyway"
     }
   },
   "track": {
