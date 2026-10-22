@@ -3,6 +3,7 @@
  * migration (ADR 0015/0016), bulk apparel repricing and the field backfills.
  */
 import { mutation, internalMutation } from "../_generated/server";
+import type { MutationCtx } from "../_generated/server";
 import { v, ConvexError } from "convex/values";
 import { requireAdmin } from "../lib/auth";
 import { getVariant, listSkus } from "./inventory";
@@ -11,8 +12,10 @@ import catalogShots from "../../src/data/catalogShots.json";
 import { SEED_PRODUCT, SEED_VARIANTS } from "./data";
 import { distributeStock, renamedLifestyleShot as renamed, taxCodeBackfill, teeFieldsPatch, TEE_SIZES, variantCategory } from "./model";
 import type { Doc, Id } from "../_generated/dataModel";
-import { deleteStorageQuietly, MAX_CATALOG_VARIANTS } from "./shared";
-import { isOverdueScheduledDrop } from "./model";
+import { deleteStorageQuietly, MAX_CATALOG_VARIANTS, MAX_PRODUCT_IMAGE_ROWS } from "./shared";
+import { hiddenTeePurgeProblems, isHiddenTee, isOverdueScheduledDrop } from "./model";
+import { purgeVariantRow } from "./admin";
+import { isCheckoutHoldActive } from "../orders/model";
 import { releaseOverdue } from "./drops";
 import { isStorageIdReferenced, legacyVariantStorageIds } from "./images/references";
 
@@ -290,5 +293,125 @@ export const releaseOverdueDrops = internalMutation({
       ? variants.filter((variant) => isOverdueScheduledDrop(variant, now)).map((variant) => variant.variantId)
       : await releaseOverdue(ctx, variants, now, RELEASE_BACKFILL_ACTOR);
     return { dryRun, count: variantIds.length, variantIds, isDone: variants.length < MAX_CATALOG_VARIANTS };
+  },
+});
+
+/** Orders one hidden-Tee purge reads to find references and open Checkout Holds; past it the real run refuses. */
+export const PURGE_ORDER_SCAN_LIMIT = 5000;
+
+/** Reviews or drop alerts counted per Tee in the purge report; counts clamp at this value. */
+const PURGE_COUNT_CAP = 1000;
+
+/** Actor recorded on the `purged` audit event of each Tee this job deletes. */
+export const PURGE_HIDDEN_TEES_ACTOR = "system:purge-hidden-tees";
+
+const hiddenTeeReport = v.object({
+  variantId: v.string(),
+  id: v.id("variants"),
+  nameEn: v.string(),
+  archived: v.boolean(),
+  colorways: v.array(v.string()),
+  skus: v.number(),
+  skuStock: v.number(),
+  images: v.number(),
+  hasLegacyStorageId: v.boolean(),
+  reviews: v.number(),
+  dropAlerts: v.number(),
+  // Orders with a line for this Tee. They are never edited; their lines keep name, price and image.
+  orderNumbers: v.array(v.string()),
+  // Orders whose line image is one of this Tee's stored files: that photo goes blank once the file is deleted.
+  ordersLosingPhoto: v.array(v.string()),
+  // Open Checkout Holds on this Tee; any one blocks the real run.
+  openHolds: v.array(v.string()),
+});
+
+async function reportHiddenTee(
+  ctx: MutationCtx,
+  variant: Doc<"variants">,
+  orders: Doc<"orders">[]
+): Promise<typeof hiddenTeeReport.type> {
+  const skus = await listSkus(ctx, variant.variantId);
+  const images = await ctx.db
+    .query("productImages")
+    .withIndex("by_variantId_and_role_and_order", (q) => q.eq("variantId", variant.variantId))
+    .take(MAX_PRODUCT_IMAGE_ROWS);
+  const fileUrls = new Set<string>();
+  for (const storageId of [...images.map((row) => row.storageId), ...(variant.storageId ? [variant.storageId] : [])]) {
+    const url = await ctx.storage.getUrl(storageId);
+    if (url) fileUrls.add(url);
+  }
+  const reviews = await ctx.db
+    .query("product_reviews")
+    .withIndex("by_variantId_and_status_and_publishedAt", (q) => q.eq("variantId", variant.variantId))
+    .take(PURGE_COUNT_CAP);
+  const dropAlerts = await ctx.db
+    .query("drop_alerts")
+    .withIndex("by_variantId", (q) => q.eq("variantId", variant.variantId))
+    .take(PURGE_COUNT_CAP);
+
+  const lines = (order: Doc<"orders">) => order.items.filter((item) => item.variantId === variant.variantId);
+  const referencing = orders.filter((order) => lines(order).length > 0);
+  return {
+    variantId: variant.variantId,
+    id: variant._id,
+    nameEn: variant.nameEn,
+    archived: variant.archivedAt !== undefined,
+    colorways: (variant.colorways ?? []).map((c) => c.id),
+    skus: skus.length,
+    skuStock: skus.reduce((sum, sku) => sum + sku.stock, 0),
+    images: images.length,
+    hasLegacyStorageId: variant.storageId !== undefined,
+    reviews: reviews.length,
+    dropAlerts: dropAlerts.length,
+    orderNumbers: referencing.map((order) => order.orderNumber),
+    ordersLosingPhoto: referencing
+      .filter((order) => lines(order).some((item) => fileUrls.has(item.image)))
+      .map((order) => order.orderNumber),
+    openHolds: referencing.filter(isCheckoutHoldActive).map((order) => order.orderNumber),
+  };
+}
+
+/**
+ * Permanently delete hidden Heavyweight Tees (archived or never turned on) ahead of a fresh Tee
+ * lineup: each Tee's row, SKUs, drop alerts and image rows go, and its stored files are deleted
+ * after the 15-minute grace once nothing references them (ADR 0021). Orders and reviews are kept
+ * as they are. `dryRun` lists every hidden Tee with what references it and deletes nothing. The
+ * real run deletes exactly `variantIds` and refuses, writing nothing, when any id is not a hidden
+ * Tee or is held by an open Checkout Hold. Run the dry run first and pass the ids it listed:
+ *   npx convex run catalog/migrations:purgeHiddenTees '{"dryRun": true}'
+ *   npx convex run catalog/migrations:purgeHiddenTees '{"variantIds": ["..."]}'
+ */
+export const purgeHiddenTees = internalMutation({
+  args: { dryRun: v.optional(v.boolean()), variantIds: v.optional(v.array(v.string())) },
+  returns: v.object({
+    dryRun: v.boolean(),
+    count: v.number(),
+    tees: v.array(hiddenTeeReport),
+    ordersTruncated: v.boolean(),
+  }),
+  handler: async (ctx, args) => {
+    const dryRun = args.dryRun === true;
+    const variants = await ctx.db.query("variants").take(MAX_CATALOG_VARIANTS);
+    const hiddenTees = variants.filter(isHiddenTee);
+    const scanned = await ctx.db.query("orders").withIndex("by_createdAt").order("desc").take(PURGE_ORDER_SCAN_LIMIT + 1);
+    const ordersTruncated = scanned.length > PURGE_ORDER_SCAN_LIMIT;
+    const orders = scanned.slice(0, PURGE_ORDER_SCAN_LIMIT);
+
+    const requested = dryRun ? hiddenTees.map((tee) => tee.variantId) : [...new Set(args.variantIds ?? [])];
+    const targets = hiddenTees.filter((tee) => requested.includes(tee.variantId));
+    const tees: Array<typeof hiddenTeeReport.type> = [];
+    for (const tee of targets) tees.push(await reportHiddenTee(ctx, tee, orders));
+    if (dryRun) return { dryRun, count: tees.length, tees, ordersTruncated };
+
+    const problems = hiddenTeePurgeProblems(
+      requested,
+      new Set(hiddenTees.map((tee) => tee.variantId)),
+      new Map(tees.map((report) => [report.variantId, report.openHolds])),
+      ordersTruncated
+    );
+    if (problems.length > 0) throw new ConvexError(`purgeHiddenTees refused, nothing deleted: ${problems.join("; ")}`);
+
+    for (const tee of targets) await purgeVariantRow(ctx, tee, PURGE_HIDDEN_TEES_ACTOR);
+    return { dryRun, count: tees.length, tees, ordersTruncated };
   },
 });

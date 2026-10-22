@@ -374,3 +374,37 @@ export function fillColorwayShots(input: TeeColorwayInput[], stored: Doc<"varian
     return { ...c, lifestyleImage: kept?.lifestyleImage ?? "", catalogShot: kept?.catalogShot ?? "" };
   });
 }
+
+/**
+ * A Heavyweight Tee no Customer can see on its own account: archived or never turned on
+ * (`isAvailable !== true`). The Tees Category Status plays no part; a hidden category does not
+ * make its visible Tees hidden.
+ */
+export function isHiddenTee(variant: Pick<Doc<"variants">, "archivedAt" | "isAvailable" | "category" | "silhouette">): boolean {
+  return catalogCategory(variant) === "apparel" && (variant.archivedAt !== undefined || variant.isAvailable !== true);
+}
+
+/**
+ * Why a hidden-Tee purge must not run (empty when it may). Every requested id must name a
+ * hidden Tee that no open Checkout Hold holds, and the Order scan behind the hold check must
+ * be complete; otherwise nothing is deleted.
+ */
+export function hiddenTeePurgeProblems(
+  requested: string[],
+  hiddenTeeIds: ReadonlySet<string>,
+  holdsByVariantId: ReadonlyMap<string, string[]>,
+  ordersTruncated: boolean
+): string[] {
+  const problems: string[] = [];
+  if (requested.length === 0) problems.push("variantIds is empty");
+  if (ordersTruncated) problems.push("too many Orders to check for open Checkout Holds");
+  for (const variantId of new Set(requested)) {
+    if (!hiddenTeeIds.has(variantId)) {
+      problems.push(`${variantId}: not a hidden Tee`);
+      continue;
+    }
+    const holds = holdsByVariantId.get(variantId) ?? [];
+    if (holds.length > 0) problems.push(`${variantId}: held by an open Checkout Hold (${holds.join(", ")})`);
+  }
+  return problems;
+}

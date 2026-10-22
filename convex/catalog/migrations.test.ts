@@ -1,10 +1,11 @@
 /// <reference types="vite/client" />
 import { convexTest } from "convex-test";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import schema from "../schema";
 import { PRIMARY_ADMIN_EMAIL } from "../lib/auth";
 import { SEED_VARIANTS } from "./data";
+import type { Doc } from "../_generated/dataModel";
 
 const modules = import.meta.glob("/convex/**/*.ts");
 
@@ -151,5 +152,128 @@ describe("seedAll visibility (ADR 0022)", () => {
       const seed: { isAvailable?: boolean; variantId: string } = SEED_VARIANTS.find((s) => s.variantId === row.variantId)!;
       expect(row.isAvailable).toBe(seed.isAvailable ?? true);
     }
+  });
+});
+
+describe("purgeHiddenTees", () => {
+  const tee = (variantId: string, isAvailable: boolean) => ({
+    ...cap,
+    variantId,
+    category: "apparel",
+    silhouette: "tee",
+    isAvailable,
+    colorways: [{ id: "washed-black", nameEn: "Black", nameEs: "Negro", hex: "#111", borderHex: "#222", lifestyleImage: "", catalogShot: "" }],
+    sizes: ["M"],
+  });
+
+  function order(orderNumber: string, variantId: string, image: string, patch: Partial<Doc<"orders">> = {}) {
+    return {
+      orderNumber,
+      items: [{ variantId, name: variantId, quantity: 1, price: 80, image, colorway: "washed-black", size: "M" }],
+      currency: "USD",
+      total: 80,
+      paymentStatus: "paid" as const,
+      fulfillmentStatus: "unfulfilled" as const,
+      paymentMethod: "stripe" as const,
+      createdAt: 1,
+      ...patch,
+    };
+  }
+
+  /** Two hidden Tees (one bought, its photo linked from the Order), one visible Tee and one hidden Cap. */
+  async function seed(t: ReturnType<typeof convexTest>) {
+    return await t.run(async (ctx) => {
+      for (const row of [tee("old-tee", false), tee("spare-tee", false), tee("live-tee", true), { ...cap, isAvailable: false }]) {
+        await ctx.db.insert("variants", row);
+        await ctx.db.insert("skus", { variantId: row.variantId, colorway: "washed-black", size: "M", stock: 3 });
+      }
+      const file = await ctx.storage.store(new Blob(["old-tee"]));
+      await ctx.db.insert("productImages", { variantId: "old-tee", colorway: "washed-black", role: "catalog", order: 0, storageId: file, sha256: "o", width: 2000, height: 2500, createdAt: 1 });
+      await ctx.db.insert("drop_alerts", { variantId: "old-tee", contact: "a@b.co", channel: "email", locale: "en", createdAt: 1 });
+      const url = (await ctx.storage.getUrl(file))!;
+      const orderId = await ctx.db.insert("orders", order("GL-OLD-1", "old-tee", url));
+      await ctx.db.insert("orders", order("GL-OLD-2", "old-tee", "/shirts/old.jpg", { paymentStatus: "refunded" }));
+      await ctx.db.insert("product_reviews", { variantId: "old-tee", clerkUserId: "user_1", orderId, rating: 5, locale: "en", displayName: "A", status: "published", createdAt: 1, updatedAt: 1, publishedAt: 1 });
+      await ctx.db.insert("product_review_stats", { variantId: "old-tee", count: 1, ratingSum: 5 });
+      return { file, orderId };
+    });
+  }
+
+  const variantIds = (t: ReturnType<typeof convexTest>) =>
+    t.run(async (ctx) => (await ctx.db.query("variants").take(10)).map((row) => row.variantId).sort());
+
+  it("dry run lists every hidden Tee with what references it and deletes nothing", async () => {
+    const { t } = setup();
+    await seed(t);
+    const result = await t.mutation(internal.catalog.migrations.purgeHiddenTees, { dryRun: true });
+    expect(result).toMatchObject({ dryRun: true, count: 2, ordersTruncated: false });
+    expect(result.tees.map((report) => report.variantId)).toEqual(["old-tee", "spare-tee"]);
+    expect(result.tees[0]).toMatchObject({
+      nameEn: "Old",
+      archived: false,
+      colorways: ["washed-black"],
+      skus: 1,
+      skuStock: 3,
+      images: 1,
+      hasLegacyStorageId: false,
+      reviews: 1,
+      dropAlerts: 1,
+      orderNumbers: ["GL-OLD-2", "GL-OLD-1"],
+      ordersLosingPhoto: ["GL-OLD-1"],
+      openHolds: [],
+    });
+    expect(await variantIds(t)).toEqual(["live-tee", "old-cap", "old-tee", "spare-tee"]);
+  });
+
+  it("deletes exactly the listed Tees with their SKUs, alerts and images, and keeps Orders and reviews", async () => {
+    vi.useFakeTimers();
+    try {
+      const { t } = setup();
+      const { file, orderId } = await seed(t);
+      const result = await t.mutation(internal.catalog.migrations.purgeHiddenTees, { variantIds: ["old-tee"] });
+      expect(result).toMatchObject({ dryRun: false, count: 1 });
+      await t.finishAllScheduledFunctions(vi.runAllTimers);
+
+      expect(await variantIds(t)).toEqual(["live-tee", "old-cap", "spare-tee"]);
+      await t.run(async (ctx) => {
+        expect((await ctx.db.query("skus").take(10)).map((sku) => sku.variantId).sort()).toEqual(["live-tee", "old-cap", "spare-tee"]);
+        expect(await ctx.db.query("productImages").take(5)).toEqual([]);
+        expect(await ctx.db.query("drop_alerts").take(5)).toEqual([]);
+        expect(await ctx.storage.get(file)).toBeNull();
+        expect((await ctx.db.get("orders", orderId))?.items[0].variantId).toBe("old-tee");
+        expect(await ctx.db.query("orders").take(5)).toHaveLength(2);
+        expect(await ctx.db.query("product_reviews").take(5)).toHaveLength(1);
+        expect(await ctx.db.query("product_review_stats").take(5)).toHaveLength(1);
+      });
+      const events = await t.run((ctx) => ctx.db.query("catalog_events").take(5));
+      expect(events).toMatchObject([{ variantId: "old-tee", type: "purged", actor: "system:purge-hidden-tees" }]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("refuses, deleting nothing, when any id is not a hidden Tee", async () => {
+    const { t } = setup();
+    await seed(t);
+    for (const id of ["live-tee", "old-cap", "missing-tee"]) {
+      await expect(t.mutation(internal.catalog.migrations.purgeHiddenTees, { variantIds: ["old-tee", id] })).rejects.toThrow(
+        `${id}: not a hidden Tee`
+      );
+    }
+    await expect(t.mutation(internal.catalog.migrations.purgeHiddenTees, {})).rejects.toThrow("variantIds is empty");
+    expect(await variantIds(t)).toEqual(["live-tee", "old-cap", "old-tee", "spare-tee"]);
+  });
+
+  it("refuses a Tee held by an open Checkout Hold, and allows it once the hold is cancelled", async () => {
+    const { t } = setup();
+    await seed(t);
+    const held = await t.run((ctx) =>
+      ctx.db.insert("orders", order("GL-HOLD", "spare-tee", "/x.jpg", { paymentStatus: "awaiting_payment", checkoutHoldExpiresAt: 2 }))
+    );
+    await expect(t.mutation(internal.catalog.migrations.purgeHiddenTees, { variantIds: ["spare-tee"] })).rejects.toThrow(
+      "spare-tee: held by an open Checkout Hold (GL-HOLD)"
+    );
+    await t.run((ctx) => ctx.db.patch("orders", held, { cancelledAt: 3, checkoutHoldReleasedAt: 3 }));
+    expect(await t.mutation(internal.catalog.migrations.purgeHiddenTees, { variantIds: ["spare-tee"] })).toMatchObject({ count: 1 });
   });
 });
