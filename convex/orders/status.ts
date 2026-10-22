@@ -108,6 +108,11 @@ export function isCancelled(order: StatusSource): boolean {
   return statusAxes(order).cancelledAt !== undefined;
 }
 
+/** An Expired Checkout (CONTEXT.md): cancelled before any money arrived. Not work for the desk. */
+export function isExpiredCheckout(order: StatusSource): boolean {
+  return isCancelled(order) && statusAxes(order).paymentStatus === "awaiting_payment";
+}
+
 /**
  * The fields to write when one axis changes. Always writes both axes (and the cancelled marker),
  * so a stored Order never carries one axis without the other.
