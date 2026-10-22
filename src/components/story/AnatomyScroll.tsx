@@ -6,7 +6,7 @@ import { DeferredImage } from "@/components/media/DeferredImage";
 import { useCallback, useRef, useState } from "react";
 import { AnimatePresence, m, useMotionValueEvent, useScroll, useTransform, type MotionValue } from "framer-motion";
 import { Reveal } from "@/components/motion/Reveal";
-import { ANATOMY_STEPS, type AnatomyCallout, type AnatomyStep } from "@/data/anatomy";
+import { ANATOMY_PHOTO, ANATOMY_STEPS, type AnatomyCallout, type AnatomyStep } from "@/data/anatomy";
 import { useMotionPrefs } from "@/hooks/useMotionPrefs";
 import { calloutLayout, edgeFadeMask, stepAt, stepRange } from "@/lib/anatomy";
 import { DURATION, EASE, STAGGER, valueAt } from "@/lib/motion";
@@ -15,6 +15,8 @@ const STEPS = ANATOMY_STEPS;
 const COUNT = STEPS.length;
 /** Scroll span over which one photo crossfades into the next */
 const FADE = 0.025;
+/** The stage takes the photo's own shape so callout percentages land on the garment */
+const PHOTO_ASPECT = { aspectRatio: `${ANATOMY_PHOTO.width} / ${ANATOMY_PHOTO.height}` };
 
 function SectionHeader() {
   const t = useTranslations("anatomy");
@@ -72,7 +74,7 @@ function Callout({ callout, index, animate }: { callout: AnatomyCallout; index: 
   );
 }
 
-/** A square photo of one angle with its callouts drawn on top. The photos are 1024² with the cap centred. */
+/** The step's photo, framed edge to edge; callouts are drawn on top by the caller */
 function AnglePhoto({ step, priority = false }: { step: AnatomyStep; priority?: boolean }) {
   const t = useTranslations("anatomy");
   const mask = edgeFadeMask(step.cutEdges);
@@ -85,7 +87,7 @@ function AnglePhoto({ step, priority = false }: { step: AnatomyStep; priority?: 
       priority={priority}
       style={mask ? { maskImage: mask, WebkitMaskImage: mask } : undefined}
       sizes="(max-width: 1024px) 90vw, 55vh"
-      className="object-contain drop-shadow-[0_30px_40px_rgba(0,0,0,0.45)]"
+      className="object-cover"
     />
   );
 }
@@ -103,22 +105,6 @@ function StageLayer({ progress, index }: { progress: MotionValue<number>; index:
     <m.div style={{ opacity }} className="absolute inset-0">
       <AnglePhoto step={STEPS[index]} priority={first} />
     </m.div>
-  );
-}
-
-/** Faint technical grid behind the stage, fading out at the edges */
-function Grid() {
-  return (
-    <div
-      aria-hidden
-      className="pointer-events-none absolute inset-0 opacity-[0.07] [mask-image:radial-gradient(closest-side,black,transparent)] dark:opacity-[0.12]"
-      style={{
-        backgroundImage:
-          "linear-gradient(to right, currentColor 1px, transparent 1px), linear-gradient(to bottom, currentColor 1px, transparent 1px)",
-        backgroundSize: "40px 40px",
-        backgroundPosition: "center",
-      }}
-    />
   );
 }
 
@@ -177,8 +163,8 @@ function SpecRow({
   );
 }
 
-/** The four angles as a contact strip: the active one lit, the rest clickable to jump */
-function AngleStrip({ active, onSelect }: { active: number; onSelect: (index: number) => void }) {
+/** The four steps as tabs: the active one lit, the rest clickable to jump */
+function StepStrip({ active, onSelect }: { active: number; onSelect: (index: number) => void }) {
   const t = useTranslations("anatomy");
   return (
     <div className="flex gap-2" role="tablist" aria-label={t("angles")}>
@@ -188,13 +174,14 @@ function AngleStrip({ active, onSelect }: { active: number; onSelect: (index: nu
           type="button"
           role="tab"
           aria-selected={active === i}
-          aria-label={t(`steps.${step.key}`)}
           onClick={() => onSelect(i)}
-          className={`relative h-14 w-14 overflow-hidden rounded-lg border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-moya-red ${
-            active === i ? "border-moya-red bg-moya-red/10" : "border-black/10 opacity-50 hover:opacity-90 dark:border-white/10"
+          className={`rounded-full border px-3 py-1.5 font-display text-xs font-semibold tracking-wide transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-moya-red ${
+            active === i
+              ? "border-moya-red bg-moya-red/10 text-moya-red"
+              : "border-black/10 text-zinc-500 hover:text-zinc-900 dark:border-white/10 dark:hover:text-white"
           }`}
         >
-          <DeferredImage src={step.image} alt="" fill sizes="56px" className="object-contain p-1" />
+          {t(`steps.${step.key}`)}
         </button>
       ))}
     </div>
@@ -212,7 +199,7 @@ function scrollToStep(section: HTMLElement, index: number) {
   else window.scrollTo({ top: y, behavior: "smooth" });
 }
 
-/** Pinned scroll walkthrough: the cap turns through its four angles while each craft detail is called out */
+/** Pinned scroll walkthrough: the tee stays put while each craft detail is called out in turn */
 function AnatomyScene() {
   const sectionRef = useRef<HTMLElement>(null);
   const { scrollYProgress } = useScroll({ target: sectionRef, offset: ["start start", "end end"] });
@@ -243,8 +230,10 @@ function AnatomyScene() {
             </div>
 
             <div className="col-span-7 flex justify-center">
-              <div className="relative aspect-square h-[62svh] max-w-full text-zinc-950 dark:text-white">
-                <Grid />
+              <div
+                className="relative h-[62svh] max-w-full overflow-hidden rounded-3xl text-zinc-950 shadow-[0_30px_60px_-20px_rgba(0,0,0,0.35)] dark:text-white"
+                style={PHOTO_ASPECT}
+              >
                 {STEPS.map((_, i) => (
                   <StageLayer key={STEPS[i].key} progress={scrollYProgress} index={i} />
                 ))}
@@ -262,7 +251,7 @@ function AnatomyScene() {
           </div>
 
           <div className="mt-4 flex items-center justify-between">
-            <AngleStrip active={step} onSelect={select} />
+            <StepStrip active={step} onSelect={select} />
             <p className="font-display text-xs tabular-nums text-zinc-500">
               {String(step + 1).padStart(2, "0")} / {String(COUNT).padStart(2, "0")}
             </p>
@@ -273,13 +262,12 @@ function AnatomyScene() {
   );
 }
 
-/** One angle with its callouts drawn in, and the spec row under it */
+/** One step with its callouts drawn in, and the spec row under it */
 function AnatomyPanel({ step, index }: { step: AnatomyStep; index: number }) {
   const t = useTranslations("anatomy");
   return (
     <article>
-      <div className="relative aspect-square w-full text-zinc-950 dark:text-white">
-        <Grid />
+      <div className="relative w-full overflow-hidden rounded-3xl text-zinc-950 dark:text-white" style={PHOTO_ASPECT}>
         <AnglePhoto step={step} />
         <div className="absolute inset-0" aria-hidden>
           {step.callouts.map((c, i) => (
@@ -297,7 +285,7 @@ function AnatomyPanel({ step, index }: { step: AnatomyStep; index: number }) {
   );
 }
 
-/** Touch screens, small screens and reduced motion: one angle after another, no pinning (ADR 0016). */
+/** Touch screens, small screens and reduced motion: one step after another, no pinning (ADR 0016). */
 function AnatomyPanels() {
   return (
     <section id="anatomy" className="border-y border-black/[0.06] px-4 py-16 dark:border-white/[0.06] sm:px-6 sm:py-24 lg:px-8">

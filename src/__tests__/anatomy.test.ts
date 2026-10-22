@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { ANATOMY_STEPS } from "../data/anatomy";
+import { ANATOMY_PHOTO, ANATOMY_STEPS } from "../data/anatomy";
 import { calloutLayout, calloutSide, edgeFadeMask, fadeBands, labelCollisions, stepAt, stepRange } from "../lib/anatomy";
 import en from "../messages/en.json";
 import es from "../messages/es.json";
@@ -38,9 +38,10 @@ describe("calloutLayout", () => {
 describe("ANATOMY_STEPS data", () => {
   const messages = { en, es } as const;
 
-  it("uses each angle photo once and every photo exists", () => {
-    const angles = ANATOMY_STEPS.map((s) => s.angle);
-    expect(new Set(angles).size).toBe(ANATOMY_STEPS.length);
+  it("has one step per detail and every photo exists", () => {
+    const keys = ANATOMY_STEPS.map((s) => s.key);
+    expect(new Set(keys).size).toBe(ANATOMY_STEPS.length);
+    expect(existsSync(join(process.cwd(), "public", ANATOMY_PHOTO.src))).toBe(true);
     for (const step of ANATOMY_STEPS) {
       expect(existsSync(join(process.cwd(), "public", step.image)), step.image).toBe(true);
     }
