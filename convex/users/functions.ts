@@ -11,6 +11,8 @@ import { hideReviewsForUser } from "../reviews/shared";
 /**
  * Just-In-Time (JIT) sync called by client upon authentication.
  * Mirrors the current Clerk user into the Convex users table immediately.
+ * Never creates a row without an email: if the token lacks the claim, the Clerk
+ * webhook (which reads the full user) creates the row instead.
  */
 export const syncCurrentUser = mutation({
   args: {},
@@ -22,7 +24,7 @@ export const syncCurrentUser = mutation({
     }
 
     const clerkId = identity.subject;
-    const email = identity.email?.toLowerCase() || "";
+    const email = identity.email?.trim().toLowerCase() || "";
     const name = identity.name || (identity.givenName ? `${identity.givenName} ${identity.familyName ?? ""}`.trim() : undefined);
     const imageUrl = identity.pictureUrl || (identity as any).imageUrl || undefined;
     const phone = identity.phoneNumber || undefined;
@@ -33,6 +35,13 @@ export const syncCurrentUser = mutation({
       .query("users")
       .withIndex("by_clerkId", (q) => q.eq("clerkId", clerkId))
       .first();
+
+    if (!email) {
+      console.warn(
+        `syncCurrentUser: token for ${clerkId} has no email claim; add "email" to the Clerk "convex" JWT template.`,
+      );
+      if (!existing) return null;
+    }
 
     const finalRole =
       existing?.role === "admin" ? "admin" : roleFor(email, clerkId);
