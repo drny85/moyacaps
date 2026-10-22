@@ -6,6 +6,7 @@ import { oneClickUnsubscribe, unsubscribeRedirect } from "./notifications/unsubs
 import { UNSUBSCRIBE_HTTP_PATH } from "./notifications/unsubscribe";
 import { optOutOfReviewInvites, reviewInviteOptOutPage } from "./reviews/invitesHttp";
 import { REVIEW_INVITE_UNSUBSCRIBE_PATH } from "./reviews/model";
+import { authorizeShippoRequest, parseShippoTracking } from "./shipping/shippoWebhook";
 
 const http = httpRouter();
 
@@ -56,71 +57,34 @@ http.route({
   path: "/shippo-webhook",
   method: "POST",
   handler: httpAction(async (ctx, request) => {
+    const auth = authorizeShippoRequest(new URL(request.url), request.headers, process.env.SHIPPO_WEBHOOK_SECRET);
+    if (auth === "unconfigured") {
+      console.error("[ShippoWebhook] SHIPPO_WEBHOOK_SECRET is not set; refusing tracking events.");
+      return new Response("Webhook not configured", { status: 500 });
+    }
+    if (auth === "unauthorized") {
+      console.warn("[ShippoWebhook] Unauthorized webhook request received.");
+      return new Response("Unauthorized", { status: 401 });
+    }
+
+    let body: unknown;
     try {
-      const webhookSecret = process.env.SHIPPO_WEBHOOK_SECRET;
-      const url = new URL(request.url);
-      const querySecret = url.searchParams.get("secret");
-      const headerSecret =
-        request.headers.get("x-shippo-secret") ||
-        request.headers.get("shippo-secret") ||
-        request.headers.get("x-webhook-secret");
+      body = await request.json();
+    } catch {
+      return new Response("Invalid JSON body", { status: 400 });
+    }
+    const parsed = parseShippoTracking(body);
+    if (parsed.kind === "ignored") {
+      console.warn("[ShippoWebhook] Missing tracking_number in payload");
+      return Response.json({ received: true, ignored: true, reason: parsed.reason });
+    }
 
-      // Verify webhook secret if configured in environment
-      if (webhookSecret) {
-        const isAuthorized =
-          querySecret === webhookSecret || headerSecret === webhookSecret;
-        if (!isAuthorized) {
-          console.warn("[ShippoWebhook] Unauthorized webhook request received.");
-          return new Response("Unauthorized", { status: 401 });
-        }
-      }
-
-      const bodyText = await request.text();
-      if (!bodyText || bodyText.trim() === "") {
-        return new Response("Empty body", { status: 400 });
-      }
-
-      const payload = JSON.parse(bodyText);
-      const data = payload.data || payload;
-      const trackingNumber = data.tracking_number;
-
-      if (!trackingNumber) {
-        console.warn("[ShippoWebhook] Missing tracking_number in payload");
-        return new Response(JSON.stringify({ received: true, ignored: true, reason: "missing_tracking_number" }), {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        });
-      }
-
-      const trackingStatusObj = data.tracking_status || {};
-      const status = trackingStatusObj.status || data.status || "UNKNOWN";
-      const statusDetails = trackingStatusObj.status_details || data.status_details;
-      const statusDate = trackingStatusObj.status_date || data.status_date;
-      const loc = trackingStatusObj.location || data.location;
-
-      const result = await ctx.runMutation(internal.orders.fulfillment.handleTrackingWebhookInternal, {
-        trackingNumber: String(trackingNumber).trim(),
-        carrier: data.carrier || undefined,
-        status: String(status),
-        statusDetails: statusDetails ? String(statusDetails) : undefined,
-        statusDate: statusDate ? String(statusDate) : undefined,
-        location: loc
-          ? {
-              city: loc.city ? String(loc.city) : undefined,
-              state: loc.state ? String(loc.state) : undefined,
-              zip: loc.zip ? String(loc.zip) : undefined,
-              country: loc.country ? String(loc.country) : undefined,
-            }
-          : undefined,
-      });
-
-      return new Response(JSON.stringify({ received: true, ...result }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      });
+    try {
+      const result = await ctx.runMutation(internal.orders.fulfillment.handleTrackingWebhookInternal, parsed.tracking);
+      return Response.json({ received: true, ...result });
     } catch (err: any) {
       console.error("[ShippoWebhook] Error processing tracking webhook:", err?.message || err);
-      return new Response(err?.message || "Webhook processing error", { status: 400 });
+      return new Response("Webhook processing error", { status: 400 });
     }
   }),
 });
