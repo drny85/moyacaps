@@ -76,6 +76,7 @@ import type * as notifications_unsubscribeHttp from "../notifications/unsubscrib
 import type * as orders_checkoutHold from "../orders/checkoutHold.js";
 import type * as orders_desk from "../orders/desk.js";
 import type * as orders_deskFilters from "../orders/deskFilters.js";
+import type * as orders_deskPage from "../orders/deskPage.js";
 import type * as orders_fulfillment from "../orders/fulfillment.js";
 import type * as orders_functions from "../orders/functions.js";
 import type * as orders_guestClaim from "../orders/guestClaim.js";
@@ -214,6 +215,7 @@ declare const fullApi: ApiFromModules<{
   "orders/checkoutHold": typeof orders_checkoutHold;
   "orders/desk": typeof orders_desk;
   "orders/deskFilters": typeof orders_deskFilters;
+  "orders/deskPage": typeof orders_deskPage;
   "orders/fulfillment": typeof orders_fulfillment;
   "orders/functions": typeof orders_functions;
   "orders/guestClaim": typeof orders_guestClaim;
