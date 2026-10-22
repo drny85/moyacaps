@@ -4,6 +4,7 @@ import type { CapVariant } from "@/data/caps";
 import { migratePersisted } from "@/lib/cartMigration";
 import { clampCart, type CartStockVariant } from "@/lib/cartStock";
 import type { OpenCheckout } from "@/lib/openCheckout";
+import { MAX_UNITS_PER_LINE } from "../../convex/payments/limits";
 
 export interface CartItem {
   id: string;
@@ -115,7 +116,7 @@ export const useStore = create<StoreState>()(
         const { cart } = get();
         const cartItemId = `${cap.id}${colorway ? `-${colorway}` : ""}${size ? `-${size}` : ""}`;
         const existing = cart.find((item) => item.id === cartItemId || (!colorway && !size && item.id === cap.id));
-        const limit = maxStock !== undefined ? maxStock : (cap.stock ?? 99);
+        const limit = Math.min(MAX_UNITS_PER_LINE, maxStock !== undefined ? maxStock : (cap.stock ?? 99));
 
         if (limit <= 0) {
           // Out of stock; cannot add
@@ -180,7 +181,7 @@ export const useStore = create<StoreState>()(
           cart: state.cart
             .map((item) => {
               if (item.id === id) {
-                const limit = maxStock !== undefined ? maxStock : (item.maxStock ?? 99);
+                const limit = Math.min(MAX_UNITS_PER_LINE, maxStock !== undefined ? maxStock : (item.maxStock ?? 99));
                 const targetQty = item.quantity + delta;
                 const newQty = Math.min(limit, targetQty);
                 return newQty > 0 ? { ...item, quantity: newQty, maxStock: limit } : null;

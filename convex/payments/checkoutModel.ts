@@ -8,6 +8,9 @@ import { ConvexError } from "convex/values";
 import type Stripe from "stripe";
 import { isPurchaseBlockedByDrop } from "../catalog/model";
 import { CATEGORIES, DEFAULT_TAX_CODE, type Category } from "../catalog/rules";
+import { MAX_CART_LINES, MAX_UNITS_PER_CART, MAX_UNITS_PER_LINE } from "./limits";
+
+export { MAX_CART_LINES, MAX_UNITS_PER_CART, MAX_UNITS_PER_LINE };
 
 export type CheckoutLineItemInput = {
   variantId: string;
@@ -45,6 +48,22 @@ export type LineStock = { ok: true; available: number } | { ok: false; reason: L
 
 /** Direct card checkout, or a WhatsApp concierge reservation. Their copy differs slightly. */
 export type CheckoutFlow = "checkout" | "reservation";
+
+/** Bilingual message for a cart over a purchase limit. */
+export function cartLimitError(
+  limit: { kind: "line"; name: string } | { kind: "cart" } | { kind: "lines" },
+  es: boolean
+): string {
+  if (limit.kind === "line") {
+    return es
+      ? `Máximo ${MAX_UNITS_PER_LINE} piezas de "${limit.name}" por pedido.`
+      : `Limit ${MAX_UNITS_PER_LINE} of "${limit.name}" per order.`;
+  }
+  if (limit.kind === "cart") {
+    return es ? `Máximo ${MAX_UNITS_PER_CART} piezas por pedido.` : `Limit ${MAX_UNITS_PER_CART} items per order.`;
+  }
+  return es ? `Máximo ${MAX_CART_LINES} productos distintos por pedido.` : `Limit ${MAX_CART_LINES} different products per order.`;
+}
 
 /** Unit price fallback for a variant row with no price (legacy caps were $120). */
 const FALLBACK_UNIT_PRICE_USD = 120;
@@ -135,6 +154,10 @@ export function validateCartLines(
   let totalItems = 0;
   const validatedItems: ValidatedLine[] = [];
 
+  if (items.length > MAX_CART_LINES) {
+    throw new ConvexError(cartLimitError({ kind: "lines" }, es));
+  }
+
   for (let i = 0; i < items.length; i++) {
     const item = items[i];
     const variant = variants[i];
@@ -160,6 +183,9 @@ export function validateCartLines(
     }
 
     const qty = Math.max(1, Math.floor(item.quantity || 1));
+    if (qty > MAX_UNITS_PER_LINE) {
+      throw new ConvexError(cartLimitError({ kind: "line", name: variantName }, es));
+    }
     if (qty > stock) {
       throw new ConvexError(copy.insufficient(es, variantName, stock));
     }
@@ -173,6 +199,9 @@ export function validateCartLines(
     const unitPrice: number = typeof variant.priceUsd === "number" ? variant.priceUsd : FALLBACK_UNIT_PRICE_USD;
 
     totalItems += qty;
+    if (totalItems > MAX_UNITS_PER_CART) {
+      throw new ConvexError(cartLimitError({ kind: "cart" }, es));
+    }
     subtotal += unitPrice * qty;
 
     validatedItems.push({

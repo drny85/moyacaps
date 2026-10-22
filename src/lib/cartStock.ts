@@ -4,6 +4,7 @@
  * colorway × size); caps clamp to the variant's stock. Pure functions only.
  */
 import { skuStock, type SkuStock } from "./productOptions";
+import { MAX_UNITS_PER_LINE } from "../../convex/payments/limits";
 
 export interface CartStockLine {
   id: string;
@@ -83,8 +84,10 @@ export function clampCart<L extends CartStockLine>(
       adjustedNames.push(line.name);
       continue;
     }
-    if (line.quantity > stock) adjustedNames.push(line.name);
-    out.push({ ...line, quantity: Math.min(line.quantity, stock), maxStock: stock });
+    // Checkout refuses more than MAX_UNITS_PER_LINE of one line, so the cart never holds more.
+    const limit = Math.min(stock, MAX_UNITS_PER_LINE);
+    if (line.quantity > limit) adjustedNames.push(line.name);
+    out.push({ ...line, quantity: Math.min(line.quantity, limit), maxStock: limit });
   }
 
   return { cart: out, adjusted: adjustedNames.length > 0, adjustedNames };

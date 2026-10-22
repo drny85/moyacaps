@@ -16,6 +16,7 @@ import { findLineVariant, isUnreleasedDrop, lineOverStock, lineStock } from "@/l
 import { useCardCheckout } from "@/hooks/useCardCheckout";
 import { usePageRestore } from "@/hooks/usePageRestore";
 import { Link } from "@/i18n/routing";
+import { MAX_UNITS_PER_LINE } from "../../../convex/payments/limits";
 
 export function CartDrawer() {
   const { cart, isCartOpen, closeCart, updateQuantity, removeFromCart, clampCartToStock } = useStore();
@@ -187,7 +188,7 @@ export function CartDrawer() {
                       const variant = convexVariants && findLineVariant(item, convexVariants);
                       const stock = variant ? lineStock(item, variant) : (item.maxStock ?? 99);
                       const isOutOfStock = stock <= 0;
-                      const isAtMaxStock = item.quantity >= stock;
+                      const isAtMaxStock = item.quantity >= Math.min(stock, MAX_UNITS_PER_LINE);
 
                       return (
                         <div

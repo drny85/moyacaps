@@ -23,6 +23,7 @@
   },
   "dependencies": {
     "@clerk/nextjs": "^7.9.19",
+    "@convex-dev/rate-limiter": "^0.4.2",
     "@convex-dev/resend": "^0.2.9",
     "@hookform/resolvers": "^5.9.2",
     "@imgly/background-removal-node": "^1.4.5",

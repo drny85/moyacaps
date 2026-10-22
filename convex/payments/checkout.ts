@@ -39,6 +39,7 @@ import {
 import { hasSettled, isCancelled } from "../orders/status";
 import { expireCheckoutSession, expireSessionsForIds, getStripe, upsertStripeCustomer } from "./stripeClient";
 import { requireAdminInAction } from "../lib/auth";
+import { enforceCheckoutRateLimit } from "./checkoutRateLimit";
 import type { ActionCtx } from "../_generated/server";
 
 const cartLineValidator = v.object({
@@ -128,6 +129,9 @@ export const createCheckoutSession = action({
     // otherwise attach an Order to another account. No identity means a guest Order.
     const identity = await ctx.auth.getUserIdentity();
     const resolvedClerkId = identity?.subject;
+
+    // Before anything holds stock: a Pay click is the costly step to repeat.
+    await enforceCheckoutRateLimit(ctx, resolvedClerkId, args.customerEmail, args.locale);
 
     const stripe = getStripe();
 
