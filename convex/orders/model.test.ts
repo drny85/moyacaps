@@ -12,6 +12,7 @@ import {
   matchesOrderSearch,
   MAX_TRACKED_IDS,
   orderNumberCandidates,
+  exactOrderSearchKeys,
   orderSessionIds,
   ownerTrackingView,
   withWebhookEventId,
@@ -116,6 +117,18 @@ describe("computeShipping", () => {
     expect(computeShipping(1, settings)).toEqual({ freeShipping: false, shippingFee: 5 });
     expect(computeShipping(2, settings)).toEqual({ freeShipping: false, shippingFee: 5 });
     expect(computeShipping(3, settings)).toEqual({ freeShipping: true, shippingFee: 0 });
+  });
+});
+
+describe("exactOrderSearchKeys", () => {
+  it("reads an email, else order-number candidates, plus tracking-number spellings", () => {
+    expect(exactOrderSearchKeys(" Ana@Example.com ")).toEqual({ orderNumbers: [], email: "ana@example.com", trackingNumbers: [] });
+    expect(exactOrderSearchKeys("#gl-abc-1")).toEqual({ orderNumbers: ["GL-ABC-1"], trackingNumbers: [] });
+    expect(exactOrderSearchKeys("1z999aa10123456784")).toEqual({
+      orderNumbers: ["1Z999AA10123456784", "GL-1Z999AA10123456784", "MC-1Z999AA10123456784"],
+      trackingNumbers: ["1z999aa10123456784", "1Z999AA10123456784"],
+    });
+    expect(exactOrderSearchKeys("   ")).toEqual({ orderNumbers: [], trackingNumbers: [] });
   });
 });
 

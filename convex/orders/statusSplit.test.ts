@@ -282,6 +282,31 @@ describe("admin desk on the two axes", () => {
     expect(await list("cancelled")).toEqual(["GL-ALL-EXP-2"]);
   });
 
+  it("search finds an Order older than the recent window by number, email or tracking number", async () => {
+    const tt = t();
+    await seedOrder(tt, {
+      orderNumber: "GL-OLD-1",
+      paymentStatus: "paid",
+      fulfillmentStatus: "in_transit",
+      customerEmail: "old@example.com",
+      trackingNumber: "9400111899",
+      createdAt: 1_000,
+    });
+    await seedOrder(tt, { orderNumber: "GL-NEW-1", paymentStatus: "paid", fulfillmentStatus: "unfulfilled", createdAt: 5_000 });
+    const search = async (term: string) =>
+      (await admin(tt).query(api.orders.desk.getAllOrdersAdmin, { clientTime: Date.now(), search: term, limit: 1 })).map(
+        (o) => o.orderNumber
+      );
+
+    expect(await search("old-1")).toEqual(["GL-OLD-1"]);
+    expect(await search("#gl-old-1")).toEqual(["GL-OLD-1"]);
+    expect(await search(" Old@Example.com ")).toEqual(["GL-OLD-1"]);
+    expect(await search("9400111899")).toEqual(["GL-OLD-1"]);
+    // Substring search still covers only the recent window.
+    expect(await search("example")).toEqual([]);
+    expect(await search("new")).toEqual(["GL-NEW-1"]);
+  });
+
   it("a capped Done read keeps the newest refunded orders whatever their package status", async () => {
     const tt = t();
     for (const [n, fulfillmentStatus, createdAt] of [

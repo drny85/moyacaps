@@ -104,6 +104,26 @@ describe("createCheckoutSession owner", () => {
   });
 });
 
+describe("createCheckoutSession redirect URLs", () => {
+  beforeEach(() => {
+    stripe.sessionsCreate.mockReset();
+    stripe.sessionsCreate.mockImplementation(async () => ({ id: "cs_test_redirect", url: "https://checkout.stripe.com/test" }));
+  });
+
+  it("sends Stripe back to our site, not to a browser-sent foreign origin or locale", async () => {
+    const tt = t();
+    await seedVariant(tt);
+    await tt.action(api.payments.checkout.createCheckoutSession, {
+      ...checkoutArgs(),
+      origin: "https://evil.example",
+      locale: "x/../../evil",
+    });
+    const [params] = stripe.sessionsCreate.mock.calls[0];
+    expect(params.success_url).toMatch(/^https:\/\/goodluckcaps\.com\/en\/checkout\/success\?/);
+    expect(params.cancel_url).toBe("https://goodluckcaps.com/en/checkout?canceled=1");
+  });
+});
+
 describe("createCheckoutSession rate limit", () => {
   beforeEach(() => {
     stripe.sessionsCreate.mockReset();

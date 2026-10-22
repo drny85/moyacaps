@@ -253,6 +253,17 @@ export function orderNumberCandidates(input: string): string[] {
   return [clean, `GL-${clean}`, `MC-${clean}`];
 }
 
+/**
+ * Index keys an admin search can hit exactly, so an Order older than the desk's recent window
+ * is still found by its number, email or tracking number (security review M9).
+ */
+export function exactOrderSearchKeys(search: string): { orderNumbers: string[]; email?: string; trackingNumbers: string[] } {
+  const q = search.trim();
+  const email = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(q) ? q.toLowerCase() : undefined;
+  const tracking = /^[A-Za-z0-9]{8,40}$/.test(q) ? [...new Set([q, q.toUpperCase()])] : [];
+  return { orderNumbers: email ? [] : orderNumberCandidates(q), ...(email && { email }), trackingNumbers: tracking };
+}
+
 /** Admin order search across number, contact, tracking and line items. */
 export function matchesOrderSearch(order: Order, search: string): boolean {
   const q = search.trim().toLowerCase();

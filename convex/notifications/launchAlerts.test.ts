@@ -1,5 +1,6 @@
 /// <reference types="vite/client" />
 import { convexTest } from "convex-test";
+import rateLimiterTest from "@convex-dev/rate-limiter/test";
 import { describe, expect, it } from "vitest";
 import { api, internal } from "../_generated/api";
 import schema from "../schema";
@@ -11,6 +12,7 @@ const modules = import.meta.glob("/convex/**/*.ts");
 
 function setup() {
   const t = convexTest(schema, modules);
+  rateLimiterTest.register(t);
   const admin = t.withIdentity({ subject: "user_admin", email: PRIMARY_ADMIN_EMAIL, emailVerified: true });
   return { t, admin };
 }
@@ -26,6 +28,50 @@ const signUp = (t: T, contact: string, channel: "email" | "whatsapp" = "email", 
 const alerts = (t: T) => t.run((ctx) => ctx.db.query("drop_alerts").take(50));
 const sendJobs = async (t: T) =>
   (await t.run((ctx) => ctx.db.system.query("_scheduled_functions").take(50))).filter((j) => j.name.endsWith("sendLaunchEmails"));
+
+describe("alert sign-up abuse limits", () => {
+  it("throttles signed-out sign-ups once the shared budget is spent", async () => {
+    const { t, admin } = setup();
+    await teesComingSoon(admin);
+    for (let i = 0; i < 30; i++) await signUp(t, `fan${i}@example.com`);
+    await expect(signUp(t, "one-too-many@example.com")).rejects.toThrow(/Too many sign-ups/);
+    // A signed-in fan has their own budget.
+    await t
+      .withIdentity({ subject: "user_fan" })
+      .mutation(api.notifications.launchAlerts.subscribeToCategoryLaunch, { category: "apparel", contact: "me@example.com", channel: "email", locale: "en" });
+  });
+
+  it("drop alerts validate the contact and take the account from the token, not the client", async () => {
+    const { t } = setup();
+    await t.run(async (ctx) => {
+      await ctx.db.insert("variants", {
+        variantId: "drop-cap",
+        isAvailable: true,
+        nameEn: "Drop Cap",
+        nameEs: "Gorra Drop",
+        silhouette: "snapback",
+        primaryHex: "#000000",
+        secondaryHex: "#ffffff",
+        image: "/img.png",
+        stock: 5,
+        priceUsd: 50,
+        isFeatured: false,
+        category: "headwear",
+      });
+    });
+    const subscribe = (tt: T | ReturnType<T["withIdentity"]>, contact: string, clerkUserId?: string) =>
+      tt.mutation(api.catalog.drops.subscribeToDropAlert, { variantId: "drop-cap", contact, channel: "email", locale: "en", clerkUserId });
+
+    await expect(subscribe(t, "not-an-email")).rejects.toThrow(/valid email/);
+    await subscribe(t, "guest@example.com", "user_victim");
+    await subscribe(t.withIdentity({ subject: "user_real" }), "Real@Example.com", "user_victim");
+    const rows = await alerts(t);
+    expect(rows.map((r) => [r.contact, r.clerkUserId])).toEqual([
+      ["guest@example.com", undefined],
+      ["real@example.com", "user_real"],
+    ]);
+  });
+});
 
 describe("subscribeToCategoryLaunch", () => {
   it("subscribes once per normalized contact", async () => {

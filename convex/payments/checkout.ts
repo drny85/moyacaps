@@ -11,7 +11,7 @@ import { v, ConvexError } from "convex/values";
 import { api, internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import type Stripe from "stripe";
-import { randomDigitString } from "../lib/ids";
+import { generateOrderNumber } from "../lib/ids";
 import { encodeItemsMetadata } from "./checkoutMetadata";
 import {
   buildLineItems,
@@ -40,6 +40,7 @@ import { hasSettled, isCancelled } from "../orders/status";
 import { expireCheckoutSession, expireSessionsForIds, getStripe, upsertStripeCustomer } from "./stripeClient";
 import { requireAdminInAction } from "../lib/auth";
 import { enforceCheckoutRateLimit } from "./checkoutRateLimit";
+import { resolveCheckoutLocale, resolveCheckoutOrigin } from "./checkoutOrigin";
 import type { ActionCtx } from "../_generated/server";
 
 const cartLineValidator = v.object({
@@ -121,8 +122,12 @@ export const createCheckoutSession = action({
     sessionId: string;
     orderNumber: string;
   }> => {
+    // Browser-sent, and Stripe redirects to them: only our own origins and locales (M1).
+    const locale = resolveCheckoutLocale(args.locale);
+    const origin = resolveCheckoutOrigin(args.origin, process.env.NEXT_PUBLIC_APP_URL);
+
     if (!args.items || args.items.length === 0) {
-      throw new ConvexError(emptyCartError("checkout", args.locale));
+      throw new ConvexError(emptyCartError("checkout", locale));
     }
 
     // The Order's owner is the signed-in caller, never a client-sent id: anyone could
@@ -131,7 +136,7 @@ export const createCheckoutSession = action({
     const resolvedClerkId = identity?.subject;
 
     // Before anything holds stock: a Pay click is the costly step to repeat.
-    await enforceCheckoutRateLimit(ctx, resolvedClerkId, args.customerEmail, args.locale);
+    await enforceCheckoutRateLimit(ctx, resolvedClerkId, args.customerEmail, locale);
 
     const stripe = getStripe();
 
@@ -143,11 +148,11 @@ export const createCheckoutSession = action({
     const { validatedItems, subtotal, totalItems, freeShipping, shippingFee, total } = await priceCart(
       ctx,
       args.items,
-      args.locale,
+      locale,
       "checkout"
     );
 
-    const orderNumber = `GL-${Date.now().toString(36).toUpperCase()}-${randomDigitString(4)}`;
+    const orderNumber = generateOrderNumber(Date.now());
     const holdExpiresAt = checkoutHoldExpiresAt(Date.now());
 
     // Checkout Hold (ADR 0024): the pending Order and its units, atomically. Throws a
@@ -170,7 +175,7 @@ export const createCheckoutSession = action({
       clerkUserId: resolvedClerkId || undefined,
       customerEmail: args.customerEmail,
       checkoutHoldExpiresAt: holdExpiresAt,
-      locale: args.locale,
+      locale,
     });
 
     // Resolve or upsert customer if email is provided, so repeat buyers are deduplicated
@@ -188,7 +193,7 @@ export const createCheckoutSession = action({
       session = await stripe.checkout.sessions.create(
         {
           expires_at: stripeSessionExpiresAt(holdExpiresAt),
-          line_items: buildLineItems(validatedItems, args.origin),
+          line_items: buildLineItems(validatedItems, origin),
           mode: "payment",
           invoice_creation: {
             enabled: true,
@@ -230,9 +235,9 @@ export const createCheckoutSession = action({
           billing_address_collection: "required",
           ...STRIPE_COLLECTION_FIELDS,
           shipping_options: buildShippingOptions(shippingFee, freeShipping, true),
-          success_url: `${args.origin}/${args.locale}/checkout/success?session_id={CHECKOUT_SESSION_ID}&order_number=${orderNumber}`,
+          success_url: `${origin}/${locale}/checkout/success?session_id={CHECKOUT_SESSION_ID}&order_number=${orderNumber}`,
           // Stripe's back link: the checkout page expires this session at once (ADR 0024).
-          cancel_url: `${args.origin}/${args.locale}/checkout?canceled=1`,
+          cancel_url: `${origin}/${locale}/checkout?canceled=1`,
           client_reference_id: orderNumber,
           metadata: {
             orderNumber,
