@@ -11,6 +11,7 @@ import { v } from "convex/values";
 import { api, internal } from "../_generated/api";
 import Stripe from "stripe";
 import { getStripe } from "./stripeClient";
+import { allowStripeSessionLookup } from "./checkoutRateLimit";
 import {
   disputeFigures,
   hydrateOrderItems,
@@ -109,6 +110,12 @@ export const syncCheckoutSession = action({
     orderId?: any;
     status: string;
   }> => {
+    // Public and unauthenticated, and every call reaches Stripe: only `cs_` ids, under a budget (M1).
+    if (!args.sessionId.startsWith("cs_")) return { success: false, status: "unrecognized_session" };
+    if (!(await allowStripeSessionLookup(ctx, args.sessionId, "sync"))) {
+      return { success: false, status: "rate_limited" };
+    }
+
     const stripe = getStripe();
     const session = await stripe.checkout.sessions.retrieve(args.sessionId, {
       expand: ["total_details.breakdown", "invoice"],

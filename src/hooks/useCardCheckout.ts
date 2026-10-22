@@ -7,6 +7,7 @@ import { api } from "../../convex/_generated/api";
 import { useStore } from "@/store/useStore";
 import { useSafeUser } from "@/lib/useSafeUser";
 import { cartCheckoutLines } from "@/lib/openCheckout";
+import { getCheckoutPass } from "@/app/actions/checkoutPass";
 
 /**
  * Card checkout with a Checkout Hold (ADR 0024). `startCheckout` passes the cart's previous
@@ -25,6 +26,9 @@ export function useCardCheckout() {
 
   const startCheckout = useCallback(async () => {
     const { cart, currency, openCheckout, setOpenCheckout } = useStore.getState();
+    // Guests get a per-IP rate limit through a Checkout Pass (ADR 0029); without one the
+    // server uses the shared guest bucket, so a failed fetch never blocks checkout.
+    const checkoutPass = user ? null : await getCheckoutPass().catch(() => null);
     const result = await createCheckoutSession({
       items: cartCheckoutLines(cart),
       currency,
@@ -32,6 +36,7 @@ export function useCardCheckout() {
       origin: window.location.origin,
       customerEmail: user?.primaryEmailAddress?.emailAddress,
       ...(openCheckout ? { previousSessionId: openCheckout.sessionId } : {}),
+      ...(checkoutPass ? { checkoutPass } : {}),
     });
     setOpenCheckout({ orderNumber: result.orderNumber, sessionId: result.sessionId });
     return result;

@@ -39,7 +39,8 @@ import {
 import { hasSettled, isCancelled } from "../orders/status";
 import { expireCheckoutSession, expireSessionsForIds, getStripe, upsertStripeCustomer } from "./stripeClient";
 import { requireAdminInAction } from "../lib/auth";
-import { enforceCheckoutRateLimit } from "./checkoutRateLimit";
+import { allowStripeSessionLookup, enforceCheckoutRateLimit } from "./checkoutRateLimit";
+import { verifyCheckoutPass } from "../lib/checkoutPass";
 import { checkoutCustomerEmail, resolveCheckoutLocale, resolveCheckoutOrigin } from "./checkoutOrigin";
 import type { ActionCtx } from "../_generated/server";
 
@@ -112,6 +113,8 @@ export const createCheckoutSession = action({
     customerEmail: v.optional(v.string()),
     // The cart's previous open Checkout Session: expired (and its hold released) first.
     previousSessionId: v.optional(v.string()),
+    // Guests only: the Next.js server's Checkout Pass, so the rate limit is per client IP (M2).
+    checkoutPass: v.optional(v.string()),
   },
   returns: v.object({ url: v.union(v.string(), v.null()), sessionId: v.string(), orderNumber: v.string() }),
   handler: async (
@@ -139,7 +142,10 @@ export const createCheckoutSession = action({
     const customerEmail = checkoutCustomerEmail(identity, args.customerEmail);
 
     // Before anything holds stock: a Pay click is the costly step to repeat.
-    await enforceCheckoutRateLimit(ctx, resolvedClerkId, locale);
+    const guestKey = resolvedClerkId
+      ? null
+      : await verifyCheckoutPass(args.checkoutPass, process.env.CHECKOUT_PASS_SECRET, Date.now());
+    await enforceCheckoutRateLimit(ctx, resolvedClerkId, guestKey, locale);
 
     const stripe = getStripe();
 
@@ -326,7 +332,7 @@ export const abandonCheckoutSession = action({
   args: { sessionId: v.string() },
   returns: v.object({ released: v.boolean() }),
   handler: async (ctx, args): Promise<{ released: boolean }> => {
-    if (!args.sessionId.startsWith("cs_")) return { released: false };
+    if (!(await allowStripeSessionLookup(ctx, args.sessionId, "abandon"))) return { released: false };
     const released = await endOpenCheckout(ctx, getStripe(), args.sessionId, "abandoned");
     return { released };
   },
