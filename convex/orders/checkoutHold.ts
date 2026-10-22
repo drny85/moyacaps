@@ -160,7 +160,7 @@ export const releaseCheckoutHold = internalMutation({
   },
 });
 
-/** INTERNAL: Orders still awaiting payment 45+ minutes after Pay, oldest first (hourly backstop). */
+/** INTERNAL: Orders still awaiting payment 5+ minutes after their hold ended, oldest first (backstop). */
 export const listOverdueCheckoutHolds = internalQuery({
   args: { now: v.number() },
   returns: v.array(orderDoc),

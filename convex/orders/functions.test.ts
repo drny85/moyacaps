@@ -439,14 +439,14 @@ describe("Checkout Hold (ADR 0024)", () => {
     expect(await getStock(tt, "V1")).toBe(5);
   });
 
-  it("the backstop finds only holds 45+ minutes past Pay", async () => {
+  it("the backstop finds only holds that ended 5+ minutes ago", async () => {
     const tt = t();
     await seedVariant(tt, "V1", 10);
     const now = Date.now();
     const minute = 60 * 1000;
-    // Hold expiry = Pay + 31 min, so Pay 50 min ago is overdue and Pay 40 min ago is not.
-    await placeHold(tt, "GL-OLD", [{ variantId: "V1", quantity: 1 }], { holdExpiresAt: now - 19 * minute });
-    await placeHold(tt, "GL-NEW", [{ variantId: "V1", quantity: 1 }], { holdExpiresAt: now - 9 * minute });
+    // A hold that ended 6 minutes ago is overdue; one that ended 4 minutes ago may still get its webhook.
+    await placeHold(tt, "GL-OLD", [{ variantId: "V1", quantity: 1 }], { holdExpiresAt: now - 6 * minute });
+    await placeHold(tt, "GL-NEW", [{ variantId: "V1", quantity: 1 }], { holdExpiresAt: now - 4 * minute });
     await seedOrder(tt, "V1", { status: "pending", orderNumber: "GL-BARE" });
     // A released hold stays awaiting payment forever; the backstop must not keep finding it.
     const gone = await placeHold(tt, "GL-GONE", [{ variantId: "V1", quantity: 1 }], { holdExpiresAt: now - 29 * minute });

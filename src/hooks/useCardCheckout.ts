@@ -44,7 +44,7 @@ export function useCardCheckout() {
     try {
       await abandonCheckoutSession({ sessionId: openCheckout.sessionId });
     } catch (err) {
-      // The webhook and the hourly backstop still release the hold.
+      // The webhook and the backstop still release the hold.
       console.warn("Could not expire the abandoned checkout session:", err);
     }
   }, [abandonCheckoutSession]);

@@ -67,10 +67,16 @@ export const CHECKOUT_SESSION_MS = 30 * 60 * 1000;
  */
 export const STRIPE_EXPIRY_MARGIN_MS = 60 * 1000;
 
-/** The hourly backstop expires the session of any Order still awaiting payment 45 minutes after Pay. */
-export const BACKSTOP_AFTER_MS = 45 * 60 * 1000;
+/**
+ * The backstop expires the session of any Order still awaiting payment 5 minutes after its
+ * hold ended: by then Stripe's `checkout.session.expired` event should have released it.
+ */
+export const BACKSTOP_GRACE_MS = 5 * 60 * 1000;
 
-/** Most overdue holds one backstop run handles; the next hourly run takes the rest. */
+/** How often the backstop runs; with the grace, a lost event holds stock at most ~46 minutes. */
+export const BACKSTOP_INTERVAL_MINUTES = 10;
+
+/** Most overdue holds one backstop run handles; the next run takes the rest. */
 export const BACKSTOP_BATCH_SIZE = 50;
 
 /** When a Checkout Hold placed at `nowMs` ends (its session's `expires_at`), in milliseconds. */
@@ -93,15 +99,12 @@ export function isCheckoutHoldActive(order: StatusSource & Pick<Partial<Order>, 
   );
 }
 
-/**
- * Holds whose hold-expiry is at or before this instant are 45+ minutes past Pay (the hold
- * itself ends 30 minutes and a margin after Pay), so the backstop picks them up.
- */
+/** Holds whose hold-expiry is at or before this instant ended 5+ minutes ago, so the backstop picks them up. */
 export function backstopHoldExpiryCutoff(nowMs: number): number {
-  return nowMs - (BACKSTOP_AFTER_MS - CHECKOUT_SESSION_MS - STRIPE_EXPIRY_MARGIN_MS);
+  return nowMs - BACKSTOP_GRACE_MS;
 }
 
-/** True when the backstop should expire this order's session: a live hold placed 45+ minutes ago. */
+/** True when the backstop should expire this order's session: a live hold that ended 5+ minutes ago. */
 export function isBackstopDue(
   order: StatusSource & Pick<Partial<Order>, "checkoutHoldExpiresAt">,
   nowMs: number

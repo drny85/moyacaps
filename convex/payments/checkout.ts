@@ -4,7 +4,7 @@
  * Stripe Checkout session actions (ADR 0002, ADR 0023, ADR 0024): card checkout behind a
  * Checkout Hold, expiry of open sessions when an order no longer accepts payment, and the
  * paths that release a hold once Stripe reports its session expired (replaced or abandoned
- * checkouts, and the hourly backstop).
+ * checkouts, and the backstop).
  */
 import { action, internalAction } from "../_generated/server";
 import { v, ConvexError } from "convex/values";
@@ -76,7 +76,7 @@ type HoldReleaseReason = "replaced" | "abandoned";
 /**
  * End a cart's open Checkout Session (a new Pay click, or Stripe's back link): expire it
  * and, once Stripe reports it expired, release its Order's hold. Best effort: a session
- * that is gone, paid or unreachable is left to the webhook and the hourly backstop.
+ * that is gone, paid or unreachable is left to the webhook and the backstop.
  */
 async function endOpenCheckout(
   ctx: ActionCtx,
@@ -321,9 +321,10 @@ export const abandonCheckoutSession = action({
 });
 
 /**
- * INTERNAL (hourly cron): the backstop for a lost `checkout.session.expired` event. For each
- * Order still awaiting payment 45 minutes after Pay, expire its sessions and release the
- * hold only once Stripe reports them expired. A paid session is left for settlement.
+ * INTERNAL (cron, every 10 minutes): the backstop for a lost `checkout.session.expired` event.
+ * For each Order still awaiting payment 5 minutes after its hold ended, expire its sessions
+ * and release the hold only once Stripe reports them expired. A paid session is left for
+ * settlement. Every release here means the webhook missed one, so each is logged as a warning.
  */
 export const sweepOverdueCheckoutHolds = internalAction({
   args: {},
@@ -349,7 +350,10 @@ export const sweepOverdueCheckoutHolds = internalAction({
         stripeSessionId: order.stripeSessionId,
         reason: "backstop",
       });
-      if (result.released) released++;
+      if (result.released) {
+        released++;
+        console.warn(`Backstop released ${order.orderNumber}: Stripe's checkout.session.expired event never settled it.`);
+      }
     }
     return { checked: overdue.length, released };
   },
