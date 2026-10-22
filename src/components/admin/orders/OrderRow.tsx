@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useTranslations } from "next-intl";
-import { ChevronRight, Clock, Printer } from "lucide-react";
+import { AlertTriangle, ChevronRight, Clock, Printer, Truck } from "lucide-react";
 import { Link } from "@/i18n/routing";
 import { OrderStatusPills } from "@/components/admin/OrderStatusPills";
 import type { OrderRowVM } from "@/lib/admin/orderRow";
@@ -27,6 +27,20 @@ export function OrderRow({ row, onQuickAction }: { row: OrderRowVM; onQuickActio
               </span>
             </div>
             <OrderStatusPills order={row.lifecycle} />
+            {(row.handedOff || row.handoffFlag) && (
+              <div className="flex items-center gap-1.5 flex-wrap text-[10px] font-semibold">
+                {row.handedOff && (
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-300 border border-blue-500/20">
+                    <Truck className="w-3 h-3" /> {t("handoff.handedOff")}
+                  </span>
+                )}
+                {row.handoffFlag && (
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
+                    <AlertTriangle className="w-3 h-3" /> {t(`handoff.flag.${row.handoffFlag}`)}
+                  </span>
+                )}
+              </div>
+            )}
             <div className="flex items-center gap-2 text-xs text-zinc-600 dark:text-zinc-400 min-w-0">
               <span className="font-medium text-zinc-900 dark:text-white truncate">{row.customer || t("guest")}</span>
               <span aria-hidden>·</span>

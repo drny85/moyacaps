@@ -1,11 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { DESK_FILTERS, matchesDeskFilter, parseDeskFilter, type DeskFilter } from "./deskFilters";
 import type { FulfillmentStatus, PaymentStatus } from "./status";
+import type { ShippingLabel } from "./labels";
 
 const NOW = Date.UTC(2026, 9, 19, 12);
 const DAY = 24 * 60 * 60 * 1000;
 
-const order = (paymentStatus: PaymentStatus, fulfillmentStatus: FulfillmentStatus, extra: { cancelledAt?: number; createdAt?: number } = {}) => ({
+const order = (
+  paymentStatus: PaymentStatus,
+  fulfillmentStatus: FulfillmentStatus,
+  extra: { cancelledAt?: number; createdAt?: number; labels?: ShippingLabel[] } = {}
+) => ({
   paymentStatus,
   fulfillmentStatus,
   createdAt: NOW,
@@ -62,8 +67,18 @@ describe("matchesDeskFilter", () => {
     expect(tabsOf(order("refunded", "unfulfilled", { cancelledAt: NOW }))).toEqual(["all", "refunded", "cancelled"]);
   });
 
+  it("a Ready to Ship package moves to Shipped once handed off (ADR 0030)", () => {
+    const label: ShippingLabel = { carrier: "USPS", trackingNumber: "9400", labelUrl: "u", purchasedAt: NOW, reship: false };
+    const handedOff = { ...label, handoff: { method: "dropped_off" as const, at: NOW, recordedAt: NOW, actor: "a" } };
+    expect(tabsOf(order("paid", "label_purchased", { labels: [label] }))).toEqual(["all", "ready_to_ship", "label_purchased"]);
+    expect(tabsOf(order("paid", "label_purchased", { labels: [handedOff] }))).toEqual(["all", "shipped", "label_purchased"]);
+    expect(tabsOf(order("paid", "label_purchased", { labels: [handedOff], cancelledAt: NOW }))).toEqual(["all", "label_purchased", "cancelled"]);
+    // A fully refunded order is no longer the store's to send.
+    expect(tabsOf(order("refunded", "label_purchased", { labels: [label] }))).toEqual(["all", "done", "label_purchased", "refunded"]);
+  });
+
   it("queues group the statuses the desk works from", () => {
-    expect(tabsOf(order("paid", "label_purchased"))).toEqual(["all", "shipped", "label_purchased"]);
+    expect(tabsOf(order("paid", "label_purchased"))).toEqual(["all", "ready_to_ship", "label_purchased"]);
     expect(tabsOf(order("paid", "delivery_exception"))).toEqual(["all", "problems", "delivery_exception"]);
     expect(tabsOf(order("paid", "returned"))).toEqual(["all", "problems", "returned"]);
     expect(tabsOf(order("paid", "delivered"))).toEqual(["all", "done", "delivered"]);

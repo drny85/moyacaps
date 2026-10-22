@@ -25,6 +25,8 @@ import { carrierTrackingNumber } from "./trackingNumber";
 import { scheduleReviewInvite } from "../reviews/invites";
 import { normalizeEmail } from "./guestClaimModel";
 import { cancellationNotice, manualMoveEmail } from "../notifications/orderEmails";
+import { claimShippedNotice, currentLabel } from "./handoff";
+import { scheduleShippedEmail } from "./shippedNotice";
 import {
   FULFILLMENT_STATUSES,
   fulfillmentStatusValidator,
@@ -138,6 +140,8 @@ async function readDeskFilter(ctx: QueryCtx, filter: DeskFilter, limit: number):
     case "needs_packing":
     case "overdue":
       return await packingQueue(ctx, limit);
+    case "ready_to_ship":
+      return await byFulfillment(ctx, "label_purchased", limit);
     case "shipped":
       return newestFirst(await Promise.all((["label_purchased", "in_transit"] as const).map((f) => byFulfillment(ctx, f, limit))), limit);
     case "problems":
@@ -443,14 +447,11 @@ export const updateFulfillmentStatusAdmin = mutation({
       const trackingNumber = (args.trackingNumber ?? carrierTrackingNumber(order)) || undefined;
       const recipient = { orderNumber: order.orderNumber, customerName: order.customerName, customerEmail: order.customerEmail };
       if (email === "dispatched") {
-        await ctx.scheduler.runAfter(0, internal.notifications.emails.sendOrderDispatchedEmail, {
-          ...recipient,
-          stage: "in_transit",
-          carrier,
-          trackingNumber,
-          shippingAddress: order.shippingAddress,
-          items: order.items,
-        });
+        // Once per label (ADR 0030): skip when a Handoff or scan already told the Customer.
+        // An Order with no label at all still gets the email, as before.
+        const shippedLabels = claimShippedNotice(order, Date.now());
+        if (shippedLabels) await ctx.db.patch(args.orderId, { labels: shippedLabels });
+        if (shippedLabels || !currentLabel(order)) await scheduleShippedEmail(ctx, order, { carrier, trackingNumber });
       } else {
         await ctx.scheduler.runAfter(0, internal.notifications.emails.sendOrderDeliveredEmail, {
           ...recipient,

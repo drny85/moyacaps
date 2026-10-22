@@ -17,6 +17,7 @@ import { CancelDialog } from "./CancelDialog";
 import { DangerZone } from "./DangerZone";
 import { ItemsSection } from "./ItemsSection";
 import { LabelsSection } from "./LabelsSection";
+import { HandoffDialog } from "../HandoffDialog";
 import { ManualTrackingDialog } from "./ManualTrackingDialog";
 import { MoneySection } from "./MoneySection";
 import { NextActionCard } from "./NextActionCard";
@@ -29,7 +30,7 @@ import { ShipToSection } from "./ShipToSection";
 import { useOrderDetail } from "./useOrderDetail";
 import type { AddressForm } from "./useOrderDetail";
 
-type Dialog = "label" | "reship" | "deliver" | "revert" | "address" | "tracking" | "cancel" | null;
+type Dialog = "label" | "reship" | "deliver" | "revert" | "address" | "tracking" | "cancel" | "handoff" | "removeHandoff" | null;
 
 /** One Order, built around its next action (plan 0009 Screen 5). */
 export function OrderDetailPage({ orderNumber }: { orderNumber: string }) {
@@ -103,6 +104,7 @@ export function OrderDetailPage({ orderNumber }: { orderNumber: string }) {
           onBuyLabel={() => setDialog("label")}
           onReship={() => setDialog("reship")}
           onMarkDelivered={() => setDialog("deliver")}
+          onHandOff={() => setDialog("handoff")}
         />
 
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
@@ -124,6 +126,9 @@ export function OrderDetailPage({ orderNumber }: { orderNumber: string }) {
               onManualTracking={() => setDialog("tracking")}
               onMarkDelivered={() => setDialog("deliver")}
               onRevert={() => setDialog("revert")}
+              busy={busy}
+              onEditHandoff={() => setDialog("handoff")}
+              onRemoveHandoff={() => setDialog("removeHandoff")}
             />
             <LabelHistoryCard order={order} />
             {vm.danger.canCancel && <DangerZone onCancel={() => setDialog("cancel")} />}
@@ -141,6 +146,15 @@ export function OrderDetailPage({ orderNumber }: { orderNumber: string }) {
         onConfirm={async () => { if (await actions.revert()) close(); }} />
       <AddressDialog open={dialog === "address"} initial={addressInitial} busy={busy} error={error} onSave={actions.saveAddress} onClose={close} />
       <ManualTrackingDialog open={dialog === "tracking"} initial={{ carrier: order.carrier, trackingNumber: vm.labels.trackingNumber }} busy={busy} error={error} onSave={actions.saveTracking} onClose={close} />
+      <HandoffDialog
+        open={dialog === "handoff"}
+        orders={[{ id: order._id, orderNumber: order.orderNumber }]}
+        initial={vm.labels.handoff}
+        onClose={close}
+        onDone={reportSuccess}
+      />
+      <ConfirmDialog open={dialog === "removeHandoff"} title={t("labels.removeHandoffTitle")} body={t("labels.removeHandoffBody")} confirmLabel={t("labels.removeHandoff")} busy={busy} error={error} onClose={close}
+        onConfirm={async () => { if (await actions.removeHandoff()) close(); }} />
       <CancelDialog open={dialog === "cancel"} refundable={vm.danger.refundable} busy={busy} error={error} onConfirm={actions.cancel} onClose={close} />
     </>
   );

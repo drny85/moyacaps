@@ -86,10 +86,20 @@ describe("toOrderDetail", () => {
   });
 
   it("labels: tracking url for USPS, none without a label", () => {
-    expect(vm.labels).toEqual({ carrier: undefined, trackingNumber: undefined, trackingUrl: null, labelUrl: undefined, manualOverride: false, manualAllowed: true });
+    expect(vm.labels).toEqual({ carrier: undefined, trackingNumber: undefined, trackingUrl: null, labelUrl: undefined, manualOverride: false, manualAllowed: true, handoffEditable: false });
     const shipped = toOrderDetail({ ...order, fulfillmentStatus: "in_transit", carrier: "USPS", trackingNumber: "9400111", shippingLabelUrl: "https://l/1.pdf", manualStatusOverride: true }, products, "en", NOW).labels;
     expect(shipped).toMatchObject({ carrier: "USPS", trackingNumber: "9400111", labelUrl: "https://l/1.pdf", manualOverride: true });
     expect(shipped.trackingUrl).toContain("usps.com");
+  });
+
+  it("labels: the Handoff is shown, and editable only while Ready to Ship (ADR 0030)", () => {
+    const label = { carrier: "USPS", trackingNumber: "9400111", labelUrl: "u", purchasedAt: NOW, reship: false };
+    const handoff = { method: "dropped_off" as const, at: NOW, note: "5th Ave", recordedAt: NOW, actor: "a" };
+    const ready = toOrderDetail({ ...order, fulfillmentStatus: "label_purchased", labels: [{ ...label, handoff }] }, products, "en", NOW).labels;
+    expect(ready.handoff).toEqual({ method: "dropped_off", at: NOW, note: "5th Ave" });
+    expect(ready.handoffEditable).toBe(true);
+    const scanned = toOrderDetail({ ...order, fulfillmentStatus: "in_transit", labels: [{ ...label, handoff }] }, products, "en", NOW).labels;
+    expect(scanned.handoffEditable).toBe(false);
   });
 
   it("manual tracking is offered only for a paid order with no carrier label, never once cancelled", () => {

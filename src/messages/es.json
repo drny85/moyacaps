@@ -230,7 +230,7 @@
     "statusCancelled": "Cancelada y Reembolsada",
     "statusRefunded": "Reembolsada",
     "statusPartiallyRefunded": "Reembolso Parcial",
-    "statusLabelPurchased": "Etiqueta de Envío Creada",
+    "statusLabelPurchased": "Listo para Enviar",
     "statusDeliveryException": "Problema de Entrega",
     "statusReturned": "Devuelta al Remitente",
     "statusPlaced": "Pago Pendiente",
@@ -288,7 +288,8 @@
         "shipped": "Enviadas",
         "problems": "Problemas",
         "done": "Listas",
-        "all": "Todas"
+        "all": "Todas",
+        "ready_to_ship": "Listo para enviar"
       },
       "range": {
         "label": "Rango",
@@ -316,7 +317,34 @@
         "simulated": "Simulada",
         "uspsSiteWaiting": "{count, plural, one {# paquete Ground Advantage no se puede} other {# paquetes Ground Advantage no se pueden}} programar aquí (la API de USPS solo acepta Priority e internacional).",
         "rideAlong": "Déjalos afuera con los paquetes programados: el cartero los recoge en la misma parada.",
-        "uspsSiteLink": "Programar en usps.com"
+        "uspsSiteLink": "Programar en usps.com",
+        "markPickedUp": "{count, plural, one {Marcar # recogido} other {Marcar # recogidos}}"
+      },
+      "handoff": {
+        "handedOff": "Entregado al transportista",
+        "flag": {
+          "not_handed_off": "Sin entregar · 24h+",
+          "no_scan": "Sin escaneo · 3d+"
+        },
+        "markAll": "{count, plural, one {Marcar # entregado} other {Marcar # entregados}}",
+        "title": "{count, plural, one {Entregar al transportista} other {Entregar # paquetes}}",
+        "help": "Registra cuándo salió el paquete. Se le avisa al cliente que fue enviado; los escaneos del transportista siguen actualizando el pedido.",
+        "method": "Cómo",
+        "methods": {
+          "dropped_off": "Dejado en oficina",
+          "picked_up": "Recogido"
+        },
+        "when": "Cuándo",
+        "note": "Nota (opcional)",
+        "notePlaceholder": "p. ej. Oficina de correos de la 5ta Av",
+        "save": "{count, plural, one {Guardar entrega} other {Guardar # entregas}}",
+        "cancel": "Cancelar",
+        "badTime": "Ingresa una fecha y hora válidas.",
+        "noneSelected": "Elige al menos un pedido.",
+        "marked": "{count, plural, one {# paquete marcado como entregado.} other {# paquetes marcados como entregados.}}",
+        "failed": "No se pudo guardar la entrega. Inténtalo de nuevo.",
+        "edit": "Editar entrega",
+        "remove": "Quitar entrega"
       }
     },
     "settings": {
@@ -911,7 +939,10 @@
         "scansMoveIt": "Los escaneos de la paquetería lo avanzan. Márcalo entregado solo si faltó un escaneo.",
         "markDelivered": "Marcar entregado",
         "awaitingPayment": "Esperando el pago.",
-        "holdExpires": "Esperando el pago · la reserva vence {when}"
+        "holdExpires": "Esperando el pago · la reserva vence {when}",
+        "readyToShip": "Listo para enviar",
+        "handOffHint": "Registra cuándo sale la caja: dejada en oficina o recogida.",
+        "handOff": "Marcar entregado"
       },
       "items": {
         "title": "Artículos por empacar",
@@ -976,7 +1007,10 @@
         "deliverTitle": "¿Marcar esta orden como entregada?",
         "deliverBody": "Solo si faltó un escaneo o el paquete se entregó en persona. Se avisa al cliente por correo.",
         "revertTitle": "¿Volver a en tránsito?",
-        "revertBody": "Úsalo si la orden se marcó entregada por error. El inventario no cambia."
+        "revertBody": "Úsalo si la orden se marcó entregada por error. El inventario no cambia.",
+        "removeHandoffTitle": "¿Quitar esta entrega?",
+        "removeHandoffBody": "Úsalo si se registró por error. Al cliente ya se le avisó del envío y no recibe otro correo.",
+        "removeHandoff": "Quitar entrega"
       },
       "notes": {
         "title": "Notas",
@@ -1002,7 +1036,8 @@
         "delivered": "Marcada como entregada.",
         "reverted": "De vuelta a en tránsito.",
         "cancelled": "Orden cancelada.",
-        "dispatched": "Marcada en tránsito; se avisó al cliente."
+        "dispatched": "Marcada en tránsito; se avisó al cliente.",
+        "handoffRemoved": "Entrega quitada."
       }
     },
     "homeTiles": {
@@ -1076,7 +1111,7 @@
     "statusCancelled": "Cancelada",
     "statusRefunded": "Reembolsada",
     "statusPartiallyRefunded": "Reembolso Parcial",
-    "statusLabelPurchased": "Etiqueta de Envío Creada",
+    "statusLabelPurchased": "Listo para Enviar",
     "statusDeliveryException": "Problema de Entrega",
     "statusReturned": "Devuelta al Remitente",
     "carrier": "Paquetería",

@@ -41,6 +41,7 @@ export function useOrderDetail(orderNumber: string) {
   const updateOrderFulfillment = useMutation(api.orders.desk.updateOrderFulfillmentAdmin);
   const updateShippingAddress = useMutation(api.orders.desk.updateShippingAddressAdmin);
   const cancelAndRefund = useAction(api.payments.refunds.cancelAndRefundOrderAdmin);
+  const clearHandoff = useMutation(api.orders.handoffs.clearHandoff);
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -124,6 +125,12 @@ export function useOrderDetail(orderNumber: string) {
           await updateFulfillmentStatus({ orderId: order._id, fulfillmentStatus: "in_transit" });
           return t("reverted");
         }),
+      removeHandoff: () =>
+        run(async () => {
+          if (!order) throw new Error();
+          await clearHandoff({ orderId: order._id });
+          return t("handoffRemoved");
+        }),
       cancel: (input: { refundStripe: boolean; reason: string }) =>
         run(async () => {
           if (!order) throw new Error();
@@ -138,7 +145,7 @@ export function useOrderDetail(orderNumber: string) {
           return t("cancelled");
         }),
     }),
-    [order, run, t, updateShippingAddress, updateOrderFulfillment, updateFulfillmentStatus, cancelAndRefund]
+    [order, run, t, updateShippingAddress, updateOrderFulfillment, updateFulfillmentStatus, cancelAndRefund, clearHandoff]
   );
 
   return {

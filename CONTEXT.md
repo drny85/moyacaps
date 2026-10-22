@@ -161,8 +161,20 @@ Where an Order's money stands: awaiting payment, paid, partially refunded, refun
 _Avoid_: Order status (when meaning money only), paid flag
 
 **Fulfillment Status**:
-Where an Order's package stands: unfulfilled, label purchased, in transit, delivered, delivery exception or returned. Only changes once the Order is paid. Independent of Payment Status.
+Where an Order's package stands: unfulfilled, ready to ship, in transit, delivered, delivery exception or returned. Only changes once the Order is paid. Independent of Payment Status. Moves past ready to ship only on a carrier scan (or an Administrator's correction), never on a Handoff.
 _Avoid_: Shipping status, order status (when meaning the package only)
+
+**Ready to Ship**:
+The Fulfillment Status of an Order whose label is bought but which the carrier has not scanned yet. The box may still be on the Administrator's shelf or already handed over.
+_Avoid_: Label purchased, shipped, on its way
+
+**Handoff**:
+The moment the Administrator gives a Ready to Ship package to the carrier: picked up (a scheduled pickup or the mail carrier at the door) or dropped off (post office, drop box, carrier store). Optional; the carrier's first scan makes it unnecessary. Each label has at most one, which can be corrected until the carrier's first scan. The Customer is told the package has shipped at the Handoff or the first scan, whichever comes first.
+_Avoid_: Shipped, dispatched, pickup (when meaning the act, not the scheduled visit)
+
+**Order Timeline**:
+The dated history of an Order: payment, refunds, labels, Handoff and every carrier scan. The Customer sees only the package milestones.
+_Avoid_: Activity log, audit trail, tracking history (when meaning the whole Order)
 
 **Needs Packing**:
 A paid Order with no shipping label yet. The Administrator's queue.

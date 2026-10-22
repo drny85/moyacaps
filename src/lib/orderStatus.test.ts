@@ -27,6 +27,11 @@ describe("customerBadges", () => {
     expect(customerBadges(o("paid", "delivered"))).toEqual(["delivered"]);
   });
 
+  it("a Ready to Ship package shows as on its way once handed off", () => {
+    expect(customerBadges(o("paid", "label_purchased"))).toEqual(["label_purchased"]);
+    expect(customerBadges({ ...o("paid", "label_purchased"), handoff: { at: 1 } })).toEqual(["in_transit"]);
+  });
+
   it("a refund shows next to the package, not instead of it", () => {
     expect(customerBadges(o("partially_refunded", "delivered"))).toEqual(["partially_refunded", "delivered"]);
     expect(customerBadges(o("refunded", "unfulfilled"))).toEqual(["refunded"]);
@@ -50,9 +55,16 @@ describe("trackingStep", () => {
   it("walks placed, paid, shipped, delivered", () => {
     expect(trackingStep(o("awaiting_payment", "unfulfilled"))).toBe(1);
     expect(trackingStep(o("paid", "unfulfilled"))).toBe(2);
-    expect(trackingStep(o("paid", "label_purchased"))).toBe(3);
+    expect(trackingStep(o("paid", "in_transit"))).toBe(3);
     expect(trackingStep(o("paid", "delivery_exception"))).toBe(3);
     expect(trackingStep(o("partially_refunded", "delivered"))).toBe(4);
+  });
+
+  it("a bought label is not shipped until a Handoff or a scan (ADR 0030)", () => {
+    expect(trackingStep(o("paid", "label_purchased"))).toBe(2);
+    expect(trackingStep({ ...o("paid", "label_purchased"), handoff: { at: 1 } })).toBe(3);
+    expect(trackingStep({ ...o("paid", "label_purchased"), labels: [{}, { handoff: { at: 1 } }] })).toBe(3);
+    expect(trackingStep({ ...o("paid", "label_purchased"), labels: [{ handoff: { at: 1 } }, {}] })).toBe(2);
   });
 
   it("a refunded order that shipped keeps its timeline; one that never shipped has none", () => {

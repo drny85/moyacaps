@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useTranslations } from "next-intl";
-import { Check, Copy, ExternalLink, PackageCheck, Printer, Truck, Undo2 } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
+import { Check, Copy, ExternalLink, PackageCheck, Pencil, Printer, Trash2, Truck, Undo2 } from "lucide-react";
 import type { ManualMove } from "@/lib/admin/orderActions";
 import type { OrderDetailVM } from "@/lib/admin/orderDetail";
 import { Section, secondaryBtn } from "./Section";
 
-export function LabelsSection({ labels, manualMoves, showDeliverHere, onPrintLabel, onManualTracking, onMarkDelivered, onRevert }: {
+export function LabelsSection({ labels, manualMoves, showDeliverHere, busy, onPrintLabel, onManualTracking, onMarkDelivered, onRevert, onEditHandoff, onRemoveHandoff }: {
   labels: OrderDetailVM["labels"];
   manualMoves: ManualMove[];
   /** Mark delivered lives in the Next card when it is the next action; here only as a fallback. */
@@ -16,8 +16,13 @@ export function LabelsSection({ labels, manualMoves, showDeliverHere, onPrintLab
   onManualTracking: () => void;
   onMarkDelivered: () => void;
   onRevert: () => void;
+  busy: boolean;
+  onEditHandoff: () => void;
+  onRemoveHandoff: () => void;
 }) {
   const t = useTranslations("admin.orderDetail.labels");
+  const tHandoff = useTranslations("admin.orders.handoff");
+  const locale = useLocale();
   const [copied, setCopied] = useState(false);
   const copy = () => {
     if (!labels.trackingNumber) return;
@@ -40,6 +45,22 @@ export function LabelsSection({ labels, manualMoves, showDeliverHere, onPrintLab
           </>
         ) : (
           <p className="text-zinc-500">{t("none")}</p>
+        )}
+        {labels.handoff && (
+          <div className="flex items-start justify-between gap-2 p-2.5 rounded-xl bg-blue-500/5 border border-blue-500/20">
+            <p>
+              <span className="font-semibold text-zinc-900 dark:text-white">{tHandoff(`methods.${labels.handoff.method}`)}</span>
+              {" · "}
+              {new Date(labels.handoff.at).toLocaleString(locale, { dateStyle: "medium", timeStyle: "short" })}
+              {labels.handoff.note && <span className="block text-zinc-500">{labels.handoff.note}</span>}
+            </p>
+            {labels.handoffEditable && (
+              <span className="flex items-center gap-1 shrink-0">
+                <button type="button" onClick={onEditHandoff} disabled={busy} aria-label={tHandoff("edit")} className="p-1 rounded text-zinc-500 hover:text-zinc-900 dark:hover:text-white"><Pencil className="w-3.5 h-3.5" /></button>
+                <button type="button" onClick={onRemoveHandoff} disabled={busy} aria-label={tHandoff("remove")} className="p-1 rounded text-zinc-500 hover:text-rose-600"><Trash2 className="w-3.5 h-3.5" /></button>
+              </span>
+            )}
+          </div>
         )}
         {labels.manualOverride && <p className="text-[11px] text-purple-600 dark:text-purple-400">{t("override")}</p>}
       </div>

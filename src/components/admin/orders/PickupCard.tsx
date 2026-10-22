@@ -9,10 +9,11 @@ import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useAction, useQuery } from "convex/react";
 import { ConvexError } from "convex/values";
-import { CalendarClock, ExternalLink, Loader2, Truck } from "lucide-react";
+import { CalendarClock, ExternalLink, Loader2, PackageCheck, Truck } from "lucide-react";
 import { api } from "@convex/_generated/api";
 import { PICKUP_LOCATIONS, USPS_PICKUP_SITE_URL, nextPickupDate, type PickupLocation } from "@convex/shipping/pickupPlan";
 import { USPS_PHONE, localDay, localTimeMs, pickupCardView } from "@/lib/admin/pickupCard";
+import { HandoffDialog, type HandoffTarget } from "./HandoffDialog";
 
 const inputClass =
   "w-full py-2 px-2.5 text-xs rounded-lg bg-white dark:bg-[#0c0c14] border border-zinc-200 dark:border-white/10 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-moya-red";
@@ -22,7 +23,7 @@ function errorText(err: unknown, fallback: string): string {
   return fallback;
 }
 
-export function PickupCard() {
+export function PickupCard({ onSuccess }: { onSuccess: (message: string) => void }) {
   const t = useTranslations("admin.orders.pickup");
   const today = useMemo(() => localDay(new Date()), []);
   const desk = useQuery(api.shipping.pickupQueries.pickupDesk, { today });
@@ -36,6 +37,7 @@ export function PickupCard() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
+  const [pickedUp, setPickedUp] = useState<HandoffTarget[] | null>(null);
 
   if (!desk) return null;
   const view = pickupCardView(desk, pickupDate);
@@ -86,6 +88,15 @@ export function PickupCard() {
               <p className="mt-1">
                 {t("upcomingDetail", { count: p.packages, location: p.location })} {t("changeHint", { phone: USPS_PHONE })}
               </p>
+              {p.awaitingHandoff.length > 0 && Date.now() >= p.requestedStartTime && (
+                <button
+                  type="button"
+                  onClick={() => setPickedUp(p.awaitingHandoff.map((o) => ({ id: o.orderId, orderNumber: o.orderNumber })))}
+                  className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-semibold"
+                >
+                  <PackageCheck className="w-3.5 h-3.5" /> {t("markPickedUp", { count: p.awaitingHandoff.length })}
+                </button>
+              )}
             </li>
           ))}
         </ul>
@@ -160,6 +171,13 @@ export function PickupCard() {
 
       {error && <p role="alert" className="text-xs text-red-600 dark:text-red-400">{error}</p>}
       {done && <p role="status" className="text-xs text-emerald-700 dark:text-emerald-300">{done}</p>}
+      <HandoffDialog
+        open={pickedUp !== null}
+        orders={pickedUp ?? []}
+        initial={{ method: "picked_up" }}
+        onClose={() => setPickedUp(null)}
+        onDone={onSuccess}
+      />
     </section>
   );
 }

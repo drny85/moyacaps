@@ -1,12 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { allowedManualMoves, manualTrackingMove, nextOrderAction } from "./orderActions";
 import type { FulfillmentStatus, PaymentStatus } from "../../../convex/orders/status";
+import type { ShippingLabel } from "../../../convex/orders/labels";
 
 const NOW = Date.UTC(2026, 9, 17, 12);
 const order = (
   paymentStatus: PaymentStatus,
   fulfillmentStatus: FulfillmentStatus,
-  extra: { cancelledAt?: number; shippingAddress?: { line1: string }; checkoutHoldExpiresAt?: number } = {}
+  extra: { cancelledAt?: number; shippingAddress?: { line1: string }; checkoutHoldExpiresAt?: number; labels?: ShippingLabel[] } = {}
 ) => ({ paymentStatus, fulfillmentStatus, shippingAddress: { line1: "1 Main St" }, ...extra });
 
 describe("nextOrderAction", () => {
@@ -29,8 +30,11 @@ describe("nextOrderAction", () => {
     expect(next.kind === "none" && next.reason).toMatch(/disputed/);
   });
 
-  it("label purchased or in transit → mark_delivered", () => {
-    expect(nextOrderAction(order("paid", "label_purchased"))).toEqual({ kind: "mark_delivered" });
+  it("Ready to Ship with no Handoff → hand_off; handed off or in transit → mark_delivered", () => {
+    const label: ShippingLabel = { carrier: "USPS", trackingNumber: "9400", labelUrl: "u", purchasedAt: NOW, reship: false };
+    const handedOff = { ...label, handoff: { method: "picked_up" as const, at: NOW, recordedAt: NOW, actor: "a" } };
+    expect(nextOrderAction(order("paid", "label_purchased", { labels: [label] }))).toEqual({ kind: "hand_off" });
+    expect(nextOrderAction(order("paid", "label_purchased", { labels: [handedOff] }))).toEqual({ kind: "mark_delivered" });
     expect(nextOrderAction(order("paid", "in_transit"))).toEqual({ kind: "mark_delivered" });
   });
 

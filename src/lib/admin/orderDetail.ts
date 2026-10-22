@@ -5,6 +5,8 @@
 import { canEditShippingAddress, isCancelled } from "../../../convex/orders/status";
 import type { FulfillmentStatus, PaymentStatus } from "../../../convex/orders/status";
 import { carrierTrackingNumber } from "../../../convex/orders/trackingNumber";
+import { currentHandoff, currentLabel, isReadyToShip } from "../../../convex/orders/handoff";
+import type { HandoffMethod, ShippingLabel } from "../../../convex/orders/labels";
 import { getCarrierTrackingUrl } from "../tracking";
 import { orderAge } from "./orderRow";
 import type { OrderAge } from "./orderRow";
@@ -35,6 +37,7 @@ export type DetailOrderInput = {
   trackingNumber?: string;
   shippingLabelUrl?: string;
   adminNotes?: string;
+  labels?: ShippingLabel[];
   manualStatusOverride?: boolean;
 };
 
@@ -89,6 +92,10 @@ export type OrderDetailVM = {
     manualOverride: boolean;
     /** Typing a Tracking Number by hand is for a paid Order with no carrier label; a Shippo number must not be overwritten (scans match on it). */
     manualAllowed: boolean;
+    /** The current label's Handoff (ADR 0030). */
+    handoff?: { method: HandoffMethod; at: number; note?: string };
+    /** Ready to Ship with a label: the Handoff can be recorded, corrected or removed. */
+    handoffEditable: boolean;
   };
   notes: string;
   danger: { canCancel: boolean; refundable: boolean };
@@ -136,6 +143,7 @@ export function toOrderDetail(order: DetailOrderInput, products: PackingProductI
   const rows = new Map((products ?? []).map((p) => [p.variantId, p]));
   const paid = order.paymentStatus !== "awaiting_payment";
   const trackingNumber = carrierTrackingNumber(order);
+  const handoff = currentHandoff(order);
   return {
     header: {
       orderNumber: order.orderNumber,
@@ -171,6 +179,8 @@ export function toOrderDetail(order: DetailOrderInput, products: PackingProductI
       labelUrl: order.shippingLabelUrl,
       manualOverride: order.manualStatusOverride === true,
       manualAllowed: paid && !isCancelled(order) && trackingNumber === undefined,
+      ...(handoff && { handoff: { method: handoff.method, at: handoff.at, ...(handoff.note && { note: handoff.note }) } }),
+      handoffEditable: isReadyToShip(order) && currentLabel(order) !== undefined,
     },
     notes: order.adminNotes ?? "",
     danger: {

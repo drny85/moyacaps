@@ -1,6 +1,7 @@
 /** Argument and return validators shared by the order modules. */
 import { v } from "convex/values";
 import schema from "../schema";
+import { handoffMethodValidator } from "./labels";
 
 export const shippingAddressValidator = v.object({
   line1: v.string(),
@@ -61,7 +62,10 @@ const viewFields = orderDoc.pick(
   "paymentMethod",
   "invoicePdfUrl",
   "hostedInvoiceUrl"
-);
+).extend({
+  // The current label's Handoff as the Customer sees it: no note, no actor (ADR 0030).
+  handoff: v.optional(v.object({ method: handoffMethodValidator, at: v.number() })),
+});
 
 /** orderModel.confirmationView */
 export const confirmationViewValidator = viewFields.extend({

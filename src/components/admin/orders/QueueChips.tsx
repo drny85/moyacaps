@@ -6,15 +6,20 @@ import type { Queue } from "@/lib/admin/orderFilters";
 
 export type QueueCounts = Partial<Record<Queue, number>>;
 
-/** The seven queues (D11). Counts are shown for the two the sidebar badge knows. */
-export function QueueChips({ value, counts, onChange }: { value: Queue; counts: QueueCounts; onChange: (q: Queue) => void }) {
+/** The desk queues (D11). `hot` queues hold work that is late: a forgotten or stuck package. */
+export function QueueChips({ value, counts, hot: hotQueues = [], onChange }: {
+  value: Queue;
+  counts: QueueCounts;
+  hot?: Queue[];
+  onChange: (q: Queue) => void;
+}) {
   const t = useTranslations("admin.orders.queue");
   return (
     <div role="tablist" aria-label={t("label")} className="flex gap-1.5 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 pb-1 text-xs font-medium">
       {QUEUES.map((queue) => {
         const selected = queue === value;
         const count = counts[queue] ?? 0;
-        const hot = queue === "overdue" && count > 0;
+        const hot = (queue === "overdue" || hotQueues.includes(queue)) && count > 0;
         return (
           <button
             key={queue}

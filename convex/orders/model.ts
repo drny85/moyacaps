@@ -15,6 +15,7 @@ import {
   type StatusSource,
 } from "./status";
 import { carrierTrackingNumber } from "./trackingNumber";
+import { currentHandoff } from "./handoff";
 
 type Order = Doc<"orders">;
 
@@ -297,7 +298,14 @@ function lifecycleView(order: Order) {
     paymentStatus: axes.paymentStatus,
     fulfillmentStatus: axes.fulfillmentStatus,
     cancelledAt: axes.cancelledAt,
+    handoff: customerHandoff(order),
   };
+}
+
+/** The current label's Handoff without the Administrator's note or identity. */
+function customerHandoff(order: Order) {
+  const handoff = currentHandoff(order);
+  return handoff ? { method: handoff.method, at: handoff.at } : undefined;
 }
 
 /** Shared core projection: never exposes payment links, session ids, or admin notes. */
