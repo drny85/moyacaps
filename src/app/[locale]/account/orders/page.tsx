@@ -1,58 +1,29 @@
 "use client";
 
-import { Suspense, useState } from "react";
-import Image from "next/image";
+import { useState } from "react";
 import { Link } from "@/i18n/routing";
 import { useTranslations, useLocale } from "next-intl";
 import { useSafeUser, SafeSignInButton } from "@/lib/useSafeUser";
 import { useIsAdmin } from "@/lib/useIsAdmin";
-import { useQuery, useMutation, useAction } from "convex/react";
-import { api } from "../../../../../convex/_generated/api";
-import { getCarrierTrackingUrl } from "@/lib/tracking";
+import { useQuery } from "convex/react";
+import { api } from "@convex/_generated/api";
 import { getWhatsAppConciergeUrl } from "@/lib/whatsapp";
-import { isAddressEditable, isShippedOrder } from "@/lib/orderStatus";
-import { customerCancellationAllowed } from "@convex/orders/status";
-import { OrderReviewActions } from "@/components/reviews/OrderReviewActions";
-import { OrderStatusBadges } from "@/components/orders/OrderStatusBadges";
-import {
-  Package,
-  Truck,
-  ArrowRight,
-  Shield,
-  Edit3,
-  XCircle,
-  MessageCircle,
-  Check,
-  X,
-  AlertTriangle,
-  Loader2,
-  ExternalLink,
-} from "lucide-react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  shippingAddressSchema,
-  type ShippingAddressValues,
-} from "@/lib/validations/address";
-import {
-  Form,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormControl,
-  FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
+import { conciergeMessage } from "@/lib/accountOrders";
+import { OrderCard } from "@/components/account/orders/OrderCard";
+import { EditAddressDialog } from "@/components/account/orders/EditAddressDialog";
+import { CancelOrderDialog } from "@/components/account/orders/CancelOrderDialog";
+import type { CustomerOrder } from "@/components/account/orders/types";
+import { Package, ArrowRight, Shield, Check } from "lucide-react";
 
+/**
+ * Stays a client page: the Orders are a live, per-user Convex subscription behind Clerk.
+ * Each card and dialog lives in src/components/account/orders.
+ */
 export default function AccountOrdersPage() {
   const t = useTranslations("account");
   const locale = useLocale();
-  const { user, isLoaded, isSignedIn } = useSafeUser();
+  const { user, isSignedIn } = useSafeUser();
   const { isAdmin } = useIsAdmin();
-
-  // Convex mutations & actions
-  const updateAddressMutation = useMutation(api.orders.functions.updateShippingAddress);
-  const cancelAndRefund = useAction(api.payments.refunds.cancelAndRefundOrder);
 
   // Orders for authenticated Clerk user
   const userOrders = useQuery(
@@ -62,28 +33,9 @@ export default function AccountOrdersPage() {
 
   const ordersToDisplay = isSignedIn && userOrders ? userOrders : [];
 
-  // ── Address Editing State ──
-  const [editingOrder, setEditingOrder] = useState<any | null>(null);
-  const [isSavingAddress, setIsSavingAddress] = useState(false);
-
-  const addressForm = useForm<ShippingAddressValues>({
-    resolver: zodResolver(shippingAddressSchema),
-    defaultValues: {
-      line1: "",
-      line2: "",
-      city: "",
-      state: "",
-      postalCode: "",
-      customerPhone: "",
-      country: "US",
-    },
-    mode: "onSubmit",
-  });
-
-  // ── Cancellation State ──
-  const [cancellingOrder, setCancellingOrder] = useState<any | null>(null);
-  const [cancelReason, setCancelReason] = useState("Ordered wrong colorway");
-  const [isProcessingCancel, setIsProcessingCancel] = useState(false);
+  // ── Open dialogs ──
+  const [editingOrder, setEditingOrder] = useState<CustomerOrder | null>(null);
+  const [cancellingOrder, setCancellingOrder] = useState<CustomerOrder | null>(null);
 
   // ── Feedback Toast ──
   const [feedbackToast, setFeedbackToast] = useState<string | null>(null);
@@ -93,72 +45,8 @@ export default function AccountOrdersPage() {
     setTimeout(() => setFeedbackToast(null), 4000);
   };
 
-  const handleOpenEditAddress = (ord: any) => {
-    setEditingOrder(ord);
-    addressForm.reset({
-      line1: ord.shippingAddress?.line1 || "",
-      line2: ord.shippingAddress?.line2 || "",
-      city: ord.shippingAddress?.city || "",
-      state: ord.shippingAddress?.state || "",
-      postalCode: ord.shippingAddress?.postalCode || "",
-      customerPhone: ord.customerPhone || "",
-      country: ord.shippingAddress?.country || "US",
-    });
-  };
-
-  const handleSaveAddress = async (data: ShippingAddressValues) => {
-    if (!editingOrder || !user?.id) return;
-
-    try {
-      setIsSavingAddress(true);
-      await updateAddressMutation({
-        orderId: editingOrder._id,
-        clerkUserId: user.id,
-        shippingAddress: {
-          line1: data.line1,
-          line2: data.line2 || undefined,
-          city: data.city,
-          state: data.state,
-          postalCode: data.postalCode,
-          country: editingOrder.shippingAddress?.country || data.country || "US",
-        },
-        customerPhone: data.customerPhone || undefined,
-      });
-
-      triggerToast(t("addressUpdated"));
-      setEditingOrder(null);
-    } catch (err: any) {
-      alert(err.message || "Failed to update address");
-    } finally {
-      setIsSavingAddress(false);
-    }
-  };
-
-  const handleCancelOrder = async () => {
-    if (!cancellingOrder || !user?.id) return;
-
-    try {
-      setIsProcessingCancel(true);
-      const data = await cancelAndRefund({
-        orderId: cancellingOrder._id,
-        reason: cancelReason,
-      });
-
-      triggerToast(data.message || "Order cancelled and refund initiated.");
-      setCancellingOrder(null);
-    } catch (err: any) {
-      alert(err.message || "Failed to cancel order");
-    } finally {
-      setIsProcessingCancel(false);
-    }
-  };
-
-  const handleWhatsAppConcierge = (orderNumber: string, actionType: "return" | "tracking" | "support") => {
-    const text =
-      locale === "es"
-        ? `¡Hola Good Luck Concierge! Necesito asistencia con mi orden #${orderNumber} (${actionType === "return" ? "Cambio/Devolución" : "Rastreo/Envío"}).`
-        : `Hi Good Luck Concierge! I need assistance with my Order #${orderNumber} (${actionType === "return" ? "Exchange/Return" : "Tracking/Delivery"}).`;
-    window.open(getWhatsAppConciergeUrl(locale, text), "_blank");
+  const handleWhatsAppConcierge = (orderNumber: string, actionType: "return" | "support") => {
+    window.open(getWhatsAppConciergeUrl(locale, conciergeMessage(locale, orderNumber, actionType)), "_blank");
   };
 
   return (
@@ -283,169 +171,15 @@ export default function AccountOrdersPage() {
       {/* ── Orders Listing ── */}
       <div className="space-y-6">
         {ordersToDisplay.length > 0 ? (
-          ordersToDisplay.map((ord: any) => {
-            const isCancellable = customerCancellationAllowed(ord);
-            const canEditAddress = isAddressEditable(ord);
-            const isShipped = isShippedOrder(ord);
-
-            return (
-              <div
-                key={ord._id}
-                className="p-5 sm:p-6 rounded-3xl glass-card border border-black/[0.06] dark:border-white/[0.06] flex flex-col gap-4 shadow-lg hover:shadow-xl transition-shadow"
-              >
-                {/* Order Meta Header */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-black/[0.06] dark:border-white/[0.06]">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-display font-bold text-sm sm:text-base text-zinc-900 dark:text-white">
-                      Order #{ord.orderNumber}
-                    </span>
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-black/5 dark:bg-white/10 text-zinc-500">
-                      {new Date(ord.createdAt).toLocaleDateString(locale === "es" ? "es-MX" : "en-US", {
-                        year: "numeric",
-                        month: "short",
-                        day: "numeric",
-                      })}
-                    </span>
-                    {ord.trackingNumber && (
-                      <a
-                        href={getCarrierTrackingUrl(ord.carrier, ord.trackingNumber) || "#"}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded-md bg-blue-500/10 border border-blue-500/30 text-blue-600 dark:text-blue-400 font-bold hover:underline"
-                        title="Track shipment on courier portal"
-                      >
-                        <Truck className="w-2.5 h-2.5" />
-                        <span>{ord.carrier ? ord.carrier.split(" ")[0] : "Track"}: {ord.trackingNumber}</span>
-                        <ExternalLink className="w-2.5 h-2.5" />
-                      </a>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    {/* Status Pills: money first, then the package (ADR 0024) */}
-                    <OrderStatusBadges
-                      order={ord}
-                      className="px-3 py-1 text-xs font-display font-semibold"
-                      labels={{
-                        cancelled: t("statusCancelledOnly"),
-                        refunded: t("statusRefunded"),
-                        partially_refunded: t("statusPartiallyRefunded"),
-                        placed: t("statusPlaced"),
-                        paid: t("statusPaid"),
-                        label_purchased: t("statusLabelPurchased"),
-                        in_transit: t("statusDispatched"),
-                        delivered: t("statusDelivered"),
-                        delivery_exception: t("statusDeliveryException"),
-                        returned: t("statusReturned"),
-                      }}
-                    />
-
-                    <div className="text-right">
-                      <span className="font-mono font-bold text-base text-zinc-900 dark:text-white block">
-                        ${Number(ord.total).toFixed(2)} {ord.currency}
-                      </span>
-                      {typeof ord.tax === "number" && ord.tax > 0 && (
-                        <span className="text-[10px] font-mono text-zinc-500 block">
-                          (incl. ${ord.tax.toFixed(2)} tax)
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Items List */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {ord.items.map((item: any, idx: number) => (
-                    <div
-                      key={idx}
-                      className="p-3 rounded-2xl glass-dark border border-black/[0.04] dark:border-white/[0.04] flex items-center gap-3"
-                    >
-                      <div className="relative w-12 h-12 rounded-xl bg-black/5 dark:bg-white/5 p-1 shrink-0">
-                        <Image src={item.image} alt={item.name} fill className="object-contain" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="font-display font-bold text-xs text-zinc-900 dark:text-white truncate">
-                          {item.name}
-                        </p>
-                        <p className="text-[11px] font-mono text-zinc-500">
-                          Qty: {item.quantity} • ${item.price}.00
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Reviews: only delivered Orders have reviewable items */}
-                {ord.fulfillmentStatus === "delivered" && (
-                  <Suspense fallback={null}>
-                    <OrderReviewActions orderId={ord._id} orderNumber={ord.orderNumber} items={ord.items} />
-                  </Suspense>
-                )}
-
-                {/* Shipping Destination Summary */}
-                {ord.shippingAddress && (
-                  <div className="p-3 rounded-2xl bg-black/[0.03] dark:bg-white/[0.03] border border-black/[0.04] dark:border-white/[0.04] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-zinc-600 dark:text-zinc-400">
-                    <div className="flex items-center gap-2 truncate">
-                      <Truck className="w-4 h-4 text-moya-green shrink-0" />
-                      <span className="truncate">
-                        <strong className="text-zinc-900 dark:text-white">{ord.customerName}</strong> —{" "}
-                        {ord.shippingAddress.line1}
-                        {ord.shippingAddress.line2 ? `, ${ord.shippingAddress.line2}` : ""},{" "}
-                        {ord.shippingAddress.city}, {ord.shippingAddress.state} {ord.shippingAddress.postalCode} (
-                        {ord.shippingAddress.country})
-                        {ord.customerPhone ? ` • ${ord.customerPhone}` : ""}
-                      </span>
-                    </div>
-
-                    {/* Pre-Dispatch: Edit Address Button */}
-                    {canEditAddress && (
-                      <button
-                        onClick={() => handleOpenEditAddress(ord)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl glass-dark hover:bg-black/5 dark:hover:bg-white/10 text-xs font-display font-bold text-zinc-700 dark:text-zinc-300 border border-black/[0.06] dark:border-white/[0.06] transition-colors shrink-0 self-start sm:self-auto"
-                      >
-                        <Edit3 className="w-3.5 h-3.5 text-moya-red" />
-                        <span>{t("editAddress")}</span>
-                      </button>
-                    )}
-                  </div>
-                )}
-
-                {/* Customer Management Actions Bar */}
-                <div className="pt-2 border-t border-black/[0.06] dark:border-white/[0.06] flex flex-wrap items-center justify-between gap-3">
-                  <div className="text-[11px] font-mono text-zinc-500">
-                    {isCancellable
-                      ? "Eligible for address modification & instant refund prior to courier handover."
-                      : isShipped
-                      ? "In transit with courier. For delivery inquiries or returns, reach Concierge."
-                      : canEditAddress
-                      ? "Not shipped yet. To cancel this order, reach Concierge."
-                      : "Order finalized."}
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    {/* Pre-Dispatch: Cancel Order Button */}
-                    {isCancellable && (
-                      <button
-                        onClick={() => setCancellingOrder(ord)}
-                        className="px-3.5 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-display font-bold transition-colors border border-rose-500/20"
-                      >
-                        {t("cancelOrder")}
-                      </button>
-                    )}
-
-                    {/* Concierge Support WhatsApp */}
-                    <button
-                      onClick={() => handleWhatsAppConcierge(ord.orderNumber, isShipped ? "return" : "support")}
-                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-moya-green-deep/10 hover:bg-moya-green-deep/20 text-emerald-600 dark:text-emerald-400 text-xs font-display font-bold transition-colors border border-emerald-500/20"
-                    >
-                      <MessageCircle className="w-3.5 h-3.5" />
-                      <span>{t("conciergeHelp")}</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            );
-          })
+          ordersToDisplay.map((ord) => (
+            <OrderCard
+              key={ord._id}
+              order={ord}
+              onEditAddress={setEditingOrder}
+              onCancel={setCancellingOrder}
+              onConcierge={handleWhatsAppConcierge}
+            />
+          ))
         ) : (
           <div className="p-12 rounded-3xl glass-card border border-black/[0.06] dark:border-white/[0.06] text-center flex flex-col items-center justify-center">
             <div className="w-14 h-14 rounded-2xl bg-black/5 dark:bg-white/5 flex items-center justify-center text-zinc-400 mb-3">
@@ -468,237 +202,22 @@ export default function AccountOrdersPage() {
       </div>
 
       {/* ── Modal: Edit Shipping Address ── */}
-      {editingOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in">
-          <div className="w-full max-w-lg p-6 rounded-3xl bg-white dark:bg-[#0c0c14] border border-black/[0.08] dark:border-white/[0.08] shadow-2xl relative">
-            <button
-              onClick={() => setEditingOrder(null)}
-              className="absolute top-5 right-5 p-2 rounded-xl text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            <div className="flex items-center gap-2 mb-1">
-              <Edit3 className="w-4 h-4 text-moya-red" />
-              <h3 className="font-display font-bold text-lg text-zinc-900 dark:text-white">
-                {t("editAddress")}
-              </h3>
-            </div>
-            <p className="text-xs text-zinc-500 mb-4">
-              Updating delivery address for Order #{editingOrder.orderNumber}
-            </p>
-
-            <Form {...addressForm}>
-              <form onSubmit={addressForm.handleSubmit(handleSaveAddress)} className="space-y-3">
-                <FormField
-                  control={addressForm.control}
-                  name="line1"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-[11px] font-mono text-zinc-500">Street Address</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="Street & house number"
-                          className="px-3.5 py-2"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={addressForm.control}
-                  name="line2"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-[11px] font-mono text-zinc-500">Apartment, Suite, Unit (Optional)</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="APT 4B"
-                          className="px-3.5 py-2 uppercase"
-                          {...field}
-                          onChange={(e) => field.onChange(e.target.value.toUpperCase())}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <div className="grid grid-cols-2 gap-2">
-                  <FormField
-                    control={addressForm.control}
-                    name="city"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-[11px] font-mono text-zinc-500">City</FormLabel>
-                        <FormControl>
-                          <Input
-                            className="px-3.5 py-2 capitalize"
-                            {...field}
-                            onChange={(e) => field.onChange(e.target.value)}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={addressForm.control}
-                    name="state"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-[11px] font-mono text-zinc-500">State / Province</FormLabel>
-                        <FormControl>
-                          <Input
-                            className="px-3.5 py-2 uppercase"
-                            {...field}
-                            onChange={(e) => field.onChange(e.target.value.toUpperCase())}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <FormField
-                    control={addressForm.control}
-                    name="postalCode"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-[11px] font-mono text-zinc-500">Postal / ZIP Code</FormLabel>
-                        <FormControl>
-                          <Input
-                            inputMode="numeric"
-                            pattern="[0-9]*"
-                            maxLength={5}
-                            className="px-3.5 py-2 font-mono"
-                            {...field}
-                            onChange={(e) => field.onChange(e.target.value.replace(/\D/g, "").slice(0, 5))}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={addressForm.control}
-                    name="customerPhone"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-[11px] font-mono text-zinc-500">Phone (for Courier)</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="tel"
-                            placeholder="+1 (555) 000-0000"
-                            className="px-3.5 py-2"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <div className="pt-4 flex items-center justify-end gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setEditingOrder(null)}
-                    className="px-4 py-2 rounded-xl glass-dark hover:bg-black/5 dark:hover:bg-white/10 text-xs font-display font-bold text-zinc-600 dark:text-zinc-400"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isSavingAddress}
-                    className="px-5 py-2 rounded-xl bg-moya-red hover:bg-rose-500 text-white text-xs font-display font-bold flex items-center gap-1.5 shadow-lg shadow-moya-red/30 disabled:opacity-50"
-                  >
-                    {isSavingAddress ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-                    <span>{isSavingAddress ? t("saving") : t("saveAddress")}</span>
-                  </button>
-                </div>
-              </form>
-            </Form>
-          </div>
-        </div>
+      {editingOrder && user?.id && (
+        <EditAddressDialog
+          order={editingOrder}
+          clerkUserId={user.id}
+          onClose={() => setEditingOrder(null)}
+          onSaved={triggerToast}
+        />
       )}
 
       {/* ── Modal: Cancellation & Refund ── */}
-      {cancellingOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in">
-          <div className="w-full max-w-md p-6 rounded-3xl bg-white dark:bg-[#0c0c14] border border-black/[0.08] dark:border-white/[0.08] shadow-2xl relative">
-            <div className="w-12 h-12 rounded-2xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center text-rose-500 mb-3">
-              <AlertTriangle className="w-6 h-6" />
-            </div>
-
-            <h3 className="font-display font-bold text-lg text-zinc-900 dark:text-white">
-              {t("cancelConfirmTitle")}
-            </h3>
-            <p className="text-xs text-zinc-500 mt-1 leading-relaxed">
-              {t("cancelConfirmDesc")}
-            </p>
-
-            <div className="my-4 p-3.5 rounded-2xl bg-black/[0.03] dark:bg-white/[0.03] border border-black/[0.06] dark:border-white/[0.06] text-xs">
-              <div className="flex justify-between font-mono">
-                <span className="text-zinc-500">Order:</span>
-                <span className="font-bold text-zinc-900 dark:text-white">#{cancellingOrder.orderNumber}</span>
-              </div>
-              <div className="flex justify-between font-mono mt-1">
-                <span className="text-zinc-500">Refund Amount:</span>
-                <span className="font-bold text-emerald-600 dark:text-emerald-400">
-                  ${Number(cancellingOrder.total).toFixed(2)} {cancellingOrder.currency}
-                </span>
-              </div>
-            </div>
-
-            <div className="mb-4">
-              <label className="block text-[11px] font-mono text-zinc-500 mb-1">
-                {t("cancelReasonLabel")}
-              </label>
-              <select
-                value={cancelReason}
-                onChange={(e) => setCancelReason(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-black/5 dark:bg-white/5 border border-black/[0.08] dark:border-white/[0.08] text-xs font-mono text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-moya-red"
-              >
-                <option value="Ordered wrong colorway">{t("cancelReason1")}</option>
-                <option value="Accidental duplicate order">{t("cancelReason2")}</option>
-                <option value="Need to change delivery details">{t("cancelReason3")}</option>
-                <option value="Changed my mind">{t("cancelReason4")}</option>
-              </select>
-            </div>
-
-            <div className="flex items-center justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setCancellingOrder(null)}
-                disabled={isProcessingCancel}
-                className="px-4 py-2 rounded-xl glass-dark hover:bg-black/5 dark:hover:bg-white/10 text-xs font-display font-bold text-zinc-700 dark:text-zinc-300"
-              >
-                {t("keepOrderBtn")}
-              </button>
-              <button
-                type="button"
-                onClick={handleCancelOrder}
-                disabled={isProcessingCancel}
-                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-display font-bold flex items-center gap-1.5 shadow-lg shadow-rose-600/30 disabled:opacity-50"
-              >
-                {isProcessingCancel ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <XCircle className="w-3.5 h-3.5" />
-                )}
-                <span>{isProcessingCancel ? "Processing..." : t("confirmCancelBtn")}</span>
-              </button>
-            </div>
-          </div>
-        </div>
+      {cancellingOrder && user?.id && (
+        <CancelOrderDialog
+          order={cancellingOrder}
+          onClose={() => setCancellingOrder(null)}
+          onCancelled={triggerToast}
+        />
       )}
     </div>
   );
