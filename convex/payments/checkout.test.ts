@@ -6,18 +6,25 @@
 import { convexTest } from "convex-test";
 import rateLimiterTest from "@convex-dev/rate-limiter/test";
 import aggregateTest from "@convex-dev/aggregate/test";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "../_generated/api";
 import schema from "../schema";
 import { setCapStock } from "../catalog/inventory";
+import { issueCheckoutPass } from "../lib/checkoutPass";
 
 const stripe = vi.hoisted(() => ({
   sessionsCreate: vi.fn(),
+  sessionsRetrieve: vi.fn(),
+  sessionsExpire: vi.fn(),
 }));
 
 vi.mock("./stripeClient", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./stripeClient")>()),
-  getStripe: () => ({ checkout: { sessions: { create: stripe.sessionsCreate } } }),
+  getStripe: () => ({
+    checkout: {
+      sessions: { create: stripe.sessionsCreate, retrieve: stripe.sessionsRetrieve, expire: stripe.sessionsExpire },
+    },
+  }),
   upsertStripeCustomer: async () => "cus_test",
 }));
 
@@ -51,7 +58,7 @@ async function seedVariant(tt: T) {
   });
 }
 
-const checkoutArgs = (extra: { clerkUserId?: string; customerEmail?: string } = {}) => ({
+const checkoutArgs = (extra: { clerkUserId?: string; customerEmail?: string; checkoutPass?: string } = {}) => ({
   items: [{ variantId: VARIANT, quantity: 1 }],
   currency: "USD",
   locale: "en",
@@ -156,5 +163,148 @@ describe("createCheckoutSession rate limit", () => {
     // Another buyer is unaffected.
     await tt.withIdentity({ subject: "user_other" }).action(api.payments.checkout.createCheckoutSession, checkoutArgs());
     expect(stripe.sessionsCreate).toHaveBeenCalledTimes(11);
+  });
+});
+
+const PASS_SECRET = "test-checkout-pass-secret";
+
+/** Calls `call` until it throws a rate-limit error (or `max` calls); returns how many succeeded. */
+async function callsUntilLimited(max: number, call: () => Promise<unknown>) {
+  for (let i = 0; i < max; i++) {
+    try {
+      await call();
+    } catch (err) {
+      expect(String(err)).toMatch(/Too many checkout attempts/);
+      return i;
+    }
+  }
+  throw new Error(`not limited after ${max} calls`);
+}
+
+/** Pay once, then put the held unit back so stock never runs out before the limit does. */
+async function payAndRestock(tt: T, pay: () => Promise<unknown>) {
+  await pay();
+  await tt.run(async (ctx) => {
+    const variant = (await ctx.db.query("variants").first())!;
+    await setCapStock(ctx, variant.variantId, 5);
+  });
+}
+
+describe("createCheckoutSession guest rate limit (Checkout Pass, M2)", () => {
+  beforeEach(() => {
+    // Frozen clock: buckets do not refill while a test drains them.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.stubEnv("CHECKOUT_PASS_SECRET", PASS_SECRET);
+    stripe.sessionsCreate.mockReset();
+    stripe.sessionsCreate.mockImplementation(async () => ({
+      id: `cs_test_${stripe.sessionsCreate.mock.calls.length}`,
+      url: "https://checkout.stripe.com/test",
+    }));
+  });
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.useRealTimers();
+  });
+
+  it("limits one guest IP on its own: other IPs and pass-less guests still check out", async () => {
+    const tt = t();
+    await seedVariant(tt);
+    const passFor = (ip: string) => issueCheckoutPass(PASS_SECRET, ip, Date.now());
+    const payFrom = async (ip: string) =>
+      tt.action(api.payments.checkout.createCheckoutSession, checkoutArgs({ checkoutPass: await passFor(ip) }));
+
+    for (let i = 0; i < 10; i++) await payAndRestock(tt, () => payFrom("203.0.113.7"));
+    await expect(payFrom("203.0.113.7")).rejects.toThrow(/Too many checkout attempts/);
+    expect(stripe.sessionsCreate).toHaveBeenCalledTimes(10);
+
+    await payFrom("198.51.100.1");
+    await tt.action(api.payments.checkout.createCheckoutSession, checkoutArgs());
+    expect(stripe.sessionsCreate).toHaveBeenCalledTimes(12);
+  });
+
+  it("puts a guest with a forged pass in the shared bucket, not a fresh per-IP one", async () => {
+    const tt = t();
+    await seedVariant(tt);
+    const forged = await issueCheckoutPass("not-the-secret", "203.0.113.7", Date.now());
+    // The shared bucket holds 60 (sharded, so it can run dry a little early); a forged pass
+    // gets no more than a guest without one, where a per-IP bucket would stop it at 10.
+    const accepted = await callsUntilLimited(80, () =>
+      payAndRestock(tt, () => tt.action(api.payments.checkout.createCheckoutSession, checkoutArgs({ checkoutPass: forged })))
+    );
+    expect(accepted).toBeGreaterThan(10);
+    expect(accepted).toBeLessThanOrEqual(60);
+    // A real pass is unaffected by the drained shared bucket.
+    await tt.action(
+      api.payments.checkout.createCheckoutSession,
+      checkoutArgs({ checkoutPass: await issueCheckoutPass(PASS_SECRET, "203.0.113.7", Date.now()) })
+    );
+  });
+});
+
+describe("public Stripe session lookups (M1)", () => {
+  afterEach(() => vi.useRealTimers());
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    stripe.sessionsCreate.mockReset();
+    stripe.sessionsCreate.mockImplementation(async () => ({
+      id: `cs_test_${stripe.sessionsCreate.mock.calls.length}`,
+      url: "https://checkout.stripe.com/test",
+    }));
+    stripe.sessionsRetrieve.mockReset();
+    stripe.sessionsRetrieve.mockImplementation(async (id: string) => ({ id, status: "open", metadata: {} }));
+    stripe.sessionsExpire.mockReset();
+    stripe.sessionsExpire.mockImplementation(async (id: string) => ({ id, status: "expired" }));
+  });
+
+  it("sync never calls Stripe for an id that is not a Checkout Session", async () => {
+    const tt = t();
+    expect(await tt.action(api.payments.webhook.syncCheckoutSession, { sessionId: "pi_123" })).toEqual({
+      success: false,
+      status: "unrecognized_session",
+    });
+    expect(stripe.sessionsRetrieve).not.toHaveBeenCalled();
+  });
+
+  it("sync looks one session up at most 5 times a minute", async () => {
+    const tt = t();
+    for (let i = 0; i < 5; i++) {
+      await tt.action(api.payments.webhook.syncCheckoutSession, { sessionId: "cs_test_hammered" });
+    }
+    expect(await tt.action(api.payments.webhook.syncCheckoutSession, { sessionId: "cs_test_hammered" })).toEqual({
+      success: false,
+      status: "rate_limited",
+    });
+    expect(stripe.sessionsRetrieve).toHaveBeenCalledTimes(5);
+  });
+
+  it("caps sync across sessions, while the back link still releases a real hold", async () => {
+    const tt = t();
+    await seedVariant(tt);
+    const { sessionId } = await tt.action(api.payments.checkout.createCheckoutSession, checkoutArgs());
+
+    // 120 a minute across every session (sharded, so it can run dry a little early).
+    let looked = 0;
+    while (looked < 130) {
+      const result = await tt.action(api.payments.webhook.syncCheckoutSession, { sessionId: `cs_test_random_${looked}` });
+      if (result.status === "rate_limited") break;
+      looked++;
+    }
+    expect(looked).toBeGreaterThan(90);
+    expect(looked).toBeLessThanOrEqual(120);
+    expect(stripe.sessionsRetrieve).toHaveBeenCalledTimes(looked);
+
+    expect(await tt.action(api.payments.checkout.abandonCheckoutSession, { sessionId })).toEqual({ released: true });
+  });
+
+  it("abandon looks one session up at most 5 times a minute", async () => {
+    const tt = t();
+    await seedVariant(tt);
+    const { sessionId } = await tt.action(api.payments.checkout.createCheckoutSession, checkoutArgs());
+    // Paid elsewhere: Stripe reports it complete, so nothing is released and the order stays held.
+    stripe.sessionsRetrieve.mockImplementation(async (id: string) => ({ id, status: "complete", metadata: {} }));
+    for (let i = 0; i < 6; i++) {
+      await tt.action(api.payments.checkout.abandonCheckoutSession, { sessionId });
+    }
+    expect(stripe.sessionsRetrieve).toHaveBeenCalledTimes(5);
   });
 });

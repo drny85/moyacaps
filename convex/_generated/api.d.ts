@@ -40,6 +40,7 @@ import type * as catalog_validators from "../catalog/validators.js";
 import type * as crons from "../crons.js";
 import type * as http from "../http.js";
 import type * as lib_auth from "../lib/auth.js";
+import type * as lib_checkoutPass from "../lib/checkoutPass.js";
 import type * as lib_functions from "../lib/functions.js";
 import type * as lib_ids from "../lib/ids.js";
 import type * as lib_secrets from "../lib/secrets.js";
@@ -165,6 +166,7 @@ declare const fullApi: ApiFromModules<{
   crons: typeof crons;
   http: typeof http;
   "lib/auth": typeof lib_auth;
+  "lib/checkoutPass": typeof lib_checkoutPass;
   "lib/functions": typeof lib_functions;
   "lib/ids": typeof lib_ids;
   "lib/secrets": typeof lib_secrets;
