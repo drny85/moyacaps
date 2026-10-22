@@ -12,6 +12,8 @@ import {
   isPurchaseBlockedByDrop,
   isUpcomingDrop,
   isCustomerVisible,
+  isHiddenTee,
+  hiddenTeePurgeProblems,
   blankImageWhileVisible,
   buildNewVariant,
   buildVariantPatch,
@@ -366,3 +368,44 @@ describe("teeFieldsPatch (catalog migration on an existing tee)", () => {
   });
 });
 
+
+describe("isHiddenTee", () => {
+  const tee = { category: "apparel", silhouette: "tee", isAvailable: true, archivedAt: undefined };
+
+  it("is a Tee that is turned off, never turned on, or archived", () => {
+    expect(isHiddenTee({ ...tee, isAvailable: false })).toBe(true);
+    expect(isHiddenTee({ ...tee, isAvailable: undefined })).toBe(true);
+    expect(isHiddenTee({ ...tee, archivedAt: NOW })).toBe(true);
+  });
+
+  it("is never a visible Tee or a Cap", () => {
+    expect(isHiddenTee(tee)).toBe(false);
+    expect(isHiddenTee({ ...tee, category: "headwear", silhouette: "snapback", isAvailable: false })).toBe(false);
+  });
+
+  it("counts a Tee by its silhouette when the category is missing", () => {
+    expect(isHiddenTee({ ...tee, category: undefined, isAvailable: false })).toBe(true);
+  });
+});
+
+describe("hiddenTeePurgeProblems", () => {
+  const hidden = new Set(["a-tee", "b-tee"]);
+
+  it("allows hidden Tees with no open Checkout Hold", () => {
+    expect(hiddenTeePurgeProblems(["a-tee", "b-tee", "a-tee"], hidden, new Map([["a-tee", []]]), false)).toEqual([]);
+  });
+
+  it("names every id that is not a hidden Tee or is held", () => {
+    expect(hiddenTeePurgeProblems(["a-tee", "visible-tee"], hidden, new Map([["a-tee", ["GL-1"]]]), false)).toEqual([
+      "a-tee: held by an open Checkout Hold (GL-1)",
+      "visible-tee: not a hidden Tee",
+    ]);
+  });
+
+  it("refuses an empty list and an incomplete Order scan", () => {
+    expect(hiddenTeePurgeProblems([], hidden, new Map(), true)).toEqual([
+      "variantIds is empty",
+      "too many Orders to check for open Checkout Holds",
+    ]);
+  });
+});

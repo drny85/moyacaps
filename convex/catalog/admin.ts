@@ -3,6 +3,7 @@
  * the variant editor and per-SKU tee stock (ADR 0008, ADR 0015).
  */
 import { query, mutation, internalMutation } from "../_generated/server";
+import type { MutationCtx } from "../_generated/server";
 import type { Doc } from "../_generated/dataModel";
 import { v, ConvexError } from "convex/values";
 import { internal } from "../_generated/api";
@@ -474,31 +475,37 @@ export const purgeVariant = internalMutation({
   args: { variantId: v.string() },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const variant = await requireVariant(ctx, args.variantId);
-
-    for (const sku of await listSkus(ctx, variant.variantId)) {
-      await ctx.db.delete("skus", sku._id);
-    }
-
-    let moreAlerts = true;
-    for (let i = 0; i < PURGE_ALERT_BATCHES && moreAlerts; i++) {
-      moreAlerts = await deleteAlertBatch(ctx, variant.variantId);
-    }
-    if (moreAlerts) {
-      await ctx.scheduler.runAfter(0, internal.catalog.drops.deleteDropAlertsBatch, { variantId: variant.variantId });
-    }
-
-    await deleteAllProductImages(ctx, variant.variantId);
-
-    // A pending release job would find no row and do nothing; cancel it anyway.
-    if (variant.dropReleaseJobId !== undefined) await ctx.scheduler.cancel(variant.dropReleaseJobId);
-    await ctx.db.delete("variants", variant._id);
-    // The legacy upload may also back a productImages row (the image migration reuses files), so it is reference-checked.
-    if (variant.storageId) await scheduleFileDelete(ctx, variant.storageId);
-    await recordCatalogEvent(ctx, { variantId: variant.variantId, type: "purged", actor: "system" });
+    await purgeVariantRow(ctx, await requireVariant(ctx, args.variantId), "system");
     return null;
   },
 });
+
+/**
+ * Delete a product row with its SKUs, drop alerts and image rows; files are deleted after the
+ * grace period once nothing references them. Orders and reviews keep their own copies and stay.
+ */
+export async function purgeVariantRow(ctx: MutationCtx, variant: Doc<"variants">, actor: string) {
+  for (const sku of await listSkus(ctx, variant.variantId)) {
+    await ctx.db.delete("skus", sku._id);
+  }
+
+  let moreAlerts = true;
+  for (let i = 0; i < PURGE_ALERT_BATCHES && moreAlerts; i++) {
+    moreAlerts = await deleteAlertBatch(ctx, variant.variantId);
+  }
+  if (moreAlerts) {
+    await ctx.scheduler.runAfter(0, internal.catalog.drops.deleteDropAlertsBatch, { variantId: variant.variantId });
+  }
+
+  await deleteAllProductImages(ctx, variant.variantId);
+
+  // A pending release job would find no row and do nothing; cancel it anyway.
+  if (variant.dropReleaseJobId !== undefined) await ctx.scheduler.cancel(variant.dropReleaseJobId);
+  await ctx.db.delete("variants", variant._id);
+  // The legacy upload may also back a productImages row (the image migration reuses files), so it is reference-checked.
+  if (variant.storageId) await scheduleFileDelete(ctx, variant.storageId);
+  await recordCatalogEvent(ctx, { variantId: variant.variantId, type: "purged", actor });
+}
 
 /** Admin: set one tee SKU's stock; the tee's aggregate stock follows. */
 export const setTeeSkuStock = mutation({
