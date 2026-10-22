@@ -52,3 +52,8 @@ export function pickupCardView(
     canRideAlong: uspsSiteCount > 0 && (apiCount > 0 || desk.upcoming.length > 0),
   };
 }
+
+/** What the collapsed card says: packages still to schedule and pickups already booked. */
+export function pickupSummary(view: PickupCardView, upcoming: number): { waiting: number; booked: number } {
+  return { waiting: view.apiCount + view.uspsSiteCount, booked: upcoming };
+}

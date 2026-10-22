@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { localDay, localTimeMs, pickupCardView } from "./pickupCard";
+import { localDay, localTimeMs, pickupCardView, pickupSummary } from "./pickupCard";
 
 describe("localDay", () => {
   it("formats the local day", () => {
@@ -45,5 +45,13 @@ describe("pickupCardView", () => {
     });
     expect(pickupCardView({ api: [pkg("a")], uspsSite: [pkg("b")], upcoming: [] }, "2026-10-23").canRideAlong).toBe(true);
     expect(pickupCardView({ api: [], uspsSite: [pkg("b")], upcoming: [{ pickupDate: "2026-10-23" }] }, "2026-10-24").canRideAlong).toBe(true);
+  });
+});
+
+describe("pickupSummary", () => {
+  it("counts every package still to schedule and the pickups already booked", () => {
+    const view = pickupCardView({ api: [{ orderId: "a" }], uspsSite: [{ orderId: "b" }, { orderId: "c" }], upcoming: [] }, "2026-10-23");
+    expect(pickupSummary(view, 0)).toEqual({ waiting: 3, booked: 0 });
+    expect(pickupSummary(pickupCardView({ api: [], uspsSite: [], upcoming: [{ pickupDate: "2026-10-23" }] }, "2026-10-24"), 1)).toEqual({ waiting: 0, booked: 1 });
   });
 });

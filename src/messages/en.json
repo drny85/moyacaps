@@ -319,7 +319,9 @@
         "uspsSiteWaiting": "{count, plural, one {# Ground Advantage package} other {# Ground Advantage packages}} can't be scheduled here (USPS limits its API to Priority and international).",
         "rideAlong": "Leave them out with the scheduled packages: the carrier collects them on the same stop.",
         "uspsSiteLink": "Schedule on usps.com",
-        "markPickedUp": "{count, plural, one {Mark # picked up} other {Mark # picked up}}"
+        "markPickedUp": "{count, plural, one {Mark # picked up} other {Mark # picked up}}",
+        "summaryWaiting": "{count, plural, one {# package to schedule} other {# packages to schedule}}",
+        "summaryBooked": "{count, plural, one {# pickup booked} other {# pickups booked}}"
       },
       "handoff": {
         "handedOff": "Handed off",
