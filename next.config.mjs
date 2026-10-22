@@ -1,5 +1,5 @@
 import createNextIntlPlugin from "next-intl/plugin";
-import { securityHeaders } from "./src/lib/securityHeaders.mjs";
+import { imageRemotePatterns, securityHeaders } from "./src/lib/securityHeaders.mjs";
 
 const withNextIntl = createNextIntlPlugin({
   requestConfig: "./src/i18n/request.ts",
@@ -20,34 +20,19 @@ const nextConfig = {
   productionBrowserSourceMaps: process.env.ANALYZE_SOURCEMAPS === "1",
   images: {
     formats: ["image/avif", "image/webp"],
-    remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "img.clerk.com",
-      },
-      {
-        protocol: "https",
-        hostname: "images.clerk.dev",
-      },
-      {
-        protocol: "https",
-        hostname: "images.unsplash.com",
-      },
-      {
-        protocol: "https",
-        hostname: "*.convex.cloud",
-      },
-      {
-        protocol: "https",
-        hostname: "*.convex.site",
-      },
-    ],
+    // Clerk avatars and this app's own Convex storage only (L5); see securityHeaders.mjs.
+    remotePatterns: imageRemotePatterns(process.env.NEXT_PUBLIC_CONVEX_URL),
   },
   async headers() {
     return [
       {
         source: "/(.*)",
-        headers: securityHeaders({ dev: process.env.NODE_ENV !== "production" }),
+        headers: securityHeaders({
+          dev: process.env.NODE_ENV !== "production",
+          convexUrl: process.env.NEXT_PUBLIC_CONVEX_URL,
+          // Report-Only until CSP_ENFORCE=1 (security review M3)
+          enforceCsp: process.env.CSP_ENFORCE === "1",
+        }),
       },
     ];
   },
