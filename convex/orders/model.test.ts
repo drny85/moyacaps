@@ -155,22 +155,23 @@ describe("matchesOrderSearch", () => {
 });
 
 describe("customer-facing projections", () => {
-  it("confirmation via Stripe session shows address and phone, never payment link or notes", () => {
+  it("confirmation via Stripe session shows address, phone and email, never payment link or notes", () => {
     const view = confirmationView(order(), true) as Record<string, unknown>;
     expect(view.shippingAddress).toBeDefined();
     expect(view.customerPhone).toBe("5551234567");
-    expect(view.isGuestView).toBe(false);
+    expect(view.customerEmail).toBe("ana@example.com");
+    expect(view.isLimitedView).toBe(false);
     expect(view).not.toHaveProperty("paymentUrl");
     expect(view).not.toHaveProperty("adminNotes");
-    expect(view).not.toHaveProperty("customerEmail");
   });
 
   it("confirmation via bare order number is minimal", () => {
     const view = confirmationView(order(), false);
     expect(view.customerName).toBe("Ana");
     expect(view.shippingAddress).toBeUndefined();
+    expect(view.customerEmail).toBeUndefined();
     expect(view.customerPhone).toBeUndefined();
-    expect(view.isGuestView).toBe(true);
+    expect(view.isLimitedView).toBe(true);
     expect(view.items[0]).not.toHaveProperty("colorway");
   });
 
@@ -187,7 +188,7 @@ describe("customer-facing projections", () => {
     const view = ownerTrackingView(order());
     expect(view.customerEmail).toBe("ana@example.com");
     expect(view.paymentUrl).toBe("https://checkout.stripe.com/pay/cs_live");
-    expect(view.isGuestView).toBe(false);
+    expect(view.isLimitedView).toBe(false);
     expect(view).not.toHaveProperty("adminNotes");
   });
 });

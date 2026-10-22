@@ -133,6 +133,15 @@ export function receiptCopy(orderNumber: string, outOfTerritory: boolean): Recei
   };
 }
 
+/**
+ * The receipt's Account Invite. Only a guest Order that will ship gets one; the link carries
+ * no email, so the copy names which address to sign up with (the claim needs it, ADR 0026).
+ */
+export function receiptAccountInvite(isGuestOrder: boolean, outOfTerritory: boolean): string | undefined {
+  if (!isGuestOrder || outOfTerritory) return undefined;
+  return "Create a free account with this email address and this order joins it automatically. See every order in one place, cancel an order yourself before it ships, and review what you bought.";
+}
+
 // ── Customer notices: cancellation and refund ────────────────────────────────
 
 export const customerNoticeValidator = v.object({

@@ -236,6 +236,10 @@ _Avoid_: Approved flag, hidden, moderation state
 One email per delivered Order, sent 7 days after delivery, asking the Customer to review the Products they can review. Never repeated as a reminder; respects the Customer's email unsubscribe.
 _Avoid_: Review reminder, feedback request
 
+**Account Invite**:
+The offer a guest gets after paying to create an account, or sign in, with the email they checked out with, so their guest Order joins that account. Shown on the order confirmation page and in the order confirmation email. Never shown before payment and never a condition of checkout: a guest pays without deciding anything about an account. It promises only what an account gives: every Order in one place, Customer Cancellation and writing Product Reviews.
+_Avoid_: Sign-up gate, account wall, registration prompt, guest choice screen
+
 **Cap Media Storage**:
 Convex binary storage (`_storage`) managing high-resolution product photography for Cap Variants, referenced by immutable `storageId` and resolved to signed CDN URLs during catalog queries.
 _Avoid_: Asset bucket, static image directory, media folder

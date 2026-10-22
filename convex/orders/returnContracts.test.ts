@@ -192,17 +192,17 @@ describe("catalog and drop reads match their return validators", () => {
 describe("order reads match their return validators", () => {
   it("customer views", async () => {
     const t = await seeded();
-    expect(await t.query(api.orders.functions.getOrderBySessionOrNumber, { identifier: "cs_test_rc" })).toMatchObject({ isGuestView: false });
+    expect(await t.query(api.orders.functions.getOrderBySessionOrNumber, { identifier: "cs_test_rc" })).toMatchObject({ isLimitedView: false });
     expect(await t.query(api.orders.functions.getOrderBySessionOrNumber, { identifier: "GL-RC-1" })).toBeNull();
     expect(
       await t.withIdentity({ subject: "user_cust" }).query(api.orders.functions.getOrderBySessionOrNumber, { identifier: "GL-RC-1" })
-    ).toMatchObject({ isGuestView: true });
+    ).toMatchObject({ isLimitedView: true });
     expect(
       await t.query(api.orders.functions.getOrderByOrderNumberAndEmail, { orderNumber: "rc-1", email: "ana@example.com" })
-    ).toMatchObject({ isGuestView: true, shippingAddress: { line1: "***" } });
+    ).toMatchObject({ isLimitedView: true, shippingAddress: { line1: "***" } });
     expect(
       await t.withIdentity({ subject: "user_cust" }).query(api.orders.functions.getOrderByOrderNumberAndEmail, { orderNumber: "GL-RC-1", email: "ana@example.com" })
-    ).toMatchObject({ isGuestView: false, customerEmail: "ana@example.com" });
+    ).toMatchObject({ isLimitedView: false, customerEmail: "ana@example.com" });
     const mine = await t.withIdentity({ subject: "user_cust" }).query(api.orders.functions.getOrdersByClerkId, { clerkUserId: "user_cust" });
     expect(mine).toHaveLength(1);
     // The seeded legacy GL-TRK placeholder is never shown as carrier tracking.

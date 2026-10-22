@@ -24,6 +24,8 @@ const session = (over: Partial<ClerkSession> = {}): ClerkSession => ({
 const actions = () => ({
   openSignIn: vi.fn<ClerkActions["openSignIn"]>(),
   redirectToSignIn: vi.fn<ClerkActions["redirectToSignIn"]>(),
+  openSignUp: vi.fn<ClerkActions["openSignUp"]>(),
+  redirectToSignUp: vi.fn<ClerkActions["redirectToSignUp"]>(),
 });
 
 describe("routeNeedsClerk", () => {
@@ -144,6 +146,19 @@ describe("safeAuthStore", () => {
     expect(clerk.redirectToSignIn).toHaveBeenCalledWith({ fallbackRedirectUrl: "/en" });
     store.getState().signIn();
     expect(clerk.openSignIn).toHaveBeenCalledWith({});
+  });
+
+  it("opens sign-up instead when asked, passing the prefilled email through", () => {
+    const store = createSafeAuthStore(true);
+    const clerk = actions();
+    store.getState().signIn({ flow: "signUp", emailAddress: "ana@example.com", forceRedirectUrl: "/en/account/orders" });
+    store.getState().attach(clerk);
+    store.getState().setSession(session());
+    expect(clerk.openSignUp).toHaveBeenCalledWith({ emailAddress: "ana@example.com", forceRedirectUrl: "/en/account/orders" });
+    expect(clerk.openSignIn).not.toHaveBeenCalled();
+
+    store.getState().signIn({ flow: "signUp", mode: "redirect" });
+    expect(clerk.redirectToSignUp).toHaveBeenCalledWith({});
   });
 
   it("tracks UserButton slots", () => {

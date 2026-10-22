@@ -73,8 +73,9 @@ const viewFields = orderDoc.pick(
 export const confirmationViewValidator = viewFields.extend({
   items: v.array(publicItem),
   shippingAddress: v.optional(shippingAddressValidator),
+  customerEmail: v.optional(v.string()),
   customerPhone: v.optional(v.string()),
-  isGuestView: v.boolean(),
+  isLimitedView: v.boolean(),
 });
 
 /** orderModel.accountOrderView */
@@ -95,7 +96,7 @@ export const guestTrackingViewValidator = viewFields.extend({
   shippingAddress: v.optional(shippingAddressValidator),
   customerEmail: v.optional(v.string()),
   customerPhone: v.optional(v.string()),
-  isGuestView: v.boolean(),
+  isLimitedView: v.boolean(),
 });
 
 /** orderModel.ownerTrackingView */
@@ -107,5 +108,5 @@ export const ownerTrackingViewValidator = viewFields.extend({
   shippingAddress: v.optional(shippingAddressValidator),
   customerEmail: v.optional(v.string()),
   customerPhone: v.optional(v.string()),
-  isGuestView: v.boolean(),
+  isLimitedView: v.boolean(),
 });

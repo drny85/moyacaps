@@ -16,6 +16,7 @@ import { findLineVariant, isUnreleasedDrop, lineOverStock, lineStock } from "@/l
 import { useCardCheckout } from "@/hooks/useCardCheckout";
 import { usePageRestore } from "@/hooks/usePageRestore";
 import { Link } from "@/i18n/routing";
+import { SafeSignInButton, useSafeUser } from "@/lib/useSafeUser";
 import { MAX_UNITS_PER_LINE } from "../../../convex/payments/limits";
 
 export function CartDrawer() {
@@ -24,6 +25,7 @@ export function CartDrawer() {
   const t = useTranslations("cart");
   const locale = useLocale();
   const { startCheckout, abandonOpenCheckout } = useCardCheckout();
+  const { isLoaded: authLoaded, isSignedIn } = useSafeUser();
   // Only the cart's own products, hidden ones included so a line can show as unavailable.
   // With the open checkout's session, the units its hold took still count as this cart's stock.
   const openCheckoutSessionId = useStore((s) => s.openCheckout?.sessionId);
@@ -332,6 +334,18 @@ export function CartDrawer() {
 
                     {(
                       <div className="flex flex-col gap-2.5">
+                        {/* A returning Customer may sign in; guests pay without deciding anything (Account Invite) */}
+                        {authLoaded && !isSignedIn && (
+                          <p className="text-[11px] text-zinc-500 text-center">
+                            <span>{t("haveAccount")} </span>
+                            <SafeSignInButton>
+                              <button type="button" className="font-medium text-zinc-700 dark:text-zinc-300 underline underline-offset-2 hover:text-moya-red">
+                                {t("signIn")}
+                              </button>
+                            </SafeSignInButton>
+                          </p>
+                        )}
+
                         {/* Stripe card checkout: guests welcome (ADR 0002) */}
                           <button
                             onClick={handleStripeCheckout}

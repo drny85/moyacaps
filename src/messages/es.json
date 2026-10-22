@@ -88,7 +88,9 @@
     "finalSale": "Todas las ventas son finales, salvo pedidos que nunca llegan o llegan defectuosos. <link>Política de Devoluciones</link>",
     "stockAdjusted": "Cantidad ajustada al inventario disponible",
     "onlyXAvailable": "Solo {count} disponibles",
-    "soldOutItem": "Agotado"
+    "soldOutItem": "Agotado",
+    "haveAccount": "¿Tienes cuenta?",
+    "signIn": "Inicia sesión"
   },
   "story": {
     "eyebrow": "EL MITO 0880",
@@ -211,7 +213,17 @@
     "subtotal": "Subtotal",
     "shipping": "Envío",
     "tax": "Impuesto de venta",
-    "total": "Total Pagado"
+    "total": "Total Pagado",
+    "accountInvite": {
+      "title": "Guarda esta orden en una cuenta",
+      "body": "Crea una cuenta gratis con <strong>{email}</strong>, el correo que usaste al pagar, y esta orden se une a ella automáticamente.",
+      "bodyNoEmail": "Crea una cuenta gratis con el correo que usaste al pagar y esta orden se une a ella automáticamente.",
+      "benefitOrders": "Todas tus órdenes en un solo lugar",
+      "benefitCancel": "Cancélala por tu cuenta antes del envío",
+      "benefitReviews": "Reseña lo que compraste",
+      "createAccount": "Crear cuenta",
+      "signIn": "¿Ya tienes cuenta? Inicia sesión"
+    }
   },
   "account": {
     "title": "Bóveda de Coleccionista",

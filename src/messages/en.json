@@ -88,7 +88,9 @@
     "finalSale": "All sales are final, except orders that never arrive or arrive defective. <link>Return Policy</link>",
     "stockAdjusted": "Quantity adjusted to match live stock",
     "onlyXAvailable": "Only {count} available",
-    "soldOutItem": "Sold Out"
+    "soldOutItem": "Sold Out",
+    "haveAccount": "Have an account?",
+    "signIn": "Sign in"
   },
   "story": {
     "eyebrow": "THE 0880 MYTHOS",
@@ -211,7 +213,17 @@
     "subtotal": "Subtotal",
     "shipping": "Shipping",
     "tax": "Sales Tax",
-    "total": "Total Paid"
+    "total": "Total Paid",
+    "accountInvite": {
+      "title": "Keep this order in an account",
+      "body": "Create a free account with <strong>{email}</strong>, the email you checked out with, and this order joins it automatically.",
+      "bodyNoEmail": "Create a free account with the email you checked out with, and this order joins it automatically.",
+      "benefitOrders": "Every order in one place",
+      "benefitCancel": "Cancel it yourself before it ships",
+      "benefitReviews": "Review what you bought",
+      "createAccount": "Create account",
+      "signIn": "Already have an account? Sign in"
+    }
   },
   "account": {
     "title": "Collector Vault",

@@ -9,6 +9,10 @@ import { createStore } from "zustand/vanilla";
 
 export interface SignInOptions {
   mode?: "modal" | "redirect";
+  /** Which Clerk form opens first; the Account Invite opens sign-up */
+  flow?: "signIn" | "signUp";
+  /** Prefills the form, e.g. with the checkout email so the guest Order is claimed (ADR 0026) */
+  emailAddress?: string;
   forceRedirectUrl?: string;
   fallbackRedirectUrl?: string;
   signUpForceRedirectUrl?: string;
@@ -34,10 +38,14 @@ export interface ClerkSession {
   getToken: (options?: GetTokenOptions) => Promise<string | null>;
 }
 
+type ClerkCallOptions = Omit<SignInOptions, "mode" | "flow">;
+
 /** Imperative Clerk calls, registered by ClerkRuntime once the provider mounts */
 export interface ClerkActions {
-  openSignIn: (options: Omit<SignInOptions, "mode">) => void;
-  redirectToSignIn: (options: Omit<SignInOptions, "mode">) => void;
+  openSignIn: (options: ClerkCallOptions) => void;
+  redirectToSignIn: (options: ClerkCallOptions) => void;
+  openSignUp: (options: ClerkCallOptions) => void;
+  redirectToSignUp: (options: ClerkCallOptions) => void;
 }
 
 export interface SafeAuthState {
@@ -62,7 +70,12 @@ export interface SafeAuthState {
   registerUserButtonSlot: (el: HTMLElement) => () => void;
 }
 
-function runSignIn(actions: ClerkActions, { mode = "modal", ...options }: SignInOptions) {
+function runSignIn(actions: ClerkActions, { mode = "modal", flow = "signIn", ...options }: SignInOptions) {
+  if (flow === "signUp") {
+    if (mode === "modal") actions.openSignUp(options);
+    else actions.redirectToSignUp(options);
+    return;
+  }
   if (mode === "modal") actions.openSignIn(options);
   else actions.redirectToSignIn(options);
 }

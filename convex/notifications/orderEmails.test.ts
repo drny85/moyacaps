@@ -8,6 +8,7 @@ import {
   dispatchedIdempotencyKey,
   manualMoveEmail,
   moneyTakenAlert,
+  receiptAccountInvite,
   receiptCopy,
   reviewInviteCopy,
   reviewInviteIdempotencyKey,
@@ -83,6 +84,20 @@ describe("receipt", () => {
     expect(receiptCopy("GL-1", false).returnsNote).toMatch(/All sales are final/);
     expect(receiptCopy("GL-1", false).returnsNote).not.toMatch(/\d+ days?/);
     expect(receiptCopy("GL-1", true).returnsNote).toBeUndefined();
+  });
+
+  it("invites only a guest Order that will ship to create an account", () => {
+    expect(receiptAccountInvite(true, false)).toMatch(/Create a free account with this email address/);
+    expect(receiptAccountInvite(false, false)).toBeUndefined();
+    expect(receiptAccountInvite(true, true)).toBeUndefined();
+  });
+
+  it("promises only what an account gives", () => {
+    const invite = receiptAccountInvite(true, false) ?? "";
+    expect(invite).toMatch(/every order in one place/);
+    expect(invite).toMatch(/cancel an order yourself before it ships/);
+    expect(invite).toMatch(/review what you bought/);
+    expect(invite).not.toMatch(/faster|saved address/i);
   });
 });
 

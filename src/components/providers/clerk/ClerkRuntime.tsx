@@ -28,12 +28,21 @@ function ClerkBridge() {
 
   useEffect(() => {
     safeAuthStore.getState().attach({
-      openSignIn: (options) => clerk.openSignIn(options),
-      redirectToSignIn: ({ forceRedirectUrl, fallbackRedirectUrl, ...rest }) =>
+      openSignIn: ({ emailAddress, ...rest }) => clerk.openSignIn({ ...rest, initialValues: initialValues(emailAddress) }),
+      redirectToSignIn: ({ emailAddress, forceRedirectUrl, fallbackRedirectUrl, ...rest }) =>
         void clerk.redirectToSignIn({
           ...rest,
           signInForceRedirectUrl: forceRedirectUrl,
           signInFallbackRedirectUrl: fallbackRedirectUrl,
+          initialValues: initialValues(emailAddress),
+        }),
+      openSignUp: ({ emailAddress, forceRedirectUrl, fallbackRedirectUrl }) =>
+        clerk.openSignUp({ forceRedirectUrl, fallbackRedirectUrl, initialValues: initialValues(emailAddress) }),
+      redirectToSignUp: ({ emailAddress, forceRedirectUrl, fallbackRedirectUrl }) =>
+        void clerk.redirectToSignUp({
+          signUpForceRedirectUrl: forceRedirectUrl,
+          signUpFallbackRedirectUrl: fallbackRedirectUrl,
+          initialValues: initialValues(emailAddress),
         }),
     });
   }, [clerk]);
@@ -55,6 +64,10 @@ function ClerkBridge() {
   }, [loaded, isSignedIn, user, sessionId, orgId, orgRole, tokenAudience, getToken]);
 
   return null;
+}
+
+function initialValues(emailAddress: string | undefined) {
+  return emailAddress ? { emailAddress } : undefined;
 }
 
 function UserButtonPortals() {
