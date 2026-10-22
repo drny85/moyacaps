@@ -6,6 +6,7 @@ import { api } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
 import { PRIMARY_ADMIN_EMAIL } from "../lib/auth";
+import { labelHistory } from "./labels";
 
 const modules = import.meta.glob("/convex/**/*.ts");
 function t() {
@@ -116,6 +117,25 @@ describe("Packing Checklist functions (plan 0012)", () => {
       editable: false,
       checkedUnits: 1,
     });
+  });
+
+  it("ticking a Reship's checklist never moves an older order's label date", async () => {
+    const tt = t();
+    const orderId = await seedNeedsPacking(tt);
+    const labelledAt = Date.now() - 5 * 24 * 60 * 60 * 1000;
+    // Labelled before the label history existed: its date is read from `updatedAt`.
+    await tt.run(async (ctx) => {
+      await ctx.db.patch(orderId, {
+        fulfillmentStatus: "delivery_exception",
+        carrier: "USPS",
+        trackingNumber: TRACKING,
+        shippingLabelUrl: "https://label.pdf",
+        updatedAt: labelledAt,
+      });
+    });
+    await admin(tt).mutation(api.orders.packingChecklist.checkUnit, { orderId, lineIndex: 0, delta: 1 });
+    const order = await tt.run(async (ctx) => ctx.db.get(orderId));
+    expect(labelHistory(order!)[0].purchasedAt).toBe(labelledAt);
   });
 
   it("reports progress for several Orders at once", async () => {

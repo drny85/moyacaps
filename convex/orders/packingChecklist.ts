@@ -41,7 +41,8 @@ export const checkUnit = mutation({
     const now = Date.now();
     const plan = planCheck(order, await refundedFor(ctx, order), args.lineIndex, args.delta, now);
     if (!plan.ok) throw new ConvexError(plan.error);
-    await ctx.db.patch(args.orderId, { packingChecklist: plan.checklist, updatedAt: now });
+    // No `updatedAt` stamp: an older order's label date is read from it (labels.ts labelHistory).
+    await ctx.db.patch(args.orderId, { packingChecklist: plan.checklist });
     if (plan.completed) {
       await insertPaymentEvent(ctx, {
         orderId: args.orderId,
