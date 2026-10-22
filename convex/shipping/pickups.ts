@@ -10,6 +10,7 @@ import { currentShippoPolicy, getShippoClient } from "./shippoClient";
 import {
   carrierWallClock,
   pickupAddress,
+  pickupDiagnostics,
   pickupFailureMessage,
   pickupLocationValidator,
   planPickupMode,
@@ -98,22 +99,46 @@ export const schedulePickup = action({
     if (shippo && !mode.simulated) {
       const parsed = parseShipFrom(process.env);
       if (!parsed.ok) throw new ConvexError(shipFromMissingMessage(parsed.missing));
+      // What was sent, for the failure log (no address or contact details).
+      let sent = { carrierAccount: "", requestedStartTime: "", requestedEndTime: "", transactions: transactionIds.length };
       try {
         const rateIds = context.api.flatMap((c) => (c.rateId ? [c.rateId] : []));
+        const carrierAccount = await uspsCarrierAccount(shippo, rateIds);
+        // Shippo reads these as the pickup address's local clock (./pickupPlan carrierWallClock).
+        const requestedStartTime = carrierWallClock(args.requestedStartTime);
+        const requestedEndTime = carrierWallClock(args.requestedEndTime);
+        sent = {
+          carrierAccount,
+          requestedStartTime: requestedStartTime.toISOString(),
+          requestedEndTime: requestedEndTime.toISOString(),
+          transactions: transactionIds.length,
+        };
         const pickup = await shippo.pickups.create({
-          carrierAccount: await uspsCarrierAccount(shippo, rateIds),
+          carrierAccount,
           location: {
             address: pickupAddress(parsed.address),
             buildingLocationType: args.location,
             ...(instructions && { instructions }),
           },
           transactions: transactionIds,
-          // Shippo reads these as the pickup address's local clock (./pickupPlan carrierWallClock).
-          requestedStartTime: carrierWallClock(args.requestedStartTime),
-          requestedEndTime: carrierWallClock(args.requestedEndTime),
+          requestedStartTime,
+          requestedEndTime,
           metadata: `moyacaps ${args.pickupDate}`,
         });
         if (pickup.status === "ERROR") {
+          const echoed = JSON.stringify({
+            object_id: pickup.objectId,
+            status: pickup.status,
+            carrier_account: pickup.carrierAccount,
+            requested_start_time: pickup.requestedStartTime?.toISOString(),
+            requested_end_time: pickup.requestedEndTime?.toISOString(),
+            confirmed_start_time: pickup.confirmedStartTime,
+            confirmed_end_time: pickup.confirmedEndTime,
+            timezone: pickup.timezone,
+            is_test: pickup.isTest,
+            messages: pickup.messages ?? [],
+          });
+          console.warn("[Shippo] Pickup refused:", JSON.stringify(pickupDiagnostics(echoed, sent)));
           throw new ConvexError(
             pickupFailureMessage(JSON.stringify({ object_id: pickup.objectId, messages: pickup.messages ?? [] }))
           );
@@ -129,9 +154,12 @@ export const schedulePickup = action({
         };
       } catch (err: any) {
         if (err instanceof ConvexError) throw err;
-        console.error("[Shippo] Pickup request failed:", err?.message || err);
-        // Shippo answers a refused pickup with HTTP 400 and the pickup object as the body.
-        throw new ConvexError(pickupFailureMessage(typeof err?.body === "string" ? err.body : undefined));
+        // Shippo answers a refused pickup with HTTP 400 and the pickup object as the body, address
+        // included: log only the diagnostics, never the raw body or message.
+        const body = typeof err?.body === "string" ? err.body : undefined;
+        const httpStatus = typeof err?.statusCode === "number" ? err.statusCode : undefined;
+        console.error("[Shippo] Pickup request failed:", JSON.stringify(pickupDiagnostics(body, sent, httpStatus)));
+        throw new ConvexError(pickupFailureMessage(body));
       }
     } else {
       // Simulated pickup (development only, SHIPPO_ALLOW_SIMULATION=true).

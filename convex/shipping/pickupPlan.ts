@@ -160,6 +160,63 @@ export function pickupFailureMessage(body: string | undefined): string {
   return objectId ? `USPS pickup failed: ${reason} Shippo pickup ID ${objectId} (give it to Shippo support).` : `USPS pickup failed: ${reason}`;
 }
 
+/** What a failed pickup log line may carry: times, account and status, never the address or contact. */
+export type PickupDiagnostics = {
+  sent: { carrierAccount: string; requestedStartTime: string; requestedEndTime: string; transactions: number };
+  httpStatus?: number;
+  echoed: {
+    objectId?: string;
+    status?: string;
+    carrierAccount?: string;
+    requestedStartTime?: string;
+    requestedEndTime?: string;
+    confirmedStartTime?: string;
+    confirmedEndTime?: string;
+    timezone?: string;
+    isTest?: boolean;
+    messages?: string[];
+  };
+};
+
+const str = (value: unknown): string | undefined => (typeof value === "string" ? value : undefined);
+
+/**
+ * Picks the fields worth logging from Shippo's answer to a failed pickup (its body echoes the
+ * whole pickup, address and phone included), next to what was sent.
+ */
+export function pickupDiagnostics(
+  body: string | undefined,
+  sent: PickupDiagnostics["sent"],
+  httpStatus?: number
+): PickupDiagnostics {
+  let raw: Record<string, unknown> = {};
+  try {
+    const parsed = JSON.parse(body ?? "");
+    if (parsed && typeof parsed === "object") raw = parsed as Record<string, unknown>;
+  } catch {
+    // Not JSON: log only what was sent.
+  }
+  const messages = Array.isArray(raw.messages)
+    ? raw.messages.map((m) => (typeof m === "string" ? m : str((m as { text?: unknown })?.text) ?? "")).filter(Boolean)
+    : undefined;
+  return {
+    sent,
+    ...(httpStatus !== undefined && { httpStatus }),
+    echoed: {
+      objectId: str(raw.object_id),
+      status: str(raw.status),
+      carrierAccount: str(raw.carrier_account),
+      requestedStartTime: str(raw.requested_start_time),
+      requestedEndTime: str(raw.requested_end_time),
+      confirmedStartTime: str(raw.confirmed_start_time),
+      confirmedEndTime: str(raw.confirmed_end_time),
+      timezone: str(raw.timezone),
+      ...(typeof raw.is_test === "boolean" && { isTest: raw.is_test }),
+      ...(messages && { messages }),
+    },
+  };
+}
+
 /** Whether a recorded pickup with this Shippo status uses up its day. */
 export function pickupBlocksDate(status: string): boolean {
   return status !== "ERROR" && status !== "CANCELLED";

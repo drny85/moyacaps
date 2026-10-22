@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   carrierWallClock,
   groupPickupCandidates,
+  pickupDiagnostics,
   pickupFailureMessage,
   isPickupDay,
   nextPickupDate,
@@ -188,5 +189,55 @@ describe("pickupFailureMessage", () => {
   it("falls back to a generic line for a body that is not JSON", () => {
     expect(pickupFailureMessage("<html>")).toBe("USPS pickup failed: USPS refused the pickup request.");
     expect(pickupFailureMessage(undefined)).toBe("USPS pickup failed: USPS refused the pickup request.");
+  });
+});
+
+describe("pickupDiagnostics", () => {
+  const sent = { carrierAccount: "acct_1", requestedStartTime: "2026-10-23T09:00:00.000Z", requestedEndTime: "2026-10-23T17:00:00.000Z", transactions: 1 };
+
+  it("keeps times, account and status, and drops the address and contact", () => {
+    const body = JSON.stringify({
+      object_id: "07fa",
+      status: "ERROR",
+      carrier_account: "acct_1",
+      requested_start_time: "2026-10-23T13:00:00Z",
+      requested_end_time: "2026-10-23T21:00:00Z",
+      confirmed_start_time: null,
+      timezone: "US/Eastern",
+      is_test: false,
+      messages: ["There is an error from the carrier."],
+      location: { address: { name: "Store", street1: "1 Main St", phone: "5555550100", email: "a@b.com" } },
+    });
+    const diag = pickupDiagnostics(body, sent, 400);
+    expect(diag).toEqual({
+      sent,
+      httpStatus: 400,
+      echoed: {
+        objectId: "07fa",
+        status: "ERROR",
+        carrierAccount: "acct_1",
+        requestedStartTime: "2026-10-23T13:00:00Z",
+        requestedEndTime: "2026-10-23T21:00:00Z",
+        confirmedStartTime: undefined,
+        confirmedEndTime: undefined,
+        timezone: "US/Eastern",
+        isTest: false,
+        messages: ["There is an error from the carrier."],
+      },
+    });
+    expect(JSON.stringify(diag)).not.toMatch(/Main St|5555550100|a@b\.com/);
+  });
+
+  it("logs only what was sent when the body is not JSON", () => {
+    expect(pickupDiagnostics("<html>", sent).echoed).toEqual({
+      objectId: undefined,
+      status: undefined,
+      carrierAccount: undefined,
+      requestedStartTime: undefined,
+      requestedEndTime: undefined,
+      confirmedStartTime: undefined,
+      confirmedEndTime: undefined,
+      timezone: undefined,
+    });
   });
 });
