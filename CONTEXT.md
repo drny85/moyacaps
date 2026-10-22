@@ -180,6 +180,14 @@ _Avoid_: Activity log, audit trail, tracking history (when meaning the whole Ord
 A paid Order with no shipping label yet. The Administrator's queue.
 _Avoid_: Pending, open, unfulfilled (when meaning the queue), needs attention (that is a Product concept)
 
+**Packing Checklist**:
+The on-screen list of every unit a Needs Packing Order still has to ship, ticked off one unit at a time as the Administrator puts it in the box. Every Order has one, even a single Cap. Units already refunded or cancelled are not on it. It is kept on the Order, so a half-ticked list survives a reload or a change of device. Buying a label with units not yet Checked asks for confirmation; it is never blocked. Once a label is bought the list is frozen as a record; a Reship starts a fresh, unticked one. If a unit is refunded after it was Checked, the Administrator is told to take it back out of the box.
+_Avoid_: Pick list, verification, packed (when meaning a ticked unit)
+
+**Checked**:
+A unit on the Packing Checklist that the Administrator has matched to its Product, Colorway and size and put in the box.
+_Avoid_: Packed, verified, picked
+
 **Tracking Number**:
 The carrier's number for an Order's package. It exists only once a shipping label is bought; an Order with no label has none.
 _Avoid_: Order number, internal tracking code

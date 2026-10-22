@@ -25,6 +25,7 @@ import { NextActionCard } from "./NextActionCard";
 import { NotesSection } from "./NotesSection";
 import { OrderDetailSkeleton } from "./OrderDetailSkeleton";
 import { OrderHeader } from "./OrderHeader";
+import { PackingConfirmDialog } from "../PackingConfirmDialog";
 import { PackingSheet } from "./PackingSheet";
 import { PackingSlipPrint } from "./PackingSlipPrint";
 import { ShipToSection } from "./ShipToSection";
@@ -38,8 +39,14 @@ export function OrderDetailPage({ orderNumber }: { orderNumber: string }) {
   const t = useTranslations("admin.orderDetail");
   const tCommon = useTranslations("admin.common");
   const router = useRouter();
-  const { order, vm, nextAction, manualMoves, busy, error, success, dismissError, reportError, reportSuccess, actions } = useOrderDetail(orderNumber);
+  const { order, vm, nextAction, manualMoves, checklist, pendingLine, check, busy, error, success, dismissError, reportError, reportSuccess, actions } = useOrderDetail(orderNumber);
   const [dialog, setDialog] = useState<Dialog>(null);
+  // Buy label / Reship ask first while the Packing Checklist is open and not complete.
+  const [labelAfterConfirm, setLabelAfterConfirm] = useState<"label" | "reship" | null>(null);
+  const openLabel = (kind: "label" | "reship") => {
+    if (checklist?.editable && !checklist.complete) setLabelAfterConfirm(kind);
+    else setDialog(kind);
+  };
   const [sheet, setSheet] = useState<PackingLine | null>(null);
   const close = () => {
     setDialog(null);
@@ -102,15 +109,15 @@ export function OrderDetailPage({ orderNumber }: { orderNumber: string }) {
         <NextActionCard
           action={nextAction}
           busy={busy}
-          onBuyLabel={() => setDialog("label")}
-          onReship={() => setDialog("reship")}
+          onBuyLabel={() => openLabel("label")}
+          onReship={() => openLabel("reship")}
           onMarkDelivered={() => setDialog("deliver")}
           onHandOff={() => setDialog("handoff")}
         />
 
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
           <div className="lg:col-span-3 space-y-6">
-            <ItemsSection items={vm.items} itemCount={vm.itemCount} onOpen={setSheet} />
+            <ItemsSection items={vm.items} itemCount={vm.itemCount} checklist={checklist} pendingLine={pendingLine} onOpen={setSheet} onCheck={check} />
             <MoneySection money={vm.money} />
             <div id="refunds" className="scroll-mt-20">
               <OrderRefundsPanel order={order} onMessage={reportSuccess} onError={reportError} />
@@ -123,7 +130,7 @@ export function OrderDetailPage({ orderNumber }: { orderNumber: string }) {
               labels={vm.labels}
               manualMoves={manualMoves}
               showDeliverHere={nextAction.kind !== "mark_delivered"}
-              onPrintLabel={() => setDialog("label")}
+              onPrintLabel={() => openLabel("label")}
               onManualTracking={() => setDialog("tracking")}
               onMarkDelivered={() => setDialog("deliver")}
               onRevert={() => setDialog("revert")}
@@ -141,6 +148,16 @@ export function OrderDetailPage({ orderNumber }: { orderNumber: string }) {
       <PackingSlipPrint vm={vm} statusLine={adminStatusSummary(order)} />
 
       <PackingSheet line={sheet} onClose={() => setSheet(null)} />
+      <PackingConfirmDialog
+        open={labelAfterConfirm !== null}
+        uncheckedUnits={checklist?.uncheckedUnits ?? 0}
+        totalUnits={checklist?.totalUnits ?? 0}
+        onClose={() => setLabelAfterConfirm(null)}
+        onConfirm={() => {
+          setDialog(labelAfterConfirm);
+          setLabelAfterConfirm(null);
+        }}
+      />
       <ShippingLabelModal order={order} isOpen={dialog === "label" || dialog === "reship"} reship={dialog === "reship"} onClose={close} />
       <ConfirmDialog open={dialog === "deliver"} title={t("labels.deliverTitle")} body={t("labels.deliverBody")} confirmLabel={t("labels.markDelivered")} busy={busy} error={error} onClose={close}
         onConfirm={async () => { if (await actions.markDelivered()) close(); }} />

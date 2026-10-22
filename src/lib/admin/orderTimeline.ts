@@ -17,6 +17,7 @@ const EVENTS: Record<string, { title: string; tone: TimelineTone }> = {
   double_settlement_attempted: { title: "Duplicate payment blocked", tone: "amber" },
   shipping_label_created: { title: "Label bought", tone: "blue" },
   shipping_label_reshipped: { title: "Reship label bought", tone: "amber" },
+  packing_checklist_completed: { title: "Packing Checklist complete", tone: "emerald" },
   handoff_recorded: { title: "Handed off to the carrier", tone: "blue" },
   handoff_corrected: { title: "Handoff corrected", tone: "blue" },
   handoff_removed: { title: "Handoff removed", tone: "zinc" },

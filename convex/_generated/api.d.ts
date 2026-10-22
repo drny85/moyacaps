@@ -84,6 +84,8 @@ import type * as orders_handoff from "../orders/handoff.js";
 import type * as orders_handoffs from "../orders/handoffs.js";
 import type * as orders_labels from "../orders/labels.js";
 import type * as orders_model from "../orders/model.js";
+import type * as orders_packing from "../orders/packing.js";
+import type * as orders_packingChecklist from "../orders/packingChecklist.js";
 import type * as orders_paymentEvents from "../orders/paymentEvents.js";
 import type * as orders_settlement from "../orders/settlement.js";
 import type * as orders_shared from "../orders/shared.js";
@@ -220,6 +222,8 @@ declare const fullApi: ApiFromModules<{
   "orders/handoffs": typeof orders_handoffs;
   "orders/labels": typeof orders_labels;
   "orders/model": typeof orders_model;
+  "orders/packing": typeof orders_packing;
+  "orders/packingChecklist": typeof orders_packingChecklist;
   "orders/paymentEvents": typeof orders_paymentEvents;
   "orders/settlement": typeof orders_settlement;
   "orders/shared": typeof orders_shared;

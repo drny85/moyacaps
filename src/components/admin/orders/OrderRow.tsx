@@ -2,13 +2,15 @@
 
 import Image from "next/image";
 import { useTranslations } from "next-intl";
-import { AlertTriangle, ChevronRight, Clock, Printer, Truck } from "lucide-react";
+import { AlertTriangle, ChevronRight, Clock, ListChecks, Printer, Truck } from "lucide-react";
 import { Link } from "@/i18n/routing";
 import { OrderStatusPills } from "@/components/admin/OrderStatusPills";
 import type { OrderRowVM } from "@/lib/admin/orderRow";
 
+type PackingProgress = { checkedUnits: number; totalUnits: number; complete: boolean };
+
 /** One Order as a card (D10): glance info plus the single quick action the state machine allows. */
-export function OrderRow({ row, onQuickAction }: { row: OrderRowVM; onQuickAction: (row: OrderRowVM) => void }) {
+export function OrderRow({ row, packing, onQuickAction }: { row: OrderRowVM; packing?: PackingProgress; onQuickAction: (row: OrderRowVM) => void }) {
   const t = useTranslations("admin.orders");
   const quickLabel = row.quickAction === "reship" ? t("reship") : row.addressMissing ? t("addressAndLabel") : t("buyLabel");
   return (
@@ -27,6 +29,15 @@ export function OrderRow({ row, onQuickAction }: { row: OrderRowVM; onQuickActio
               </span>
             </div>
             <OrderStatusPills order={row.lifecycle} />
+            {packing && packing.checkedUnits > 0 && (
+              <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md border text-[10px] font-semibold ${
+                packing.complete
+                  ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20"
+                  : "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20"
+              }`}>
+                <ListChecks className="w-3 h-3" /> {t("packing", { checked: packing.checkedUnits, total: packing.totalUnits })}
+              </span>
+            )}
             {(row.handedOff || row.handoffFlag) && (
               <div className="flex items-center gap-1.5 flex-wrap text-[10px] font-semibold">
                 {row.handedOff && (

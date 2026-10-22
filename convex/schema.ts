@@ -183,6 +183,15 @@ export default defineSchema({
     trackingLocation: v.optional(v.string()),
     trackingDeliveredAt: v.optional(v.number()),
     trackingFailedAt: v.optional(v.number()),
+    // Packing Checklist (plan 0012): Checked units per line index for the label `forLabel`
+    // (0 = first pack, 1 = first Reship, …). `completedAt` marks the completion event as logged.
+    packingChecklist: v.optional(
+      v.object({
+        forLabel: v.number(),
+        checked: v.array(v.number()),
+        completedAt: v.optional(v.number()),
+      })
+    ),
     manualStatusOverride: v.optional(v.boolean()),
     adminNotes: v.optional(v.string()),
     paymentUrl: v.optional(v.string()),
