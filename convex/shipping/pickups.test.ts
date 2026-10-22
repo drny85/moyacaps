@@ -101,6 +101,30 @@ describe("USPS pickups", () => {
     await expect(admin(tt).action(api.shipping.pickups.schedulePickup, request)).rejects.toThrow(/SHIPPO_API_KEY is missing|simulated/);
   });
 
+  it("refuses on a Shippo test key without calling Shippo", async () => {
+    process.env.SHIPPO_API_KEY = "shippo_test_suite";
+    delete process.env.SHIPPO_ALLOW_SIMULATION;
+    const tt = t();
+    await tt.run(async (ctx) => {
+      const id = await ctx.db.insert("orders", {
+        orderNumber: "GL-TK1",
+        items: [{ variantId: "V1", name: "Cap V1", quantity: 1, price: 100, image: "/img.png" }],
+        currency: "USD",
+        total: 100,
+        paymentStatus: "paid",
+        fulfillmentStatus: "label_purchased",
+        paymentMethod: "stripe",
+        shippingCarrier: "USPS",
+        shippingServiceLevel: "Priority Mail",
+        shippingTransactionId: "tx_test_label",
+        createdAt: Date.now(),
+      });
+      return id;
+    });
+    await expect(admin(tt).action(api.shipping.pickups.schedulePickup, request)).rejects.toThrow(/test key/);
+    expect(await tt.run((ctx) => ctx.db.query("pickups").collect())).toEqual([]);
+  });
+
   it("is admin-only", async () => {
     const tt = t();
     await expect(tt.query(api.shipping.pickupQueries.pickupDesk, { today })).rejects.toThrow();

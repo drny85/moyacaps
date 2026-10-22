@@ -4,6 +4,7 @@ import {
   groupPickupCandidates,
   pickupDiagnostics,
   pickupFailureMessage,
+  TEST_KEY_PICKUP_ERROR,
   isPickupDay,
   nextPickupDate,
   pickupAddress,
@@ -158,6 +159,15 @@ describe("planPickupMode", () => {
 
   it("schedules real pickups for real labels", () => {
     expect(planPickupMode(live, ["tx_1"])).toEqual({ ok: true, simulated: false });
+  });
+
+  it("refuses a test key, whose labels USPS cannot collect", () => {
+    const testKey = shippoPolicy({ apiKey: "shippo_test_abc" });
+    const plan = planPickupMode(testKey, ["tx_1"]);
+    expect(plan).toEqual({ ok: false, error: TEST_KEY_PICKUP_ERROR });
+    expect(planPickupMode(testKey, ["sim_tx_1"])).toEqual({ ok: false, error: TEST_KEY_PICKUP_ERROR });
+    // A test key with simulation opted in simulates instead of calling USPS.
+    expect(planPickupMode(testOptedIn, ["tx_1"])).toEqual({ ok: true, simulated: true });
   });
 
   it("simulates only when the deployment allows it", () => {

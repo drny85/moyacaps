@@ -268,14 +268,21 @@ export function planPickupRequest(input: PickupRequestInput): PickupPlan {
 
 export type PickupMode = { ok: true; simulated: boolean } | { ok: false; error: string };
 
+/** Shown when the deployment's Shippo key is a test key: its labels are not real postage. */
+export const TEST_KEY_PICKUP_ERROR =
+  "This deployment uses a Shippo test key, so its labels are test labels and USPS cannot collect them. Schedule pickups where the live key is set (production).";
+
 /**
- * Whether the pickup is real or simulated, following the label rules (./shippoMode): a
- * simulated label or a missing key is refused unless this deployment allows simulation.
+ * Whether the pickup is real or simulated, following the label rules (./shippoMode). Only a live
+ * key reaches USPS: a test key's labels are not real postage, so USPS refuses them with a generic
+ * carrier error. A test key, a simulated label or a missing key is refused unless this deployment
+ * allows simulation.
  */
 export function planPickupMode(policy: ShippoPolicy, transactionIds: string[]): PickupMode {
   const simulatedLabel = transactionIds.some(isSimulatedRate);
-  if (!simulatedLabel && policy.mode !== "none") return { ok: true, simulated: false };
+  if (!simulatedLabel && policy.mode === "live") return { ok: true, simulated: false };
   if (policy.allowSimulation) return { ok: true, simulated: true };
+  if (policy.mode === "test") return { ok: false, error: TEST_KEY_PICKUP_ERROR };
   if (simulatedLabel) {
     return { ok: false, error: "A waiting label is simulated, so USPS cannot collect it. Void it and buy a real label." };
   }
