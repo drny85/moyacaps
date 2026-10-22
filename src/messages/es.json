@@ -1039,6 +1039,10 @@
         "cancelled": "Orden cancelada.",
         "dispatched": "Marcada en tránsito; se avisó al cliente.",
         "handoffRemoved": "Entrega quitada."
+      },
+      "timeline": {
+        "title": "Historial",
+        "loading": "Cargando…"
       }
     },
     "homeTiles": {
@@ -1138,7 +1142,22 @@
     "netPaid": "Pago Neto",
     "conciergeBanner": "¿Tienes dudas sobre tu entrega? Habla con nuestro Concierge en WhatsApp 24/7.",
     "chatWhatsApp": "WhatsApp Concierge",
-    "supportFallback": "Soporte"
+    "supportFallback": "Soporte",
+    "timeline": {
+      "title": "Historial de envío",
+      "placed": "Pedido realizado",
+      "paid": "Pago confirmado",
+      "ready_to_ship": "Empacado, listo para enviar con {carrier}",
+      "reship": "Se preparó un nuevo paquete con {carrier}",
+      "handed_off_dropped_off": "Dejado en {carrier}",
+      "handed_off_picked_up": "Recogido por {carrier}",
+      "in_transit": "En tránsito",
+      "out_for_delivery": "En reparto",
+      "delivered": "Entregado",
+      "delivery_problem": "Problema con la entrega: lo estamos resolviendo",
+      "returned": "Devuelto al remitente",
+      "cancelled": "Pedido cancelado"
+    }
   },
   "validation": {
     "required": "Este campo es obligatorio",

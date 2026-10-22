@@ -3,6 +3,7 @@
  * customer-facing order reads and edits. Settlement, the admin
  * order desk, fulfillment and analytics live in their own modules (ADR 0017).
  */
+import { customerTimelineFor } from "./timelineQueries";
 import { query, internalQuery } from "../_generated/server";
 import { mutation, internalMutation } from "../lib/functions";
 import { v, ConvexError } from "convex/values";
@@ -308,6 +309,7 @@ export const getOrderByOrderNumberAndEmail = query({
     }
 
     // Unauthenticated or unrelated viewers get redacted PII and never the live payment link.
-    return isOwnerOrAdmin ? ownerTrackingView(order) : guestTrackingView(order);
+    const timeline = await customerTimelineFor(ctx, order);
+    return { ...(isOwnerOrAdmin ? ownerTrackingView(order) : guestTrackingView(order)), timeline };
   },
 });

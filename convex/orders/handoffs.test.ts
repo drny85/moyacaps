@@ -112,3 +112,23 @@ describe("Handoffs (ADR 0030)", () => {
     });
   });
 });
+
+describe("Order Timeline (scans stored)", () => {
+  it("stores each carrier scan once and shows it on both timelines", async () => {
+    const tt = t();
+    const orderId = await seedReadyToShip(tt, "GL-T1");
+    const scanArgs = { trackingNumber: TRACKING, status: "TRANSIT", statusDetails: "Accepted at USPS", statusDate: "2026-10-23T14:00:00Z", location: { city: "Bronx", state: "NY", zip: "10456" } };
+    await tt.mutation(internal.orders.fulfillment.handleTrackingWebhookInternal, scanArgs);
+    // Shippo resends the same update: stored once.
+    await tt.mutation(internal.orders.fulfillment.handleTrackingWebhookInternal, scanArgs);
+    const stored = await tt.run((ctx) => ctx.db.query("tracking_events").collect());
+    expect(stored).toHaveLength(1);
+    expect(stored[0]).toMatchObject({ orderId, status: "TRANSIT", location: "Bronx, NY" });
+
+    const adminEntries = await admin(tt).query(api.orders.timelineQueries.getOrderTimelineAdmin, { orderId });
+    expect(adminEntries.some((e) => e.source === "scan" && e.kind === "TRANSIT" && e.location === "Bronx, NY")).toBe(true);
+
+    const view = await tt.query(api.orders.functions.getOrderByOrderNumberAndEmail, { orderNumber: "GL-T1", email: "buyer@test.com" });
+    expect(view?.timeline.map((e) => e.kind)).toEqual(["in_transit", "ready_to_ship", "placed"]);
+  });
+});

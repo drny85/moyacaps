@@ -2,6 +2,7 @@
 import { v } from "convex/values";
 import schema from "../schema";
 import { handoffMethodValidator } from "./labels";
+import { customerTimelineEntryValidator } from "./timeline";
 
 export const shippingAddressValidator = v.object({
   line1: v.string(),
@@ -81,6 +82,8 @@ const reservationFields = orderDoc.pick("paymentUrl", "paymentLinkSentAt", "rese
 /** orderModel.guestTrackingView */
 export const guestTrackingViewValidator = viewFields.extend({
   ...reservationFields,
+  // The Customer's Order Timeline (orders/timeline.ts customerTimeline).
+  timeline: v.array(customerTimelineEntryValidator),
   items: v.array(publicItem),
   shippingAddress: v.optional(shippingAddressValidator),
   customerEmail: v.optional(v.string()),
@@ -91,6 +94,8 @@ export const guestTrackingViewValidator = viewFields.extend({
 /** orderModel.ownerTrackingView */
 export const ownerTrackingViewValidator = viewFields.extend({
   ...reservationFields,
+  // The Customer's Order Timeline (orders/timeline.ts customerTimeline).
+  timeline: v.array(customerTimelineEntryValidator),
   items: v.array(orderItemValidator),
   shippingAddress: v.optional(shippingAddressValidator),
   customerEmail: v.optional(v.string()),

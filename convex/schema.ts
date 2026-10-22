@@ -239,6 +239,17 @@ export default defineSchema({
     .index("by_requestId", ["requestId"])
     // Stripe's refund.failed / refund.updated webhooks find the row by its Stripe refund id.
     .index("by_stripeRefundId", ["stripeRefundId"]),
+  // Every carrier scan Shippo reports for an Order (CONTEXT.md "Order Timeline"), newest kept,
+  // at most MAX_TRACKING_EVENTS per Order (orders/timeline.ts). City and state only.
+  tracking_events: defineTable({
+    orderId: v.id("orders"),
+    trackingNumber: v.string(),
+    status: v.string(),
+    statusDetails: v.optional(v.string()),
+    statusDate: v.optional(v.string()),
+    location: v.optional(v.string()),
+    receivedAt: v.number(),
+  }).index("by_orderId_and_receivedAt", ["orderId", "receivedAt"]),
   // USPS Package Pickups scheduled through Shippo (shipping/pickupPlan.ts). USPS takes one
   // request per address per day; a pickup cannot be changed in Shippo, only by calling USPS
   // with its confirmation code.
