@@ -6,6 +6,7 @@ import { useStore } from "@/store/useStore";
 import { useSafeUser } from "@/lib/useSafeUser";
 import { onFirstInteraction } from "@/lib/deferred";
 import { isSearchShortcut } from "@/lib/search/shortcut";
+import { useReleaseOpenCheckout } from "@/hooks/useReleaseOpenCheckout";
 
 /**
  * App-wide overlays, loaded off the first-load path (ADR 0018). Each one's code is a
@@ -44,6 +45,8 @@ export function DeferredOverlays() {
   const searchNeeded = useLatch(useStore((s) => s.isSearchOpen));
   const openSearch = useStore((s) => s.openSearch);
   const { isSignedIn } = useSafeUser();
+  // A Pay click left unpaid frees its Checkout Hold on the next visit to any page.
+  useReleaseOpenCheckout();
 
   useEffect(
     () =>

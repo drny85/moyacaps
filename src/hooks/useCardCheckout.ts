@@ -6,13 +6,16 @@ import { useLocale } from "next-intl";
 import { api } from "../../convex/_generated/api";
 import { useStore } from "@/store/useStore";
 import { useSafeUser } from "@/lib/useSafeUser";
-import { cartCheckoutLines } from "@/lib/openCheckout";
+import { cartCheckoutLines, openCheckoutAfterRelease } from "@/lib/openCheckout";
 import { getCheckoutPass } from "@/app/actions/checkoutPass";
+
+/** Checkout Sessions being expired right now, so one is never expired twice at once. */
+const releasing = new Set<string>();
 
 /**
  * Card checkout with a Checkout Hold (ADR 0024). `startCheckout` passes the cart's previous
  * open session so the server expires it before holding the new one, and remembers the new
- * Order. `abandonOpenCheckout` (Stripe's back link) expires the open session right away.
+ * Order. `abandonOpenCheckout` (any return from Stripe) expires the open session right away.
  *
  * Both read the store when called, not from render: the first render after SSR hydration
  * sees the store's initial state (no cart, no open checkout), and a mount effect calling
@@ -43,14 +46,20 @@ export function useCardCheckout() {
   }, [locale, user, createCheckoutSession]);
 
   const abandonOpenCheckout = useCallback(async () => {
-    const { openCheckout, setOpenCheckout } = useStore.getState();
-    if (!openCheckout) return;
-    setOpenCheckout(null);
+    const { openCheckout } = useStore.getState();
+    // Several callers (page load, Back from Stripe, Stripe's back link) may ask at once.
+    if (!openCheckout || releasing.has(openCheckout.sessionId)) return;
+    releasing.add(openCheckout.sessionId);
     try {
       await abandonCheckoutSession({ sessionId: openCheckout.sessionId });
     } catch (err) {
       // The webhook and the backstop still release the hold.
       console.warn("Could not expire the abandoned checkout session:", err);
+    } finally {
+      releasing.delete(openCheckout.sessionId);
+      // Forgotten only now: until the units are back in stock, the cart counts the hold as its own.
+      const { openCheckout: current, setOpenCheckout } = useStore.getState();
+      setOpenCheckout(openCheckoutAfterRelease(current, openCheckout));
     }
   }, [abandonCheckoutSession]);
 

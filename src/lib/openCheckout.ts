@@ -22,3 +22,22 @@ export function isCanceledCheckoutReturn(params: { get(name: string): string | n
   const value = params.get("canceled");
   return value === "1" || value === "true";
 }
+
+/**
+ * The open checkout to release when a store page loads: any return to the store means the
+ * shopper left Stripe without paying (Back, a reload, a new tab), so its Checkout Hold should
+ * not keep units out of stock for 30 minutes. Never on the success page, which clears it.
+ */
+export function checkoutToReleaseOnLoad(openCheckout: OpenCheckout | null, pathname: string): OpenCheckout | null {
+  if (!openCheckout) return null;
+  return /(^|\/)checkout\/success\/?$/.test(pathname) ? null : openCheckout;
+}
+
+/**
+ * The cart's open checkout once `released` was expired on the server: forgotten, unless a new
+ * Pay click opened another one meanwhile. Cleared only after the server answers, so the cart
+ * keeps counting the hold as its own stock until the units are back in stock.
+ */
+export function openCheckoutAfterRelease(current: OpenCheckout | null, released: OpenCheckout): OpenCheckout | null {
+  return current && current.sessionId !== released.sessionId ? current : null;
+}
