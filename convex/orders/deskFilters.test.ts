@@ -73,6 +73,8 @@ describe("matchesDeskFilter", () => {
     expect(tabsOf(order("paid", "label_purchased", { labels: [label] }))).toEqual(["all", "ready_to_ship", "label_purchased"]);
     expect(tabsOf(order("paid", "label_purchased", { labels: [handedOff] }))).toEqual(["all", "shipped", "label_purchased"]);
     expect(tabsOf(order("paid", "label_purchased", { labels: [handedOff], cancelledAt: NOW }))).toEqual(["all", "label_purchased", "cancelled"]);
+    // A fully refunded order is no longer the store's to send.
+    expect(tabsOf(order("refunded", "label_purchased", { labels: [label] }))).toEqual(["all", "done", "label_purchased", "refunded"]);
   });
 
   it("queues group the statuses the desk works from", () => {

@@ -7,7 +7,7 @@ import { query } from "../_generated/server";
 import { mutation } from "../lib/functions";
 import { requireAdmin } from "../lib/auth";
 import { handoffMethodValidator } from "./labels";
-import { MAX_NOTE_LENGTH, currentHandoff, handoffFlag, planClearHandoff, planHandoff } from "./handoff";
+import { MAX_NOTE_LENGTH, currentHandoff, handoffFlag, isReadyToShip, planClearHandoff, planHandoff } from "./handoff";
 import { insertPaymentEvent } from "./paymentEvents";
 import { scheduleShippedEmail } from "./shippedNotice";
 
@@ -113,7 +113,7 @@ export const handoffAttention = query({
     let notHandedOff = 0;
     let noScan = 0;
     for (const order of orders) {
-      if (order.cancelledAt !== undefined) continue;
+      if (!isReadyToShip(order)) continue;
       if (!currentHandoff(order)) readyToShip++;
       const flag = handoffFlag(order, args.clientTime);
       if (flag === "not_handed_off") notHandedOff++;

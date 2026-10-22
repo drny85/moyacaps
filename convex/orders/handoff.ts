@@ -29,9 +29,13 @@ export function currentHandoff(order: LabelSource): Handoff | undefined {
   return currentLabel(order)?.handoff;
 }
 
-/** Ready to Ship: a label is bought and the carrier has not scanned it, and not cancelled. */
+/**
+ * Ready to Ship and still the store's to send: a label is bought, the carrier has not scanned it,
+ * and the sale stands (not cancelled, not fully refunded: the store no longer owes that package).
+ */
 export function isReadyToShip(order: HandoffOrder): boolean {
-  return !isCancelled(order) && statusAxes(order).fulfillmentStatus === "label_purchased";
+  const axes = statusAxes(order);
+  return !isCancelled(order) && axes.paymentStatus !== "refunded" && axes.fulfillmentStatus === "label_purchased";
 }
 
 /** Has the package left the Administrator: handed off, or scanned by the carrier. */

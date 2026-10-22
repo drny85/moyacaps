@@ -66,9 +66,11 @@ describe("planHandoff", () => {
     expect(plan.ok && plan.labels[1].handoff?.method).toBe("dropped_off");
   });
 
-  it("refuses once the carrier scanned it, or when cancelled or unlabelled", () => {
+  it("refuses once the carrier scanned it, or when cancelled, fully refunded or unlabelled", () => {
     expect(planHandoff(order({ fulfillmentStatus: "in_transit" }), input, T0 + 3 * HOUR).ok).toBe(false);
     expect(planHandoff(order({ cancelledAt: T0 }), input, T0 + 3 * HOUR).ok).toBe(false);
+    expect(planHandoff(order({ paymentStatus: "refunded" }), input, T0 + 3 * HOUR).ok).toBe(false);
+    expect(planHandoff(order({ paymentStatus: "partially_refunded" }), input, T0 + 3 * HOUR).ok).toBe(true);
     expect(planHandoff(order({ fulfillmentStatus: "unfulfilled", labels: [] }), input, T0 + 3 * HOUR).ok).toBe(false);
   });
 

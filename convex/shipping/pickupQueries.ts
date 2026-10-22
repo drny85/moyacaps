@@ -51,8 +51,8 @@ async function upcomingPickups(ctx: QueryCtx, today: string): Promise<Doc<"picku
 }
 
 /**
- * Labelled, not-cancelled Orders the carrier has not scanned yet, minus those already on a
- * pickup still to come.
+ * Ready to Ship Orders (labelled, unscanned, sale still standing: ../orders/handoff.ts), minus
+ * those already on a pickup still to come.
  */
 async function waitingPackages(ctx: QueryCtx, today: string): Promise<Candidate[]> {
   const scheduled = new Set<string>();
@@ -65,7 +65,7 @@ async function waitingPackages(ctx: QueryCtx, today: string): Promise<Candidate[
     .order("desc")
     .take(WAITING_LIMIT);
   return orders
-    .filter((o) => o.cancelledAt === undefined && !scheduled.has(o._id))
+    .filter((o) => isReadyToShip(o) && !scheduled.has(o._id))
     .map((o) => ({
       orderId: o._id,
       orderNumber: o.orderNumber,
