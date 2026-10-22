@@ -46,6 +46,11 @@ export function hasShipped(order: HandoffOrder): boolean {
   return true;
 }
 
+/** Ready to Ship and handed off, but not yet scanned: the "Handed off" tag beside the status (ADR 0030). */
+export function isHandedOff(order: HandoffOrder): boolean {
+  return statusAxes(order).fulfillmentStatus === "label_purchased" && currentHandoff(order) !== undefined;
+}
+
 /** Replaces the current (last) label with `next`, keeping the history before it. */
 function withCurrentLabel(order: LabelSource, next: ShippingLabel): ShippingLabel[] {
   const labels = labelHistory(order);

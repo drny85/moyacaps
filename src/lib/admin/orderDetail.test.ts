@@ -68,7 +68,7 @@ describe("toOrderDetail", () => {
 
   it("counts units and builds the header", () => {
     expect(vm.itemCount).toBe(3);
-    expect(vm.header).toMatchObject({ orderNumber: "GL-1042", age: { value: 3, unit: "h" }, disputed: false, cancelled: false });
+    expect(vm.header).toMatchObject({ orderNumber: "GL-1042", age: { value: 3, unit: "h" }, handedOff: false, disputed: false, cancelled: false });
     expect(vm.header.lifecycle).toEqual({ paymentStatus: "paid", fulfillmentStatus: "unfulfilled", cancelledAt: undefined });
   });
 
@@ -98,8 +98,10 @@ describe("toOrderDetail", () => {
     const ready = toOrderDetail({ ...order, fulfillmentStatus: "label_purchased", labels: [{ ...label, handoff }] }, products, "en", NOW).labels;
     expect(ready.handoff).toEqual({ method: "dropped_off", at: NOW, note: "5th Ave" });
     expect(ready.handoffEditable).toBe(true);
+    expect(toOrderDetail({ ...order, fulfillmentStatus: "label_purchased", labels: [{ ...label, handoff }] }, products, "en", NOW).header.handedOff).toBe(true);
     const scanned = toOrderDetail({ ...order, fulfillmentStatus: "in_transit", labels: [{ ...label, handoff }] }, products, "en", NOW).labels;
     expect(scanned.handoffEditable).toBe(false);
+    expect(toOrderDetail({ ...order, fulfillmentStatus: "in_transit", labels: [{ ...label, handoff }] }, products, "en", NOW).header.handedOff).toBe(false);
   });
 
   it("manual tracking is offered only for a paid order with no carrier label, never once cancelled", () => {

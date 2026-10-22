@@ -331,7 +331,9 @@
         "uspsSiteWaiting": "{count, plural, one {# paquete Ground Advantage no se puede} other {# paquetes Ground Advantage no se pueden}} programar aquí (la API de USPS solo acepta Priority e internacional).",
         "rideAlong": "Déjalos afuera con los paquetes programados: el cartero los recoge en la misma parada.",
         "uspsSiteLink": "Programar en usps.com",
-        "markPickedUp": "{count, plural, one {Marcar # recogido} other {Marcar # recogidos}}"
+        "markPickedUp": "{count, plural, one {Marcar # recogido} other {Marcar # recogidos}}",
+        "summaryWaiting": "{count, plural, one {# paquete por programar} other {# paquetes por programar}}",
+        "summaryBooked": "{count, plural, one {# recogida programada} other {# recogidas programadas}}"
       },
       "handoff": {
         "handedOff": "Entregado al transportista",
@@ -1039,7 +1041,7 @@
         "save": "Guardar notas"
       },
       "danger": {
-        "title": "Cancelar",
+        "title": "Zona de peligro",
         "help": "Cancelar devuelve al stock las unidades no enviadas y avisa al cliente.",
         "cancel": "Cancelar orden",
         "cancelTitle": "¿Cancelar esta orden?",

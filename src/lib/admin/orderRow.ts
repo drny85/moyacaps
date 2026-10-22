@@ -1,7 +1,7 @@
 /** One Orders-list card (plan 0009 D10): what the Administrator glances at, and the one thing they can do from it. */
 import { labelAction } from "../../../convex/orders/status";
 import type { FulfillmentStatus, PaymentStatus } from "../../../convex/orders/status";
-import { currentHandoff, handoffFlag, type HandoffFlag } from "../../../convex/orders/handoff";
+import { handoffFlag, isHandedOff, type HandoffFlag } from "../../../convex/orders/handoff";
 import type { ShippingLabel } from "../../../convex/orders/labels";
 import { formatUsd } from "./homeView";
 
@@ -77,7 +77,7 @@ export function toOrderRow(order: OrderRowInput, now: number, locale: "en" | "es
     overdue: needsPacking(order) && order.createdAt < now - DAY_MS,
     quickAction: action,
     addressMissing: !order.shippingAddress?.line1,
-    handedOff: order.fulfillmentStatus === "label_purchased" && currentHandoff(order) !== undefined,
+    handedOff: isHandedOff(order),
     handoffFlag: handoffFlag(order, now),
   };
 }
