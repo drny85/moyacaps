@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { ArrowLeft, Check, Copy, Printer, ShieldAlert } from "lucide-react";
 import { Link } from "@/i18n/routing";
 import { OrderStatusPills } from "@/components/admin/OrderStatusPills";
+import { HandedOffTag } from "../HandedOffTag";
 import type { OrderDetailVM } from "@/lib/admin/orderDetail";
 import { secondaryBtn } from "./Section";
 
@@ -30,7 +31,10 @@ export function OrderHeader({ header }: { header: OrderDetailVM["header"] }) {
               {copied ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
             </button>
           </div>
-          <OrderStatusPills order={header.lifecycle} />
+          <div className="flex flex-wrap items-center gap-1">
+            <OrderStatusPills order={header.lifecycle} />
+            {header.handedOff && <HandedOffTag />}
+          </div>
           <p className="text-[11px] font-mono text-zinc-500 dark:text-zinc-400">
             {t("placed", { when: header.placedLabel })} · {tOrders(`age.${header.age.unit}`, { count: header.age.value })}
           </p>

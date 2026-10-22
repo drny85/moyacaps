@@ -6,6 +6,7 @@ import {
   currentHandoff,
   handoffFlag,
   hasShipped,
+  isHandedOff,
   planClearHandoff,
   planHandoff,
   type HandoffOrder,
@@ -111,6 +112,16 @@ describe("hasShipped", () => {
     expect(hasShipped(order({ labels: [label({ handoff: { method: "picked_up", at: T0, recordedAt: T0, actor: "a" } })] }))).toBe(true);
     expect(hasShipped(order({ fulfillmentStatus: "in_transit" }))).toBe(true);
     expect(hasShipped(order({ fulfillmentStatus: "delivered" }))).toBe(true);
+  });
+});
+
+describe("isHandedOff", () => {
+  it("is true only while Ready to Ship with a Handoff on the current label", () => {
+    const handoff = { method: "dropped_off" as const, at: T0, recordedAt: T0, actor: "a" };
+    expect(isHandedOff(order())).toBe(false);
+    expect(isHandedOff(order({ labels: [label({ handoff })] }))).toBe(true);
+    expect(isHandedOff(order({ fulfillmentStatus: "in_transit", labels: [label({ handoff })] }))).toBe(false);
+    expect(isHandedOff(order({ labels: [label({ handoff }), label({ reship: true })] }))).toBe(false);
   });
 });
 

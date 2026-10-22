@@ -5,7 +5,7 @@
 import { canEditShippingAddress, isCancelled } from "../../../convex/orders/status";
 import type { FulfillmentStatus, PaymentStatus } from "../../../convex/orders/status";
 import { carrierTrackingNumber } from "../../../convex/orders/trackingNumber";
-import { currentHandoff, currentLabel, isReadyToShip } from "../../../convex/orders/handoff";
+import { currentHandoff, currentLabel, isHandedOff, isReadyToShip } from "../../../convex/orders/handoff";
 import type { HandoffMethod, ShippingLabel } from "../../../convex/orders/labels";
 import { getCarrierTrackingUrl } from "../tracking";
 import { orderAge } from "./orderRow";
@@ -71,7 +71,16 @@ export type PackingLine = {
 type Lifecycle = { paymentStatus: PaymentStatus; fulfillmentStatus: FulfillmentStatus; cancelledAt?: number };
 
 export type OrderDetailVM = {
-  header: { orderNumber: string; age: OrderAge; lifecycle: Lifecycle; disputed: boolean; cancelled: boolean; placedLabel: string };
+  header: {
+    orderNumber: string;
+    age: OrderAge;
+    lifecycle: Lifecycle;
+    /** Ready to Ship and already given to the carrier (ADR 0030). */
+    handedOff: boolean;
+    disputed: boolean;
+    cancelled: boolean;
+    placedLabel: string;
+  };
   items: PackingLine[];
   itemCount: number;
   money: {
@@ -149,6 +158,7 @@ export function toOrderDetail(order: DetailOrderInput, products: PackingProductI
       orderNumber: order.orderNumber,
       age: orderAge(order.createdAt, now),
       lifecycle: { paymentStatus: order.paymentStatus, fulfillmentStatus: order.fulfillmentStatus, cancelledAt: order.cancelledAt },
+      handedOff: isHandedOff(order),
       disputed: order.disputed === true || order.paymentStatus === "disputed",
       cancelled: isCancelled(order),
       placedLabel: new Date(order.createdAt).toLocaleString(locale, { dateStyle: "medium", timeStyle: "short" }),

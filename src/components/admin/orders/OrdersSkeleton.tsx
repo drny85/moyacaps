@@ -1,7 +1,7 @@
 /** Loading state of the Orders list: chip row and card outlines. */
 export function OrdersSkeleton({ count = 6 }: { count?: number }) {
   return (
-    <div className="space-y-4 max-w-3xl" aria-hidden>
+    <div className="space-y-4 max-w-3xl xl:max-w-6xl" aria-hidden>
       <div className="h-9 rounded-xl bg-zinc-100 dark:bg-white/[0.04] animate-pulse" />
       <div className="h-7 w-2/3 rounded-lg bg-zinc-100 dark:bg-white/[0.04] animate-pulse" />
       {Array.from({ length: count }, (_, i) => (
