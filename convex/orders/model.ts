@@ -409,6 +409,19 @@ export function guestTrackingView(order: Order) {
   };
 }
 
+/**
+ * One Order on the signed-in Customer's account page: the status core plus their own line
+ * items, address and phone. Never the admin notes, webhook ids, Stripe ids or payment link.
+ */
+export function accountOrderView(order: Order) {
+  return {
+    ...orderStatusView(order),
+    items: order.items,
+    shippingAddress: order.shippingAddress,
+    customerPhone: order.customerPhone,
+  };
+}
+
 /** Order tracking view for the authenticated owner or an Administrator. */
 export function ownerTrackingView(order: Order) {
   return {

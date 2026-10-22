@@ -9,7 +9,14 @@ import { mutation, internalMutation } from "../lib/functions";
 import { v, ConvexError } from "convex/values";
 import { internal } from "../_generated/api";
 import { isAdmin, isAdminRow, isAllowlistedAdmin, requireAdmin } from "../lib/auth";
-import { confirmationView, guestTrackingView, isUnpaidCheckout, orderHoldsStock, ownerTrackingView } from "./model";
+import {
+  accountOrderView,
+  confirmationView,
+  guestTrackingView,
+  isUnpaidCheckout,
+  orderHoldsStock,
+  ownerTrackingView,
+} from "./model";
 import { canEditShippingAddress, planCustomerCancellation, statusAxes, statusPatch } from "./status";
 import {
   cancellationReleaseLines,
@@ -17,7 +24,6 @@ import {
   planFullRefund,
   reservationValidator,
 } from "../payments/refundModel";
-import { carrierTrackingNumber } from "./trackingNumber";
 import { insertPaymentEvent } from "./paymentEvents";
 import { claimableEmail } from "./guestClaimModel";
 import { readLedger, reserveRefund } from "../payments/refundLedger";
@@ -30,6 +36,7 @@ import {
 } from "./shared";
 import { cancellationNotice, customerCancellationAlert } from "../notifications/orderEmails";
 import {
+  accountOrderViewValidator,
   confirmationViewValidator,
   guestTrackingViewValidator,
   orderDoc,
@@ -117,11 +124,16 @@ export const getOrderBySessionOrNumber = query({
 /** Most recent orders shown in a customer's account history. */
 const MAX_ACCOUNT_ORDERS = 200;
 
+/**
+ * A Customer's account history: their own Orders as `accountOrderView`, never the whole
+ * document (admin notes, webhook and Stripe ids stay on the desk). An Administrator may read
+ * anyone's history and gets the same view; full Orders come from the desk queries.
+ */
 export const getOrdersByClerkId = query({
   args: {
     clerkUserId: v.string(),
   },
-  returns: v.array(orderDoc),
+  returns: v.array(accountOrderViewValidator),
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
@@ -140,10 +152,7 @@ export const getOrdersByClerkId = query({
       .take(MAX_ACCOUNT_ORDERS);
 
     // Customers only see confirmed purchases (never unpaid or abandoned checkouts)
-    // A legacy GL-TRK placeholder is not a carrier Tracking Number: never shown as one.
-    return orders
-      .filter((o) => !isUnpaidCheckout(o))
-      .map((o) => ({ ...o, trackingNumber: carrierTrackingNumber(o) }));
+    return orders.filter((o) => !isUnpaidCheckout(o)).map(accountOrderView);
   },
 });
 
