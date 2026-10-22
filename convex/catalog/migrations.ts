@@ -6,7 +6,7 @@ import { mutation, internalMutation } from "../_generated/server";
 import type { MutationCtx } from "../_generated/server";
 import { v, ConvexError } from "convex/values";
 import { requireAdmin } from "../lib/auth";
-import { getVariant, listSkus } from "./inventory";
+import { deleteCapStock, getVariant, hasSkus, listSkus, setCapStock } from "./inventory";
 import { SHIRT_VARIANTS } from "../../src/data/caps";
 import catalogShots from "../../src/data/catalogShots.json";
 import { SEED_PRODUCT, SEED_VARIANTS } from "./data";
@@ -31,7 +31,7 @@ async function takeAllForWipe<T>(rows: Promise<T[]>, table: string): Promise<T[]
 }
 
 /**
- * Dev/fresh-deployment seed: wipes the catalog (products, variants, SKUs, product images and
+ * Dev/fresh-deployment seed: wipes the catalog (products, variants, cap and SKU stock, product images and
  * the catalog audit log) and inserts catalog/data.ts. Files are deleted only once nothing
  * references them (same check as `deleteStorageFile`).
  */
@@ -44,6 +44,7 @@ export const seedAll = mutation({
     const products = await takeAllForWipe(ctx.db.query("products").take(limit), "products");
     const variants = await takeAllForWipe(ctx.db.query("variants").take(limit), "variants");
     const skus = await takeAllForWipe(ctx.db.query("skus").take(limit), "skus");
+    const capStock = await takeAllForWipe(ctx.db.query("variant_stock").take(limit), "variant_stock");
     const images = await takeAllForWipe(ctx.db.query("productImages").take(limit), "productImages");
     const events = await takeAllForWipe(ctx.db.query("catalog_events").take(limit), "catalog_events");
 
@@ -54,6 +55,7 @@ export const seedAll = mutation({
     for (const row of products) await ctx.db.delete("products", row._id);
     for (const row of variants) await ctx.db.delete("variants", row._id);
     for (const row of skus) await ctx.db.delete("skus", row._id);
+    for (const row of capStock) await ctx.db.delete("variant_stock", row._id);
     for (const row of images) await ctx.db.delete("productImages", row._id);
     for (const row of events) await ctx.db.delete("catalog_events", row._id);
 
@@ -69,6 +71,7 @@ export const seedAll = mutation({
       const seeded: Partial<Doc<"variants">> = v;
       // Checkout taxes by category (plan 0008 PR 4); seed caps carry neither field.
       await ctx.db.insert("variants", { ...v, ...taxCodeBackfill(v), isAvailable: seeded.isAvailable ?? true });
+      if (!hasSkus(seeded)) await setCapStock(ctx, v.variantId, v.stock);
     }
 
     return { success: true, count: SEED_VARIANTS.length };
@@ -134,6 +137,8 @@ export const migrateUnifiedCatalog = internalMutation({
       };
 
       let variant = await getVariant(ctx, tee.id);
+      // Units held before the tee has SKUs; once colorways and sizes are set, reads sum the (still empty) SKUs.
+      const legacyStock = variant?.stock ?? tee.stock;
       if (variant) {
         const patch = teeFieldsPatch(variant, teeFields);
         if (Object.keys(patch).length > 0) {
@@ -160,10 +165,11 @@ export const migrateUnifiedCatalog = internalMutation({
 
       const existing = await listSkus(ctx, variant.variantId);
       if (existing.length === 0 && defaultColorway) {
-        const cells = distributeStock(variant.stock, colorways.map((c) => c.id), defaultColorway);
+        const cells = distributeStock(legacyStock, colorways.map((c) => c.id), defaultColorway);
         for (const cell of cells) {
           await ctx.db.insert("skus", { variantId: variant.variantId, ...cell });
         }
+        await deleteCapStock(ctx, variant.variantId);
         report.skusSeeded += cells.length;
       }
     }
@@ -413,5 +419,32 @@ export const purgeHiddenTees = internalMutation({
 
     for (const tee of targets) await purgeVariantRow(ctx, tee, PURGE_HIDDEN_TEES_ACTOR);
     return { dryRun, count: tees.length, tees, ordersTruncated };
+  },
+});
+
+/**
+ * M7: copy each cap's legacy `variants.stock` into its own `variant_stock` row, so checkout
+ * stops writing the variant document. Reads fall back to the legacy field until the row
+ * exists, so this can run any time after the deploy. Idempotent: a cap that already has a
+ * row (any sale or admin edit since the deploy creates one) is left alone. Run once per deployment:
+ *   npx convex run catalog/migrations:backfillVariantStock
+ */
+export const backfillVariantStock = internalMutation({
+  args: {},
+  returns: v.object({ inserted: v.number(), isDone: v.boolean() }),
+  handler: async (ctx) => {
+    const variants = await ctx.db.query("variants").take(MAX_CATALOG_VARIANTS);
+    let inserted = 0;
+    for (const variant of variants) {
+      if (hasSkus(variant)) continue;
+      const existing = await ctx.db
+        .query("variant_stock")
+        .withIndex("by_variantId", (q) => q.eq("variantId", variant.variantId))
+        .unique();
+      if (existing) continue;
+      await ctx.db.insert("variant_stock", { variantId: variant.variantId, stock: variant.stock });
+      inserted++;
+    }
+    return { inserted, isDone: variants.length < MAX_CATALOG_VARIANTS };
   },
 });

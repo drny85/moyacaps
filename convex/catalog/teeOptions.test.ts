@@ -4,6 +4,7 @@ import { ConvexError } from "convex/values";
 import { describe, expect, it } from "vitest";
 import { api, internal } from "../_generated/api";
 import schema from "../schema";
+import { getVariant } from "./inventory";
 import { PRIMARY_ADMIN_EMAIL } from "../lib/auth";
 
 const modules = import.meta.glob("/convex/**/*.ts");
@@ -42,8 +43,7 @@ async function errorData(promise: Promise<unknown>): Promise<unknown> {
 }
 
 const skusOf = (t: ReturnType<typeof setup>["t"]) => t.run((ctx) => ctx.db.query("skus").take(200));
-const rowOf = (t: ReturnType<typeof setup>["t"]) =>
-  t.run((ctx) => ctx.db.query("variants").withIndex("by_variantId", (q) => q.eq("variantId", tee.variantId)).unique());
+const rowOf = (t: ReturnType<typeof setup>["t"]) => t.run((ctx) => getVariant(ctx, tee.variantId));
 
 async function createdTee() {
   const ctx = setup();

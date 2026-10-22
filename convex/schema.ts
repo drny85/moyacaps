@@ -34,6 +34,9 @@ export default defineSchema({
     image: v.string(),
     storageId: v.optional(v.id("_storage")),
     images: v.optional(v.array(v.string())),
+    // Legacy: written only when the row is created. Available Inventory lives in `variant_stock`
+    // (caps) and `skus` (tees); read it through catalog/inventory.ts, which falls back to this
+    // field only for a cap whose `variant_stock` row does not exist yet.
     stock: v.number(),
     priceUsd: v.number(),
     priceMxn: v.optional(v.number()),
@@ -48,7 +51,7 @@ export default defineSchema({
     dropReleaseJobId: v.optional(v.id("_scheduled_functions")),
     // 4:5 Catalog Shot for grids and cards (ADR 0016). Tees carry one per colorway instead.
     catalogShot: v.optional(v.string()),
-    // ── Heavyweight Tee fields (ADR 0015). For tees `stock` is the sum of the variant's SKUs. ──
+    // ── Heavyweight Tee fields (ADR 0015). A tee's stock is the sum of its SKUs. ──
     graphicImage: v.optional(v.string()),
     printPosition: v.optional(v.union(v.literal("front"), v.literal("back"))),
     fabricEn: v.optional(v.string()),
@@ -77,6 +80,12 @@ export default defineSchema({
     descriptionEs: v.optional(v.string()),
     badgeTextEn: v.optional(v.string()),
     badgeTextEs: v.optional(v.string()),
+  }).index("by_variantId", ["variantId"]),
+  // Available Inventory of a product without SKUs (a Cap), kept off the variant row so a
+  // checkout's stock write never rewrites, or conflicts on, the catalog document.
+  variant_stock: defineTable({
+    variantId: v.string(),
+    stock: v.number(),
   }).index("by_variantId", ["variantId"]),
   // One purchasable Heavyweight Tee combination: Graphic Design × Apparel Colorway × size (CONTEXT.md "SKU").
   skus: defineTable({

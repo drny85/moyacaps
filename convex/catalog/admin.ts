@@ -10,7 +10,7 @@ import { internal } from "../_generated/api";
 import { requireAdmin } from "../lib/auth";
 import schema from "../schema";
 import { adminProductRow, dropStatusValidator, successResult } from "./validators";
-import { getSku, getVariant, hasSkus, listSkus, setSkuStock, syncTeeAggregate } from "./inventory";
+import { deleteCapStock, getSku, getVariant, hasSkus, listSkus, setCapStock, setSkuStock } from "./inventory";
 import { deleteAlertBatch } from "./drops";
 import { deleteAllProductImages, deleteColorwayImages, scheduleFileDelete } from "./images/functions";
 import {
@@ -34,6 +34,7 @@ import {
   countDropAlerts,
   listCatalogVariants,
   patchVariantAudited,
+  patchVariantRow,
   requireActiveVariant,
   requireVariant,
   requireVersion,
@@ -284,7 +285,9 @@ export const createVariant = mutation({
     const input = isTee
       ? { ...rest, colorways, defaultColorway: args.defaultColorway ?? colorways![0].id, stock: 0 }
       : rest;
-    const id = await ctx.db.insert("variants", buildNewVariant(input, Date.now()));
+    const row = buildNewVariant(input, Date.now());
+    const id = await ctx.db.insert("variants", row);
+    if (!isTee) await setCapStock(ctx, args.variantId, row.stock);
     if (isTee) {
       for (const colorway of colorways!) {
         for (const size of args.sizes!) {
@@ -412,7 +415,7 @@ export const updateVariant = mutation({
     ];
     if (changes.length === 0) return { updatedAt: versionOf(existing) };
 
-    await ctx.db.patch("variants", existing._id, { ...fields, updatedAt });
+    await patchVariantRow(ctx, existing, fields, updatedAt);
     if (skuPlan) {
       for (const cell of skuPlan.insert) {
         const seeded = legacySeed?.find((c) => c.colorway === cell.colorway && c.size === cell.size);
@@ -423,8 +426,8 @@ export const updateVariant = mutation({
         if (sku) await ctx.db.delete("skus", sku._id);
       }
       await deleteColorwayImages(ctx, existing.variantId, removedColorways);
-      const fresh = await ctx.db.get("variants", existing._id);
-      if (fresh) await syncTeeAggregate(ctx, fresh);
+      // A cap turned tee now counts its SKUs; its old units moved onto them above.
+      if (toApparel) await deleteCapStock(ctx, existing.variantId);
     }
     await recordCatalogEvent(ctx, {
       variantId: existing.variantId,
@@ -488,6 +491,7 @@ export async function purgeVariantRow(ctx: MutationCtx, variant: Doc<"variants">
   for (const sku of await listSkus(ctx, variant.variantId)) {
     await ctx.db.delete("skus", sku._id);
   }
+  await deleteCapStock(ctx, variant.variantId);
 
   let moreAlerts = true;
   for (let i = 0; i < PURGE_ALERT_BATCHES && moreAlerts; i++) {
@@ -507,7 +511,7 @@ export async function purgeVariantRow(ctx: MutationCtx, variant: Doc<"variants">
   await recordCatalogEvent(ctx, { variantId: variant.variantId, type: "purged", actor });
 }
 
-/** Admin: set one tee SKU's stock; the tee's aggregate stock follows. */
+/** Admin: set one tee SKU's stock; the tee's total (their sum) follows on read. */
 export const setTeeSkuStock = mutation({
   args: {
     variantId: v.string(),
@@ -526,7 +530,7 @@ export const setTeeSkuStock = mutation({
     throwIfInvalid(validateMerged(variant, { stock: args.stock }, ["stock"]));
     const { previous, next } = await setSkuStock(ctx, variant, args.colorway, args.size, args.stock);
     if (previous !== next) {
-      // The tee row's aggregate changed too; stamp it so an open full edit goes stale.
+      // The tee's total changed too; stamp it so an open full edit goes stale.
       await ctx.db.patch("variants", variant._id, { updatedAt: nextUpdatedAt(variant, Date.now()) });
       await recordCatalogEvent(ctx, {
         variantId: variant.variantId,

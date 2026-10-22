@@ -6,7 +6,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { ConvexError } from "convex/values";
 import { diffFields, recordCatalogEvent, type CatalogEventType } from "./audit";
-import { getVariant } from "./inventory";
+import { getVariant, setCapStock, withStock } from "./inventory";
 import { nextUpdatedAt, versionOf } from "./model";
 import { dropSitePaths, isPrimaryCatalogRow, overlayProductImages, primaryImage, type CapAngles, type ResolvedImageRow } from "./images/overlay";
 
@@ -23,8 +23,10 @@ export const MAX_CATALOG_VARIANTS = 500;
  */
 export const MAX_DROP_ALERTS_COUNTED = 1000;
 
+/** Every catalog variant, each with its live Available Inventory on `stock`. */
 export async function listCatalogVariants(ctx: QueryCtx) {
-  return await ctx.db.query("variants").take(MAX_CATALOG_VARIANTS);
+  const rows = await ctx.db.query("variants").take(MAX_CATALOG_VARIANTS);
+  return await Promise.all(rows.map((row) => withStock(ctx, row)));
 }
 
 /** Variant by its public id, or throw (admin mutations). */
@@ -120,6 +122,7 @@ export async function deleteStorageQuietly(ctx: MutationCtx, storageId: Id<"_sto
 /**
  * Patch a variant, stamp `updatedAt` (so a concurrent full edit is detected as stale)
  * and record the audit event for the fields that changed. Writes nothing when no field differs.
+ * `variant` must come from `getVariant` (live `stock`); a cap's `stock` goes to `variant_stock`.
  */
 export async function patchVariantAudited(
   ctx: MutationCtx,
@@ -133,9 +136,21 @@ export async function patchVariantAudited(
   const changes = diffFields(before, { ...before, ...fields });
   if (changes.length === 0) return versionOf(variant);
   const updatedAt = nextUpdatedAt(variant, Date.now());
-  await ctx.db.patch("variants", variant._id, { ...fields, updatedAt });
+  await patchVariantRow(ctx, variant, fields, updatedAt);
   await recordCatalogEvent(ctx, { variantId: variant.variantId, type, actor, changes });
   return updatedAt;
+}
+
+/** Write a variant patch: `stock` to the cap's `variant_stock` row, every other field to the variant document. */
+export async function patchVariantRow(
+  ctx: MutationCtx,
+  variant: Doc<"variants">,
+  fields: Partial<Doc<"variants">>,
+  updatedAt: number
+) {
+  const { stock, ...rowFields } = fields;
+  if (stock !== undefined) await setCapStock(ctx, variant.variantId, stock);
+  await ctx.db.patch("variants", variant._id, { ...rowFields, updatedAt });
 }
 
 /** Optimistic concurrency: the caller edited `expectedUpdatedAt`; anything newer is a concurrent edit. */

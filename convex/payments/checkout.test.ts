@@ -8,6 +8,7 @@ import rateLimiterTest from "@convex-dev/rate-limiter/test";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "../_generated/api";
 import schema from "../schema";
+import { setCapStock } from "../catalog/inventory";
 
 const stripe = vi.hoisted(() => ({
   sessionsCreate: vi.fn(),
@@ -144,7 +145,7 @@ describe("createCheckoutSession rate limit", () => {
       await pay();
       await tt.run(async (ctx) => {
         const variant = (await ctx.db.query("variants").first())!;
-        await ctx.db.patch(variant._id, { stock: 5 });
+        await setCapStock(ctx, variant.variantId, 5);
       });
     }
     await expect(pay()).rejects.toThrow(/Too many checkout attempts/);

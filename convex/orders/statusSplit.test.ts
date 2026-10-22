@@ -8,6 +8,7 @@ import { describe, expect, it } from "vitest";
 import { api, internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import schema from "../schema";
+import { getVariant } from "../catalog/inventory";
 import { PRIMARY_ADMIN_EMAIL } from "../lib/auth";
 
 const modules = import.meta.glob("/convex/**/*.ts");
@@ -40,11 +41,7 @@ async function seedVariant(tt: T, variantId: string, stock: number) {
 
 async function getStock(tt: T, variantId: string): Promise<number> {
   return await tt.run(async (ctx) => {
-    const v = await ctx.db
-      .query("variants")
-      .withIndex("by_variantId", (q) => q.eq("variantId", variantId))
-      .first();
-    return v?.stock ?? -1;
+    return (await getVariant(ctx, variantId))?.stock ?? -1;
   });
 }
 

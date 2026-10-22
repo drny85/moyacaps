@@ -4,6 +4,7 @@ import { ConvexError } from "convex/values";
 import { describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import schema from "../schema";
+import { getVariant } from "./inventory";
 import { PRIMARY_ADMIN_EMAIL } from "../lib/auth";
 import { TEE_STOCK_EDIT_ERROR } from "./model";
 
@@ -48,13 +49,8 @@ async function errorData(promise: Promise<unknown>): Promise<unknown> {
 }
 
 const history = (admin: Admin, variantId = cap.variantId) => admin.query(api.catalog.history.getVariantHistory, { variantId });
-const row = async (t: ReturnType<typeof setup>["t"], variantId = cap.variantId) =>
-  t.run((ctx) =>
-    ctx.db
-      .query("variants")
-      .withIndex("by_variantId", (q) => q.eq("variantId", variantId))
-      .unique()
-  );
+/** The variant with its live stock, as the inventory module reads it. */
+const row = async (t: ReturnType<typeof setup>["t"], variantId = cap.variantId) => t.run((ctx) => getVariant(ctx, variantId));
 
 describe("createVariant", () => {
   it("creates the product and audits it", async () => {
