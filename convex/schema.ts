@@ -3,6 +3,7 @@ import { capAngleValidator, imageRoleValidator } from "./catalog/images/validato
 import { storedCategoryLaunchValidator } from "./settings/launch";
 import { cancellationReasonValidator, fulfillmentStatusValidator, paymentStatusValidator } from "./orders/status";
 import { shippingLabelValidator } from "./orders/labels";
+import { pickupLocationValidator } from "./shipping/pickupPlan";
 import {
   refundKindValidator,
   refundLineValidator,
@@ -238,6 +239,31 @@ export default defineSchema({
     .index("by_requestId", ["requestId"])
     // Stripe's refund.failed / refund.updated webhooks find the row by its Stripe refund id.
     .index("by_stripeRefundId", ["stripeRefundId"]),
+  // USPS Package Pickups scheduled through Shippo (shipping/pickupPlan.ts). USPS takes one
+  // request per address per day; a pickup cannot be changed in Shippo, only by calling USPS
+  // with its confirmation code.
+  pickups: defineTable({
+    // The Administrator's local day (YYYY-MM-DD).
+    pickupDate: v.string(),
+    requestedStartTime: v.number(),
+    requestedEndTime: v.number(),
+    location: pickupLocationValidator,
+    instructions: v.optional(v.string()),
+    // The Priority/international packages sent to Shippo (bounded by the waiting queue).
+    orderIds: v.array(v.id("orders")),
+    transactionIds: v.array(v.string()),
+    // Shippo's status: PENDING, CONFIRMED, ERROR or CANCELLED.
+    status: v.string(),
+    confirmationCode: v.optional(v.string()),
+    confirmedStartTime: v.optional(v.string()),
+    confirmedEndTime: v.optional(v.string()),
+    cancelByTime: v.optional(v.string()),
+    timezone: v.optional(v.string()),
+    shippoPickupId: v.optional(v.string()),
+    simulated: v.boolean(),
+    actor: v.string(),
+    createdAt: v.number(),
+  }).index("by_pickupDate", ["pickupDate"]),
   users: defineTable({
     clerkId: v.string(),
     email: v.string(),

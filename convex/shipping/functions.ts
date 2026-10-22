@@ -5,9 +5,9 @@ import { v, ConvexError } from "convex/values";
 import { api, internal } from "../_generated/api";
 import { requireAdminInAction } from "../lib/auth";
 import { planLabelPurchase } from "../orders/status";
-import { Shippo } from "shippo";
 import { isExcludedTerritory } from "./territory";
-import { planLabelMode, ratesUnavailableError, shippoKeyMode, shippoPolicy } from "./shippoMode";
+import { planLabelMode, ratesUnavailableError } from "./shippoMode";
+import { currentShippoPolicy, getShippoClient } from "./shippoClient";
 import { countParcelLines, insuranceFor, presetToParcel, suggestParcel } from "./parcels";
 import { parseShipFrom, shipFromMissingMessage } from "./shipFrom";
 
@@ -52,20 +52,6 @@ export function buildCarrierTrackingUrl(carrier?: string, trackingNumber?: strin
   return null;
 }
 
-
-function getShippoClient(): Shippo | null {
-  const apiKey = process.env.SHIPPO_API_KEY;
-  if (shippoKeyMode(apiKey) === "none") return null;
-  return new Shippo({ apiKeyHeader: apiKey!.trim() });
-}
-
-/** Simulated rates and labels are off unless this deployment opts in (see ./shippoMode). */
-function currentShippoPolicy() {
-  return shippoPolicy({
-    apiKey: process.env.SHIPPO_API_KEY,
-    allowSimulation: process.env.SHIPPO_ALLOW_SIMULATION,
-  });
-}
 
 export interface FormattedRate {
   objectId: string;
