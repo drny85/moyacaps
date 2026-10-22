@@ -1,4 +1,5 @@
 import createNextIntlPlugin from "next-intl/plugin";
+import { securityHeaders } from "./src/lib/securityHeaders.mjs";
 
 const withNextIntl = createNextIntlPlugin({
   requestConfig: "./src/i18n/request.ts",
@@ -46,25 +47,7 @@ const nextConfig = {
     return [
       {
         source: "/(.*)",
-        headers: [
-          {
-            key: "X-Content-Type-Options",
-            value: "nosniff",
-          },
-          {
-            key: "X-Frame-Options",
-            value: "SAMEORIGIN",
-          },
-          {
-            key: "Referrer-Policy",
-            value: "strict-origin-when-cross-origin",
-          },
-          {
-            key: "Permissions-Policy",
-            // Try-on opens the front camera (CameraSheet); third-party frames still get none.
-            value: "camera=(self), microphone=(), geolocation=()",
-          },
-        ],
+        headers: securityHeaders({ dev: process.env.NODE_ENV !== "production" }),
       },
     ];
   },
