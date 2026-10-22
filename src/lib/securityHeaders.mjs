@@ -64,6 +64,8 @@ const SOURCES = {
   connect: [
     "https://clerk.goodluckcaps.com",
     "https://*.clerk.accounts.dev",
+    // Clerk's bot protection probes its own hosts on several ports (8443, 18443, 2082, 992)
+    "https://*.client.protect.clerk.com:*",
     "https://api.stripe.com",
     "https://cdn.jsdelivr.net",
   ],

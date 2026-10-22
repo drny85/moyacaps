@@ -45,6 +45,11 @@ describe("contentSecurityPolicy", () => {
     expect(directive(csp, "script-src")).toContain("https://cdn.jsdelivr.net");
   });
 
+  it("lets Clerk's bot protection reach its probe hosts on any port", () => {
+    const connect = directive(contentSecurityPolicy({ dev: false, convexUrl: PROD_CONVEX }), "connect-src");
+    expect(connect.split(" ")).toContain("https://*.client.protect.clerk.com:*");
+  });
+
   it("allows only this app's Convex deployment, not every Convex customer's", () => {
     const csp = contentSecurityPolicy({ dev: false, convexUrl: PROD_CONVEX });
     expect(csp).not.toContain("*.convex");
