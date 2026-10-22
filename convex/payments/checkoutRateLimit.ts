@@ -1,8 +1,8 @@
 /**
  * Pay-click rate limits (security review H1). Every createCheckoutSession places a Checkout
  * Hold on its units for about 30 minutes (ADR 0024), so an unthrottled script could keep a
- * whole drop "sold out". Signed-in buyers and guest emails get their own bucket; guests with
- * no email share one, since Convex actions see no client IP.
+ * whole drop "sold out". Signed-in buyers get their own bucket; guests share one, since
+ * Convex actions see no client IP.
  */
 import { MINUTE, RateLimiter } from "@convex-dev/rate-limiter";
 import { ConvexError } from "convex/values";
@@ -16,11 +16,12 @@ export const checkoutRateLimiter = new RateLimiter(components.rateLimiter, {
   checkoutAnonymous: { kind: "token bucket", rate: 60, period: MINUTE, capacity: 60, shards: 4 },
 });
 
-/** The bucket a Pay click draws from: the signed-in subject, else the guest's email, else everyone anonymous. */
-export function checkoutRateLimitKey(subject: string | undefined, customerEmail: string | undefined) {
+/**
+ * The bucket a Pay click draws from: the signed-in subject, else everyone anonymous. A guest's
+ * email is not a key: it is browser-sent, so a script could send a new one per click.
+ */
+export function checkoutRateLimitKey(subject: string | undefined) {
   if (subject) return { name: "checkoutPerBuyer" as const, key: `user:${subject}` };
-  const email = customerEmail?.trim().toLowerCase();
-  if (email) return { name: "checkoutPerBuyer" as const, key: `email:${email}` };
   return { name: "checkoutAnonymous" as const, key: undefined };
 }
 
@@ -35,10 +36,9 @@ export function checkoutRateLimitError(retryAfterMs: number, locale: string): st
 export async function enforceCheckoutRateLimit(
   ctx: ActionCtx,
   subject: string | undefined,
-  customerEmail: string | undefined,
   locale: string
 ) {
-  const { name, key } = checkoutRateLimitKey(subject, customerEmail);
+  const { name, key } = checkoutRateLimitKey(subject);
   const { ok, retryAfter } = await checkoutRateLimiter.limit(ctx, name, key ? { key } : {});
   if (!ok) throw new ConvexError(checkoutRateLimitError(retryAfter, locale));
 }

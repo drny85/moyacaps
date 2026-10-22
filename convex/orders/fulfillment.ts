@@ -11,6 +11,7 @@ import { fulfillmentStatusValidator, planLabelPurchase, statusAxes, statusPatch 
 import { appendLabel } from "./labels";
 import { planTrackingUpdate } from "./tracking";
 import { scheduleReviewInvite } from "../reviews/invites";
+import { insertPaymentEvent } from "./paymentEvents";
 
 /**
  * INTERNAL: Commits a purchased shipping label to an order: adds it to the label history,
@@ -98,7 +99,7 @@ export const attachShippingLabelInternal = internalMutation({
       updatedAt: now,
     });
 
-    await ctx.runMutation(internal.orders.functions.recordPaymentEvent, {
+    await insertPaymentEvent(ctx, {
       orderId: args.orderId,
       orderNumber: order.orderNumber,
       type: plan.reship ? "shipping_label_reshipped" : "shipping_label_created",
@@ -177,7 +178,7 @@ export const handleTrackingWebhookInternal = internalMutation({
     const plan = planTrackingUpdate(order, args, Date.now());
 
     if (plan.event) {
-      await ctx.runMutation(internal.orders.functions.recordPaymentEvent, {
+      await insertPaymentEvent(ctx, {
         orderId: order._id,
         orderNumber: order.orderNumber,
         type: plan.event.type,

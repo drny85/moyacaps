@@ -29,7 +29,8 @@ http.route({
       });
     } catch (err: any) {
       console.error("Error processing Stripe webhook in Convex:", err?.message || err);
-      return new Response(err?.message || "Webhook processing error", { status: 400 });
+      // Details stay in the log: the body reaches whoever sent the request (L1).
+      return new Response("Webhook processing error", { status: 400 });
     }
   }),
 });

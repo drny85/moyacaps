@@ -1,5 +1,6 @@
 /// <reference types="vite/client" />
 import { convexTest } from "convex-test";
+import aggregateTest from "@convex-dev/aggregate/test";
 import { describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import schema from "../schema";
@@ -25,6 +26,7 @@ const cap = {
 
 function setup() {
   const t = convexTest(schema, modules);
+  aggregateTest.register(t, "dropAlertStats");
   const admin = t.withIdentity({ subject: "user_admin", email: PRIMARY_ADMIN_EMAIL, emailVerified: true });
   return { t, admin };
 }

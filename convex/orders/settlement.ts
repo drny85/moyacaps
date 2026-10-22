@@ -30,6 +30,7 @@ import {
 import { orderItemValidator, shippingAddressValidator, successResult } from "./validators";
 import { moneyTakenAlert } from "../notifications/orderEmails";
 import { formatStoreDate } from "../lib/storeTime";
+import { insertPaymentEvent } from "./paymentEvents";
 
 /**
  * Plan 0008 PR 4: a paid Order whose shipping address is outside the Fulfillment Territory
@@ -62,7 +63,7 @@ async function flagIfOutOfTerritory(
     adminNotes: appendNote(order.adminNotes, outOfTerritoryNote(verdict, settled.total, settled.currency)),
     updatedAt: Date.now(),
   });
-  await ctx.runMutation(internal.orders.functions.recordPaymentEvent, {
+  await insertPaymentEvent(ctx, {
     orderId,
     orderNumber: settled.orderNumber,
     type: "out_of_territory",
@@ -142,7 +143,7 @@ export const recordStripeRefundInternal = internalMutation({
       updatedAt: Date.now(),
     });
 
-    await ctx.runMutation(internal.orders.functions.recordPaymentEvent, {
+    await insertPaymentEvent(ctx, {
       orderId: args.orderId,
       orderNumber: args.orderNumber,
       type: args.isFullRefund ? "charge_refunded" : "charge_partially_refunded",
@@ -204,7 +205,7 @@ export const recordStripeDisputeInternal = internalMutation({
         updatedAt: Date.now(),
       });
 
-      await ctx.runMutation(internal.orders.functions.recordPaymentEvent, {
+      await insertPaymentEvent(ctx, {
         orderId: args.orderId,
         orderNumber: args.orderNumber,
         type: "dispute_created",
@@ -225,7 +226,7 @@ export const recordStripeDisputeInternal = internalMutation({
         updatedAt: Date.now(),
       });
 
-      await ctx.runMutation(internal.orders.functions.recordPaymentEvent, {
+      await insertPaymentEvent(ctx, {
         orderId: args.orderId,
         orderNumber: args.orderNumber,
         type: "dispute_closed",
@@ -289,7 +290,7 @@ export const createOrUpdateStripeOrder = internalMutation({
       // Double-settlement guard (M2): order was already settled and a different Stripe
       // session paid it again. NEVER silently overwrite — flag for human review/refund decision.
       if (decision === "double_settlement") {
-        await ctx.runMutation(internal.orders.functions.recordPaymentEvent, {
+        await insertPaymentEvent(ctx, {
           orderId: existing._id,
           orderNumber: existing.orderNumber,
           type: "double_settlement_attempted",
@@ -319,7 +320,7 @@ export const createOrUpdateStripeOrder = internalMutation({
       // A cancelled order had its stock released; settling it would sell phantom inventory.
       // Flag for human review (e.g. refund-after-cancel races), never auto-settle.
       if (decision === "cancelled") {
-        await ctx.runMutation(internal.orders.functions.recordPaymentEvent, {
+        await insertPaymentEvent(ctx, {
           orderId: existing._id,
           orderNumber: existing.orderNumber,
           type: "double_settlement_attempted",
@@ -378,7 +379,7 @@ export const createOrUpdateStripeOrder = internalMutation({
         args.stripeCustomerId ?? existing.stripeCustomerId
       );
 
-      await ctx.runMutation(internal.orders.functions.recordPaymentEvent, {
+      await insertPaymentEvent(ctx, {
         orderId: existing._id,
         orderNumber: existing.orderNumber,
         type: "stripe_settled",
@@ -468,7 +469,7 @@ export const createOrUpdateStripeOrder = internalMutation({
 
     await deductStock(ctx, args.items);
 
-    await ctx.runMutation(internal.orders.functions.recordPaymentEvent, {
+    await insertPaymentEvent(ctx, {
       orderId,
       orderNumber: args.orderNumber,
       type: "stripe_settled",

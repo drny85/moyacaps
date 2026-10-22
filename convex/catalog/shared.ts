@@ -9,6 +9,7 @@ import { diffFields, recordCatalogEvent, type CatalogEventType } from "./audit";
 import { getVariant, setCapStock, withStock } from "./inventory";
 import { nextUpdatedAt, versionOf } from "./model";
 import { dropSitePaths, isPrimaryCatalogRow, overlayProductImages, primaryImage, type CapAngles, type ResolvedImageRow } from "./images/overlay";
+import { countActiveDropAlerts } from "./dropAlertStats";
 
 /**
  * Upper bound for whole-catalog reads. The catalog is ~30 products; the bound keeps
@@ -16,12 +17,6 @@ import { dropSitePaths, isPrimaryCatalogRow, overlayProductImages, primaryImage,
  * before the catalog approaches it.
  */
 export const MAX_CATALOG_VARIANTS = 500;
-
-/**
- * Upper bound for drop-alert subscriber counts. Counts clamp at this value; move to
- * @convex-dev/aggregate if a waitlist ever gets close.
- */
-export const MAX_DROP_ALERTS_COUNTED = 1000;
 
 /** Every catalog variant, each with its live Available Inventory on `stock`. */
 export async function listCatalogVariants(ctx: QueryCtx) {
@@ -101,13 +96,9 @@ export async function hasCatalogImageRow(
   return rows.some((row) => isPrimaryCatalogRow(row, defaultColorway) && kept(row));
 }
 
-/** A variant's drop-alert subscribers, leaving out those who unsubscribed. */
+/** A variant's drop-alert subscribers, leaving out those who unsubscribed (dropAlertStats aggregate, L6). */
 export async function countDropAlerts(ctx: QueryCtx, variantId: string): Promise<number> {
-  const alerts = await ctx.db
-    .query("drop_alerts")
-    .withIndex("by_variantId", (q) => q.eq("variantId", variantId))
-    .take(MAX_DROP_ALERTS_COUNTED);
-  return alerts.filter((a) => a.unsubscribedAt === undefined).length;
+  return await countActiveDropAlerts(ctx, variantId);
 }
 
 /** Delete a stored file, ignoring one that is already gone. */

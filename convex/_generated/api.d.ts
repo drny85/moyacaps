@@ -15,6 +15,7 @@ import type * as analytics_orderStats from "../analytics/orderStats.js";
 import type * as catalog_admin from "../catalog/admin.js";
 import type * as catalog_audit from "../catalog/audit.js";
 import type * as catalog_data from "../catalog/data.js";
+import type * as catalog_dropAlertStats from "../catalog/dropAlertStats.js";
 import type * as catalog_drops from "../catalog/drops.js";
 import type * as catalog_history from "../catalog/history.js";
 import type * as catalog_images_attach from "../catalog/images/attach.js";
@@ -80,6 +81,7 @@ import type * as orders_guestClaim from "../orders/guestClaim.js";
 import type * as orders_guestClaimModel from "../orders/guestClaimModel.js";
 import type * as orders_labels from "../orders/labels.js";
 import type * as orders_model from "../orders/model.js";
+import type * as orders_paymentEvents from "../orders/paymentEvents.js";
 import type * as orders_settlement from "../orders/settlement.js";
 import type * as orders_shared from "../orders/shared.js";
 import type * as orders_status from "../orders/status.js";
@@ -138,6 +140,7 @@ declare const fullApi: ApiFromModules<{
   "catalog/admin": typeof catalog_admin;
   "catalog/audit": typeof catalog_audit;
   "catalog/data": typeof catalog_data;
+  "catalog/dropAlertStats": typeof catalog_dropAlertStats;
   "catalog/drops": typeof catalog_drops;
   "catalog/history": typeof catalog_history;
   "catalog/images/attach": typeof catalog_images_attach;
@@ -203,6 +206,7 @@ declare const fullApi: ApiFromModules<{
   "orders/guestClaimModel": typeof orders_guestClaimModel;
   "orders/labels": typeof orders_labels;
   "orders/model": typeof orders_model;
+  "orders/paymentEvents": typeof orders_paymentEvents;
   "orders/settlement": typeof orders_settlement;
   "orders/shared": typeof orders_shared;
   "orders/status": typeof orders_status;
@@ -278,4 +282,5 @@ export declare const components: {
   resend: import("@convex-dev/resend/_generated/component.js").ComponentApi<"resend">;
   rateLimiter: import("@convex-dev/rate-limiter/_generated/component.js").ComponentApi<"rateLimiter">;
   orderStats: import("@convex-dev/aggregate/_generated/component.js").ComponentApi<"orderStats">;
+  dropAlertStats: import("@convex-dev/aggregate/_generated/component.js").ComponentApi<"dropAlertStats">;
 };

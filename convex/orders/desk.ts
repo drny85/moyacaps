@@ -38,6 +38,7 @@ import {
   statusPatch,
 } from "./status";
 import { orderDoc, shippingAddressValidator, successResult } from "./validators";
+import { insertPaymentEvent } from "./paymentEvents";
 
 type Order = Doc<"orders">;
 
@@ -347,7 +348,7 @@ export const cancelOrderAdmin = internalMutation({
       await scheduleSessionExpiry(ctx, args.orderId);
     }
 
-    await ctx.runMutation(internal.orders.functions.recordPaymentEvent, {
+    await insertPaymentEvent(ctx, {
       orderId: args.orderId,
       orderNumber: order.orderNumber,
       type: "cancelled",
@@ -428,7 +429,7 @@ export const updateFulfillmentStatusAdmin = mutation({
 
     await ctx.db.patch(args.orderId, updatePayload);
 
-    await ctx.runMutation(internal.orders.functions.recordPaymentEvent, {
+    await insertPaymentEvent(ctx, {
       orderId: args.orderId,
       orderNumber: order.orderNumber,
       type: "status_changed",

@@ -31,6 +31,7 @@ import {
 import { decideRefundFailure } from "./refundFailureModel";
 import { hasEmail } from "../orders/shared";
 import { refundIssuedNotice, refundProblemAlert } from "../notifications/orderEmails";
+import { insertPaymentEvent } from "../orders/paymentEvents";
 
 type Order = Doc<"orders">;
 type RefundRow = Doc<"order_refunds">;
@@ -104,7 +105,7 @@ export async function reserveRefund(
     actor: meta.actor,
     createdAt: now,
   });
-  await ctx.runMutation(internal.orders.functions.recordPaymentEvent, {
+  await insertPaymentEvent(ctx, {
     orderId: order._id,
     orderNumber: order.orderNumber,
     type: "refund_requested",
@@ -183,7 +184,7 @@ export const commitRefund = internalMutation({
     const now = Date.now();
     await ctx.db.patch("order_refunds", row._id, { status: "issued", stripeRefundId: args.stripeRefundId, settledAt: now });
     await ctx.db.patch("orders", order._id, { updatedAt: now });
-    await ctx.runMutation(internal.orders.functions.recordPaymentEvent, {
+    await insertPaymentEvent(ctx, {
       orderId: order._id,
       orderNumber: order.orderNumber,
       type: "refund_issued",
@@ -225,7 +226,7 @@ export const failRefund = internalMutation({
     const now = Date.now();
     await ctx.db.patch("order_refunds", row._id, { status: "failed", error: args.error, settledAt: now });
     if (order) {
-      await ctx.runMutation(internal.orders.functions.recordPaymentEvent, {
+      await insertPaymentEvent(ctx, {
         orderId: order._id,
         orderNumber: order.orderNumber,
         type: "refund_failed",
@@ -310,7 +311,7 @@ export const failIssuedRefundFromStripe = internalMutation({
       settledAt: now,
     });
     await ctx.db.patch("orders", order._id, { adminNotes: appendNote(order.adminNotes, decision.note), updatedAt: now });
-    await ctx.runMutation(internal.orders.functions.recordPaymentEvent, {
+    await insertPaymentEvent(ctx, {
       orderId: order._id,
       orderNumber: order.orderNumber,
       type: "refund_failed",

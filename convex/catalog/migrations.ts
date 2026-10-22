@@ -5,6 +5,7 @@
 import { mutation, internalMutation } from "../lib/functions";
 import type { MutationCtx } from "../_generated/server";
 import { v, ConvexError } from "convex/values";
+import { internal } from "../_generated/api";
 import { requireAdmin } from "../lib/auth";
 import { deleteCapStock, getVariant, hasSkus, listSkus, setCapStock } from "./inventory";
 import { SHIRT_VARIANTS } from "../../src/data/caps";
@@ -18,6 +19,7 @@ import { purgeVariantRow } from "./admin";
 import { isCheckoutHoldActive } from "../orders/model";
 import { releaseOverdue } from "./drops";
 import { isStorageIdReferenced, legacyVariantStorageIds } from "./images/references";
+import { dropAlertStats } from "./dropAlertStats";
 
 /** Rows of each table one `seedAll` wipes; past it the seed refuses (and writes nothing) rather than wipe part of the catalog. */
 export const SEED_WIPE_LIMIT = 2000;
@@ -446,5 +448,27 @@ export const backfillVariantStock = internalMutation({
       inserted++;
     }
     return { inserted, isDone: variants.length < MAX_CATALOG_VARIANTS };
+  },
+});
+
+/** drop_alerts rows one backfill batch adds before it schedules the next. */
+const DROP_ALERT_BACKFILL_BATCH = 200;
+
+/**
+ * L6: add every existing drop_alerts row to `dropAlertStats`. Idempotent and safe alongside
+ * live writes (the trigger inserts any row it has not seen). Until it finishes, Drop Radar
+ * subscriber counts undercount. Run once per deployment:
+ *   npx convex run catalog/migrations:backfillDropAlertStats
+ */
+export const backfillDropAlertStats = internalMutation({
+  args: { cursor: v.optional(v.union(v.string(), v.null())) },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const page = await ctx.db.query("drop_alerts").paginate({ numItems: DROP_ALERT_BACKFILL_BATCH, cursor: args.cursor ?? null });
+    for (const alert of page.page) await dropAlertStats.insertIfDoesNotExist(ctx, alert);
+    if (!page.isDone) {
+      await ctx.scheduler.runAfter(0, internal.catalog.migrations.backfillDropAlertStats, { cursor: page.continueCursor });
+    }
+    return null;
   },
 });

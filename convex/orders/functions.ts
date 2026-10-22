@@ -17,6 +17,7 @@ import {
   reservationValidator,
 } from "../payments/refundModel";
 import { carrierTrackingNumber } from "./trackingNumber";
+import { insertPaymentEvent } from "./paymentEvents";
 import { claimableEmail } from "./guestClaimModel";
 import { readLedger, reserveRefund } from "../payments/refundLedger";
 import {
@@ -37,7 +38,8 @@ import {
 } from "./validators";
 
 /**
- * Append-only audit log for every money-relevant state transition on an order.
+ * Append-only audit log for every money-relevant state transition on an order. For actions;
+ * mutations call `insertPaymentEvent` directly.
  */
 export const recordPaymentEvent = internalMutation({
   args: {
@@ -51,16 +53,7 @@ export const recordPaymentEvent = internalMutation({
   },
   returns: successResult,
   handler: async (ctx, args) => {
-    await ctx.db.insert("payment_events", {
-      orderId: args.orderId,
-      orderNumber: args.orderNumber,
-      type: args.type,
-      stripeEventId: args.stripeEventId,
-      stripeSessionId: args.stripeSessionId,
-      actor: args.actor,
-      details: args.details,
-      createdAt: Date.now(),
-    });
+    await insertPaymentEvent(ctx, args);
     return { success: true };
   },
 });
@@ -238,7 +231,7 @@ export const cancelOrder = internalMutation({
       updatedAt: now,
     });
 
-    await ctx.runMutation(internal.orders.functions.recordPaymentEvent, {
+    await insertPaymentEvent(ctx, {
       orderId: args.orderId,
       orderNumber: order.orderNumber,
       type: "cancelled",

@@ -40,7 +40,7 @@ import { hasSettled, isCancelled } from "../orders/status";
 import { expireCheckoutSession, expireSessionsForIds, getStripe, upsertStripeCustomer } from "./stripeClient";
 import { requireAdminInAction } from "../lib/auth";
 import { enforceCheckoutRateLimit } from "./checkoutRateLimit";
-import { resolveCheckoutLocale, resolveCheckoutOrigin } from "./checkoutOrigin";
+import { checkoutCustomerEmail, resolveCheckoutLocale, resolveCheckoutOrigin } from "./checkoutOrigin";
 import type { ActionCtx } from "../_generated/server";
 
 const cartLineValidator = v.object({
@@ -134,9 +134,12 @@ export const createCheckoutSession = action({
     // otherwise attach an Order to another account. No identity means a guest Order.
     const identity = await ctx.auth.getUserIdentity();
     const resolvedClerkId = identity?.subject;
+    // The Stripe customer and receipt address: the token's verified email, else a well-formed
+    // client email, else none (L3). Never someone else's account just because it was typed.
+    const customerEmail = checkoutCustomerEmail(identity, args.customerEmail);
 
     // Before anything holds stock: a Pay click is the costly step to repeat.
-    await enforceCheckoutRateLimit(ctx, resolvedClerkId, args.customerEmail, locale);
+    await enforceCheckoutRateLimit(ctx, resolvedClerkId, locale);
 
     const stripe = getStripe();
 
@@ -173,16 +176,16 @@ export const createCheckoutSession = action({
       shippingFee,
       total,
       clerkUserId: resolvedClerkId || undefined,
-      customerEmail: args.customerEmail,
+      customerEmail,
       checkoutHoldExpiresAt: holdExpiresAt,
       locale,
     });
 
     // Resolve or upsert customer if email is provided, so repeat buyers are deduplicated
     let customerId: string | undefined;
-    if (args.customerEmail) {
+    if (customerEmail) {
       customerId = await upsertStripeCustomer(stripe, {
-        email: args.customerEmail,
+        email: customerEmail,
         orderNumber,
         clerkUserId: resolvedClerkId || undefined,
       });
@@ -213,7 +216,7 @@ export const createCheckoutSession = action({
             metadata: {
               orderNumber,
               clerkUserId: resolvedClerkId || "",
-              customerEmail: args.customerEmail || "",
+              customerEmail: customerEmail || "",
               itemCount: totalItems.toString(),
               itemSummary: itemSummary(validatedItems),
               brand: "Good Luck 0880",
@@ -231,7 +234,7 @@ export const createCheckoutSession = action({
               message: "Thank you for securing your piece from Good Luck 0880. Your receipt is on its way, and tracking follows once your order ships.",
             },
           },
-          ...customerSessionFields(customerId, args.customerEmail),
+          ...customerSessionFields(customerId, customerEmail),
           billing_address_collection: "required",
           ...STRIPE_COLLECTION_FIELDS,
           shipping_options: buildShippingOptions(shippingFee, freeShipping, true),
@@ -253,7 +256,7 @@ export const createCheckoutSession = action({
           },
         },
         {
-          idempotencyKey: `cs_${resolvedClerkId || args.customerEmail || "guest"}_${orderNumber}`,
+          idempotencyKey: `cs_${resolvedClerkId || customerEmail || "guest"}_${orderNumber}`,
         }
       );
     } catch (err) {

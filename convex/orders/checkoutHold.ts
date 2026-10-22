@@ -6,7 +6,6 @@
 import { internalQuery } from "../_generated/server";
 import { internalMutation } from "../lib/functions";
 import { v, ConvexError } from "convex/values";
-import { internal } from "../_generated/api";
 import { checkStock } from "../catalog/inventory";
 import { holdShortageError, lineStockError } from "../payments/checkoutModel";
 import {
@@ -22,6 +21,7 @@ import {
 import { deductStock, releaseStock } from "./shared";
 import { normalizeEmail } from "./guestClaimModel";
 import { orderDoc, orderItemValidator } from "./validators";
+import { insertPaymentEvent } from "./paymentEvents";
 
 /**
  * INTERNAL: create the Order (awaiting payment) for a Pay click and take its units atomically. Every
@@ -75,7 +75,7 @@ export const placeCheckoutHold = internalMutation({
     });
     await deductStock(ctx, args.items);
 
-    await ctx.runMutation(internal.orders.functions.recordPaymentEvent, {
+    await insertPaymentEvent(ctx, {
       orderId,
       orderNumber: args.orderNumber,
       type: "checkout_hold_placed",
@@ -103,7 +103,7 @@ export const attachCheckoutSession = internalMutation({
       paymentUrl: args.paymentUrl,
       updatedAt: Date.now(),
     });
-    await ctx.runMutation(internal.orders.functions.recordPaymentEvent, {
+    await insertPaymentEvent(ctx, {
       orderId: args.orderId,
       orderNumber: order.orderNumber,
       type: "link_generated",
@@ -148,7 +148,7 @@ export const releaseCheckoutHold = internalMutation({
       webhookEventIds: withWebhookEventId(order, args.webhookEventId),
       updatedAt: now,
     });
-    await ctx.runMutation(internal.orders.functions.recordPaymentEvent, {
+    await insertPaymentEvent(ctx, {
       orderId: args.orderId,
       orderNumber: order.orderNumber,
       type: "inventory_released",
