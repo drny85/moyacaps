@@ -1,3 +1,6 @@
+import { claimableEmail } from "../orders/guestClaimModel";
+import { isSendableEmail } from "../notifications/emailEnv";
+
 /**
  * Where Stripe sends the buyer after Checkout (security review M1). `origin` and `locale`
  * arrive from the browser, and Stripe redirects to whatever success_url/cancel_url say, so an
@@ -35,4 +38,17 @@ export function resolveCheckoutOrigin(requested: string, appUrl: string | undefi
 /** Storefront locales; anything else falls back to English so it cannot shape a URL path. */
 export function resolveCheckoutLocale(locale: string): "en" | "es" {
   return locale === "es" ? "es" : "en";
+}
+
+/**
+ * The email a Checkout uses for the Stripe customer and receipt (security review L3): the
+ * signed-in caller's verified email, else a well-formed browser-sent one, else none.
+ */
+export function checkoutCustomerEmail(
+  identity: { email?: string; emailVerified?: boolean } | null,
+  requested: string | undefined
+): string | undefined {
+  const verified = claimableEmail(identity?.email, identity?.emailVerified);
+  if (verified) return verified;
+  return isSendableEmail(requested) ? requested.trim().toLowerCase() : undefined;
 }

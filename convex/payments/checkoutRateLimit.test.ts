@@ -2,11 +2,9 @@ import { describe, expect, it } from "vitest";
 import { checkoutRateLimitError, checkoutRateLimitKey } from "./checkoutRateLimit";
 
 describe("checkoutRateLimitKey", () => {
-  it("prefers the signed-in subject, then the guest email, then the shared anonymous bucket", () => {
-    expect(checkoutRateLimitKey("user_1", "a@b.com")).toEqual({ name: "checkoutPerBuyer", key: "user:user_1" });
-    expect(checkoutRateLimitKey(undefined, " A@B.com ")).toEqual({ name: "checkoutPerBuyer", key: "email:a@b.com" });
-    expect(checkoutRateLimitKey(undefined, "  ")).toEqual({ name: "checkoutAnonymous", key: undefined });
-    expect(checkoutRateLimitKey(undefined, undefined)).toEqual({ name: "checkoutAnonymous", key: undefined });
+  it("keys signed-in buyers by subject and puts every guest in the shared bucket", () => {
+    expect(checkoutRateLimitKey("user_1")).toEqual({ name: "checkoutPerBuyer", key: "user:user_1" });
+    expect(checkoutRateLimitKey(undefined)).toEqual({ name: "checkoutAnonymous", key: undefined });
   });
 });
 

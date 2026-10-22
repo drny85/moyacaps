@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveCheckoutLocale, resolveCheckoutOrigin } from "./checkoutOrigin";
+import { checkoutCustomerEmail, resolveCheckoutLocale, resolveCheckoutOrigin } from "./checkoutOrigin";
 
 const APP = "https://goodluckcaps.com/";
 
@@ -39,5 +39,19 @@ describe("resolveCheckoutLocale", () => {
     expect(resolveCheckoutLocale("es")).toBe("es");
     expect(resolveCheckoutLocale("en")).toBe("en");
     expect(resolveCheckoutLocale("../../evil")).toBe("en");
+  });
+});
+
+describe("checkoutCustomerEmail", () => {
+  it("prefers the token's verified email over what the browser sent", () => {
+    expect(checkoutCustomerEmail({ email: "Me@Example.com", emailVerified: true }, "victim@example.com")).toBe("me@example.com");
+  });
+
+  it("falls back to a well-formed browser email, else none", () => {
+    expect(checkoutCustomerEmail({ email: "me@example.com", emailVerified: false }, " Ana@Example.com ")).toBe("ana@example.com");
+    expect(checkoutCustomerEmail(null, "ana@example.com")).toBe("ana@example.com");
+    expect(checkoutCustomerEmail(null, "not-an-email")).toBeUndefined();
+    expect(checkoutCustomerEmail(null, "a@b.com,c@d.com")).toBeUndefined();
+    expect(checkoutCustomerEmail(null, undefined)).toBeUndefined();
   });
 });

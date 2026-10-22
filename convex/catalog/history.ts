@@ -3,6 +3,8 @@ import { query } from "../_generated/server";
 import { requireAdmin } from "../lib/auth";
 import type { FieldChange } from "./audit";
 
+// `from`/`to` are any variant field's stored JSON (catalog/audit.ts diffFields), including
+// arrays of objects such as colorways, so no narrower validator fits. Admin-only output.
 const fieldChange = v.object({ field: v.string(), from: v.any(), to: v.any() });
 
 const HISTORY_LIMIT = 50;
