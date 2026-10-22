@@ -38,8 +38,9 @@ describe("nextOrderAction", () => {
     expect(nextOrderAction(order("paid", "in_transit"))).toEqual({ kind: "mark_delivered" });
   });
 
-  it("a partial or Goodwill Refund still gets delivered; a fully refunded shipment does not", () => {
-    expect(nextOrderAction(order("partially_refunded", "label_purchased"))).toEqual({ kind: "mark_delivered" });
+  it("a partial or Goodwill Refund still gets handed off and delivered; a fully refunded shipment does not", () => {
+    expect(nextOrderAction(order("partially_refunded", "label_purchased"))).toEqual({ kind: "hand_off" });
+    expect(nextOrderAction(order("partially_refunded", "in_transit"))).toEqual({ kind: "mark_delivered" });
     const refundedNone = { kind: "none", reason: expect.stringMatching(/fully refunded/) };
     // Before any label, exception or shipped check, so later actions (hand-off) are covered too.
     for (const f of ["unfulfilled", "label_purchased", "in_transit", "delivery_exception", "returned", "delivered"] as const) {
