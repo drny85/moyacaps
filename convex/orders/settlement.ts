@@ -4,7 +4,7 @@
  * recorded, and Stripe customer/invoice ids are attached.
  * Called only by the Stripe actions (payments/webhook, payments/checkout).
  */
-import { internalMutation } from "../_generated/server";
+import { internalMutation } from "../lib/functions";
 import type { MutationCtx } from "../_generated/server";
 import { v } from "convex/values";
 import type { Infer } from "convex/values";

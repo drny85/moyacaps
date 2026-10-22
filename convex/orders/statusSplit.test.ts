@@ -4,14 +4,21 @@
  * refund / dispute / label / carrier writes, and the admin desk filters.
  */
 import { convexTest } from "convex-test";
+import aggregateTest from "@convex-dev/aggregate/test";
 import { describe, expect, it } from "vitest";
 import { api, internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import schema from "../schema";
+import { getVariant } from "../catalog/inventory";
 import { PRIMARY_ADMIN_EMAIL } from "../lib/auth";
 
 const modules = import.meta.glob("/convex/**/*.ts");
-const t = () => convexTest(schema, modules);
+// orderStats: every order write updates the dashboard aggregate (analytics/orderStats.ts).
+function t() {
+  const tt = convexTest(schema, modules);
+  aggregateTest.register(tt, "orderStats");
+  return tt;
+}
 type T = ReturnType<typeof t>;
 
 const admin = (tt: T) => tt.withIdentity({ subject: "user_admin", email: PRIMARY_ADMIN_EMAIL, emailVerified: true });
@@ -40,11 +47,7 @@ async function seedVariant(tt: T, variantId: string, stock: number) {
 
 async function getStock(tt: T, variantId: string): Promise<number> {
   return await tt.run(async (ctx) => {
-    const v = await ctx.db
-      .query("variants")
-      .withIndex("by_variantId", (q) => q.eq("variantId", variantId))
-      .first();
-    return v?.stock ?? -1;
+    return (await getVariant(ctx, variantId))?.stock ?? -1;
   });
 }
 

@@ -3,7 +3,8 @@
  * transaction; the hold ends in settlement (orders/settlement.ts) or, once Stripe reports
  * the Checkout Session expired, in release. Called only by the Stripe actions.
  */
-import { internalMutation, internalQuery } from "../_generated/server";
+import { internalQuery } from "../_generated/server";
+import { internalMutation } from "../lib/functions";
 import { v, ConvexError } from "convex/values";
 import { internal } from "../_generated/api";
 import { checkStock } from "../catalog/inventory";

@@ -2,7 +2,8 @@
  * Administrator order desk (ADR 0003, ADR 0024): order lists, attention counters, order
  * detail, manual Fulfillment Status changes, cancellation and contact/fulfillment edits.
  */
-import { mutation, query, internalMutation } from "../_generated/server";
+import { query } from "../_generated/server";
+import { mutation, internalMutation } from "../lib/functions";
 import type { QueryCtx } from "../_generated/server";
 import type { Doc } from "../_generated/dataModel";
 import { v, ConvexError } from "convex/values";

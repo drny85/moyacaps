@@ -2,7 +2,8 @@
  * Limited drops: scheduling and release (Administrator), the storefront Drop Radar,
  * and drop-alert subscribers (waitlist).
  */
-import { query, mutation, internalMutation } from "../_generated/server";
+import { query } from "../_generated/server";
+import { mutation, internalMutation } from "../lib/functions";
 import type { MutationCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import { v } from "convex/values";

@@ -8,7 +8,8 @@
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import type { Doc } from "../_generated/dataModel";
-import { internalAction, internalMutation, internalQuery, type MutationCtx } from "../_generated/server";
+import { internalAction, internalQuery, type MutationCtx } from "../_generated/server";
+import { internalMutation } from "../lib/functions";
 import { generateUnsubscribeToken, isUnsubscribeToken } from "../notifications/unsubscribe";
 import { REVIEW_INVITE_DELAY_MS, reviewableLines } from "./model";
 import { loadRefunds } from "./shared";

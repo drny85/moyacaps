@@ -5,6 +5,7 @@
  * commit/fail order, idempotent double submits, and the pending-then-retry path.
  */
 import { convexTest } from "convex-test";
+import aggregateTest from "@convex-dev/aggregate/test";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
@@ -20,7 +21,12 @@ vi.mock("./stripeClient", async (importOriginal) => ({
 }));
 
 const modules = import.meta.glob("/convex/**/*.ts");
-const t = () => convexTest(schema, modules);
+// orderStats: every order write updates the dashboard aggregate (analytics/orderStats.ts).
+function t() {
+  const tt = convexTest(schema, modules);
+  aggregateTest.register(tt, "orderStats");
+  return tt;
+}
 type T = ReturnType<typeof t>;
 
 const OWNER = "user_owner";

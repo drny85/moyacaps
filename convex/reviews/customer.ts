@@ -1,6 +1,7 @@
 /** Signed-in Customer review functions (ADR 0028): submit/edit, delete, and read own review state. */
 import { ConvexError, v } from "convex/values";
-import { mutation, query } from "../_generated/server";
+import { query } from "../_generated/server";
+import { mutation } from "../lib/functions";
 import { normalizeReviewInput, REVIEW_ERRORS, reviewableLines, reviewerDisplayName } from "./model";
 import { applyStatsChange, findReviewableLine, loadRefunds } from "./shared";
 import { myReviewValidator, reviewLocaleValidator } from "./validators";

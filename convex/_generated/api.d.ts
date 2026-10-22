@@ -9,7 +9,9 @@
  */
 
 import type * as analytics_functions from "../analytics/functions.js";
+import type * as analytics_migrations from "../analytics/migrations.js";
 import type * as analytics_model from "../analytics/model.js";
+import type * as analytics_orderStats from "../analytics/orderStats.js";
 import type * as catalog_admin from "../catalog/admin.js";
 import type * as catalog_audit from "../catalog/audit.js";
 import type * as catalog_data from "../catalog/data.js";
@@ -37,6 +39,7 @@ import type * as catalog_validators from "../catalog/validators.js";
 import type * as crons from "../crons.js";
 import type * as http from "../http.js";
 import type * as lib_auth from "../lib/auth.js";
+import type * as lib_functions from "../lib/functions.js";
 import type * as lib_ids from "../lib/ids.js";
 import type * as lib_secrets from "../lib/secrets.js";
 import type * as lib_storeTime from "../lib/storeTime.js";
@@ -129,7 +132,9 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   "analytics/functions": typeof analytics_functions;
+  "analytics/migrations": typeof analytics_migrations;
   "analytics/model": typeof analytics_model;
+  "analytics/orderStats": typeof analytics_orderStats;
   "catalog/admin": typeof catalog_admin;
   "catalog/audit": typeof catalog_audit;
   "catalog/data": typeof catalog_data;
@@ -157,6 +162,7 @@ declare const fullApi: ApiFromModules<{
   crons: typeof crons;
   http: typeof http;
   "lib/auth": typeof lib_auth;
+  "lib/functions": typeof lib_functions;
   "lib/ids": typeof lib_ids;
   "lib/secrets": typeof lib_secrets;
   "lib/storeTime": typeof lib_storeTime;
@@ -271,4 +277,5 @@ export declare const internal: FilterApi<
 export declare const components: {
   resend: import("@convex-dev/resend/_generated/component.js").ComponentApi<"resend">;
   rateLimiter: import("@convex-dev/rate-limiter/_generated/component.js").ComponentApi<"rateLimiter">;
+  orderStats: import("@convex-dev/aggregate/_generated/component.js").ComponentApi<"orderStats">;
 };

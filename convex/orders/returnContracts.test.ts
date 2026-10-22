@@ -6,6 +6,7 @@
  */
 import { convexTest } from "convex-test";
 import rateLimiterTest from "@convex-dev/rate-limiter/test";
+import aggregateTest from "@convex-dev/aggregate/test";
 import { describe, expect, it } from "vitest";
 import { api, internal } from "../_generated/api";
 import schema from "../schema";
@@ -18,6 +19,7 @@ const DAY = 24 * 60 * 60 * 1000;
 async function seeded() {
   const t = convexTest(schema, modules);
   rateLimiterTest.register(t);
+  aggregateTest.register(t, "orderStats");
   await t.run(async (ctx) => {
     await ctx.db.insert("products", {
       nameEn: "0880",
@@ -215,6 +217,8 @@ describe("order reads match their return validators", () => {
     expect(await admin.query(api.orders.desk.getAllOrdersAdmin, { clientTime: NOW, since: NOW - 3 * DAY })).toHaveLength(1);
     expect(await admin.query(api.orders.desk.getOrderDetailAdmin, { orderNumber: "#rc-1" })).toMatchObject({ orderNumber: "GL-RC-1" });
     expect(await admin.query(api.orders.desk.getOrdersAttentionStats, { clientTime: NOW })).toMatchObject({ overduePaid: 1 });
+    // The seed writes orders straight to the table (no trigger), like orders that predate the aggregate.
+    await t.mutation(internal.analytics.migrations.backfillOrderStats, {});
     expect(await admin.query(api.analytics.functions.getAnalyticsAdmin, { clientTime: NOW, tzOffsetMinutes: 0 })).toMatchObject({ totalRevenue: 128 });
     expect(await admin.query(api.users.functions.getAllUsersAdmin, {})).toHaveLength(1);
     expect(await admin.query(api.users.functions.getUserByClerkId, { clerkId: "user_cust" })).toMatchObject({ email: "ana@example.com" });

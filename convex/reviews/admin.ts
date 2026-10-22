@@ -2,7 +2,8 @@
 import { paginationOptsValidator, paginationResultValidator } from "convex/server";
 import { ConvexError, v } from "convex/values";
 import { internal } from "../_generated/api";
-import { mutation, query } from "../_generated/server";
+import { query } from "../_generated/server";
+import { mutation } from "../lib/functions";
 import { requireAdmin } from "../lib/auth";
 import { REJECT_REASON_MAX } from "./model";
 import { applyStatsChange } from "./shared";

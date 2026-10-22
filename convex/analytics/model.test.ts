@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Doc, Id } from "../_generated/dataModel";
-import { computeAnalytics, computeAttentionStats } from "./model";
+import { chartWindowStart, computeAnalytics, computeAttentionStats, orderStatsKey, orderTotals, type StatusCell } from "./model";
 
 const DAY = 24 * 60 * 60 * 1000;
 const NOW = Date.UTC(2026, 9, 17, 12);
@@ -42,6 +42,24 @@ const sku = (variantId: string, colorway: string, size: string, stock: number): 
 // New York in October: UTC-4.
 const TZ = 240;
 
+/** What the `orderStats` aggregate holds for these orders: one cell per status key. */
+function statusCells(orders: Doc<"orders">[]): StatusCell[] {
+  const cells = new Map<string, StatusCell>();
+  for (const o of orders) {
+    const [cancelled, paymentStatus, fulfillmentStatus] = orderStatsKey(o);
+    const key = `${cancelled}/${paymentStatus}/${fulfillmentStatus}`;
+    const cell = cells.get(key) ?? { cancelled: cancelled === 1, paymentStatus, fulfillmentStatus, count: 0, revenue: 0 };
+    cell.count += 1;
+    cell.revenue += o.total;
+    cells.set(key, cell);
+  }
+  return [...cells.values()];
+}
+
+/** The dashboard as the query builds it, with every order in both the aggregate and the chart window. */
+const analyticsOf = (orders: Doc<"orders">[], variants: Doc<"variants">[], skus: Doc<"skus">[], now: number, tz: number) =>
+  computeAnalytics(orderTotals(statusCells(orders)), orders, variants, skus, now, tz);
+
 describe("computeAnalytics", () => {
   const orders = [
     order({ total: 108 }),
@@ -52,7 +70,7 @@ describe("computeAnalytics", () => {
     order({ total: 70, paymentStatus: "partially_refunded", fulfillmentStatus: "delivered", refundedAmount: 10 }),
     order({ total: 40, fulfillmentStatus: "in_transit", createdAt: NOW - 10 * DAY, items: [{ variantId: "old", name: "Old", quantity: 1, price: 40, image: "/o.png" }] }),
   ];
-  const result = computeAnalytics(orders, [variant("cap", 0), variant("tee", 4), variant("big", 30)], [], NOW, TZ);
+  const result = analyticsOf(orders, [variant("cap", 0), variant("tee", 4), variant("big", 30)], [], NOW, TZ);
 
   it("counts revenue only from paid, uncancelled orders", () => {
     expect(result.totalRevenue).toBe(648);
@@ -98,19 +116,19 @@ describe("computeAnalytics", () => {
 
   it("buckets by the caller's local day", () => {
     // 03:00 UTC Oct 17 is 23:00 Oct 16 in New York.
-    const late = computeAnalytics([order({ createdAt: Date.UTC(2026, 9, 17, 3), total: 10 })], [], [], NOW, TZ);
+    const late = analyticsOf([order({ createdAt: Date.UTC(2026, 9, 17, 3), total: 10 })], [], [], NOW, TZ);
     expect(late.dailySales.find((d) => d.date === "2026-10-16")).toEqual({ date: "2026-10-16", revenue: 10, orders: 1 });
     expect(late.dailySales.at(-1)?.date).toBe("2026-10-17");
   });
 
   it("ranks best sellers over the chart window only", () => {
     const old = order({ total: 40, createdAt: NOW - 40 * DAY, items: [{ variantId: "old", name: "Old", quantity: 9, price: 40, image: "/o.png" }] });
-    const top = computeAnalytics([order({ total: 108 }), old], [], [], NOW, TZ).topVariants;
+    const top = analyticsOf([order({ total: 108 }), old], [], [], NOW, TZ).topVariants;
     expect(top.map((v) => v.variantId)).toEqual(["cap"]);
   });
 
   it("sums today, 7-day and 30-day windows", () => {
-    const windows = computeAnalytics(
+    const windows = analyticsOf(
       [order({ total: 100 }), order({ total: 100, createdAt: NOW - 3 * DAY }), order({ total: 100, createdAt: NOW - 10 * DAY }), order({ total: 100, createdAt: NOW - 40 * DAY })],
       [], [], NOW, TZ
     ).windows;
@@ -120,7 +138,7 @@ describe("computeAnalytics", () => {
   it("tees list SKUs, never the variant", () => {
     const colorway = { id: "black", nameEn: "Black", nameEs: "Negro", hex: "#000", borderHex: "#000", lifestyleImage: "/black-life.png", catalogShot: "/black-shot.png" };
     const tee = { ...variant("tee", 4), category: "apparel", image: "", colorways: [colorway] } as Doc<"variants">;
-    const low = computeAnalytics([], [tee, variant("cap", 3)], [sku("tee", "black", "M", 2), sku("tee", "black", "L", 9)], NOW, TZ).lowStock;
+    const low = analyticsOf([], [tee, variant("cap", 3)], [sku("tee", "black", "M", 2), sku("tee", "black", "L", 9)], NOW, TZ).lowStock;
     expect(low).toEqual([
       { variantId: "tee", nameEn: "tee", nameEs: "tee", colorway: "black", size: "M", stock: 2, image: "/black-shot.png" },
       { variantId: "cap", nameEn: "cap", nameEs: "cap", stock: 3, image: "/cap.png" },
@@ -128,7 +146,7 @@ describe("computeAnalytics", () => {
   });
 
   it("counts Problems by the desk's rule: open exceptions, returns and disputes, not cancelled or refunded ones", () => {
-    const problems = computeAnalytics(
+    const problems = analyticsOf(
       [
         order({ fulfillmentStatus: "delivery_exception" }),
         order({ fulfillmentStatus: "returned", paymentStatus: "refunded" }),
@@ -145,7 +163,7 @@ describe("computeAnalytics", () => {
   });
 
   it("has a zero average order value with no sales", () => {
-    expect(computeAnalytics([], [], [], NOW, TZ).aov).toBe(0);
+    expect(analyticsOf([], [], [], NOW, TZ).aov).toBe(0);
   });
 });
 
@@ -172,7 +190,7 @@ describe("archived products", () => {
   const archived = { ...variant("old-cap", 0), archivedAt: NOW };
 
   it("computeAnalytics ignores them in stock totals and low-stock", () => {
-    const result = computeAnalytics([], [variant("cap", 3), archived], [], NOW, TZ);
+    const result = analyticsOf([], [variant("cap", 3), archived], [], NOW, TZ);
     expect(result.lowStock.map((v) => v.variantId)).toEqual(["cap"]);
     expect(result.inventorySummary).toMatchObject({ totalVariantsCount: 1, totalInventoryUnits: 3, outOfStockCount: 0 });
   });
@@ -180,5 +198,33 @@ describe("archived products", () => {
   it("computeAttentionStats ignores them in the low-stock list", () => {
     const result = computeAttentionStats([], 0, [variant("cap", 1), archived], NOW);
     expect(result.lowStockVariants.map((v) => v.variantId)).toEqual(["cap"]);
+  });
+});
+
+describe("all-time totals vs the 30-day window (M8)", () => {
+  const old = order({ total: 500, createdAt: NOW - 400 * DAY });
+  const recent = order({ total: 108 });
+  // The query reads totals from the aggregate (every order) and only recent orders for the chart.
+  const result = computeAnalytics(orderTotals(statusCells([old, recent])), [recent], [], [], NOW, TZ);
+
+  it("totals count orders outside the chart window", () => {
+    expect(result.totalRevenue).toBe(608);
+    expect(result.completedOrdersCount).toBe(2);
+    expect(result.totalOrdersCount).toBe(2);
+    expect(result.aov).toBe(304);
+  });
+
+  it("the chart and best sellers use only the window", () => {
+    expect(result.windows.d30).toEqual({ revenue: 108, orders: 1 });
+    expect(result.topVariants).toEqual([{ variantId: "cap", name: "Cap", units: 1, revenue: 100, image: "/c.png" }]);
+  });
+
+  it("the chart window reaches back 31 days, so any time zone's 30th day is covered", () => {
+    expect(chartWindowStart(NOW)).toBe(NOW - 31 * DAY);
+  });
+
+  it("keys an order by cancelled flag, Payment Status and Fulfillment Status", () => {
+    expect(orderStatsKey(order({}))).toEqual([0, "paid", "unfulfilled"]);
+    expect(orderStatsKey(order({ cancelledAt: NOW, paymentStatus: "refunded" }))).toEqual([1, "refunded", "unfulfilled"]);
   });
 });

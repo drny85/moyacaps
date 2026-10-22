@@ -1,6 +1,7 @@
 /// <reference types="vite/client" />
 /** Review invite (ADR 0028): scheduled once per delivered Order, skipped when pointless, one-click opt-out. */
 import { convexTest } from "convex-test";
+import aggregateTest from "@convex-dev/aggregate/test";
 import { describe, expect, it } from "vitest";
 import { api, internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
@@ -11,7 +12,12 @@ import { REVIEW_INVITE_DELAY_MS, REVIEW_INVITE_UNSUBSCRIBE_PATH } from "./model"
 import { scheduleReviewInvite } from "./invites";
 
 const modules = import.meta.glob("/convex/**/*.ts");
-const t = () => convexTest(schema, modules);
+// orderStats: every order write updates the dashboard aggregate (analytics/orderStats.ts).
+function t() {
+  const tt = convexTest(schema, modules);
+  aggregateTest.register(tt, "orderStats");
+  return tt;
+}
 type TT = ReturnType<typeof t>;
 
 async function seedOrder(

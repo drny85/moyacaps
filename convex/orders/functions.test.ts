@@ -1,8 +1,10 @@
 /// <reference types="vite/client" />
 import { convexTest } from "convex-test";
+import aggregateTest from "@convex-dev/aggregate/test";
 import { describe, expect, it } from "vitest";
 import { api, internal } from "../_generated/api";
 import schema from "../schema";
+import { adjustStock, getVariant } from "../catalog/inventory";
 import { PRIMARY_ADMIN_EMAIL } from "../lib/auth";
 import type { TestConvex } from "convex-test";
 import type { Doc } from "../_generated/dataModel";
@@ -10,7 +12,12 @@ import type { StatusAxes } from "./status";
 
 const modules = import.meta.glob("/convex/**/*.ts");
 
-const t = () => convexTest(schema, modules);
+// orderStats: every order write updates the dashboard aggregate (analytics/orderStats.ts).
+function t() {
+  const tt = convexTest(schema, modules);
+  aggregateTest.register(tt, "orderStats");
+  return tt;
+}
 type T = ReturnType<typeof t>;
 
 const admin = (t: T) => t.withIdentity({ subject: "user_admin", email: PRIMARY_ADMIN_EMAIL, emailVerified: true });
@@ -42,11 +49,7 @@ async function seedVariant(t: T, variantId: string, stock = 5, priceUsd = 100) {
 
 async function getStock(t: T, variantId: string): Promise<number> {
   return await t.run(async (ctx) => {
-    const v = await ctx.db
-      .query("variants")
-      .withIndex("by_variantId", (q) => q.eq("variantId", variantId))
-      .first();
-    return v?.stock ?? -1;
+    return (await getVariant(ctx, variantId))?.stock ?? -1;
   });
 }
 
@@ -104,11 +107,7 @@ async function seedOrder(
   const orderId = await t.run(async (ctx) => {
     // Settled orders hold their units, as in production.
     if (status === "paid" || status === "dispatched") {
-      const variant = await ctx.db
-        .query("variants")
-        .withIndex("by_variantId", (q) => q.eq("variantId", variantId))
-        .first();
-      if (variant) await ctx.db.patch(variant._id, { stock: variant.stock - qty });
+      await adjustStock(ctx, { variantId, quantity: qty }, -qty);
     }
     return await ctx.db.insert("orders", {
       orderNumber,

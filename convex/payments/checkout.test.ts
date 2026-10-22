@@ -5,9 +5,11 @@
  */
 import { convexTest } from "convex-test";
 import rateLimiterTest from "@convex-dev/rate-limiter/test";
+import aggregateTest from "@convex-dev/aggregate/test";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "../_generated/api";
 import schema from "../schema";
+import { setCapStock } from "../catalog/inventory";
 
 const stripe = vi.hoisted(() => ({
   sessionsCreate: vi.fn(),
@@ -23,6 +25,7 @@ const modules = import.meta.glob("/convex/**/*.ts");
 const t = () => {
   const tt = convexTest(schema, modules);
   rateLimiterTest.register(tt);
+  aggregateTest.register(tt, "orderStats");
   return tt;
 };
 type T = ReturnType<typeof t>;
@@ -144,7 +147,7 @@ describe("createCheckoutSession rate limit", () => {
       await pay();
       await tt.run(async (ctx) => {
         const variant = (await ctx.db.query("variants").first())!;
-        await ctx.db.patch(variant._id, { stock: 5 });
+        await setCapStock(ctx, variant.variantId, 5);
       });
     }
     await expect(pay()).rejects.toThrow(/Too many checkout attempts/);

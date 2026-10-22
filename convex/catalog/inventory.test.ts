@@ -1,13 +1,21 @@
 /// <reference types="vite/client" />
 import { convexTest } from "convex-test";
+import aggregateTest from "@convex-dev/aggregate/test";
 import { describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import schema from "../schema";
+import { getVariant } from "./inventory";
+import { deductStock, releaseStock } from "../orders/shared";
 import { PRIMARY_ADMIN_EMAIL } from "../lib/auth";
 
 const modules = import.meta.glob("/convex/**/*.ts");
 
-const t = () => convexTest(schema, modules);
+// orderStats: every order write updates the dashboard aggregate (analytics/orderStats.ts).
+function t() {
+  const tt = convexTest(schema, modules);
+  aggregateTest.register(tt, "orderStats");
+  return tt;
+}
 type T = ReturnType<typeof t>;
 
 const admin = (tt: T) => tt.withIdentity({ subject: "user_admin", email: PRIMARY_ADMIN_EMAIL, emailVerified: true });
@@ -66,13 +74,7 @@ async function skuStock(tt: T, colorway: string, size: string) {
 }
 
 async function teeStock(tt: T) {
-  return await tt.run(async (ctx) => {
-    const v = await ctx.db
-      .query("variants")
-      .withIndex("by_variantId", (q) => q.eq("variantId", "T1"))
-      .first();
-    return v?.stock ?? -1;
-  });
+  return await tt.run(async (ctx) => (await getVariant(ctx, "T1"))?.stock ?? -1);
 }
 
 describe("Tee SKU inventory (ADR 0015)", () => {
@@ -253,10 +255,7 @@ describe("migrateUnifiedCatalog", () => {
     expect(first.teesInserted).toBeGreaterThan(0); // tees missing from this DB are created
 
     const result = await tt.run(async (ctx) => {
-      const boxing = await ctx.db
-        .query("variants")
-        .withIndex("by_variantId", (q) => q.eq("variantId", "boxing-gloves-tee"))
-        .first();
+      const boxing = await getVariant(ctx, "boxing-gloves-tee");
       const skus = await ctx.db
         .query("skus")
         .withIndex("by_variantId_and_colorway_and_size", (q) => q.eq("variantId", "boxing-gloves-tee"))
@@ -358,5 +357,83 @@ describe("migrateUnifiedCatalog", () => {
     expect(row?.fitEn).toBe("Admin fit copy");
     expect(row?.colorways).toHaveLength(4); // was missing: filled
     expect(row?.sizes).toEqual(["S", "M", "L", "XL", "2XL"]);
+  });
+});
+
+/** A cap stored the pre-M7 way: units only on the variant row, no `variant_stock` row yet. */
+async function seedLegacyCap(tt: T, stock: number) {
+  return await tt.run(async (ctx) =>
+    ctx.db.insert("variants", {
+      variantId: "C1",
+      isAvailable: true,
+      nameEn: "Cap C1",
+      nameEs: "Gorra C1",
+      silhouette: "snapback",
+      category: "headwear",
+      primaryHex: "#000000",
+      secondaryHex: "#ffffff",
+      image: "/caps/c1.jpg",
+      stock,
+      priceUsd: 50,
+      isFeatured: false,
+    })
+  );
+}
+
+const capStockRows = (tt: T) => tt.run((ctx) => ctx.db.query("variant_stock").take(10));
+
+describe("stock off the variant row (M7)", () => {
+  it("a cap sale and release write its variant_stock row and never the variant document", async () => {
+    const tt = t();
+    const id = await seedLegacyCap(tt, 5);
+    const before = await tt.run((ctx) => ctx.db.get("variants", id));
+
+    await tt.run((ctx) => deductStock(ctx, [{ variantId: "C1", name: "Cap C1", quantity: 2, price: 50, image: "" }]));
+    expect(await tt.run(async (ctx) => (await getVariant(ctx, "C1"))?.stock)).toBe(3);
+    await tt.run((ctx) => releaseStock(ctx, [{ variantId: "C1", name: "Cap C1", quantity: 1, price: 50, image: "" }]));
+
+    expect(await tt.run((ctx) => ctx.db.get("variants", id))).toEqual(before);
+    expect(await capStockRows(tt)).toMatchObject([{ variantId: "C1", stock: 4 }]);
+    expect(await tt.run(async (ctx) => (await getVariant(ctx, "C1"))?.stock)).toBe(4);
+  });
+
+  it("a tee sale writes only its SKU; the total is their sum on read", async () => {
+    const tt = t();
+    await seedTee(tt, { "washed-black/L": 3, "washed-black/M": 1, "crisp-white/L": 0, "crisp-white/M": 0 });
+    const before = await tt.run((ctx) => ctx.db.query("variants").first());
+
+    await tt.run((ctx) =>
+      deductStock(ctx, [{ variantId: "T1", name: "Tee", quantity: 1, price: 80, image: "", colorway: "washed-black", size: "L" }])
+    );
+
+    expect(await tt.run((ctx) => ctx.db.query("variants").first())).toEqual(before);
+    expect(await skuStock(tt, "washed-black", "L")).toBe(2);
+    expect(await teeStock(tt)).toBe(3);
+    expect(await capStockRows(tt)).toEqual([]);
+  });
+
+  it("backfillVariantStock copies each cap's legacy stock once and leaves tees alone", async () => {
+    const tt = t();
+    await seedLegacyCap(tt, 7);
+    await seedTee(tt, { "washed-black/L": 2, "washed-black/M": 0, "crisp-white/L": 0, "crisp-white/M": 0 });
+
+    expect(await tt.mutation(internal.catalog.migrations.backfillVariantStock, {})).toEqual({ inserted: 1, isDone: true });
+    // A sale after the backfill is not overwritten by a re-run.
+    await tt.run((ctx) => deductStock(ctx, [{ variantId: "C1", name: "Cap C1", quantity: 1, price: 50, image: "" }]));
+    expect(await tt.mutation(internal.catalog.migrations.backfillVariantStock, {})).toEqual({ inserted: 0, isDone: true });
+    expect(await capStockRows(tt)).toMatchObject([{ variantId: "C1", stock: 6 }]);
+  });
+
+  it("an admin stock edit goes to variant_stock, audited, and the catalog lists the live number", async () => {
+    const tt = t();
+    const id = await seedLegacyCap(tt, 5);
+    await admin(tt).mutation(api.catalog.admin.adjustVariantStock, { variantId: "C1", delta: 3 });
+
+    expect((await tt.run((ctx) => ctx.db.get("variants", id)))?.stock).toBe(5);
+    expect(await capStockRows(tt)).toMatchObject([{ variantId: "C1", stock: 8 }]);
+    const history = await admin(tt).query(api.catalog.history.getVariantHistory, { variantId: "C1" });
+    expect(history[0]).toMatchObject({ type: "stock_adjusted", changes: [{ field: "stock", from: 5, to: 8 }] });
+    const listed = await tt.query(api.catalog.queries.getVariants, {});
+    expect(listed.find((v) => v.variantId === "C1")?.stock).toBe(8);
   });
 });

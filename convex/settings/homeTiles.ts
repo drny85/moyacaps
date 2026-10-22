@@ -1,5 +1,6 @@
 import { v } from "convex/values";
-import { mutation, query } from "../_generated/server";
+import { query } from "../_generated/server";
+import { mutation } from "../lib/functions";
 import { internal } from "../_generated/api";
 import { requireAdmin } from "../lib/auth";
 import { actorEmail, recordCatalogEvent } from "../catalog/audit";
