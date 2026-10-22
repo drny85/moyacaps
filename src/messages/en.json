@@ -223,6 +223,7 @@
     "orderNo": "Order",
     "date": "Date",
     "total": "Total",
+    "refundedAmount": "Refunded {amount}",
     "status": "Status",
     "statusPaid": "Paid & In Preparation",
     "statusDispatched": "Shipped with Tracking",
@@ -1133,6 +1134,8 @@
     "total": "Total",
     "totalPaid": "Total Paid",
     "totalDue": "Total Due",
+    "refundedTotal": "Refunded",
+    "netPaid": "Net Paid",
     "conciergeBanner": "Have questions about your delivery? Chat with our 24/7 WhatsApp Concierge.",
     "chatWhatsApp": "WhatsApp Concierge",
     "supportFallback": "Support"

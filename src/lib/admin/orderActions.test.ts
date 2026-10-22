@@ -38,10 +38,19 @@ describe("nextOrderAction", () => {
     expect(nextOrderAction(order("paid", "in_transit"))).toEqual({ kind: "mark_delivered" });
   });
 
+  it("a partial or Goodwill Refund still gets handed off and delivered; a fully refunded shipment does not", () => {
+    expect(nextOrderAction(order("partially_refunded", "label_purchased"))).toEqual({ kind: "hand_off" });
+    expect(nextOrderAction(order("partially_refunded", "in_transit"))).toEqual({ kind: "mark_delivered" });
+    const refundedNone = { kind: "none", reason: expect.stringMatching(/fully refunded/) };
+    // Before any label, exception or shipped check, so later actions (hand-off) are covered too.
+    for (const f of ["unfulfilled", "label_purchased", "in_transit", "delivery_exception", "returned", "delivered"] as const) {
+      expect(nextOrderAction(order("refunded", f))).toEqual(refundedNone);
+    }
+  });
+
   it("delivery exception or returned → resolve_exception, reship when a label is allowed", () => {
     expect(nextOrderAction(order("paid", "delivery_exception"))).toEqual({ kind: "resolve_exception", reship: true });
     expect(nextOrderAction(order("paid", "returned"))).toEqual({ kind: "resolve_exception", reship: true });
-    expect(nextOrderAction(order("refunded", "returned"))).toEqual({ kind: "resolve_exception", reship: false });
   });
 
   it("delivered or refunded unfulfilled → none", () => {
@@ -59,6 +68,12 @@ describe("allowedManualMoves", () => {
     expect(allowedManualMoves(order("paid", "unfulfilled"))).toEqual([]);
     expect(allowedManualMoves(order("awaiting_payment", "unfulfilled"))).toEqual([]);
     expect(allowedManualMoves(order("paid", "in_transit", { cancelledAt: NOW }))).toEqual([]);
+  });
+
+  it("offers nothing on a fully refunded Order, and still delivers a partially refunded one", () => {
+    expect(allowedManualMoves(order("refunded", "label_purchased"))).toEqual([]);
+    expect(allowedManualMoves(order("refunded", "delivered"))).toEqual([]);
+    expect(allowedManualMoves(order("partially_refunded", "in_transit"))).toEqual(["mark_delivered"]);
   });
 });
 

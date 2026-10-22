@@ -59,6 +59,7 @@ const viewFields = orderDoc.pick(
   "tax",
   "taxDetails",
   "total",
+  "refundedAmount",
   "paymentMethod",
   "invoicePdfUrl",
   "hostedInvoiceUrl"
