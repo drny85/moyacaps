@@ -7,7 +7,8 @@
 import { ConvexError, v } from "convex/values";
 import { internal } from "../../_generated/api";
 import type { Doc, Id } from "../../_generated/dataModel";
-import { internalAction, internalMutation, internalQuery } from "../../_generated/server";
+import { internalAction, internalQuery } from "../../_generated/server";
+import { internalMutation } from "../../lib/functions";
 import type { QueryCtx } from "../../_generated/server";
 import { recordCatalogEvent } from "../audit";
 import { MAX_CATALOG_VARIANTS, requireVariant } from "../shared";

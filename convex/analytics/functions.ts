@@ -4,12 +4,13 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
 import { requireAdmin } from "../lib/auth";
-import { analyticsValidator, computeAnalytics } from "./model";
+import { analyticsValidator, chartWindowStart, computeAnalytics, orderTotals } from "./model";
+import { readStatusCells } from "./orderStats";
 import { listCatalogVariants } from "../catalog/shared";
 import { listSkus } from "../catalog/inventory";
 
-/** Most recent orders the dashboard aggregates over. */
-const ANALYTICS_ORDER_WINDOW = 2000;
+/** Most orders the 30-day chart and best sellers read; totals are exact at any volume. */
+const CHART_ORDER_LIMIT = 2000;
 
 export const getAnalyticsAdmin = query({
   args: {
@@ -21,10 +22,15 @@ export const getAnalyticsAdmin = query({
   returns: analyticsValidator,
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
-    const orders = await ctx.db.query("orders").order("desc").take(ANALYTICS_ORDER_WINDOW);
+    const totals = orderTotals(await readStatusCells(ctx));
+    const recentOrders = await ctx.db
+      .query("orders")
+      .withIndex("by_createdAt", (q) => q.gte("createdAt", chartWindowStart(args.clientTime)))
+      .order("desc")
+      .take(CHART_ORDER_LIMIT);
     const variants = await listCatalogVariants(ctx);
     const tees = variants.filter((variant) => variant.category === "apparel");
     const skus = (await Promise.all(tees.map((variant) => listSkus(ctx, variant.variantId)))).flat();
-    return computeAnalytics(orders, variants, skus, args.clientTime, args.tzOffsetMinutes);
+    return computeAnalytics(totals, recentOrders, variants, skus, args.clientTime, args.tzOffsetMinutes);
   },
 });

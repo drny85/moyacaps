@@ -3,7 +3,8 @@
  * customer-facing order reads and edits. Settlement, the admin
  * order desk, fulfillment and analytics live in their own modules (ADR 0017).
  */
-import { mutation, query, internalMutation, internalQuery } from "../_generated/server";
+import { query, internalQuery } from "../_generated/server";
+import { mutation, internalMutation } from "../lib/functions";
 import { v, ConvexError } from "convex/values";
 import { internal } from "../_generated/api";
 import { isAdmin, isAdminRow, isAllowlistedAdmin, requireAdmin } from "../lib/auth";

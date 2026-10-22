@@ -5,6 +5,7 @@
  * not mounted in convex-test, so draining them renders each template but sends nothing.
  */
 import { convexTest } from "convex-test";
+import aggregateTest from "@convex-dev/aggregate/test";
 import Stripe from "stripe";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { api, internal } from "../_generated/api";
@@ -14,7 +15,12 @@ import { PRIMARY_ADMIN_EMAIL } from "../lib/auth";
 import { encodeItemsMetadata } from "../payments/checkoutMetadata";
 
 const modules = import.meta.glob("/convex/**/*.ts");
-const t = () => convexTest(schema, modules);
+// orderStats: every order write updates the dashboard aggregate (analytics/orderStats.ts).
+function t() {
+  const tt = convexTest(schema, modules);
+  aggregateTest.register(tt, "orderStats");
+  return tt;
+}
 type T = ReturnType<typeof t>;
 
 const OWNER = "user_owner";

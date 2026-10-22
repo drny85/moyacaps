@@ -3,7 +3,8 @@
  * and the launch emails sent when the category goes Live.
  */
 import { v } from "convex/values";
-import { internalMutation, mutation, query } from "../_generated/server";
+import { query } from "../_generated/server";
+import { internalMutation, mutation } from "../lib/functions";
 import type { MutationCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { requireAdmin } from "../lib/auth";

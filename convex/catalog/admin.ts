@@ -2,7 +2,8 @@
  * Administrator catalog editing: product images, stock, price, visibility,
  * the variant editor and per-SKU tee stock (ADR 0008, ADR 0015).
  */
-import { query, mutation, internalMutation } from "../_generated/server";
+import { query } from "../_generated/server";
+import { mutation, internalMutation } from "../lib/functions";
 import type { MutationCtx } from "../_generated/server";
 import type { Doc } from "../_generated/dataModel";
 import { v, ConvexError } from "convex/values";

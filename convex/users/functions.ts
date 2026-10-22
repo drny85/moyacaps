@@ -1,4 +1,5 @@
-import { mutation, query, internalMutation, internalQuery, MutationCtx } from "../_generated/server";
+import { query, internalQuery, MutationCtx } from "../_generated/server";
+import { mutation, internalMutation } from "../lib/functions";
 import { ConvexError, v } from "convex/values";
 import type { UserUpsert } from "./clerk";
 import { getAdminIdentity, isAdminRow, isAllowlistedAdmin, requireAdmin } from "../lib/auth";

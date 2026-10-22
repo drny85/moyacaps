@@ -1,7 +1,7 @@
 /** Daily sweep of storage files nothing points at (abandoned uploads, missed replace/remove deletes). */
 import { v } from "convex/values";
 import { internal } from "../../_generated/api";
-import { internalMutation } from "../../_generated/server";
+import { internalMutation } from "../../lib/functions";
 import { deleteStorageQuietly } from "../shared";
 import { isStorageIdReferenced, legacyVariantStorageIds } from "./references";
 

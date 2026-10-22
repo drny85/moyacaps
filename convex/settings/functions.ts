@@ -1,5 +1,6 @@
 import { v } from "convex/values";
-import { internalMutation, internalQuery, mutation, query } from "../_generated/server";
+import { internalQuery, query } from "../_generated/server";
+import { internalMutation, mutation } from "../lib/functions";
 import { internal } from "../_generated/api";
 import { requireAdmin } from "../lib/auth";
 import { actorEmail, diffFields, recordCatalogEvent } from "../catalog/audit";

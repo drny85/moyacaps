@@ -3,7 +3,7 @@
  * (first label or Reship) to its order and apply carrier tracking webhook scans. Called by
  * shipping/functions.ts and http.ts.
  */
-import { internalMutation } from "../_generated/server";
+import { internalMutation } from "../lib/functions";
 import { v, ConvexError } from "convex/values";
 import { internal } from "../_generated/api";
 import { hasEmail } from "./shared";

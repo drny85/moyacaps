@@ -4,7 +4,8 @@
  * the user sync paths (users/functions.ts); the rules live in guestClaimModel.ts.
  */
 import { v } from "convex/values";
-import { internalMutation, type MutationCtx } from "../_generated/server";
+import { type MutationCtx } from "../_generated/server";
+import { internalMutation } from "../lib/functions";
 import { isClaimable, MAX_ORDERS_CLAIMED, normalizeEmail } from "./guestClaimModel";
 
 /**

@@ -4,7 +4,8 @@
  * refundModel.ts; the Stripe calls in refunds.ts. Payment Status is never written here: the
  * `charge.refunded` webhook records it (orders/settlement.ts recordStripeRefundInternal).
  */
-import { internalMutation, internalQuery, query } from "../_generated/server";
+import { internalQuery, query } from "../_generated/server";
+import { internalMutation } from "../lib/functions";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import { v, ConvexError } from "convex/values";

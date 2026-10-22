@@ -2,7 +2,7 @@
  * One-shot and idempotent catalog data jobs: the dev seed, the unified-catalog
  * migration (ADR 0015/0016), bulk apparel repricing and the field backfills.
  */
-import { mutation, internalMutation } from "../_generated/server";
+import { mutation, internalMutation } from "../lib/functions";
 import type { MutationCtx } from "../_generated/server";
 import { v, ConvexError } from "convex/values";
 import { requireAdmin } from "../lib/auth";

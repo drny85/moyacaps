@@ -6,6 +6,7 @@
  * in the payments/refunds.ts actions; these tests drive the ledger mutations either side of it.
  */
 import { convexTest } from "convex-test";
+import aggregateTest from "@convex-dev/aggregate/test";
 import { describe, expect, it } from "vitest";
 import { api, internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
@@ -14,7 +15,12 @@ import { getVariant } from "../catalog/inventory";
 import { PRIMARY_ADMIN_EMAIL } from "../lib/auth";
 
 const modules = import.meta.glob("/convex/**/*.ts");
-const t = () => convexTest(schema, modules);
+// orderStats: every order write updates the dashboard aggregate (analytics/orderStats.ts).
+function t() {
+  const tt = convexTest(schema, modules);
+  aggregateTest.register(tt, "orderStats");
+  return tt;
+}
 type T = ReturnType<typeof t>;
 
 const OWNER = "user_owner";
