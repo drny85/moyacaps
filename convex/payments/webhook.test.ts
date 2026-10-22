@@ -1,5 +1,6 @@
 /// <reference types="vite/client" />
 import { convexTest } from "convex-test";
+import Stripe from "stripe";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { internal } from "../_generated/api";
 import schema from "../schema";
@@ -9,16 +10,18 @@ const modules = import.meta.glob("/convex/**/*.ts");
 const t = () => convexTest(schema, modules);
 type T = ReturnType<typeof t>;
 
-// No webhook secret outside production: the action parses the payload as the event.
+// Events are signed with a test secret, so the action runs the real verification path.
 // The Stripe client is built from the key but makes no call for a fully expanded session.
+const WEBHOOK_SECRET = "whsec_test_suite";
 const savedEnv = { key: process.env.STRIPE_SECRET_KEY, secret: process.env.STRIPE_WEBHOOK_SECRET };
 beforeEach(() => {
   process.env.STRIPE_SECRET_KEY = "sk_test_webhook_suite";
-  delete process.env.STRIPE_WEBHOOK_SECRET;
+  process.env.STRIPE_WEBHOOK_SECRET = WEBHOOK_SECRET;
 });
 afterEach(() => {
   process.env.STRIPE_SECRET_KEY = savedEnv.key;
   if (savedEnv.secret !== undefined) process.env.STRIPE_WEBHOOK_SECRET = savedEnv.secret;
+  else delete process.env.STRIPE_WEBHOOK_SECRET;
 });
 
 async function seedHeldOrder(tt: T, orderNumber: string, sessionId: string) {
@@ -83,7 +86,8 @@ function completedEvent(eventId: string, sessionId: string, orderNumber: string,
 }
 
 async function deliver(tt: T, payload: string) {
-  return await tt.action(internal.payments.webhook.fulfillStripeWebhook, { payload, signature: "" });
+  const signature = await new Stripe("sk_test_signer").webhooks.generateTestHeaderStringAsync({ payload, secret: WEBHOOK_SECRET });
+  return await tt.action(internal.payments.webhook.fulfillStripeWebhook, { payload, signature });
 }
 
 async function state(tt: T, orderId: string) {

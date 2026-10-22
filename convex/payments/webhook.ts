@@ -156,20 +156,17 @@ export const fulfillStripeWebhook = internalAction({
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
     const stripe = getStripe();
 
+    // Every deployment verifies: an unsigned event could settle an order as paid.
+    // Locally, `stripe listen` prints the whsec_ to set.
+    if (!webhookSecret) {
+      throw new Error("STRIPE_WEBHOOK_SECRET is not configured; refusing unsigned Stripe events.");
+    }
     let event: Stripe.Event;
-    if (webhookSecret) {
-      try {
-        event = stripe.webhooks.constructEvent(args.payload, args.signature, webhookSecret);
-      } catch (err: any) {
-        console.error(`Webhook signature verification failed: ${err.message}`);
-        throw new Error(`Webhook Error: ${err.message}`);
-      }
-    } else {
-      if (process.env.NODE_ENV === "production") {
-        throw new Error("STRIPE_WEBHOOK_SECRET is not configured in production environment.");
-      }
-      // In dev or sandbox when secret is not configured, parse payload directly
-      event = JSON.parse(args.payload) as Stripe.Event;
+    try {
+      event = await stripe.webhooks.constructEventAsync(args.payload, args.signature, webhookSecret);
+    } catch (err: any) {
+      console.error(`Webhook signature verification failed: ${err.message}`);
+      throw new Error(`Webhook Error: ${err.message}`);
     }
 
     if (!isHandledStripeEvent(event.type)) {
