@@ -17,6 +17,7 @@ import { EmptyState } from "@/components/admin/products/EmptyState";
 import { useAdminShortcuts } from "@/components/admin/products/useAdminShortcuts";
 import { OrderRow } from "./OrderRow";
 import { OrdersSkeleton } from "./OrdersSkeleton";
+import { PickupCard } from "./PickupCard";
 import { QueueChips } from "./QueueChips";
 import { RangeChips } from "./RangeChips";
 import { useOrderFilters } from "./useOrderFilters";
@@ -80,6 +81,7 @@ function ListBody() {
         onChange={(queue) => setFilters({ queue })}
       />
       {rangeApplies(filters) && <RangeChips value={filters.range} onChange={(range) => setFilters({ range })} />}
+      <PickupCard />
 
       {success && (
         <p role="status" className="flex items-center justify-between gap-2 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-xs text-emerald-700 dark:text-emerald-300">

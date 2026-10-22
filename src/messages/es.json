@@ -298,7 +298,26 @@
         "all": "Todas"
       },
       "empty": "No hay órdenes en esta cola",
-      "clearFilters": "Quitar filtros"
+      "clearFilters": "Quitar filtros",
+      "pickup": {
+        "title": "Recogida de USPS",
+        "apiWaiting": "{count, plural, one {# paquete Priority o internacional espera} other {# paquetes Priority o internacionales esperan}}. USPS los recoge gratis.",
+        "date": "Día",
+        "from": "Desde",
+        "until": "Hasta",
+        "location": "Paquetes en",
+        "instructions": "¿Dónde exactamente? (p. ej. detrás de la puerta lateral)",
+        "schedule": "{count, plural, one {Programar recogida de # paquete} other {Programar recogida de # paquetes}}",
+        "dateTaken": "Ese día ya tiene una recogida. USPS permite una por día; deja los paquetes extra afuera para esa.",
+        "scheduled": "Recogida programada para {count, plural, one {# paquete} other {# paquetes}}. Confirmación {code}.",
+        "failed": "No se pudo programar la recogida. Inténtalo de nuevo.",
+        "upcomingDetail": "{count, plural, one {# paquete} other {# paquetes}} en {location}.",
+        "changeHint": "Para cambiarla o cancelarla, llama a USPS al {phone} con el código de confirmación.",
+        "simulated": "Simulada",
+        "uspsSiteWaiting": "{count, plural, one {# paquete Ground Advantage no se puede} other {# paquetes Ground Advantage no se pueden}} programar aquí (la API de USPS solo acepta Priority e internacional).",
+        "rideAlong": "Déjalos afuera con los paquetes programados: el cartero los recoge en la misma parada.",
+        "uspsSiteLink": "Programar en usps.com"
+      }
     },
     "settings": {
       "title": "Ajustes",

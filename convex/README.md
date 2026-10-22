@@ -10,7 +10,7 @@ A function's API path follows its file: `convex/orders/desk.ts` → `api.orders.
 | `catalog/`       | Products, variants, SKUs, inventory, drops, migrations                |
 | `orders/`        | Order lifecycle: customer, admin desk, fulfillment, settlement, migrations |
 | `payments/`      | Stripe: checkout, refunds, webhook, settlement and checkout models    |
-| `shipping/`      | Shippo rates and labels                                               |
+| `shipping/`      | Shippo rates, labels and USPS pickups                                 |
 | `notifications/` | Resend emails and their React templates                               |
 | `analytics/`     | Admin analytics and the `orderStats` aggregate                        |
 

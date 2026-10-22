@@ -298,7 +298,26 @@
         "all": "All"
       },
       "empty": "No orders in this queue",
-      "clearFilters": "Clear filters"
+      "clearFilters": "Clear filters",
+      "pickup": {
+        "title": "USPS pickup",
+        "apiWaiting": "{count, plural, one {# Priority or international package is} other {# Priority or international packages are}} waiting. USPS collects them for free.",
+        "date": "Day",
+        "from": "From",
+        "until": "Until",
+        "location": "Packages at",
+        "instructions": "Where exactly? (e.g. behind the side gate)",
+        "schedule": "{count, plural, one {Schedule pickup for # package} other {Schedule pickup for # packages}}",
+        "dateTaken": "That day already has a pickup. USPS allows one per day; leave the extra packages out for it.",
+        "scheduled": "Pickup scheduled for {count, plural, one {# package} other {# packages}}. Confirmation {code}.",
+        "failed": "Could not schedule the pickup. Try again.",
+        "upcomingDetail": "{count, plural, one {# package} other {# packages}} at {location}.",
+        "changeHint": "To change or cancel, call USPS at {phone} with the confirmation code.",
+        "simulated": "Simulated",
+        "uspsSiteWaiting": "{count, plural, one {# Ground Advantage package} other {# Ground Advantage packages}} can't be scheduled here (USPS limits its API to Priority and international).",
+        "rideAlong": "Leave them out with the scheduled packages: the carrier collects them on the same stop.",
+        "uspsSiteLink": "Schedule on usps.com"
+      }
     },
     "settings": {
       "title": "Settings",
