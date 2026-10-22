@@ -262,6 +262,26 @@ describe("admin desk on the two axes", () => {
     await drain(tt);
   });
 
+  it("All skips Expired Checkouts, so they never crowd out real Orders", async () => {
+    const tt = t();
+    await seedOrder(tt, { orderNumber: "GL-ALL-PAID", paymentStatus: "paid", fulfillmentStatus: "unfulfilled", createdAt: 1_000 });
+    for (const [n, createdAt] of [["GL-ALL-EXP-1", 2_000], ["GL-ALL-EXP-2", 3_000]] as const) {
+      await seedOrder(tt, {
+        orderNumber: n,
+        paymentStatus: "awaiting_payment",
+        fulfillmentStatus: "unfulfilled",
+        cancelledAt: createdAt,
+        cancellationReason: "checkout_expired",
+        createdAt,
+      });
+    }
+    const list = async (status?: string) =>
+      (await admin(tt).query(api.orders.desk.getAllOrdersAdmin, { clientTime: Date.now(), status, limit: 1 })).map((o) => o.orderNumber);
+
+    expect(await list()).toEqual(["GL-ALL-PAID"]);
+    expect(await list("cancelled")).toEqual(["GL-ALL-EXP-2"]);
+  });
+
   it("a capped Done read keeps the newest refunded orders whatever their package status", async () => {
     const tt = t();
     for (const [n, fulfillmentStatus, createdAt] of [

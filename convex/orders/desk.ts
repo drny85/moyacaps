@@ -30,6 +30,7 @@ import {
   type FulfillmentStatus,
   type PaymentStatus,
   hasSettled,
+  isExpiredCheckout,
   planCancellation,
   planManualFulfillmentChange,
   statusAxes,
@@ -88,11 +89,25 @@ const byPayment = async (ctx: QueryCtx, paymentStatus: PaymentStatus, limit: num
     limit
   );
 
+/** Most Orders the All tab scans past Expired Checkouts before it stops short of `limit`. */
+const ALL_TAB_MAX_SCAN = 2000;
+
+/** The All tab, newest first: skips Expired Checkouts so abandoned carts never crowd out real Orders. */
+async function newestWithoutExpiredCheckouts(ctx: QueryCtx, limit: number): Promise<Order[]> {
+  const orders: Order[] = [];
+  let scanned = 0;
+  for await (const order of ctx.db.query("orders").withIndex("by_createdAt").order("desc")) {
+    if (!isExpiredCheckout(order)) orders.push(order);
+    if (orders.length >= limit || ++scanned >= ALL_TAB_MAX_SCAN) break;
+  }
+  return orders;
+}
+
 /** Index read that narrows to a desk tab; `matchesDeskFilter` decides membership. */
 async function readDeskFilter(ctx: QueryCtx, filter: DeskFilter, limit: number): Promise<Order[]> {
   switch (filter) {
     case "all":
-      return await ctx.db.query("orders").withIndex("by_createdAt").order("desc").take(limit);
+      return await newestWithoutExpiredCheckouts(ctx, limit);
     case "needs_packing":
     case "overdue":
       return await packingQueue(ctx, limit);

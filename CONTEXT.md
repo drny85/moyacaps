@@ -152,6 +152,10 @@ _Avoid_: Payment link, cart checkout, gateway intent
 The units an awaiting-payment Order keeps out of Available Inventory while its Checkout Session is open, so two Customers can never pay for the same last unit. Ends in Order Settlement or, when the session expires, in release.
 _Avoid_: Reservation, cart hold, soft lock
 
+**Expired Checkout**:
+An Order cancelled before any money arrived: its Checkout Session expired, was replaced or was left through Stripe's back link. It is an abandoned cart, not work: the admin desk lists it only under Cancelled, and the Customer never sees it.
+_Avoid_: Awaiting payment (once cancelled), abandoned order, failed order
+
 **Payment Status**:
 Where an Order's money stands: awaiting payment, paid, partially refunded, refunded or disputed. Independent of Fulfillment Status.
 _Avoid_: Order status (when meaning money only), paid flag

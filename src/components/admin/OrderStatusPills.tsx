@@ -4,6 +4,7 @@ import {
   PAYMENT_LABELS,
   PAYMENT_TONES,
   isCancelledOrder,
+  isExpiredCheckout,
   type AdminTone,
   type OrderLifecycle,
 } from "@/lib/orderStatus";
@@ -27,8 +28,12 @@ function Pill({ tone, label, prefix }: { tone: AdminTone; label: string; prefix:
   );
 }
 
-/** Admin view of an Order's lifecycle (ADR 0024): cancelled marker, Payment Status, Fulfillment Status. */
+/**
+ * Admin view of an Order's lifecycle (ADR 0024): cancelled marker, Payment Status, Fulfillment
+ * Status. An Expired Checkout shows one pill: no money ever arrived, so there is no Payment Status to show.
+ */
 export function OrderStatusPills({ order }: { order: OrderLifecycle }) {
+  if (isExpiredCheckout(order)) return <Pill tone="zinc" prefix="" label="Checkout expired" />;
   const payment = order.paymentStatus ?? "awaiting_payment";
   const fulfillment = order.fulfillmentStatus ?? "unfulfilled";
   return (

@@ -55,7 +55,11 @@ describe("matchesDeskFilter", () => {
 
   it("an abandoned checkout is cancelled, not awaiting payment", () => {
     expect(tabsOf(order("awaiting_payment", "unfulfilled"))).toEqual(["all", "awaiting_payment"]);
-    expect(tabsOf(order("awaiting_payment", "unfulfilled", { cancelledAt: NOW }))).toEqual(["all", "cancelled"]);
+    expect(tabsOf(order("awaiting_payment", "unfulfilled", { cancelledAt: NOW }))).toEqual(["cancelled"]);
+  });
+
+  it("a cancelled order that was paid stays in All", () => {
+    expect(tabsOf(order("refunded", "unfulfilled", { cancelledAt: NOW }))).toEqual(["all", "refunded", "cancelled"]);
   });
 
   it("queues group the statuses the desk works from", () => {

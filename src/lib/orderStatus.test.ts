@@ -8,6 +8,7 @@ import {
   customerBadges,
   isAddressEditable,
   isCancellableOrder,
+  isExpiredCheckout,
   isPaidOrder,
   isShippedOrder,
   trackingStep,
@@ -89,6 +90,13 @@ describe("admin predicates", () => {
   it("summarizes both axes on one line", () => {
     expect(adminStatusSummary(o("partially_refunded", "delivered"))).toBe("Partially refunded · Delivered");
     expect(adminStatusSummary(o("refunded", "unfulfilled", 1))).toBe("Cancelled · Refunded");
+    expect(adminStatusSummary(o("awaiting_payment", "unfulfilled", 1))).toBe("Checkout expired");
+  });
+
+  it("an Expired Checkout is cancelled with no money received", () => {
+    expect(isExpiredCheckout(o("awaiting_payment", "unfulfilled", 1))).toBe(true);
+    expect(isExpiredCheckout(o("awaiting_payment", "unfulfilled"))).toBe(false);
+    expect(isExpiredCheckout(o("refunded", "unfulfilled", 1))).toBe(false);
   });
 
   it("offers exactly the desk filters the server understands", () => {

@@ -3,11 +3,12 @@
  * Fulfillment Status axes. Pure; the desk query narrows with an index, then applies
  * `matchesDeskFilter` as the source of truth. Covered by deskFilters.test.ts.
  */
-import { awaitsFulfillment, isCancelled, statusAxes, type StatusSource } from "./status";
+import { awaitsFulfillment, isCancelled, isExpiredCheckout, statusAxes, type StatusSource } from "./status";
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
 export const DESK_FILTERS = [
+  // Every Order except Expired Checkouts, which only the cancelled tab lists.
   "all",
   // Paid (or partially refunded), unfulfilled, not cancelled, not disputed: Needs Packing (CONTEXT.md).
   "needs_packing",
@@ -54,7 +55,7 @@ export function matchesDeskFilter(
   const axes = statusAxes(order);
   switch (filter) {
     case "all":
-      return true;
+      return !isExpiredCheckout(order);
     case "needs_packing":
       return awaitsFulfillment(order);
     case "overdue":

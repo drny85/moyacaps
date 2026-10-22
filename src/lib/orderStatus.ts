@@ -17,6 +17,9 @@ const fulfillment = (o: OrderLifecycle): FulfillmentStatus => o.fulfillmentStatu
 
 export const isCancelledOrder = (o: OrderLifecycle): boolean => o.cancelledAt != null;
 
+/** An Expired Checkout (CONTEXT.md): cancelled before any money arrived. */
+export const isExpiredCheckout = (o: OrderLifecycle): boolean => isCancelledOrder(o) && payment(o) === "awaiting_payment";
+
 /** Money was received (it may since have been refunded or disputed): "Total Paid", not "Total Due". */
 export const isPaidOrder = (o: OrderLifecycle): boolean => payment(o) !== "awaiting_payment";
 
@@ -100,8 +103,9 @@ export const FULFILLMENT_LABELS: Record<FulfillmentStatus, string> = {
   returned: "Returned",
 };
 
-/** One-line admin summary, e.g. "Paid · In transit" or "Cancelled · Refunded". */
+/** One-line admin summary, e.g. "Paid · In transit", "Cancelled · Refunded" or "Checkout expired". */
 export function adminStatusSummary(o: OrderLifecycle): string {
+  if (isExpiredCheckout(o)) return "Checkout expired";
   const money = PAYMENT_LABELS[payment(o)];
   if (isCancelledOrder(o)) return `Cancelled · ${money}`;
   return `${money} · ${FULFILLMENT_LABELS[fulfillment(o)]}`;
