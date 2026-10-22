@@ -61,7 +61,8 @@ const nextConfig = {
           },
           {
             key: "Permissions-Policy",
-            value: "camera=(), microphone=(), geolocation=()",
+            // Try-on opens the front camera (CameraSheet); third-party frames still get none.
+            value: "camera=(self), microphone=(), geolocation=()",
           },
         ],
       },
