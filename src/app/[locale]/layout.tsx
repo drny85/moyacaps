@@ -24,6 +24,7 @@ import { api } from "@convex/_generated/api";
 import type { CapVariant } from "@/data/caps";
 import { shouldSwallowSeedError } from "@/lib/selectCatalog";
 import { DEFAULT_HOME_TILES, type HomeTiles } from "@convex/settings/homeTilesModel";
+import { Analytics } from "@vercel/analytics/next";
 
 // Same interval as the product pages (ADR 0020) so the seeded catalog refreshes with them
 export const revalidate = 300;
@@ -90,32 +91,33 @@ export default async function LocaleLayout({
 
   return (
     <HtmlDocument lang={locale}>
-    <NextIntlClientProvider messages={messages}>
-      <ThemeProvider>
-        <ClerkClientProvider>
-          <ConvexClientProvider>
-            <UserSyncProvider>
-              <CatalogProvider seed={catalogSeed} launchSeed={launchSeed} homeTilesSeed={homeTilesSeed}>
-                <SmoothScrollProvider>
-                  <MotionProvider>
-                    <div className="flex min-h-screen flex-col pb-20 md:pb-0 print:pb-0 print:min-h-0">
-                      <OrganizationJsonLd />
-                      {/* Film grain noise overlay */}
-                      <div className="noise-overlay print:hidden" aria-hidden="true" />
-                      <Navbar />
-                      <main className="flex-1 print:p-0">{children}</main>
-                      <Footer />
-                      <MobileActionBar />
-                      <DeferredOverlays />
-                    </div>
-                  </MotionProvider>
-                </SmoothScrollProvider>
-              </CatalogProvider>
-            </UserSyncProvider>
-          </ConvexClientProvider>
-        </ClerkClientProvider>
-    </ThemeProvider>
-  </NextIntlClientProvider>
+      <NextIntlClientProvider messages={messages}>
+        <ThemeProvider>
+          <ClerkClientProvider>
+            <ConvexClientProvider>
+              <UserSyncProvider>
+                <CatalogProvider seed={catalogSeed} launchSeed={launchSeed} homeTilesSeed={homeTilesSeed}>
+                  <SmoothScrollProvider>
+                    <MotionProvider>
+                      <div className="flex min-h-screen flex-col pb-20 md:pb-0 print:pb-0 print:min-h-0">
+                        <OrganizationJsonLd />
+                        {/* Film grain noise overlay */}
+                        <div className="noise-overlay print:hidden" aria-hidden="true" />
+                        <Navbar />
+                        <main className="flex-1 print:p-0">{children}</main>
+                        <Footer />
+                        <MobileActionBar />
+                        <DeferredOverlays />
+                        <Analytics />
+                      </div>
+                    </MotionProvider>
+                  </SmoothScrollProvider>
+                </CatalogProvider>
+              </UserSyncProvider>
+            </ConvexClientProvider>
+          </ClerkClientProvider>
+        </ThemeProvider>
+      </NextIntlClientProvider>
     </HtmlDocument>
   );
 }
