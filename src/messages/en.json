@@ -1029,7 +1029,7 @@
         "save": "Save notes"
       },
       "danger": {
-        "title": "Cancel",
+        "title": "Danger zone",
         "help": "Cancelling releases any unshipped units back to stock and tells the customer.",
         "cancel": "Cancel order",
         "cancelTitle": "Cancel this order?",

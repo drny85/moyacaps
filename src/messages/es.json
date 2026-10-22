@@ -1029,7 +1029,7 @@
         "save": "Guardar notas"
       },
       "danger": {
-        "title": "Cancelar",
+        "title": "Zona de peligro",
         "help": "Cancelar devuelve al stock las unidades no enviadas y avisa al cliente.",
         "cancel": "Cancelar orden",
         "cancelTitle": "¿Cancelar esta orden?",
