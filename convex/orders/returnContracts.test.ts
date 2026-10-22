@@ -123,7 +123,7 @@ async function seeded() {
 }
 
 const asAdmin = (t: Awaited<ReturnType<typeof seeded>>) =>
-  t.withIdentity({ subject: "user_admin", email: PRIMARY_ADMIN_EMAIL });
+  t.withIdentity({ subject: "user_admin", email: PRIMARY_ADMIN_EMAIL, emailVerified: true });
 
 describe("catalog and drop reads match their return validators", () => {
   it("storefront catalog", async () => {

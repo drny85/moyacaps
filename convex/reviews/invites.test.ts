@@ -174,7 +174,7 @@ describe("opt-out HTTP route", () => {
 });
 
 describe("invite through the delivery hooks", () => {
-  const admin = (tt: TT) => tt.withIdentity({ subject: "user_admin", email: PRIMARY_ADMIN_EMAIL });
+  const admin = (tt: TT) => tt.withIdentity({ subject: "user_admin", email: PRIMARY_ADMIN_EMAIL, emailVerified: true });
 
   it("a manual desk move into delivered twice schedules exactly one invite", async () => {
     const tt = t();

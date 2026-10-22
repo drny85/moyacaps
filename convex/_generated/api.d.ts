@@ -38,6 +38,7 @@ import type * as crons from "../crons.js";
 import type * as http from "../http.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_ids from "../lib/ids.js";
+import type * as lib_secrets from "../lib/secrets.js";
 import type * as lib_storeTime from "../lib/storeTime.js";
 import type * as notifications_adminRecipient from "../notifications/adminRecipient.js";
 import type * as notifications_deliveryException from "../notifications/deliveryException.js";
@@ -83,6 +84,8 @@ import type * as orders_validators from "../orders/validators.js";
 import type * as payments_checkout from "../payments/checkout.js";
 import type * as payments_checkoutMetadata from "../payments/checkoutMetadata.js";
 import type * as payments_checkoutModel from "../payments/checkoutModel.js";
+import type * as payments_checkoutRateLimit from "../payments/checkoutRateLimit.js";
+import type * as payments_limits from "../payments/limits.js";
 import type * as payments_refundFailureModel from "../payments/refundFailureModel.js";
 import type * as payments_refundLedger from "../payments/refundLedger.js";
 import type * as payments_refundModel from "../payments/refundModel.js";
@@ -109,6 +112,7 @@ import type * as shipping_parcels from "../shipping/parcels.js";
 import type * as shipping_queries from "../shipping/queries.js";
 import type * as shipping_shipFrom from "../shipping/shipFrom.js";
 import type * as shipping_shippoMode from "../shipping/shippoMode.js";
+import type * as shipping_shippoWebhook from "../shipping/shippoWebhook.js";
 import type * as shipping_territory from "../shipping/territory.js";
 import type * as users_clerk from "../users/clerk.js";
 import type * as users_clerkWebhook from "../users/clerkWebhook.js";
@@ -151,6 +155,7 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   "lib/auth": typeof lib_auth;
   "lib/ids": typeof lib_ids;
+  "lib/secrets": typeof lib_secrets;
   "lib/storeTime": typeof lib_storeTime;
   "notifications/adminRecipient": typeof notifications_adminRecipient;
   "notifications/deliveryException": typeof notifications_deliveryException;
@@ -196,6 +201,8 @@ declare const fullApi: ApiFromModules<{
   "payments/checkout": typeof payments_checkout;
   "payments/checkoutMetadata": typeof payments_checkoutMetadata;
   "payments/checkoutModel": typeof payments_checkoutModel;
+  "payments/checkoutRateLimit": typeof payments_checkoutRateLimit;
+  "payments/limits": typeof payments_limits;
   "payments/refundFailureModel": typeof payments_refundFailureModel;
   "payments/refundLedger": typeof payments_refundLedger;
   "payments/refundModel": typeof payments_refundModel;
@@ -222,6 +229,7 @@ declare const fullApi: ApiFromModules<{
   "shipping/queries": typeof shipping_queries;
   "shipping/shipFrom": typeof shipping_shipFrom;
   "shipping/shippoMode": typeof shipping_shippoMode;
+  "shipping/shippoWebhook": typeof shipping_shippoWebhook;
   "shipping/territory": typeof shipping_territory;
   "users/clerk": typeof users_clerk;
   "users/clerkWebhook": typeof users_clerkWebhook;
@@ -256,4 +264,5 @@ export declare const internal: FilterApi<
 
 export declare const components: {
   resend: import("@convex-dev/resend/_generated/component.js").ComponentApi<"resend">;
+  rateLimiter: import("@convex-dev/rate-limiter/_generated/component.js").ComponentApi<"rateLimiter">;
 };

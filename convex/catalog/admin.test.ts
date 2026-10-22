@@ -24,7 +24,7 @@ const cap = {
 
 function setup() {
   const t = convexTest(schema, modules);
-  const admin = t.withIdentity({ subject: "user_admin", email: PRIMARY_ADMIN_EMAIL });
+  const admin = t.withIdentity({ subject: "user_admin", email: PRIMARY_ADMIN_EMAIL, emailVerified: true });
   /** Create the cap, then give it an image and show it, as an Administrator would after attaching its Catalog Shot. */
   const createShown = async () => {
     await admin.mutation(api.catalog.admin.createVariant, cap);

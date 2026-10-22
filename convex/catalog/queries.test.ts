@@ -49,7 +49,7 @@ describe("getVariants", () => {
 
   it("returns hidden products to an Administrator who asks for them", async () => {
     const t = await setup();
-    const admin = t.withIdentity({ subject: "user_admin", email: PRIMARY_ADMIN_EMAIL });
+    const admin = t.withIdentity({ subject: "user_admin", email: PRIMARY_ADMIN_EMAIL, emailVerified: true });
     expect(ids(await admin.query(api.catalog.queries.getVariants, { includeUnavailable: true }))).toEqual(["draft", "oro-negro"]);
     expect(ids(await admin.query(api.catalog.queries.getVariants, {}))).toEqual(["oro-negro"]);
   });
@@ -116,7 +116,7 @@ describe("category launch gating (ADR 0022)", () => {
     await t.run((ctx) => ctx.db.insert("variants", { ...cap, variantId: "tee", category: "apparel", silhouette: "tee" }));
     return t;
   }
-  const asAdmin = (t: Awaited<ReturnType<typeof setup>>) => t.withIdentity({ subject: "user_admin", email: PRIMARY_ADMIN_EMAIL });
+  const asAdmin = (t: Awaited<ReturnType<typeof setup>>) => t.withIdentity({ subject: "user_admin", email: PRIMARY_ADMIN_EMAIL, emailVerified: true });
 
   it("hides a product whose isAvailable was never set", async () => {
     const t = await setup();

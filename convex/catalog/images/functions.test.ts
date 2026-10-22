@@ -34,7 +34,7 @@ const teeColorway = (id: string) => ({ id, nameEn: id, nameEs: id, hex: "#000000
 
 function setup() {
   const t = convexTest(schema, modules);
-  const admin = t.withIdentity({ subject: "user_admin", email: PRIMARY_ADMIN_EMAIL });
+  const admin = t.withIdentity({ subject: "user_admin", email: PRIMARY_ADMIN_EMAIL, emailVerified: true });
   return { t, admin };
 }
 type T = ReturnType<typeof setup>["t"];

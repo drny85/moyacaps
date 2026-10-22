@@ -4,6 +4,7 @@
  * Order's owner comes from the auth token only, never from the client-sent `clerkUserId`.
  */
 import { convexTest } from "convex-test";
+import rateLimiterTest from "@convex-dev/rate-limiter/test";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "../_generated/api";
 import schema from "../schema";
@@ -19,7 +20,11 @@ vi.mock("./stripeClient", async (importOriginal) => ({
 }));
 
 const modules = import.meta.glob("/convex/**/*.ts");
-const t = () => convexTest(schema, modules);
+const t = () => {
+  const tt = convexTest(schema, modules);
+  rateLimiterTest.register(tt);
+  return tt;
+};
 type T = ReturnType<typeof t>;
 
 const VARIANT = "cap-owner-test";
@@ -96,5 +101,37 @@ describe("createCheckoutSession owner", () => {
 
     expect(await heldOrderOwner(tt, orderNumber)).toBe("user_buyer");
     expect(stripe.sessionsCreate.mock.calls[0][0].metadata.clerkUserId).toBe("user_buyer");
+  });
+});
+
+describe("createCheckoutSession rate limit", () => {
+  beforeEach(() => {
+    stripe.sessionsCreate.mockReset();
+    stripe.sessionsCreate.mockImplementation(async () => ({
+      id: `cs_test_${stripe.sessionsCreate.mock.calls.length}`,
+      url: "https://checkout.stripe.com/test",
+    }));
+  });
+
+  it("stops one buyer after 10 Pay clicks without placing another hold", async () => {
+    const tt = t();
+    await seedVariant(tt);
+    const buyer = tt.withIdentity({ subject: "user_spammer" });
+    const pay = () => buyer.action(api.payments.checkout.createCheckoutSession, checkoutArgs());
+
+    // Each click holds one unit; release them so stock never runs out first.
+    for (let i = 0; i < 10; i++) {
+      await pay();
+      await tt.run(async (ctx) => {
+        const variant = (await ctx.db.query("variants").first())!;
+        await ctx.db.patch(variant._id, { stock: 5 });
+      });
+    }
+    await expect(pay()).rejects.toThrow(/Too many checkout attempts/);
+    expect(stripe.sessionsCreate).toHaveBeenCalledTimes(10);
+
+    // Another buyer is unaffected.
+    await tt.withIdentity({ subject: "user_other" }).action(api.payments.checkout.createCheckoutSession, checkoutArgs());
+    expect(stripe.sessionsCreate).toHaveBeenCalledTimes(11);
   });
 });

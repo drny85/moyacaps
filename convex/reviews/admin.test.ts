@@ -11,7 +11,7 @@ const modules = import.meta.glob("/convex/**/*.ts");
 const t = () => convexTest(schema, modules);
 type TT = ReturnType<typeof t>;
 
-const asAdmin = (tt: TT) => tt.withIdentity({ subject: "user_admin", email: PRIMARY_ADMIN_EMAIL });
+const asAdmin = (tt: TT) => tt.withIdentity({ subject: "user_admin", email: PRIMARY_ADMIN_EMAIL, emailVerified: true });
 const asUser = (tt: TT, subject: string) => tt.withIdentity({ subject });
 
 /** One delivered Order for `subject` containing `variantId`. */

@@ -15,6 +15,9 @@ import {
   resolveProductTaxCode,
   toStripeAddress,
   validateCartLines,
+  MAX_CART_LINES,
+  MAX_UNITS_PER_CART,
+  MAX_UNITS_PER_LINE,
   type CheckoutVariant,
   type LineStock,
   INVOICE_FOOTER,
@@ -110,6 +113,26 @@ describe("validateCartLines", () => {
     });
     expect(result.validatedItems[1]).not.toHaveProperty("colorway");
     expect(result.validatedItems[1].taxCode).toBe("txcd_30060006");
+  });
+
+  it("caps units per line, units per cart and lines per cart", () => {
+    const line = (quantity: number) => ({ variantId: "negro-rojo", quantity });
+    expect(errorOf(() => validateCartLines([line(MAX_UNITS_PER_LINE + 1)], [cap], [inStock(99)], opts))).toBe(
+      `Limit ${MAX_UNITS_PER_LINE} of "Black / Red" per order.`
+    );
+    expect(validateCartLines([line(MAX_UNITS_PER_LINE)], [cap], [inStock(99)], opts).totalItems).toBe(MAX_UNITS_PER_LINE);
+
+    const lines = Array.from({ length: MAX_UNITS_PER_CART / MAX_UNITS_PER_LINE + 1 }, () => line(MAX_UNITS_PER_LINE));
+    const stocks = lines.map(() => inStock(99));
+    expect(errorOf(() => validateCartLines(lines, lines.map(() => cap), stocks, opts))).toBe(`Limit ${MAX_UNITS_PER_CART} items per order.`);
+    expect(errorOf(() => validateCartLines(lines, lines.map(() => cap), stocks, { ...opts, locale: "es" }))).toBe(
+      `Máximo ${MAX_UNITS_PER_CART} piezas por pedido.`
+    );
+
+    const many = Array.from({ length: MAX_CART_LINES + 1 }, () => line(1));
+    expect(errorOf(() => validateCartLines(many, many.map(() => cap), many.map(() => inStock(99)), opts))).toBe(
+      `Limit ${MAX_CART_LINES} different products per order.`
+    );
   });
 
   it("floors quantities and treats missing ones as one", () => {

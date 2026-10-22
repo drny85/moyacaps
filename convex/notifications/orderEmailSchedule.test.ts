@@ -5,6 +5,7 @@
  * not mounted in convex-test, so draining them renders each template but sends nothing.
  */
 import { convexTest } from "convex-test";
+import Stripe from "stripe";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { api, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
@@ -17,18 +18,20 @@ const t = () => convexTest(schema, modules);
 type T = ReturnType<typeof t>;
 
 const OWNER = "user_owner";
-const admin = (tt: T) => tt.withIdentity({ subject: "user_admin", email: PRIMARY_ADMIN_EMAIL });
+const admin = (tt: T) => tt.withIdentity({ subject: "user_admin", email: PRIMARY_ADMIN_EMAIL, emailVerified: true });
 const owner = (tt: T) => tt.withIdentity({ subject: OWNER });
 
-// No webhook secret outside production: the action parses the payload as the event.
+// Events are signed with a test secret, so the action runs the real verification path.
+const WEBHOOK_SECRET = "whsec_test_suite";
 const savedEnv = { key: process.env.STRIPE_SECRET_KEY, secret: process.env.STRIPE_WEBHOOK_SECRET };
 beforeEach(() => {
   process.env.STRIPE_SECRET_KEY = "sk_test_order_emails";
-  delete process.env.STRIPE_WEBHOOK_SECRET;
+  process.env.STRIPE_WEBHOOK_SECRET = WEBHOOK_SECRET;
 });
 afterEach(() => {
   process.env.STRIPE_SECRET_KEY = savedEnv.key;
   if (savedEnv.secret !== undefined) process.env.STRIPE_WEBHOOK_SECRET = savedEnv.secret;
+  else delete process.env.STRIPE_WEBHOOK_SECRET;
 });
 
 type Scheduled = { name: string; args: any; state: string };
@@ -125,7 +128,8 @@ const completed = (eventId: string, sessionId: string, orderNumber: string, stat
   sessionEvent("checkout.session.completed", eventId, sessionId, orderNumber, state);
 
 async function deliver(tt: T, payload: string) {
-  return await tt.action(internal.payments.webhook.fulfillStripeWebhook, { payload, signature: "" });
+  const signature = await new Stripe("sk_test_signer").webhooks.generateTestHeaderStringAsync({ payload, secret: WEBHOOK_SECRET });
+  return await tt.action(internal.payments.webhook.fulfillStripeWebhook, { payload, signature });
 }
 
 /** The success-page repair path: settles from the retrieved session, with no event id. */

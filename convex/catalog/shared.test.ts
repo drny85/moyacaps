@@ -67,7 +67,7 @@ describe("derived product image", () => {
   /** A product created without an image, then given a Catalog Shot row and shown. */
   async function productWithCatalogRow() {
     const t = convexTest(schema, modules);
-    const admin = t.withIdentity({ subject: "user_admin", email: PRIMARY_ADMIN_EMAIL });
+    const admin = t.withIdentity({ subject: "user_admin", email: PRIMARY_ADMIN_EMAIL, emailVerified: true });
     const { image: _image, ...editorPayload } = cap;
     await admin.mutation(api.catalog.admin.createVariant, editorPayload);
     const url = await t.run(async (ctx) => {
@@ -119,7 +119,7 @@ describe("requireVariant", () => {
 
   it("surfaces through admin mutations", async () => {
     const t = convexTest(schema, modules);
-    const admin = t.withIdentity({ subject: "user_admin", email: PRIMARY_ADMIN_EMAIL });
+    const admin = t.withIdentity({ subject: "user_admin", email: PRIMARY_ADMIN_EMAIL, emailVerified: true });
     await expect(admin.mutation(api.catalog.admin.archiveVariant, { variantId: "missing" })).rejects.toThrow(/not_found/);
   });
 });

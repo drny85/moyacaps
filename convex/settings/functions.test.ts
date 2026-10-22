@@ -11,7 +11,7 @@ const modules = import.meta.glob("/convex/**/*.ts");
 
 function setup() {
   const t = convexTest(schema, modules);
-  const admin = t.withIdentity({ subject: "user_admin", email: PRIMARY_ADMIN_EMAIL });
+  const admin = t.withIdentity({ subject: "user_admin", email: PRIMARY_ADMIN_EMAIL, emailVerified: true });
   return { t, admin };
 }
 

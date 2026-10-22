@@ -71,8 +71,13 @@ describe("toUserUpsert", () => {
 
 describe("roleFor", () => {
   it("grants admin only to the allowlist", () => {
-    expect(roleFor(PRIMARY_ADMIN_EMAIL, "user_x")).toBe("admin");
-    expect(roleFor("someone@example.com", PRIMARY_ADMIN_CLERK_ID)).toBe("admin");
-    expect(roleFor("someone@example.com", "user_x")).toBe("customer");
+    expect(roleFor(PRIMARY_ADMIN_EMAIL, "user_x", true)).toBe("admin");
+    expect(roleFor("someone@example.com", PRIMARY_ADMIN_CLERK_ID, false)).toBe("admin");
+    expect(roleFor("someone@example.com", "user_x", true)).toBe("customer");
+  });
+
+  it("does not grant admin to an unverified admin email", () => {
+    expect(roleFor(PRIMARY_ADMIN_EMAIL, "user_x", false)).toBe("customer");
+    expect(roleFor(PRIMARY_ADMIN_EMAIL, "user_x", undefined)).toBe("customer");
   });
 });

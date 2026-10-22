@@ -44,7 +44,7 @@ export const syncCurrentUser = mutation({
     }
 
     const finalRole =
-      existing?.role === "admin" ? "admin" : roleFor(email, clerkId);
+      existing?.role === "admin" ? "admin" : roleFor(email, clerkId, identity.emailVerified);
 
     // Guest Orders placed with this email join the account once Clerk has verified it (ADR 0026).
     const verifiedEmail = claimableEmail(identity.email, identity.emailVerified);
@@ -306,7 +306,7 @@ export const setUserRole = internalMutation({
     if (!user || user.deletedAt) {
       throw new ConvexError("No active user found. They must sign in once before a role can be set.");
     }
-    if (args.role === "customer" && isAllowlistedAdmin({ subject: user.clerkId, email: user.email })) {
+    if (args.role === "customer" && isAllowlistedAdmin({ subject: user.clerkId, email: user.email, emailVerified: true })) {
       throw new ConvexError("The allowlisted admin cannot be demoted; edit convex/lib/auth.ts instead.");
     }
     await ctx.db.patch(user._id, { role: args.role, updatedAt: Date.now() });

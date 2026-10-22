@@ -50,7 +50,7 @@ describe("getVariantHistory", () => {
       });
       await recordCatalogEvent(ctx, { variantId: "other", type: "created", actor: "a@b.c" });
     });
-    const admin = t.withIdentity({ subject: "user_admin", email: PRIMARY_ADMIN_EMAIL });
+    const admin = t.withIdentity({ subject: "user_admin", email: PRIMARY_ADMIN_EMAIL, emailVerified: true });
     const history = await admin.query(api.catalog.history.getVariantHistory, { variantId: "v1" });
     expect(history.map((e) => e.type)).toEqual(["price_set", "created"]);
     expect(history[0].changes).toEqual([{ field: "priceUsd", from: 10, to: 12 }]);
@@ -70,7 +70,7 @@ describe("getVariantHistory", () => {
         ],
       });
     });
-    const admin = t.withIdentity({ subject: "user_admin", email: PRIMARY_ADMIN_EMAIL });
+    const admin = t.withIdentity({ subject: "user_admin", email: PRIMARY_ADMIN_EMAIL, emailVerified: true });
     const history = await admin.query(api.catalog.history.getVariantHistory, { variantId: "v2" });
     expect(history[0].changes).toEqual([
       { field: "removed", from: 1, to: null },

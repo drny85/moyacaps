@@ -21,7 +21,7 @@ describe("admin role (users/functions)", () => {
 
   it("amIAdmin is true for the allowlisted admin before any row exists", async () => {
     const t = convexTest(schema, modules);
-    const admin = t.withIdentity({ subject: "user_owner", email: PRIMARY_ADMIN_EMAIL });
+    const admin = t.withIdentity({ subject: "user_owner", email: PRIMARY_ADMIN_EMAIL, emailVerified: true });
     expect(await admin.query(api.users.functions.amIAdmin, {})).toBe(true);
   });
 

@@ -17,7 +17,7 @@ const t = () => convexTest(schema, modules);
 type T = ReturnType<typeof t>;
 
 const OWNER = "user_owner";
-const admin = (tt: T) => tt.withIdentity({ subject: "user_admin", email: PRIMARY_ADMIN_EMAIL });
+const admin = (tt: T) => tt.withIdentity({ subject: "user_admin", email: PRIMARY_ADMIN_EMAIL, emailVerified: true });
 const owner = (tt: T) => tt.withIdentity({ subject: OWNER });
 const stranger = (tt: T) => tt.withIdentity({ subject: "user_stranger" });
 

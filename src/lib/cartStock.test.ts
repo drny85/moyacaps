@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { clampCart, isUnreleasedDrop, lineOverStock, lineStock, type CartStockLine, type CartStockVariant } from "./cartStock";
+import { MAX_UNITS_PER_LINE } from "../../convex/payments/limits";
 
 const NOW = 1_800_000_000_000;
 
@@ -58,9 +59,15 @@ describe("clampCart", () => {
     const result = clampCart([teeLine("black", "M", 1), teeLine("black", "L", 5)], [tee], NOW);
     expect(result.cart.map((l) => [l.quantity, l.maxStock])).toEqual([
       [1, 1],
-      [5, 8],
+      [5, MAX_UNITS_PER_LINE],
     ]);
     expect(result.adjusted).toBe(false);
+  });
+
+  it("caps a line at the checkout purchase limit even when more is in stock", () => {
+    const result = clampCart([teeLine("black", "L", MAX_UNITS_PER_LINE + 2)], [tee], NOW);
+    expect(result.cart[0]).toMatchObject({ quantity: MAX_UNITS_PER_LINE, maxStock: MAX_UNITS_PER_LINE });
+    expect(result.adjusted).toBe(true);
   });
 
   it("removes a tee line whose SKU is sold out", () => {
