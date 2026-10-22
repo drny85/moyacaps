@@ -33,6 +33,7 @@ import {
 } from "./orderEmails";
 import { PRIMARY_ADMIN_EMAIL } from "../lib/auth";
 import { resolveAdminRecipient } from "./adminRecipient";
+import { emailBaseUrl, isSendableEmail } from "./emailEnv";
 
 export const resend = new Resend(components.resend, {
   testMode: false,
@@ -104,7 +105,7 @@ export const sendAdminOrderAlert = internalAction({
   handler: async (ctx, args) => {
     try {
       const recipient = adminEmail();
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://goodluckcaps.com";
+      const baseUrl = emailBaseUrl(process.env.NEXT_PUBLIC_APP_URL);
       const adminDashboardUrl = `${baseUrl}/admin/orders/${args.orderNumber}`;
 
       const email = await renderEmail(
@@ -167,12 +168,12 @@ export const sendCustomerReceipt = internalAction({
   returns: emailResult,
   handler: async (ctx, args) => {
     try {
-      if (!args.customerEmail || !args.customerEmail.includes("@")) {
+      if (!isSendableEmail(args.customerEmail)) {
         console.warn(`[CustomerReceipt] Skipped receipt: invalid email for order ${args.orderNumber}`);
         return { success: false, reason: "invalid_email" };
       }
 
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://goodluckcaps.com";
+      const baseUrl = emailBaseUrl(process.env.NEXT_PUBLIC_APP_URL);
       const trackingUrl = `${baseUrl}/track?order=${encodeURIComponent(args.orderNumber)}`;
 
       const copy = receiptCopy(args.orderNumber, args.outOfTerritory ?? false);
@@ -223,7 +224,7 @@ export const sendTestAdminOrderAlert = internalAction({
   handler: async (ctx, args) => {
     const recipient = args.targetEmail || adminEmail();
     const testOrderNum = `TEST-${Math.floor(1000 + Math.random() * 9000)}`;
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://goodluckcaps.com";
+    const baseUrl = emailBaseUrl(process.env.NEXT_PUBLIC_APP_URL);
     const adminDashboardUrl = `${baseUrl}/admin/orders/${testOrderNum}`;
 
     const email = await renderEmail(
@@ -298,7 +299,7 @@ export const sendAdminDisputeAlert = internalAction({
   handler: async (ctx, args) => {
     try {
       const recipient = adminEmail();
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://goodluckcaps.com";
+      const baseUrl = emailBaseUrl(process.env.NEXT_PUBLIC_APP_URL);
       const adminDashboardUrl = `${baseUrl}/admin/orders/${args.orderNumber}`;
       const stripeDisputeUrl = `https://dashboard.stripe.com/disputes/${args.disputeId}`;
 
@@ -363,7 +364,7 @@ export const sendAdminTerritoryAlert = internalAction({
   returns: emailResult,
   handler: async (ctx, args) => {
     try {
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://goodluckcaps.com";
+      const baseUrl = emailBaseUrl(process.env.NEXT_PUBLIC_APP_URL);
       const email = await renderEmail(
         React.createElement(AdminTerritoryAlertEmail, {
           ...args,
@@ -413,12 +414,12 @@ export const sendOrderDispatchedEmail = internalAction({
   returns: emailResult,
   handler: async (ctx, args) => {
     try {
-      if (!args.customerEmail || !args.customerEmail.includes("@")) {
+      if (!isSendableEmail(args.customerEmail)) {
         console.warn(`[OrderDispatchedEmail] Skipped: invalid email for order ${args.orderNumber}`);
         return { success: false, reason: "invalid_email" };
       }
 
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://goodluckcaps.com";
+      const baseUrl = emailBaseUrl(process.env.NEXT_PUBLIC_APP_URL);
       const storeTrackingUrl = `${baseUrl}/track?order=${encodeURIComponent(args.orderNumber)}`;
 
       const stage = args.stage ?? "label_purchased";
@@ -475,12 +476,12 @@ export const sendOrderDeliveredEmail = internalAction({
   returns: emailResult,
   handler: async (ctx, args) => {
     try {
-      if (!args.customerEmail || !args.customerEmail.includes("@")) {
+      if (!isSendableEmail(args.customerEmail)) {
         console.warn(`[OrderDeliveredEmail] Skipped: invalid email for order ${args.orderNumber}`);
         return { success: false, reason: "invalid_email" };
       }
 
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://goodluckcaps.com";
+      const baseUrl = emailBaseUrl(process.env.NEXT_PUBLIC_APP_URL);
       const storeTrackingUrl = `${baseUrl}/track?order=${encodeURIComponent(args.orderNumber)}`;
 
       const email = await renderEmail(
@@ -527,9 +528,9 @@ export const sendReviewInviteEmail = internalAction({
   returns: emailResult,
   handler: async (ctx, args) => {
     try {
-      if (!args.customerEmail.includes("@")) return { success: false, reason: "invalid_email" };
+      if (!isSendableEmail(args.customerEmail)) return { success: false, reason: "invalid_email" };
 
-      const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || "https://goodluckcaps.com").replace(/\/+$/, "");
+      const baseUrl = emailBaseUrl(process.env.NEXT_PUBLIC_APP_URL);
       const convexSiteUrl = process.env.CONVEX_SITE_URL?.replace(/\/+$/, "");
       const oneClickUrl = convexSiteUrl
         ? `${convexSiteUrl}${REVIEW_INVITE_UNSUBSCRIBE_PATH}?token=${encodeURIComponent(args.unsubscribeToken)}`
@@ -580,7 +581,7 @@ export const sendDeliveryExceptionEmails = internalAction({
   },
   returns: v.object({ administrator: emailResult, customer: v.optional(emailResult) }),
   handler: async (ctx, args) => {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://goodluckcaps.com";
+    const baseUrl = emailBaseUrl(process.env.NEXT_PUBLIC_APP_URL);
     const send = async (audience: EmailAudience, to: string) => {
       try {
         const copy = deliveryExceptionCopy(args.kind, audience, args.orderNumber);
@@ -619,7 +620,7 @@ export const sendDeliveryExceptionEmails = internalAction({
 
     const administrator = await send("administrator", adminEmail());
     const customer =
-      args.customerEmail && args.customerEmail.includes("@") ? await send("customer", args.customerEmail) : undefined;
+      isSendableEmail(args.customerEmail) ? await send("customer", args.customerEmail) : undefined;
     return { administrator, ...(customer && { customer }) };
   },
 });
@@ -638,11 +639,11 @@ export const sendCustomerNotice = internalAction({
   returns: emailResult,
   handler: async (ctx, args) => {
     try {
-      if (!args.customerEmail.includes("@")) {
+      if (!isSendableEmail(args.customerEmail)) {
         console.warn(`[CustomerNotice] Skipped: invalid email for order ${args.orderNumber}`);
         return { success: false, reason: "invalid_email" };
       }
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://goodluckcaps.com";
+      const baseUrl = emailBaseUrl(process.env.NEXT_PUBLIC_APP_URL);
       const email = await renderEmail(
         React.createElement(CustomerNoticeEmail, {
           notice: args.notice,
@@ -677,7 +678,7 @@ export const sendAdminAlert = internalAction({
   returns: emailResult,
   handler: async (ctx, args) => {
     try {
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://goodluckcaps.com";
+      const baseUrl = emailBaseUrl(process.env.NEXT_PUBLIC_APP_URL);
       const { orderNumber } = args.alert;
       const email = await renderEmail(
         React.createElement(AdminAlertEmail, {
