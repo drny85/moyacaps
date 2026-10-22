@@ -58,6 +58,9 @@ const SOURCES = {
     "https://*.clerk.accounts.dev",
     "https://challenges.cloudflare.com",
     "https://js.stripe.com",
+    // Clerk's bot protection: bootstrap.js from its CDN, then loader.js from a per-instance host
+    "https://cdn.protect.clerk.com",
+    "https://*.client.protect.clerk.com",
     // MediaPipe face detection wasm loader for try-on (src/lib/tryOn/detector.ts)
     "https://cdn.jsdelivr.net",
   ],

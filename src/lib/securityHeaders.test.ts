@@ -50,6 +50,12 @@ describe("contentSecurityPolicy", () => {
     expect(connect.split(" ")).toContain("https://*.client.protect.clerk.com:*");
   });
 
+  it("lets Clerk's bot protection load its bootstrap and loader scripts", () => {
+    const scripts = directive(contentSecurityPolicy({ dev: false, convexUrl: PROD_CONVEX }), "script-src").split(" ");
+    expect(scripts).toContain("https://cdn.protect.clerk.com");
+    expect(scripts).toContain("https://*.client.protect.clerk.com");
+  });
+
   it("allows only this app's Convex deployment, not every Convex customer's", () => {
     const csp = contentSecurityPolicy({ dev: false, convexUrl: PROD_CONVEX });
     expect(csp).not.toContain("*.convex");
