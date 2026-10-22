@@ -24,6 +24,7 @@ import { api } from "@convex/_generated/api";
 import { getCarrierTrackingUrl } from "@/lib/tracking";
 import { getWhatsAppTrackingUrl } from "@/lib/whatsapp";
 import { isPaidOrder, trackingStep } from "@/lib/orderStatus";
+import { customerRefund } from "@/lib/orderRefund";
 import { OrderStatusBadges } from "@/components/orders/OrderStatusBadges";
 import {
   Truck,
@@ -90,6 +91,7 @@ function TrackLookupForm({ initialOrder }: { initialOrder: string }) {
   };
 
   const currentStep = orderResult ? trackingStep(orderResult) : 1;
+  const refund = orderResult ? customerRefund(orderResult) : null;
 
   return (
     <>
@@ -451,6 +453,16 @@ function TrackLookupForm({ initialOrder }: { initialOrder: string }) {
                       <p className="text-base font-mono font-bold text-zinc-900 dark:text-white pt-1 border-t border-black/[0.04] dark:border-white/[0.06]">
                         {isPaidOrder(orderResult) ? t("totalPaid") : t("totalDue")}: ${Number(orderResult.total).toFixed(2)} {orderResult.currency}
                       </p>
+                      {refund && (
+                        <>
+                          <p className="text-rose-600 dark:text-rose-400 font-semibold">
+                            {t("refundedTotal")}: <span className="font-mono">−${refund.refunded.toFixed(2)}</span>
+                          </p>
+                          <p className="font-mono font-bold text-zinc-900 dark:text-white">
+                            {t("netPaid")}: ${refund.netPaid.toFixed(2)} {orderResult.currency}
+                          </p>
+                        </>
+                      )}
                     </div>
                   ) : (
                     <div className="p-3.5 rounded-2xl bg-zinc-50 dark:bg-white/[0.02] border border-zinc-200/60 dark:border-white/[0.06] flex flex-col justify-between gap-2.5">

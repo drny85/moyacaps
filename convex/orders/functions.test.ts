@@ -509,6 +509,36 @@ describe("updateFulfillmentStatusAdmin", () => {
     await drain(tt);
   });
 
+  it("refuses to deliver a fully refunded shipment by hand, and delivers a partially refunded one", async () => {
+    const tt = t();
+    await seedVariant(tt, "V1", 5);
+    const refundBy = async (orderId: Doc<"orders">["_id"], orderNumber: string, refundedAmount: number, isFullRefund: boolean) =>
+      await tt.mutation(internal.orders.settlement.recordStripeRefundInternal, {
+        orderId,
+        orderNumber,
+        refundedAmount,
+        isFullRefund,
+        webhookEventId: `evt_${orderNumber}`,
+      });
+
+    const full = await seedOrder(tt, "V1", { status: "dispatched" });
+    await refundBy(full.orderId, full.orderNumber, 100, true);
+    await expect(
+      admin(tt).mutation(api.orders.desk.updateFulfillmentStatusAdmin, { orderId: full.orderId, fulfillmentStatus: "delivered" })
+    ).rejects.toThrow(/fully refunded/);
+    expect(lifecycle(await getOrder(tt, full.orderNumber))).toEqual({ payment: "refunded", fulfillment: "in_transit", cancelled: false });
+
+    const partial = await seedOrder(tt, "V1", { status: "dispatched" });
+    await refundBy(partial.orderId, partial.orderNumber, 15, false);
+    await admin(tt).mutation(api.orders.desk.updateFulfillmentStatusAdmin, { orderId: partial.orderId, fulfillmentStatus: "delivered" });
+    expect(lifecycle(await getOrder(tt, partial.orderNumber))).toEqual({
+      payment: "partially_refunded",
+      fulfillment: "delivered",
+      cancelled: false,
+    });
+    await drain(tt);
+  });
+
   it("requires admin identity", async () => {
     const tt = t();
     await seedVariant(tt, "V1", 5);
@@ -583,6 +613,26 @@ describe("Public query PII containment", () => {
     expect(order.shippingAddress?.line1).toBe("123 Secret St");
     expect(order.paymentUrl).toBeUndefined();
     expect(order.stripeSessionId).toBeUndefined();
+    await drain(tt);
+  });
+
+  it("tracking and the confirmation view show a guest what was refunded", async () => {
+    const tt = t();
+    const lead = await seeded(tt);
+    await tt.mutation(internal.orders.settlement.recordStripeRefundInternal, {
+      orderId: lead.orderId,
+      orderNumber: lead.orderNumber,
+      refundedAmount: 100,
+      isFullRefund: true,
+      webhookEventId: "evt_goodwill",
+    });
+    const tracked = await tt.query(api.orders.functions.getOrderByOrderNumberAndEmail, {
+      orderNumber: lead.orderNumber,
+      email: "secret@test.com",
+    });
+    expect(tracked).toMatchObject({ isGuestView: true, paymentStatus: "refunded", refundedAmount: 100, total: 100 });
+    const confirmation = await tt.query(api.orders.functions.getOrderBySessionOrNumber, { identifier: "cs_test_demo1" });
+    expect(confirmation).toMatchObject({ refundedAmount: 100 });
     await drain(tt);
   });
 

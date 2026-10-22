@@ -2,7 +2,7 @@
  * What an Administrator can do next with an Order (plan 0009 D14, D16), derived from the
  * status rules in convex/orders/status.ts so the page never offers a move the server rejects.
  */
-import { canChangeFulfillment, labelAction, statusAxes } from "../../../convex/orders/status";
+import { labelAction, manualFulfillmentBlock, statusAxes } from "../../../convex/orders/status";
 import type { StatusSource } from "../../../convex/orders/status";
 import { currentHandoff, isReadyToShip, type HandoffOrder } from "../../../convex/orders/handoff";
 
@@ -34,7 +34,7 @@ export function nextOrderAction(order: ActionSource): NextAction {
   if (label.action === "buy") return { kind: "buy_label", addressMissing: !order.shippingAddress?.line1 };
   if (includes(BOUNCED, axes.fulfillmentStatus)) return { kind: "resolve_exception", reship: label.action === "reship" };
   if (isReadyToShip(order) && !currentHandoff(order)) return { kind: "hand_off" };
-  if (includes(SHIPPED, axes.fulfillmentStatus) && canChangeFulfillment(order)) return { kind: "mark_delivered" };
+  if (includes(SHIPPED, axes.fulfillmentStatus) && !manualFulfillmentBlock(order)) return { kind: "mark_delivered" };
   if (axes.fulfillmentStatus === "unfulfilled" && label.action === null) return { kind: "none", reason: label.reason };
   return { kind: "none" };
 }
@@ -42,7 +42,7 @@ export function nextOrderAction(order: ActionSource): NextAction {
 /** Manual Fulfillment moves, each behind a confirm; carrier scans remain the normal path. */
 export function allowedManualMoves(order: StatusSource): ManualMove[] {
   const axes = statusAxes(order);
-  if (axes.cancelledAt !== undefined || !canChangeFulfillment(order)) return [];
+  if (manualFulfillmentBlock(order)) return [];
   if (includes([...SHIPPED, "delivery_exception"] as const, axes.fulfillmentStatus)) return ["mark_delivered"];
   if (axes.fulfillmentStatus === "delivered") return ["revert"];
   return [];
@@ -53,7 +53,7 @@ export function allowedManualMoves(order: StatusSource): ManualMove[] {
  * to in transit (the dispatch email goes out); any later save only corrects the numbers.
  */
 export function manualTrackingMove(order: StatusSource): "in_transit" | null {
+  if (manualFulfillmentBlock(order)) return null;
   const axes = statusAxes(order);
-  if (axes.cancelledAt !== undefined || !canChangeFulfillment(order)) return null;
   return axes.fulfillmentStatus === "unfulfilled" ? "in_transit" : null;
 }

@@ -13,6 +13,7 @@ import {
   planCustomerCancellation,
   planDispute,
   planLabelPurchase,
+  manualFulfillmentBlock,
   planManualFulfillmentChange,
   planRefund,
   planSettlement,
@@ -252,6 +253,26 @@ describe("Fulfillment axis", () => {
     expect(planManualFulfillmentChange(axes("paid", "delivered"), "in_transit")).toMatchObject({ ok: true, lockCarrierUpdates: true });
     expect(planManualFulfillmentChange(axes("paid", "unfulfilled"), "in_transit")).toMatchObject({ ok: true, lockCarrierUpdates: false });
     expect(planManualFulfillmentChange(axes("paid", "in_transit"), "in_transit").ok).toBe(false);
+  });
+
+  it("only a sale still standing is moved by hand: not cancelled, not fully refunded", () => {
+    expect(manualFulfillmentBlock(axes("paid", "label_purchased"))).toBeUndefined();
+    // A partial or Goodwill Refund leaves the sale: its package is still delivered.
+    expect(manualFulfillmentBlock(axes("partially_refunded", "in_transit"))).toBeUndefined();
+    expect(manualFulfillmentBlock(axes("disputed", "in_transit"))).toBeUndefined();
+    expect(manualFulfillmentBlock(axes("awaiting_payment", "unfulfilled"))).toMatch(/only change once the order is paid/);
+    expect(manualFulfillmentBlock(axes("paid", "in_transit", { cancelledAt: 1 }))).toMatch(/cancelled/);
+    expect(manualFulfillmentBlock(axes("refunded", "label_purchased"))).toMatch(/fully refunded/);
+
+    const refused = planManualFulfillmentChange(axes("refunded", "label_purchased"), "delivered");
+    expect(refused).toEqual({ ok: false, error: manualFulfillmentBlock(axes("refunded", "label_purchased")) });
+    expect(planManualFulfillmentChange(axes("refunded", "delivered"), "in_transit").ok).toBe(false);
+    expect(planManualFulfillmentChange(axes("paid", "in_transit", { cancelledAt: 1 }), "delivered").ok).toBe(false);
+    expect(planManualFulfillmentChange(axes("partially_refunded", "label_purchased"), "delivered").ok).toBe(true);
+  });
+
+  it("carrier scans still record a fully refunded Order's package", () => {
+    expect(fulfillmentAfterScan(axes("refunded", "in_transit"), "DELIVERED", false)).toBe("delivered");
   });
 });
 

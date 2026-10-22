@@ -223,6 +223,7 @@
     "orderNo": "Orden",
     "date": "Fecha",
     "total": "Total",
+    "refundedAmount": "Reembolsado {amount}",
     "status": "Estado",
     "statusPaid": "Pagada y en Preparación",
     "statusDispatched": "Enviada con Rastreo",
@@ -1133,6 +1134,8 @@
     "total": "Total",
     "totalPaid": "Total Pagado",
     "totalDue": "Total por Pagar",
+    "refundedTotal": "Reembolsado",
+    "netPaid": "Pago Neto",
     "conciergeBanner": "¿Tienes dudas sobre tu entrega? Habla con nuestro Concierge en WhatsApp 24/7.",
     "chatWhatsApp": "WhatsApp Concierge",
     "supportFallback": "Soporte"

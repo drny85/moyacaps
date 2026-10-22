@@ -38,6 +38,12 @@ describe("nextOrderAction", () => {
     expect(nextOrderAction(order("paid", "in_transit"))).toEqual({ kind: "mark_delivered" });
   });
 
+  it("a partial or Goodwill Refund still gets delivered; a fully refunded shipment does not", () => {
+    expect(nextOrderAction(order("partially_refunded", "label_purchased"))).toEqual({ kind: "mark_delivered" });
+    expect(nextOrderAction(order("refunded", "label_purchased"))).toEqual({ kind: "none" });
+    expect(nextOrderAction(order("refunded", "in_transit"))).toEqual({ kind: "none" });
+  });
+
   it("delivery exception or returned → resolve_exception, reship when a label is allowed", () => {
     expect(nextOrderAction(order("paid", "delivery_exception"))).toEqual({ kind: "resolve_exception", reship: true });
     expect(nextOrderAction(order("paid", "returned"))).toEqual({ kind: "resolve_exception", reship: true });
@@ -59,6 +65,12 @@ describe("allowedManualMoves", () => {
     expect(allowedManualMoves(order("paid", "unfulfilled"))).toEqual([]);
     expect(allowedManualMoves(order("awaiting_payment", "unfulfilled"))).toEqual([]);
     expect(allowedManualMoves(order("paid", "in_transit", { cancelledAt: NOW }))).toEqual([]);
+  });
+
+  it("offers nothing on a fully refunded Order, and still delivers a partially refunded one", () => {
+    expect(allowedManualMoves(order("refunded", "label_purchased"))).toEqual([]);
+    expect(allowedManualMoves(order("refunded", "delivered"))).toEqual([]);
+    expect(allowedManualMoves(order("partially_refunded", "in_transit"))).toEqual(["mark_delivered"]);
   });
 });
 

@@ -356,6 +356,22 @@ export function fulfillmentAfterScan(
 }
 
 /**
+ * Why an Administrator may not move Fulfillment Status by hand, or undefined when they may.
+ * Only a sale still standing is worked by hand: not before payment, not once cancelled, and
+ * not once fully refunded, since the store no longer owes that package and a manual delivered
+ * would email the Customer and invite a review. A partial or Goodwill Refund leaves the sale,
+ * so its package is still worked. Carrier scans keep recording where any package is
+ * (fulfillmentAfterScan): a refund never erases that an Order shipped (ADR 0024).
+ */
+export function manualFulfillmentBlock(order: StatusSource): string | undefined {
+  const axes = statusAxes(order);
+  if (!canChangeFulfillment(order)) return AWAITING_PAYMENT_ERROR;
+  if (axes.cancelledAt !== undefined) return "Order is cancelled: its fulfillment is no longer changed by hand.";
+  if (axes.paymentStatus === "refunded") return "Order is fully refunded: its fulfillment is no longer changed by hand.";
+  return undefined;
+}
+
+/**
  * Administrator sets Fulfillment Status by hand. Delivered comes from the carrier scan, so a
  * manual change into or out of delivered locks out carrier overwrites.
  */
@@ -363,7 +379,8 @@ export function planManualFulfillmentChange(
   order: StatusSource,
   next: FulfillmentStatus
 ): Transition<{ fulfillmentStatus: FulfillmentStatus; lockCarrierUpdates: boolean }> {
-  if (!canChangeFulfillment(order)) return { ok: false, error: AWAITING_PAYMENT_ERROR };
+  const block = manualFulfillmentBlock(order);
+  if (block) return { ok: false, error: block };
   const current = statusAxes(order).fulfillmentStatus;
   if (current === next) return { ok: false, error: `Order is already ${next.replace(/_/g, " ")}.` };
   const lockCarrierUpdates = current === "delivered" || next === "delivered";

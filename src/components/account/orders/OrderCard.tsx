@@ -7,6 +7,7 @@ import { Truck, Edit3, MessageCircle, ExternalLink } from "lucide-react";
 import { getCarrierTrackingUrl } from "@/lib/tracking";
 import { isAddressEditable, isShippedOrder } from "@/lib/orderStatus";
 import { orderActionNote, type OrderActionNote } from "@/lib/accountOrders";
+import { customerRefund } from "@/lib/orderRefund";
 import { customerCancellationAllowed } from "@convex/orders/status";
 import { OrderReviewActions } from "@/components/reviews/OrderReviewActions";
 import { OrderStatusBadges } from "@/components/orders/OrderStatusBadges";
@@ -37,6 +38,7 @@ export function OrderCard({
   const isCancellable = customerCancellationAllowed(ord);
   const canEditAddress = isAddressEditable(ord);
   const isShipped = isShippedOrder(ord);
+  const refund = customerRefund(ord);
 
   return (
     <div className="p-5 sm:p-6 rounded-3xl glass-card border border-black/[0.06] dark:border-white/[0.06] flex flex-col gap-4 shadow-lg hover:shadow-xl transition-shadow">
@@ -94,6 +96,11 @@ export function OrderCard({
             {typeof ord.tax === "number" && ord.tax > 0 && (
               <span className="text-[10px] font-mono text-zinc-500 block">
                 (incl. ${ord.tax.toFixed(2)} tax)
+              </span>
+            )}
+            {refund && (
+              <span className="text-[10px] font-mono font-semibold text-rose-600 dark:text-rose-400 block">
+                {t("refundedAmount", { amount: `$${refund.refunded.toFixed(2)}` })}
               </span>
             )}
           </div>
