@@ -1039,6 +1039,10 @@
         "cancelled": "Order cancelled.",
         "dispatched": "Marked in transit; the customer has been told.",
         "handoffRemoved": "Handoff removed."
+      },
+      "timeline": {
+        "title": "Timeline",
+        "loading": "Loading…"
       }
     },
     "homeTiles": {
@@ -1138,7 +1142,22 @@
     "netPaid": "Net Paid",
     "conciergeBanner": "Have questions about your delivery? Chat with our 24/7 WhatsApp Concierge.",
     "chatWhatsApp": "WhatsApp Concierge",
-    "supportFallback": "Support"
+    "supportFallback": "Support",
+    "timeline": {
+      "title": "Tracking history",
+      "placed": "Order placed",
+      "paid": "Payment confirmed",
+      "ready_to_ship": "Packed, ready to ship with {carrier}",
+      "reship": "A new package was prepared with {carrier}",
+      "handed_off_dropped_off": "Dropped off with {carrier}",
+      "handed_off_picked_up": "Picked up by {carrier}",
+      "in_transit": "In transit",
+      "out_for_delivery": "Out for delivery",
+      "delivered": "Delivered",
+      "delivery_problem": "Delivery problem: we're on it",
+      "returned": "Returned to sender",
+      "cancelled": "Order cancelled"
+    }
   },
   "validation": {
     "required": "This field is required",

@@ -17,6 +17,7 @@ import { CancelDialog } from "./CancelDialog";
 import { DangerZone } from "./DangerZone";
 import { ItemsSection } from "./ItemsSection";
 import { LabelsSection } from "./LabelsSection";
+import { TimelineSection } from "./TimelineSection";
 import { HandoffDialog } from "../HandoffDialog";
 import { ManualTrackingDialog } from "./ManualTrackingDialog";
 import { MoneySection } from "./MoneySection";
@@ -131,6 +132,7 @@ export function OrderDetailPage({ orderNumber }: { orderNumber: string }) {
               onRemoveHandoff={() => setDialog("removeHandoff")}
             />
             <LabelHistoryCard order={order} />
+            <TimelineSection orderId={order._id} />
             {vm.danger.canCancel && <DangerZone onCancel={() => setDialog("cancel")} />}
           </div>
         </div>

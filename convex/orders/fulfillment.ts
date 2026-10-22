@@ -14,6 +14,7 @@ import { scheduleReviewInvite } from "../reviews/invites";
 import { insertPaymentEvent } from "./paymentEvents";
 import { claimShippedNotice } from "./handoff";
 import { scheduleShippedEmail } from "./shippedNotice";
+import { recordTrackingScan } from "./trackingEvents";
 
 /**
  * INTERNAL: Commits a purchased shipping label to an order: adds it to the label history,
@@ -178,6 +179,13 @@ export const handleTrackingWebhookInternal = internalMutation({
     }
 
     const plan = planTrackingUpdate(order, args, Date.now());
+    await recordTrackingScan(ctx, order._id, {
+      trackingNumber: cleanTrk,
+      status: args.status.toUpperCase(),
+      ...(args.statusDetails && { statusDetails: args.statusDetails }),
+      ...(args.statusDate && { statusDate: args.statusDate }),
+      ...(plan.locationStr && { location: plan.locationStr }),
+    });
 
     // The first scan that puts the package in transit tells the Customer it shipped, unless a
     // Handoff already did (ADR 0030).

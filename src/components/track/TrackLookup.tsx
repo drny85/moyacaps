@@ -26,6 +26,7 @@ import { getWhatsAppTrackingUrl } from "@/lib/whatsapp";
 import { isPaidOrder, trackingStep } from "@/lib/orderStatus";
 import { customerRefund } from "@/lib/orderRefund";
 import { OrderStatusBadges } from "@/components/orders/OrderStatusBadges";
+import { TrackTimeline } from "./TrackTimeline";
 import {
   Truck,
   CheckCircle2,
@@ -312,6 +313,9 @@ function TrackLookupForm({ initialOrder }: { initialOrder: string }) {
                     )}
                   </div>
                 )}
+
+                {/* Order Timeline: package milestones, newest first */}
+                <TrackTimeline entries={orderResult.timeline} />
 
                 {/* Official Stripe Tax Invoice (PDF) */}
                 {orderResult.invoicePdfUrl && (
