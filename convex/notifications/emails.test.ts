@@ -67,6 +67,17 @@ describe("sendCustomerReceipt", () => {
     expect(sent().text).toContain("GL-MAIL-1");
   });
 
+  it("carries the Account Invite only on a guest Order's receipt, with no email in the link", async () => {
+    process.env.NEXT_PUBLIC_APP_URL = "https://staging.example.com";
+    await t().action(internal.notifications.emails.sendCustomerReceipt, { ...receipt("ana@example.com"), isGuestOrder: true });
+    expect(sent().html).toContain('href="https://staging.example.com/account/orders"');
+    expect(sent().text).toMatch(/Create a free account with this email address/);
+
+    resend.sendEmail.mockClear();
+    await t().action(internal.notifications.emails.sendCustomerReceipt, receipt("ana@example.com"));
+    expect(sent().html).not.toContain("/account/orders");
+  });
+
   it("says an out-of-territory order will be refunded", async () => {
     await t().action(internal.notifications.emails.sendCustomerReceipt, { ...receipt("ana@example.com"), outOfTerritory: true });
     expect(sent().subject).toMatch(/can't ship it/);

@@ -349,8 +349,9 @@ function orderStatusView(order: Order) {
 
 /**
  * Checkout confirmation view. A Stripe session id is high-entropy and only appears in the
- * payer's own return URL, so it may show the address and phone; a bare order number stays
- * minimal because enumeration must not reveal PII.
+ * payer's own return URL, so it may show the address, phone and email (the Account Invite
+ * prefills sign-up with it); a bare order number stays minimal because enumeration must not
+ * reveal PII.
  */
 export function confirmationView(order: Order, viaStripeSession: boolean) {
   if (viaStripeSession) {
@@ -358,16 +359,18 @@ export function confirmationView(order: Order, viaStripeSession: boolean) {
       ...orderStatusView(order),
       customerName: order.customerName,
       shippingAddress: order.shippingAddress,
+      customerEmail: order.customerEmail,
       customerPhone: order.customerPhone,
-      isGuestView: false,
+      isLimitedView: false,
     };
   }
   return {
     ...orderStatusView(order),
     customerName: firstName(order.customerName),
     shippingAddress: undefined,
+    customerEmail: undefined,
     customerPhone: undefined,
-    isGuestView: true,
+    isLimitedView: true,
   };
 }
 
@@ -415,7 +418,7 @@ export function guestTrackingView(order: Order) {
     reservationExpiresAt: order.reservationExpiresAt,
     invoicePdfUrl: order.invoicePdfUrl,
     hostedInvoiceUrl: order.hostedInvoiceUrl,
-    isGuestView: true,
+    isLimitedView: true,
   };
 }
 
@@ -464,6 +467,6 @@ export function ownerTrackingView(order: Order) {
     reservationExpiresAt: order.reservationExpiresAt,
     invoicePdfUrl: order.invoicePdfUrl,
     hostedInvoiceUrl: order.hostedInvoiceUrl,
-    isGuestView: false,
+    isLimitedView: false,
   };
 }

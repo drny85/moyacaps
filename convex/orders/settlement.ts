@@ -430,6 +430,7 @@ export const createOrUpdateStripeOrder = internalMutation({
           shippingFee: args.shippingFee ?? existing.shippingFee,
           tax: args.tax,
           outOfTerritory,
+          isGuestOrder: !(args.clerkUserId ?? existing.clerkUserId),
         });
       }
 
@@ -511,6 +512,7 @@ export const createOrUpdateStripeOrder = internalMutation({
         shippingFee: args.shippingFee,
         tax: args.tax,
         outOfTerritory,
+        isGuestOrder: !args.clerkUserId,
       });
     }
 

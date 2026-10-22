@@ -26,6 +26,9 @@ export interface CustomerReceiptProps {
   returnPolicyUrl?: string;
   // Heading and greeting (orderEmails.ts receiptCopy); defaults to the "preparing your order" copy.
   copy?: ReceiptCopy;
+  // The Account Invite for a guest Order (orderEmails.ts receiptAccountInvite); none when absent.
+  accountInvite?: string;
+  accountUrl?: string;
 }
 
 export function CustomerReceiptEmail({
@@ -53,6 +56,8 @@ export function CustomerReceiptEmail({
   trackingUrl = "https://goodluckcaps.com/track",
   returnPolicyUrl = "https://goodluckcaps.com/returns",
   copy,
+  accountInvite,
+  accountUrl = "https://goodluckcaps.com/account/orders",
 }: CustomerReceiptProps) {
   const text = copy ?? receiptCopy(orderNumber, false);
   return (
@@ -97,6 +102,15 @@ export function CustomerReceiptEmail({
           {text.returnsNote}{" "}
           <Link href={returnPolicyUrl} style={styles.link}>
             Read the Return Policy
+          </Link>
+        </Text>
+      )}
+
+      {accountInvite && (
+        <Text style={styles.paragraph}>
+          {accountInvite}{" "}
+          <Link href={accountUrl} style={styles.link}>
+            Create your account
           </Link>
         </Text>
       )}

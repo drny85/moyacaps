@@ -80,7 +80,7 @@ function TrackLookupForm({ initialOrder }: { initialOrder: string }) {
   );
 
   const isLoading = activeQuery !== null && orderResult === undefined;
-  const isOwnerOrAdmin = Boolean(isSignedIn && orderResult && !orderResult.isGuestView);
+  const isOwnerOrAdmin = Boolean(isSignedIn && orderResult && !orderResult.isLimitedView);
 
   const handleSearchSubmit = (data: TrackingLookupValues) => {
     setActiveQuery(toTrackingQuery(data.orderNumber, data.email));

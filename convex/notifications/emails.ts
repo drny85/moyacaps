@@ -27,6 +27,7 @@ import {
   dispatchedCopy,
   dispatchedIdempotencyKey,
   receiptCopy,
+  receiptAccountInvite,
   reviewInviteCopy,
   reviewInviteIdempotencyKey,
   SUPPORT_EMAIL,
@@ -164,6 +165,8 @@ export const sendCustomerReceipt = internalAction({
     tax: v.optional(v.number()),
     // Settlement flagged the address outside the Fulfillment Territory: say it will be refunded.
     outOfTerritory: v.optional(v.boolean()),
+    // No account owns the Order yet: the receipt carries the Account Invite.
+    isGuestOrder: v.optional(v.boolean()),
   },
   returns: emailResult,
   handler: async (ctx, args) => {
@@ -191,6 +194,8 @@ export const sendCustomerReceipt = internalAction({
           tax: args.tax,
           trackingUrl,
           returnPolicyUrl: `${baseUrl}/returns`,
+          accountInvite: receiptAccountInvite(args.isGuestOrder ?? false, args.outOfTerritory ?? false),
+          accountUrl: `${baseUrl}/account/orders`,
         })
       );
 

@@ -82,7 +82,7 @@ async function seedVariant(tt: T, stock = 10) {
 }
 
 /** Pay: an Order awaiting payment with its Checkout Hold and session, as checkout creates it. */
-async function holdOrder(tt: T, orderNumber: string, sessionId: string) {
+async function holdOrder(tt: T, orderNumber: string, sessionId: string, owner: string | null = OWNER) {
   const orderId = await tt.mutation(internal.orders.checkoutHold.placeCheckoutHold, {
     orderNumber,
     items: [{ variantId: "V1", name: "Cap V1", quantity: 1, price: 100, image: "/img.png" }],
@@ -90,7 +90,7 @@ async function holdOrder(tt: T, orderNumber: string, sessionId: string) {
     subtotal: 100,
     shippingFee: 0,
     total: 100,
-    clerkUserId: OWNER,
+    clerkUserId: owner ?? undefined,
     customerEmail: "buyer@test.com",
     checkoutHoldExpiresAt: Date.now() + 31 * 60 * 1000,
     locale: "en",
@@ -185,7 +185,7 @@ describe("receipt and admin alert: exactly one each", () => {
 
     const receipts = await sends(tt, "sendCustomerReceipt");
     expect(receipts).toHaveLength(1);
-    expect(receipts[0].args).toMatchObject({ customerEmail: "buyer@test.com", outOfTerritory: false });
+    expect(receipts[0].args).toMatchObject({ customerEmail: "buyer@test.com", outOfTerritory: false, isGuestOrder: false });
     expect(await sends(tt, "sendAdminOrderAlert")).toHaveLength(1);
     await drain(tt);
   });
@@ -200,6 +200,18 @@ describe("receipt and admin alert: exactly one each", () => {
 
     expect(await sends(tt, "sendCustomerReceipt")).toHaveLength(1);
     expect(await sends(tt, "sendAdminOrderAlert")).toHaveLength(1);
+    await drain(tt);
+  });
+
+  it("a guest Order's receipt is marked for the Account Invite", async () => {
+    const tt = t();
+    await seedVariant(tt);
+    await holdOrder(tt, "GL-GUEST-1", "cs_guest1", null);
+    await deliver(tt, completed("evt_guest1", "cs_guest1", "GL-GUEST-1"));
+
+    const receipts = await sends(tt, "sendCustomerReceipt");
+    expect(receipts).toHaveLength(1);
+    expect(receipts[0].args.isGuestOrder).toBe(true);
     await drain(tt);
   });
 

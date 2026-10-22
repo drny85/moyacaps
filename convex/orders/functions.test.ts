@@ -599,8 +599,8 @@ describe("Public query PII containment", () => {
       tt
         .withIdentity({ subject: "user_claimant", email: "secret@test.com", emailVerified })
         .query(api.orders.functions.getOrderByOrderNumberAndEmail, { orderNumber: lead.orderNumber, email: "secret@test.com" });
-    expect(await lookup(false)).toMatchObject({ isGuestView: true, shippingAddress: { line1: "***" } });
-    expect(await lookup(true)).toMatchObject({ isGuestView: false, shippingAddress: { line1: "123 Secret St" } });
+    expect(await lookup(false)).toMatchObject({ isLimitedView: true, shippingAddress: { line1: "***" } });
+    expect(await lookup(true)).toMatchObject({ isLimitedView: false, shippingAddress: { line1: "123 Secret St" } });
     await drain(tt);
   });
 
@@ -630,7 +630,7 @@ describe("Public query PII containment", () => {
       orderNumber: lead.orderNumber,
       email: "secret@test.com",
     });
-    expect(tracked).toMatchObject({ isGuestView: true, paymentStatus: "refunded", refundedAmount: 100, total: 100 });
+    expect(tracked).toMatchObject({ isLimitedView: true, paymentStatus: "refunded", refundedAmount: 100, total: 100 });
     const confirmation = await tt.query(api.orders.functions.getOrderBySessionOrNumber, { identifier: "cs_test_demo1" });
     expect(confirmation).toMatchObject({ refundedAmount: 100 });
     await drain(tt);

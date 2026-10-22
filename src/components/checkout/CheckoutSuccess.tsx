@@ -24,6 +24,7 @@ import {
   Download,
 } from "lucide-react";
 import { getWhatsAppConciergeUrl } from "@/lib/whatsapp";
+import { AccountInvite } from "./AccountInvite";
 
 /** Reads the Stripe return params, so the page renders it under Suspense. */
 export function CheckoutSuccess() {
@@ -323,14 +324,8 @@ export function CheckoutSuccess() {
             </a>
           )}
 
-          {/* Account Portal Link */}
-          <Link
-            href="/account/orders"
-            className="w-full py-3 rounded-2xl glass-dark hover:bg-black/5 dark:hover:bg-white/10 text-zinc-900 dark:text-white font-display font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 border border-black/[0.06] dark:border-white/[0.06]"
-          >
-            <span>{t("viewOrders")}</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </Link>
+          {/* Account Invite for guests, "View orders" for a signed-in Customer */}
+          <AccountInvite email={order?.customerEmail} />
 
           <Link
             href="/"
